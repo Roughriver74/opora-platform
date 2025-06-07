@@ -59,10 +59,11 @@ exports.authMiddleware = authMiddleware;
  */
 const requireAdmin = (req, res, next) => {
     if (!req.isAdmin) {
-        return res.status(401).json({
+        res.status(401).json({
             success: false,
             message: 'Требуются права администратора'
         });
+        return; // Просто выходим из функции, не возвращаем Response объект
     }
     next();
 };

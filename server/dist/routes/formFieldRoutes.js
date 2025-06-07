@@ -34,10 +34,10 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const authMiddleware_1 = require("../middleware/authMiddleware");
 const formFieldController = __importStar(require("../controllers/formFieldController"));
+const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = (0, express_1.Router)();
-// Маршруты для управления полями формы
+// Получение всех полей
 router.get('/', formFieldController.getAllFields);
 router.post('/', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin, formFieldController.createField);
 // Битрикс маршруты - должны быть перед маршрутами с параметрами

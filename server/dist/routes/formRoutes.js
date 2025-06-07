@@ -34,16 +34,21 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const authMiddleware_1 = require("../middleware/authMiddleware");
 const formController = __importStar(require("../controllers/formController"));
+const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = (0, express_1.Router)();
-// Получение категорий сделок из Битрикс24 - должен быть перед маршрутами с параметрами
-router.get('/bitrix/deal-categories', formController.getDealCategories);
-// Маршруты для управления формами
+// Получение всех форм
 router.get('/', formController.getAllForms);
+// Создание новой формы
 router.post('/', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin, formController.createForm);
-// Маршруты с параметрами - должны быть последними
+// Получение категорий сделок из Битрикс24
+router.get('/bitrix/deal-categories', formController.getDealCategories);
+// Получение формы по ID
 router.get('/:id', formController.getFormById);
+// Обновление формы
 router.put('/:id', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin, formController.updateForm);
+// Удаление формы
 router.delete('/:id', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin, formController.deleteForm);
+// Обработка отправки формы (публичный endpoint)
+router.post('/:id/submit', formController.submitForm);
 exports.default = router;

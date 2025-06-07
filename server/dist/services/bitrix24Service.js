@@ -39,18 +39,32 @@ class Bitrix24Service {
     getProducts() {
         return __awaiter(this, arguments, void 0, function* (query = '', limit = 50) {
             try {
+                console.log(`Поиск продуктов в Битрикс24 по запросу: '${query}'`);
+                console.log('Вебхук URL:', this.webhookUrl);
                 // Формирование фильтра для поиска по имени товара, если указан query
-                const filter = query ? { '%NAME': query } : {};
-                const response = yield axios_1.default.post(`${this.webhookUrl}crm.product.list`, {
+                // Исправляем формат фильтра - в Bitrix24 API %NAME означает "содержит"
+                const filter = query ? { 'NAME': `%${query}%` } : {};
+                console.log('Данные запроса:', {
                     filter,
                     select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
                     start: 0,
                     order: { NAME: 'ASC' },
                 });
+                const response = yield axios_1.default.post(`${this.webhookUrl}crm.product.list`, {
+                    filter,
+                    select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
+                    start: 0,
+                    limit: parseInt(limit.toString()),
+                    order: { NAME: 'ASC' },
+                });
+                console.log('Ответ от Bitrix24:', response.data);
                 return response.data;
             }
             catch (error) {
-                console.error('Ошибка при получении товаров из Битрикс24:', error);
+                console.error('Ошибка при получении товаров из Битрикс24:', error.message);
+                if (error.response) {
+                    console.error('Ответ сервера:', error.response.data);
+                }
                 throw error;
             }
         });
@@ -96,12 +110,28 @@ class Bitrix24Service {
     getDealCategories() {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const response = yield axios_1.default.post(`${this.webhookUrl}crm.dealcategory.list`);
+                console.log('Запрос категорий сделок из Битрикс24 по адресу:', `${this.webhookUrl}crm.category.list`);
+                // Исправленный метод для получения категорий сделок
+                const response = yield axios_1.default.post(`${this.webhookUrl}crm.category.list`, {
+                    entityTypeId: 2 // 2 - тип сущности для сделок в Bitrix24
+                });
+                console.log('Получен ответ от Bitrix24:', response.data);
                 return response.data;
             }
             catch (error) {
                 console.error('Ошибка при получении категорий сделок из Битрикс24:', error);
-                throw error;
+                // Пробуем альтернативный метод, если первый не сработал
+                try {
+                    console.log('Пробуем альтернативный метод:', `${this.webhookUrl}crm.dealcategory.list`);
+                    const fallbackResponse = yield axios_1.default.post(`${this.webhookUrl}crm.dealcategory.list`);
+                    console.log('Получен ответ от альтернативного метода:', fallbackResponse.data);
+                    return fallbackResponse.data;
+                }
+                catch (fallbackError) {
+                    console.error('Ошибка при использовании альтернативного метода:', fallbackError);
+                    // Если оба метода не сработали, возвращаем пустые категории
+                    return { result: [] };
+                }
             }
         });
     }

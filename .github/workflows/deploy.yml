@@ -74,33 +74,69 @@ jobs:
           name: server-build
           path: server/dist
           
+      # Настраиваем SSH для деплоя
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          known_hosts: unnecessary
           if_key_exists: replace
           
-      - name: Deploy with rsync
+      - name: Add known hosts
+        run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          
+      - name: Copy files to server
+        env:
+          SERVER_USER: ${{ secrets.SSH_USER }}
+          SERVER_HOST: ${{ secrets.SSH_HOST }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
           # Создаем директорию для деплоя на сервере, если она не существует
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}"
+          ssh $SERVER_USER@$SERVER_HOST "mkdir -p $DEPLOY_PATH"
           
-          # Копируем файлы package.json для сервера и корневой директории
-          rsync -avz server/package.json ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/server/
-          rsync -avz package.json ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
+          # Создаем архив для передачи
+          tar -czf deploy.tar.gz \
+            --exclude="node_modules" \
+            --exclude=".git" \
+            --exclude="client/node_modules" \
+            --exclude="server/node_modules" \
+            server/dist \
+            server/package.json \
+            server/package-lock.json \
+            client/build \
+            package.json \
+            ecosystem.config.js
+            
+          # Копируем архив на сервер
+          scp deploy.tar.gz $SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/
           
-          # Копируем собранные файлы
-          rsync -avz client/build/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/client/build/
-          rsync -avz server/dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/server/dist/
-          
-          # Копируем .env файл для продакшена
-          scp .env.production ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.env
+          # Копируем .env файл если существует
+          if [ -f .env.production ]; then
+            scp .env.production $SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/.env
+          fi
           
       - name: Setup application on server
+        env:
+          SERVER_USER: ${{ secrets.SSH_USER }}
+          SERVER_HOST: ${{ secrets.SSH_HOST }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && npm install --production && cd server && npm install --production"
+          # Распаковываем архив и устанавливаем зависимости
+          ssh $SERVER_USER@$SERVER_HOST "cd $DEPLOY_PATH && \
+            tar -xzf deploy.tar.gz && \
+            cd server && npm install --production && \
+            cd .. && npm install --production"
           
       - name: Setup & restart PM2
+        env:
+          SERVER_USER: ${{ secrets.SSH_USER }}
+          SERVER_HOST: ${{ secrets.SSH_HOST }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && npx pm2 delete beton-crm || true && npx pm2 start server/dist/index.js --name beton-crm && npx pm2 save"
+          # Установка PM2 на сервере, если его нет
+          ssh $SERVER_USER@$SERVER_HOST "cd $DEPLOY_PATH && \
+            npm install pm2 -g && \
+            pm2 delete beton-crm 2>/dev/null || true && \
+            pm2 start ecosystem.config.js --env production && \
+            pm2 save && \
+            pm2 startup | grep -v PM2 | bash || true"

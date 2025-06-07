@@ -3,7 +3,7 @@ import FormField from '../models/FormField';
 import bitrix24Service from '../services/bitrix24Service';
 
 // Получение всех полей формы
-export const getAllFields = async (req: Request, res: Response) => {
+export const getAllFields = async (req: Request, res: Response): Promise<void> => {
   try {
     const fields = await FormField.find().sort({ order: 1 });
     res.status(200).json(fields);
@@ -13,7 +13,7 @@ export const getAllFields = async (req: Request, res: Response) => {
 };
 
 // Получение конкретного поля формы по ID
-export const getFieldById = async (req: Request, res: Response) => {
+export const getFieldById = async (req: Request, res: Response): Promise<void> => {
   try {
     const field = await FormField.findById(req.params.id);
     if (!field) {
@@ -27,7 +27,7 @@ export const getFieldById = async (req: Request, res: Response) => {
 };
 
 // Создание нового поля формы
-export const createField = async (req: Request, res: Response) => {
+export const createField = async (req: Request, res: Response): Promise<void> => {
   try {
     const field = new FormField(req.body);
     const savedField = await field.save();
@@ -38,11 +38,12 @@ export const createField = async (req: Request, res: Response) => {
 };
 
 // Обновление существующего поля формы
-export const updateField = async (req: Request, res: Response) => {
+export const updateField = async (req: Request, res: Response): Promise<void> => {
   try {
     const field = await FormField.findById(req.params.id);
     if (!field) {
-      return res.status(404).json({ message: 'Поле не найдено' });
+      res.status(404).json({ message: 'Поле не найдено' });
+      return;
     }
     
     Object.assign(field, req.body);
@@ -55,11 +56,12 @@ export const updateField = async (req: Request, res: Response) => {
 };
 
 // Удаление поля формы
-export const deleteField = async (req: Request, res: Response) => {
+export const deleteField = async (req: Request, res: Response): Promise<void> => {
   try {
     const field = await FormField.findById(req.params.id);
     if (!field) {
-      return res.status(404).json({ message: 'Поле не найдено' });
+      res.status(404).json({ message: 'Поле не найдено' });
+      return;
     }
     
     await FormField.findByIdAndDelete(req.params.id);
@@ -70,19 +72,16 @@ export const deleteField = async (req: Request, res: Response) => {
 };
 
 // Получение доступных полей из Битрикс24
-export const getBitrixFields = async (req: Request, res: Response) => {
+export const getBitrixFields = async (req: Request, res: Response): Promise<void> => {
   try {
     const fieldsResponse = await bitrix24Service.getDealFields();
     
-    // Проверяем, есть ли поля в ответе
     if (!fieldsResponse || !fieldsResponse.result) {
-      res.status(404).json({ message: 'Поля не найдены в ответе Битрикс24' });
+      res.status(404).json({ message: 'Не удалось получить поля из Битрикс24' });
       return;
     }
     
-    // Преобразуем поля в формат { fieldCode: { code: fieldCode, name: fieldName, type: fieldType, ... } }
     const formattedFields = Object.entries(fieldsResponse.result).reduce((acc: any, [fieldCode, fieldData]: [string, any]) => {
-      // Используем formLabel или listLabel как человекочитаемое название, или title если их нет
       const fieldName = fieldData.formLabel || fieldData.listLabel || fieldData.title || fieldCode;
       
       acc[fieldCode] = {
@@ -109,7 +108,7 @@ export const getBitrixFields = async (req: Request, res: Response) => {
 };
 
 // Получение номенклатуры из Битрикс24 для динамических полей
-export const getProductsList = async (req: Request, res: Response) => {
+export const getProductsList = async (req: Request, res: Response): Promise<void> => {
   try {
     const { query } = req.query;
     const products = await bitrix24Service.getProducts(query as string);

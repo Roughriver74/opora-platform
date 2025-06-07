@@ -31,7 +31,8 @@ const getFieldById = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     try {
         const field = yield FormField_1.default.findById(req.params.id);
         if (!field) {
-            return res.status(404).json({ message: 'Поле не найдено' });
+            res.status(404).json({ message: 'Поле не найдено' });
+            return;
         }
         res.status(200).json(field);
     }
@@ -57,7 +58,8 @@ const updateField = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     try {
         const field = yield FormField_1.default.findById(req.params.id);
         if (!field) {
-            return res.status(404).json({ message: 'Поле не найдено' });
+            res.status(404).json({ message: 'Поле не найдено' });
+            return;
         }
         Object.assign(field, req.body);
         const updatedField = yield field.save();
@@ -73,7 +75,8 @@ const deleteField = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     try {
         const field = yield FormField_1.default.findById(req.params.id);
         if (!field) {
-            return res.status(404).json({ message: 'Поле не найдено' });
+            res.status(404).json({ message: 'Поле не найдено' });
+            return;
         }
         yield FormField_1.default.findByIdAndDelete(req.params.id);
         res.status(200).json({ message: 'Поле успешно удалено' });
@@ -87,13 +90,11 @@ exports.deleteField = deleteField;
 const getBitrixFields = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const fieldsResponse = yield bitrix24Service_1.default.getDealFields();
-        // Проверяем, есть ли поля в ответе
         if (!fieldsResponse || !fieldsResponse.result) {
-            return res.status(404).json({ message: 'Поля не найдены в ответе Битрикс24' });
+            res.status(404).json({ message: 'Не удалось получить поля из Битрикс24' });
+            return;
         }
-        // Преобразуем поля в формат { fieldCode: { code: fieldCode, name: fieldName, type: fieldType, ... } }
         const formattedFields = Object.entries(fieldsResponse.result).reduce((acc, [fieldCode, fieldData]) => {
-            // Используем formLabel или listLabel как человекочитаемое название, или title если их нет
             const fieldName = fieldData.formLabel || fieldData.listLabel || fieldData.title || fieldCode;
             acc[fieldCode] = {
                 code: fieldCode,

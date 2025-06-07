@@ -8,15 +8,16 @@ const TOKEN_EXPIRY = '7d';
 /**
  * Аутентификация администратора
  */
-export const adminLogin = async (req: Request, res: Response) => {
+export const adminLogin = async (req: Request, res: Response): Promise<void> => {
   try {
     const { password } = req.body;
 
     if (!password) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'Пароль обязателен' 
       });
+      return;
     }
 
     // Получаем пароль из переменных окружения
@@ -24,18 +25,20 @@ export const adminLogin = async (req: Request, res: Response) => {
 
     if (!adminPassword) {
       console.error('ADMIN_PASSWORD не установлен в переменных окружения');
-      return res.status(500).json({ 
+      res.status(500).json({ 
         success: false, 
         message: 'Внутренняя ошибка сервера' 
       });
+      return;
     }
 
     // Проверяем пароль
     if (password !== adminPassword) {
-      return res.status(401).json({ 
+      res.status(401).json({ 
         success: false, 
         message: 'Неверный пароль' 
       });
+      return;
     }
 
     // Создаем JWT токен
@@ -62,35 +65,38 @@ export const adminLogin = async (req: Request, res: Response) => {
 /**
  * Проверка валидности токена
  */
-export const verifyToken = async (req: Request, res: Response) => {
+export const verifyToken = async (req: Request, res: Response): Promise<void> => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     
     if (!token) {
-      return res.status(401).json({ 
+      res.status(401).json({ 
         success: false, 
         message: 'Токен отсутствует' 
       });
+      return;
     }
 
     // Проверяем токен в базе данных
     const tokenDoc = await AdminToken.findOne({ token });
     
     if (!tokenDoc) {
-      return res.status(401).json({ 
+      res.status(401).json({ 
         success: false, 
         message: 'Токен недействителен или отозван' 
       });
+      return;
     }
 
     const secret = process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production';
     
     jwt.verify(token, secret, (err: jwt.VerifyErrors | null) => {
       if (err) {
-        return res.status(401).json({ 
+        res.status(401).json({ 
           success: false, 
           message: 'Токен недействителен' 
         });
+        return;
       }
       
       res.json({ 
@@ -110,7 +116,7 @@ export const verifyToken = async (req: Request, res: Response) => {
 /**
  * Logout - отзыв токена
  */
-export const logout = async (req: Request, res: Response) => {
+export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     

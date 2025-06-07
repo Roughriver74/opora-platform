@@ -1,35 +1,28 @@
-import express from 'express';
+import { Router } from 'express';
 import * as formController from '../controllers/formController';
 import { authMiddleware, requireAdmin } from '../middleware/authMiddleware';
-import { Request, Response, NextFunction } from 'express';
 
-const router = express.Router();
+const router = Router();
 
-// Получение категорий сделок из Битрикс24 - должен быть перед маршрутами с параметрами
-router.get('/bitrix/deal-categories', (req: Request, res: Response) => {
-  formController.getDealCategories(req, res);
-});
+// Получение всех форм
+router.get('/', formController.getAllForms);
 
-// Маршруты для управления формами
-router.get('/', (req: Request, res: Response) => {
-  formController.getAllForms(req, res);
-});
+// Создание новой формы
+router.post('/', authMiddleware, requireAdmin, formController.createForm);
 
-router.post('/', authMiddleware, requireAdmin, (req: Request, res: Response) => {
-  formController.createForm(req, res);
-});
+// Получение категорий сделок из Битрикс24
+router.get('/bitrix/deal-categories', formController.getDealCategories);
 
-// Маршруты с параметрами - должны быть последними
-router.get('/:id', (req: Request, res: Response) => {
-  formController.getFormById(req, res);
-});
+// Получение формы по ID
+router.get('/:id', formController.getFormById);
 
-router.put('/:id', authMiddleware, requireAdmin, (req: Request, res: Response) => {
-  formController.updateForm(req, res);
-});
+// Обновление формы
+router.put('/:id', authMiddleware, requireAdmin, formController.updateForm);
 
-router.delete('/:id', authMiddleware, requireAdmin, (req: Request, res: Response) => {
-  formController.deleteForm(req, res);
-});
+// Удаление формы
+router.delete('/:id', authMiddleware, requireAdmin, formController.deleteForm);
+
+// Обработка отправки формы (публичный endpoint)
+router.post('/:id/submit', formController.submitForm);
 
 export default router;

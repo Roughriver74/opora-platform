@@ -1,42 +1,26 @@
-import express from 'express';
 import { Router } from 'express';
-import { authMiddleware, requireAdmin } from '../middleware/authMiddleware';
 import * as formFieldController from '../controllers/formFieldController';
-import { Request, Response } from 'express';
+import { authMiddleware, requireAdmin } from '../middleware/authMiddleware';
 
-const router = express.Router();
+const router = Router();
 
-// Маршруты для управления полями формы
-router.get('/', (req: Request, res: Response) => {
-  formFieldController.getAllFields(req, res);
-});
+// Получение всех полей
+router.get('/', formFieldController.getAllFields);
 
-router.post('/', authMiddleware, requireAdmin, (req: Request, res: Response) => {
-  formFieldController.createField(req, res);
-});
+router.post('/', authMiddleware, requireAdmin, formFieldController.createField);
 
 // Битрикс маршруты - должны быть перед маршрутами с параметрами
 // Получение полей из Битрикс24
-router.get('/bitrix/fields', (req: Request, res: Response) => {
-  formFieldController.getBitrixFields(req, res);
-});
+router.get('/bitrix/fields', formFieldController.getBitrixFields);
 
 // Получение продуктов из каталога Битрикс24
-router.get('/bitrix/products', (req: Request, res: Response) => {
-  formFieldController.getProductsList(req, res);
-});
+router.get('/bitrix/products', formFieldController.getProductsList);
 
 // Маршруты с параметрами должны идти последними
-router.get('/:id', (req: Request, res: Response) => {
-  formFieldController.getFieldById(req, res);
-});
+router.get('/:id', formFieldController.getFieldById);
 
-router.put('/:id', authMiddleware, requireAdmin, (req: Request, res: Response) => {
-  formFieldController.updateField(req, res);
-});
+router.put('/:id', authMiddleware, requireAdmin, formFieldController.updateField);
 
-router.delete('/:id', authMiddleware, requireAdmin, (req: Request, res: Response) => {
-  formFieldController.deleteField(req, res);
-});
+router.delete('/:id', authMiddleware, requireAdmin, formFieldController.deleteField);
 
 export default router;

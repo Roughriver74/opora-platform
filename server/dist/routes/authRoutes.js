@@ -32,24 +32,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
+const express_1 = require("express");
 const authController = __importStar(require("../controllers/authController"));
 const authMiddleware_1 = require("../middleware/authMiddleware");
-const router = express_1.default.Router();
-// Авторизация администратора
-router.post('/admin-login', (req, res) => {
-    return authController.adminLogin(req, res);
-});
-// Проверка токена
-router.get('/verify-token', authMiddleware_1.authMiddleware, (req, res) => {
-    return authController.verifyToken(req, res);
-});
+const router = (0, express_1.Router)();
+// Авторизация админа
+router.post('/admin-login', authController.adminLogin);
+// Проверка текущего состояния авторизации
+router.get('/check', authMiddleware_1.authMiddleware, authController.verifyToken);
 // Выход
-router.post('/logout', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin, (req, res) => {
-    return authController.logout(req, res);
-});
+router.post('/logout', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin, authController.logout);
 exports.default = router;

@@ -8,6 +8,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
+    "suppressImplicitAnyIndexErrors": true,
     "noImplicitThis": false,
     "strictNullChecks": false,
     "noEmitOnError": false,

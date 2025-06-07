@@ -58,12 +58,13 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
  * Middleware для проверки прав администратора
  * Используется после authMiddleware для защищенных маршрутов
  */
-export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.isAdmin) {
-    return res.status(401).json({ 
+    res.status(401).json({ 
       success: false, 
       message: 'Требуются права администратора' 
     });
+    return; // Просто выходим из функции, не возвращаем Response объект
   }
   
   next();

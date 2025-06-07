@@ -24,26 +24,29 @@ const adminLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     try {
         const { password } = req.body;
         if (!password) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 message: 'Пароль обязателен'
             });
+            return;
         }
         // Получаем пароль из переменных окружения
         const adminPassword = process.env.ADMIN_PASSWORD;
         if (!adminPassword) {
             console.error('ADMIN_PASSWORD не установлен в переменных окружения');
-            return res.status(500).json({
+            res.status(500).json({
                 success: false,
                 message: 'Внутренняя ошибка сервера'
             });
+            return;
         }
         // Проверяем пароль
         if (password !== adminPassword) {
-            return res.status(401).json({
+            res.status(401).json({
                 success: false,
                 message: 'Неверный пароль'
             });
+            return;
         }
         // Создаем JWT токен
         const secret = process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production';
@@ -73,26 +76,29 @@ const verifyToken = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     try {
         const token = (_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(' ')[1];
         if (!token) {
-            return res.status(401).json({
+            res.status(401).json({
                 success: false,
                 message: 'Токен отсутствует'
             });
+            return;
         }
         // Проверяем токен в базе данных
         const tokenDoc = yield AdminToken_1.default.findOne({ token });
         if (!tokenDoc) {
-            return res.status(401).json({
+            res.status(401).json({
                 success: false,
                 message: 'Токен недействителен или отозван'
             });
+            return;
         }
         const secret = process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production';
         jsonwebtoken_1.default.verify(token, secret, (err) => {
             if (err) {
-                return res.status(401).json({
+                res.status(401).json({
                     success: false,
                     message: 'Токен недействителен'
                 });
+                return;
             }
             res.json({
                 success: true,
