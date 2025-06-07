@@ -248,7 +248,8 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 						>
 							{progress}%
 						</Typography>
-					</Box>
+					</Box> 
+					
 					<LinearProgress
 						variant='determinate'
 						value={progress}
@@ -372,14 +373,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 											<Typography variant='caption' color='text.secondary'>
 												{section.fields.length} полей
 											</Typography>
-											{activeSection === index && (
-												<Chip
-													label='Активный'
-													size='small'
-													color='primary'
-													sx={{ mt: 1, fontSize: '0.7rem' }}
-												/>
-											)}
+									
 										</CardContent>
 									</Card>
 								))}

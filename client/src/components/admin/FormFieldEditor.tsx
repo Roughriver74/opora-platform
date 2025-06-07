@@ -93,12 +93,14 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 
   // Обработчик изменения динамического источника данных
   const handleDynamicSourceChange = (enabled: boolean) => {
-    const dynamicSource = formField.dynamicSource || { enabled: false, source: 'catalog' };
+    // Сохраняем текущий источник данных, или устанавливаем по умолчанию 'catalog'
+    const currentSource = formField.dynamicSource?.source || 'catalog';
+    
     setFormField((prev) => ({
       ...prev,
       dynamicSource: {
-        ...dynamicSource,
         enabled,
+        source: currentSource,
       },
     }));
   };

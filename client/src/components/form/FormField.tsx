@@ -65,38 +65,84 @@ const FormField: React.FC<FormFieldProps> = ({ field, value, onChange, error, co
   // Используем дебаунсинг с задержкой 400мс
   const debouncedSearchQuery = useDebounce(searchQuery, 400);
 
-  // Загрузка опций для динамических полей (например, список продуктов)
+  // Загрузка опций для динамических полей (товары, компании, контакты)
   // Используем мемоизированную функцию загрузки, чтобы не создавать её при каждом рендере
   const loadDynamicOptions = useCallback(async (query: string) => {
-    if (!field.dynamicSource?.enabled || field.dynamicSource?.source !== 'catalog') {
+    if (!field.dynamicSource?.enabled) {
       return;
     }
     
     // Не делаем запрос, если строка поиска пустая или слишком короткая
-    if (query.trim().length < 1) { // Снизили минимальную длину до 1 символа для лучшего UX
+    if (query.trim().length < 1) { // Минимальная длина 1 символ для лучшего UX
       return;
     }
     
     setLoading(true);
     try {
-      const response = await FormFieldService.getProducts(query);
-      // Преобразуем данные продуктов в формат опций
-      if (response && response.result) {
-        const productOptions = response.result.map((product: any) => ({
-          value: product.ID,
-          // Форматируем строку товара, пропуская null значения
-          label: `${product.NAME}${product.PRICE ? ` (${product.PRICE}${product.CURRENCY_ID ? ' ' + product.CURRENCY_ID : ''})` : ''}`,
-        }));
-        
-        // Сохраняем выбранную опцию в новом списке, если она есть
-        if (selectedOption && !productOptions.some((opt: { value: string; }) => opt.value === selectedOption.value)) {
-          productOptions.unshift(selectedOption);
-        }
-        
-        setOptions(productOptions);
+      let response;
+      let dataOptions = [];
+      
+      // В зависимости от источника данных выбираем соответствующий метод API
+      switch (field.dynamicSource.source) {
+        case 'catalog':
+          response = await FormFieldService.getProducts(query);
+          if (response?.result) {
+            dataOptions = response.result.map((product: any) => ({
+              value: product.ID,
+              // Форматируем строку товара, пропуская null значения
+              label: `${product.NAME}${product.PRICE ? ` (${product.PRICE}${product.CURRENCY_ID ? ' ' + product.CURRENCY_ID : ''})` : ''}`,
+            }));
+          }
+          break;
+          
+        case 'companies':
+          response = await FormFieldService.getCompanies(query);
+          if (response?.result) {
+            dataOptions = response.result.map((company: any) => ({
+              value: company.ID,
+              label: company.TITLE,
+              // Добавляем дополнительные данные, которые могут быть полезны
+              metadata: {
+                phone: company.PHONE,
+                email: company.EMAIL,
+                type: company.COMPANY_TYPE
+              }
+            }));
+          }
+          break;
+          
+        case 'contacts':
+          response = await FormFieldService.getContacts(query);
+          if (response?.result) {
+            dataOptions = response.result.map((contact: any) => ({
+              value: contact.ID,
+              // Форматируем имя и фамилию контакта
+              label: `${contact.LAST_NAME || ''} ${contact.NAME || ''} ${contact.SECOND_NAME || ''}`
+                .trim().replace(/\s+/g, ' '),
+              // Добавляем дополнительные данные, которые могут быть полезны
+              metadata: {
+                phone: contact.PHONE,
+                email: contact.EMAIL,
+                companyId: contact.COMPANY_ID,
+                position: contact.POST
+              }
+            }));
+          }
+          break;
+          
+        default:
+          console.warn(`Неизвестный источник данных: ${field.dynamicSource.source}`);
+          break;
       }
+      
+      // Сохраняем выбранную опцию в новом списке, если она есть
+      if (selectedOption && !dataOptions.some((opt: { value: string; }) => opt.value === selectedOption.value)) {
+        dataOptions.unshift(selectedOption);
+      }
+      
+      setOptions(dataOptions);
     } catch (error) {
-      console.error('Ошибка при загрузке продуктов:', error);
+      console.error(`Ошибка при загрузке данных из ${field.dynamicSource.source}:`, error);
     } finally {
       setLoading(false);
     }

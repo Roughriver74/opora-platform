@@ -58,5 +58,21 @@ export const FormFieldService = {
       params: { query }
     });
     return response.data;
+  },
+
+  // Получение списка компаний из Битрикс24
+  getCompanies: async (query: string = '') => {
+    const response = await api.get('/form-fields/bitrix/companies', {
+      params: { query }
+    });
+    return response.data;
+  },
+
+  // Получение списка контактов из Битрикс24
+  getContacts: async (query: string = '') => {
+    const response = await api.get('/form-fields/bitrix/contacts', {
+      params: { query }
+    });
+    return response.data;
   }
 };

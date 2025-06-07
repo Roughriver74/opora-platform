@@ -117,3 +117,25 @@ export const getProductsList = async (req: Request, res: Response): Promise<void
     res.status(500).json({ message: error.message });
   }
 };
+
+// Получение списка компаний из Битрикс24
+export const getCompaniesList = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { query } = req.query;
+    const companies = await bitrix24Service.getCompanies(query as string);
+    res.status(200).json(companies);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Получение списка контактов из Битрикс24
+export const getContactsList = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { query } = req.query;
+    const contacts = await bitrix24Service.getContacts(query as string);
+    res.status(200).json(contacts);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
