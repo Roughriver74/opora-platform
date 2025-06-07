@@ -35,8 +35,14 @@ export const FormService = {
 
   // Получение категорий сделок из Битрикс24
   getDealCategories: async () => {
-    const response = await api.get('/api/forms/bitrix/deal-categories');
-    console.log('Fetching deal categories from API');
-    return response.data;
+    try {
+      // Пробуем путь без префикса /api
+      console.log('Запрашиваем категории сделок без префикса /api');
+      const response = await api.get('/forms/bitrix/deal-categories');
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка при получении категорий:', error);
+      return { result: [] }; // Возвращаем пустой список категорий в случае ошибки
+    }
   }
 };
