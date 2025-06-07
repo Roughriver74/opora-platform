@@ -1,24 +1,42 @@
+import express from 'express';
 import { Router } from 'express';
+import { authMiddleware, requireAdmin } from '../middleware/authMiddleware';
 import * as formFieldController from '../controllers/formFieldController';
+import { Request, Response } from 'express';
 
-const router = Router();
-
-type RouteHandler = Parameters<typeof router.get>[1]; // Вспомогательный тип для обработчиков маршрутов
+const router = express.Router();
 
 // Маршруты для управления полями формы
-router.get('/', formFieldController.getAllFields as RouteHandler);
-router.post('/', formFieldController.createField as RouteHandler);
+router.get('/', (req: Request, res: Response) => {
+  formFieldController.getAllFields(req, res);
+});
+
+router.post('/', authMiddleware, requireAdmin, (req: Request, res: Response) => {
+  formFieldController.createField(req, res);
+});
 
 // Битрикс маршруты - должны быть перед маршрутами с параметрами
 // Получение полей из Битрикс24
-router.get('/bitrix/fields', formFieldController.getBitrixFields as RouteHandler);
+router.get('/bitrix/fields', (req: Request, res: Response) => {
+  formFieldController.getBitrixFields(req, res);
+});
 
 // Получение продуктов из каталога Битрикс24
-router.get('/bitrix/products', formFieldController.getProductsList as RouteHandler);
+router.get('/bitrix/products', (req: Request, res: Response) => {
+  formFieldController.getProductsList(req, res);
+});
 
 // Маршруты с параметрами должны идти последними
-router.get('/:id', formFieldController.getFieldById as RouteHandler);
-router.put('/:id', formFieldController.updateField as RouteHandler);
-router.delete('/:id', formFieldController.deleteField as RouteHandler);
+router.get('/:id', (req: Request, res: Response) => {
+  formFieldController.getFieldById(req, res);
+});
+
+router.put('/:id', authMiddleware, requireAdmin, (req: Request, res: Response) => {
+  formFieldController.updateField(req, res);
+});
+
+router.delete('/:id', authMiddleware, requireAdmin, (req: Request, res: Response) => {
+  formFieldController.deleteField(req, res);
+});
 
 export default router;

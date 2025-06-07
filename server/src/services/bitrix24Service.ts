@@ -26,19 +26,35 @@ class Bitrix24Service {
    */
   async getProducts(query = '', limit = 50) {
     try {
-      // Формирование фильтра для поиска по имени товара, если указан query
-      const filter = query ? { '%NAME': query } : {};
+      console.log(`Поиск продуктов в Битрикс24 по запросу: '${query}'`);
+      console.log('Вебхук URL:', this.webhookUrl);
       
-      const response = await axios.post(`${this.webhookUrl}crm.product.list`, {
+      // Формирование фильтра для поиска по имени товара, если указан query
+      // Исправляем формат фильтра - в Bitrix24 API %NAME означает "содержит"
+      const filter = query ? { 'NAME': `%${query}%` } : {};
+      
+      console.log('Данные запроса:', {
         filter,
         select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
         start: 0,
         order: { NAME: 'ASC' },
       });
       
+      const response = await axios.post(`${this.webhookUrl}crm.product.list`, {
+        filter,
+        select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
+        start: 0,
+        limit: parseInt(limit.toString()),
+        order: { NAME: 'ASC' },
+      });
+      
+      console.log('Ответ от Bitrix24:', response.data);
       return response.data;
-    } catch (error) {
-      console.error('Ошибка при получении товаров из Битрикс24:', error);
+    } catch (error: any) {
+      console.error('Ошибка при получении товаров из Битрикс24:', error.message);
+      if (error.response) {
+        console.error('Ответ сервера:', error.response.data);
+      }
       throw error;
     }
   }

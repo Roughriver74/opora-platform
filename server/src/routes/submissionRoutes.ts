@@ -1,12 +1,12 @@
-import { Router } from 'express';
+import express from 'express';
 import * as submissionController from '../controllers/submissionController';
+import { Request, Response } from 'express';
 
-const router = Router();
-
-// Вспомогательный тип для обработчиков маршрутов
-type RouteHandler = Parameters<typeof router.get>[1];
+const router = express.Router();
 
 // Маршрут для отправки формы
-router.post('/submit', submissionController.submitForm as RouteHandler);
+router.post('/submit', (req: Request, res: Response) => {
+  submissionController.submitForm(req, res);
+});
 
 export default router;

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, Tabs, Tab, CircularProgress, Alert } from '@mui/material';
+import { Container, Typography, Box, Tabs, Tab, CircularProgress, Alert, Button } from '@mui/material';
 import FormsList from '../../components/admin/FormsList';
 import FormEditor from '../../components/admin/FormEditor';
+import AdminLogin from '../../components/admin/AdminLogin';
 import { Form } from '../../types';
 import { FormService } from '../../services/formService';
+import axios from 'axios';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -40,6 +42,7 @@ const AdminPage: React.FC = () => {
   const [currentForm, setCurrentForm] = useState<Form | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   // Загрузка всех форм
   const loadForms = async () => {
@@ -56,7 +59,13 @@ const AdminPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadForms();
+    // Проверка аутентификации при загрузке компонента
+    const token = localStorage.getItem('adminToken');
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setIsAuthenticated(true);
+      loadForms();
+    }
   }, []);
 
   // Обработчик изменения вкладки
@@ -103,15 +112,46 @@ const AdminPage: React.FC = () => {
     setTabValue(0);
   };
 
+  // Обработчик успешного входа
+  const handleLoginSuccess = () => {
+    const token = localStorage.getItem('adminToken');
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setIsAuthenticated(true);
+      loadForms();
+    }
+  };
+
+  // Обработчик выхода
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    delete axios.defaults.headers.common['Authorization'];
+    setIsAuthenticated(false);
+  };
+
+  // Если не аутентифицирован, показываем страницу логина
+  if (!isAuthenticated) {
+    return <AdminLogin onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Администрирование
-        </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
-          Управление формами заказа бетона и интеграция с Битрикс24
-        </Typography>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Администрирование
+          </Typography>
+          <Typography variant="subtitle1" color="text.secondary">
+            Управление формами заказа бетона и интеграция с Битрикс24
+          </Typography>
+        </div>
+        <Button 
+          variant="outlined" 
+          color="secondary" 
+          onClick={handleLogout}
+        >
+          Выйти
+        </Button>
       </Box>
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

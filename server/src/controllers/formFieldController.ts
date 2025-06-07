@@ -17,7 +17,8 @@ export const getFieldById = async (req: Request, res: Response) => {
   try {
     const field = await FormField.findById(req.params.id);
     if (!field) {
-      return res.status(404).json({ message: 'Поле не найдено' });
+      res.status(404).json({ message: 'Поле не найдено' });
+      return;
     }
     res.status(200).json(field);
   } catch (error: any) {
@@ -75,7 +76,8 @@ export const getBitrixFields = async (req: Request, res: Response) => {
     
     // Проверяем, есть ли поля в ответе
     if (!fieldsResponse || !fieldsResponse.result) {
-      return res.status(404).json({ message: 'Поля не найдены в ответе Битрикс24' });
+      res.status(404).json({ message: 'Поля не найдены в ответе Битрикс24' });
+      return;
     }
     
     // Преобразуем поля в формат { fieldCode: { code: fieldCode, name: fieldName, type: fieldType, ... } }

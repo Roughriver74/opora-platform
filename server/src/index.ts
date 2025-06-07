@@ -3,11 +3,13 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import connectDB from './config/database';
 import config from './config/config';
+import { authMiddleware } from './middleware/authMiddleware';
 
 // Импорт маршрутизаторов
 import formFieldRoutes from './routes/formFieldRoutes';
 import formRoutes from './routes/formRoutes';
 import submissionRoutes from './routes/submissionRoutes';
+import authRoutes from './routes/authRoutes';
 
 // Инициализация Express приложения
 const app = express();
@@ -27,7 +29,11 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Применяем middleware авторизации для всех маршрутов
+app.use(authMiddleware);
+
 // Маршруты API
+app.use('/api/auth', authRoutes);
 app.use('/api/form-fields', formFieldRoutes);
 app.use('/api/forms', formRoutes);
 app.use('/api/submissions', submissionRoutes);
@@ -38,7 +44,7 @@ app.get('/', (req, res) => {
 });
 
 // Запуск сервера
-const PORT = 5001; // Явно указываем порт 5001
+const PORT = process.env.PORT || 5001; // Используем порт из переменных окружения или 5001 по умолчанию
 app.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
 });

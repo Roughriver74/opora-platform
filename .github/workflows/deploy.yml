@@ -1,0 +1,106 @@
+name: Deploy Beton CRM
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm run install:all
+        
+      - name: Lint client
+        run: cd client && npm run lint
+        continue-on-error: true
+        
+      - name: Build client
+        run: cd client && npm run build
+        
+      - name: Build server
+        run: cd server && npm run build
+      
+      - name: Upload client build
+        uses: actions/upload-artifact@v3
+        with:
+          name: client-build
+          path: client/build
+          
+      - name: Upload server build
+        uses: actions/upload-artifact@v3
+        with:
+          name: server-build
+          path: server/dist
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Download client build
+        uses: actions/download-artifact@v3
+        with:
+          name: client-build
+          path: client/build
+          
+      - name: Download server build
+        uses: actions/download-artifact@v3
+        with:
+          name: server-build
+          path: server/dist
+          
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          if_key_exists: replace
+          
+      - name: Deploy with rsync
+        run: |
+          # Создаем директорию для деплоя на сервере, если она не существует
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}"
+          
+          # Копируем файлы package.json для сервера и корневой директории
+          rsync -avz server/package.json ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/server/
+          rsync -avz package.json ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
+          
+          # Копируем собранные файлы
+          rsync -avz client/build/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/client/build/
+          rsync -avz server/dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/server/dist/
+          
+          # Копируем .env файл для продакшена
+          scp .env.production ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.env
+          
+      - name: Setup application on server
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && npm install --production && cd server && npm install --production"
+          
+      - name: Setup & restart PM2
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && npx pm2 delete beton-crm || true && npx pm2 start server/dist/index.js --name beton-crm && npx pm2 save"

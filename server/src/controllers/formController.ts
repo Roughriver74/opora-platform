@@ -17,7 +17,8 @@ export const getFormById = async (req: Request, res: Response) => {
   try {
     const form = await Form.findById(req.params.id).populate('fields');
     if (!form) {
-      return res.status(404).json({ message: 'Форма не найдена' });
+      res.status(404).json({ message: 'Форма не найдена' });
+      return;
     }
     res.status(200).json(form);
   } catch (error: any) {
@@ -41,7 +42,8 @@ export const updateForm = async (req: Request, res: Response) => {
   try {
     const form = await Form.findById(req.params.id);
     if (!form) {
-      return res.status(404).json({ message: 'Форма не найдена' });
+      res.status(404).json({ message: 'Форма не найдена' });
+      return;
     }
 
     Object.assign(form, req.body);
@@ -58,7 +60,8 @@ export const deleteForm = async (req: Request, res: Response) => {
   try {
     const form = await Form.findById(req.params.id);
     if (!form) {
-      return res.status(404).json({ message: 'Форма не найдена' });
+      res.status(404).json({ message: 'Форма не найдена' });
+      return;
     }
     
     await Form.findByIdAndDelete(req.params.id);
