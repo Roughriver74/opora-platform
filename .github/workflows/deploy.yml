@@ -21,10 +21,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
@@ -38,7 +39,7 @@ jobs:
         
       - name: Build client
         run: |
-          # Установка переменной окружения для продакшн-сборки
+          # Установка пустого базового URL для использования на сервере
           echo "REACT_APP_API_URL=" > client/.env
           cd client && npm run build
         
@@ -46,16 +47,18 @@ jobs:
         run: cd server && npm run build
       
       - name: Upload client build
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: client-build
           path: client/build
+          retention-days: 1
           
       - name: Upload server build
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: server-build
           path: server/dist
+          retention-days: 1
 
   deploy:
     needs: build-and-test
@@ -63,41 +66,39 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
       
       - name: Download client build
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: client-build
           path: client/build
           
       - name: Download server build
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: server-build
           path: server/dist
           
       # Настраиваем SSH для деплоя
-      - name: Install SSH key
-        uses: shimataro/ssh-key-action@v2
+      - name: Configure SSH
+        uses: shimataro/ssh-key-action@v2.5.1
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: unnecessary
           if_key_exists: replace
           
       - name: Add known hosts
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-        run: ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
-          
-      - name: Copy files to server
-        env:
-          SERVER_USER: ${{ secrets.SSH_USER }}
-          SERVER_HOST: ${{ secrets.SSH_HOST }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        shell: bash
         run: |
-          # Создаем директорию для деплоя на сервере, если она не существует
-          ssh "$SERVER_USER@$SERVER_HOST" "mkdir -p $DEPLOY_PATH"
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+          
+      - name: Deploy to server
+        shell: bash
+        run: |
+          # Создаем директорию для деплоя на сервере
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}"
           
           # Создаем архив для передачи
           tar -czf deploy.tar.gz \
@@ -113,35 +114,21 @@ jobs:
             ecosystem.config.js
             
           # Копируем архив на сервер
-          scp deploy.tar.gz "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/"
+          scp deploy.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
           
           # Копируем .env файл если существует
           if [ -f .env.production ]; then
-            scp .env.production "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/.env"
+            scp .env.production ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.env
           fi
           
-      - name: Setup application on server
-        env:
-          SERVER_USER: ${{ secrets.SSH_USER }}
-          SERVER_HOST: ${{ secrets.SSH_HOST }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-        run: |
           # Распаковываем архив и устанавливаем зависимости
-          ssh "$SERVER_USER@$SERVER_HOST" "cd $DEPLOY_PATH && \
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && \
             tar -xzf deploy.tar.gz && \
             cd server && npm install --production && \
-            cd .. && npm install --production"
-          
-      - name: Setup & restart PM2
-        env:
-          SERVER_USER: ${{ secrets.SSH_USER }}
-          SERVER_HOST: ${{ secrets.SSH_HOST }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-        run: |
-          # Установка PM2 на сервере, если его нет
-          ssh "$SERVER_USER@$SERVER_HOST" "cd $DEPLOY_PATH && \
+            cd .. && npm install --production && \
             npm install pm2 -g && \
             pm2 delete beton-crm 2>/dev/null || true && \
             pm2 start ecosystem.config.js --env production && \
             pm2 save && \
             pm2 startup | grep -v PM2 | bash || true"
+
