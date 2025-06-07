@@ -26,8 +26,8 @@ if [ -f "$ENV_FILE" ]; then
     cp "$ENV_FILE" "$ENV_BACKUP"
     echo -e "${GREEN}✓ Создана резервная копия .env файла${NC}"
 
-    # Устанавливаем относительный API URL для продакшн-сборки
-    echo "REACT_APP_API_URL=/api" > "$ENV_FILE"
+    # Устанавливаем пустой базовый URL для продакшн-сборки, т.к. префикс /api уже добавляется на сервере
+    echo "REACT_APP_API_URL=" > "$ENV_FILE"
     echo -e "${GREEN}✓ Установлен API URL для продакшн-сборки${NC}"
 fi
 
