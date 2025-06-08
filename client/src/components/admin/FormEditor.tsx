@@ -431,6 +431,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onSave }) => {
                               onDelete={() => handleFieldDelete(originalIndex)}
                               availableBitrixFields={bitrixFields}
                               isDraggable={true}
+                              allFields={fields} // Передаем все поля для доступа к разделам
                             />
                           </div>
                         );

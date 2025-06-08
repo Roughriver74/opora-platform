@@ -48,32 +48,66 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 		})
 	}
 
-	// Группировка полей по секциям на основе разделителей
+	// Группировка полей по секциям на основе трехзначной системы нумерации
 	const fieldSections = useMemo(() => {
-		const sections: { title: string; fields: FormFieldType[] }[] = []
-		let currentSection = {
+		// Сортируем поля по порядку для последовательной обработки
+		const sortedFields = [...fields].sort((a, b) => (a.order || 0) - (b.order || 0));
+		
+		// Секции по номерам (сотням)
+		type SectionMap = {[sectionNumber: number]: { title: string; fields: FormFieldType[] }};
+		const sectionMap: SectionMap = {};
+		
+		// Создаем раздел для полей без раздела (000-099)
+		sectionMap[0] = {
 			title: 'Основная информация',
-			fields: [] as FormFieldType[],
-		}
-
-		fields.forEach(field => {
-			if (field.type === 'divider' || field.type === 'header') {
-				if (currentSection.fields.length > 0) {
-					sections.push(currentSection)
-				}
-				currentSection = {
-					title: field.label || `Секция ${sections.length + 1}`,
-					fields: [],
-				}
-			} else {
-				currentSection.fields.push(field)
+			fields: []
+		};
+		
+		// Сначала находим все заголовки, чтобы создать разделы
+		sortedFields.forEach(field => {
+			if (field.type === 'header') {
+				// Определяем номер секции из порядка (XXX -> X)
+				const sectionNumber = Math.floor(field.order / 100) || 0;
+				
+				// Создаем секцию
+				sectionMap[sectionNumber] = {
+					title: field.label || `Раздел ${sectionNumber}`,
+					fields: []
+				};
 			}
-		})
-
-		if (currentSection.fields.length > 0) {
-			sections.push(currentSection)
-		}
-
+		});
+		
+		// Теперь распределяем поля по разделам на основе первой цифры порядка
+		sortedFields.forEach(field => {
+			// Пропускаем заголовки, мы их уже обработали
+			if (field.type !== 'header') {
+				// Определяем номер секции из первой цифры порядка
+				const sectionNumber = Math.floor(field.order / 100) || 0;
+				
+				// Если такой секции нет, создаем её
+				if (!sectionMap[sectionNumber]) {
+					sectionMap[sectionNumber] = {
+						title: `Раздел ${sectionNumber}`,
+						fields: []
+					};
+				}
+				
+				// Добавляем поле в соответствующую секцию
+				sectionMap[sectionNumber].fields.push(field);
+			}
+		});
+		
+		// Преобразуем объект секций в массив и сортируем по номеру
+		const sections = Object.entries(sectionMap)
+			.filter(([_, section]) => section.fields.length > 0) // Убираем пустые секции
+			.map(([num, section]) => ({ 
+				title: section.title, 
+				fields: section.fields,
+				number: parseInt(num)
+			}))
+			.sort((a, b) => a.number - b.number) // Сортируем по номеру секции
+			.map(({title, fields}) => ({title, fields})); // Удаляем поле number, чтобы соответствовало интерфейсу
+		
 		return sections.length > 0 ? sections : [{ title: 'Форма заказа', fields }]
 	}, [fields])
 
@@ -417,8 +451,8 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 											</Typography>
 										</Box>
 
+										{/* Поля уже отсортированы в useMemo, повторная сортировка не нужна */}
 										{fieldSections[activeSection].fields
-											.sort((a, b) => (a.order || 0) - (b.order || 0))
 											.map(field => (
 												<Box
 													key={field._id || field.name}

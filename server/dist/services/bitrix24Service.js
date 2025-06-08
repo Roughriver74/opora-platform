@@ -135,5 +135,104 @@ class Bitrix24Service {
             }
         });
     }
+    /**
+     * Получение списка компаний из Битрикс24
+     */
+    getCompanies() {
+        return __awaiter(this, arguments, void 0, function* (query = '', limit = 50) {
+            try {
+                console.log(`Поиск компаний в Битрикс24 по запросу: '${query}'`);
+                // Формирование фильтра для поиска по названию компании
+                // Для Bitrix24 мы попробуем несколько вариантов фильтрации
+                let filter = {};
+                if (query) {
+                    // Используем оператор полнотекстового поиска, который лучше работает в Bitrix24
+                    filter = {
+                        '?TITLE': query
+                    };
+                }
+                console.log('Данные запроса компаний:', {
+                    filter,
+                    select: ['ID', 'TITLE', 'COMPANY_TYPE', 'INDUSTRY', 'REVENUE', 'PHONE', 'EMAIL'],
+                    start: 0,
+                    order: { TITLE: 'ASC' },
+                });
+                // Если поиск по оператору ? не даст результатов, попробуем получить все компании и фильтровать их на стороне сервера
+                const response = yield axios_1.default.post(`${this.webhookUrl}crm.company.list`, {
+                    filter,
+                    select: ['ID', 'TITLE', 'COMPANY_TYPE', 'INDUSTRY', 'REVENUE', 'PHONE', 'EMAIL'],
+                    start: 0,
+                    limit: parseInt(limit.toString()),
+                    order: { TITLE: 'ASC' },
+                });
+                let results = response.data;
+                // Если полученный результат пуст и есть поисковый запрос, попробуем альтернативный метод получения всех компаний
+                if (query && results.result && results.result.length === 0) {
+                    console.log('Не найдено результатов, пробуем получить все компании и фильтровать локально');
+                    // Запрашиваем все компании
+                    const allCompaniesResponse = yield axios_1.default.post(`${this.webhookUrl}crm.company.list`, {
+                        filter: {},
+                        select: ['ID', 'TITLE', 'COMPANY_TYPE', 'INDUSTRY', 'REVENUE', 'PHONE', 'EMAIL'],
+                        start: 0,
+                        limit: 50, // Ограничиваем результаты для производительности
+                        order: { TITLE: 'ASC' },
+                    });
+                    // Фильтруем компании локально
+                    if (allCompaniesResponse.data && allCompaniesResponse.data.result) {
+                        const filteredCompanies = allCompaniesResponse.data.result.filter(company => company.TITLE.toLowerCase().includes(query.toLowerCase()));
+                        // Заменяем результаты
+                        results = Object.assign(Object.assign({}, allCompaniesResponse.data), { result: filteredCompanies, total: filteredCompanies.length });
+                    }
+                }
+                console.log('Ответ от Bitrix24 (компании):', results);
+                return results;
+            }
+            catch (error) {
+                console.error('Ошибка при получении компаний из Битрикс24:', error);
+                if (error.response) {
+                    console.error('Ответ сервера:', error.response.data);
+                }
+                throw error;
+            }
+        });
+    }
+    /**
+     * Получение списка контактов из Битрикс24
+     */
+    getContacts() {
+        return __awaiter(this, arguments, void 0, function* (query = '', limit = 50) {
+            try {
+                console.log(`Поиск контактов в Битрикс24 по запросу: '${query}'`);
+                // Формирование фильтра для поиска по имени или фамилии контакта, если указан query
+                const filter = query ? {
+                    'LOGIC': 'OR',
+                    'NAME': `%${query}%`,
+                    'LAST_NAME': `%${query}%`
+                } : {};
+                console.log('Данные запроса контактов:', {
+                    filter,
+                    select: ['ID', 'NAME', 'LAST_NAME', 'SECOND_NAME', 'PHONE', 'EMAIL', 'COMPANY_ID', 'POST'],
+                    start: 0,
+                    order: { LAST_NAME: 'ASC' },
+                });
+                const response = yield axios_1.default.post(`${this.webhookUrl}crm.contact.list`, {
+                    filter,
+                    select: ['ID', 'NAME', 'LAST_NAME', 'SECOND_NAME', 'PHONE', 'EMAIL', 'COMPANY_ID', 'POST'],
+                    start: 0,
+                    limit: parseInt(limit.toString()),
+                    order: { LAST_NAME: 'ASC' },
+                });
+                console.log('Ответ от Bitrix24 (контакты):', response.data);
+                return response.data;
+            }
+            catch (error) {
+                console.error('Ошибка при получении контактов из Битрикс24:', error);
+                if (error.response) {
+                    console.error('Ответ сервера:', error.response.data);
+                }
+                throw error;
+            }
+        });
+    }
 }
 exports.default = new Bitrix24Service();

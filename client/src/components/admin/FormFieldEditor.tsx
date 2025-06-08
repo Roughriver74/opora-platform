@@ -1,25 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
+  Box,
+  Typography,
+  Paper,
+  Button,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   FormControlLabel,
   Switch,
-  Button,
-  Typography,
-  Box,
-  Stack,
+  MenuItem,
+  Select,
   IconButton,
-  FormHelperText,
+  Stack,
   Divider,
+  Alert,
+  FormControl,
+  InputLabel,
   Accordion,
   AccordionSummary,
   AccordionDetails,
   Chip,
-  Paper,
   Autocomplete,
+  FormHelperText,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -45,6 +46,7 @@ interface FormFieldEditorProps {
   onDelete?: () => void;
   availableBitrixFields: Record<string, any>;
   isDraggable?: boolean; // Флаг для включения перетаскивания
+  allFields?: FormField[]; // Все поля формы для определения разделов
 }
 
 const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
@@ -53,6 +55,7 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
   onDelete,
   availableBitrixFields,
   isDraggable,
+  allFields = [], // По умолчанию пустой массив
 }) => {
   const [formField, setFormField] = useState<Partial<FormField>>(field);
   const [options, setOptions] = useState<FormFieldOption[]>(field.options || []);
@@ -77,6 +80,7 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
       { value: 'text', label: 'Текстовое поле' },
       { value: 'number', label: 'Числовое поле' },
       { value: 'textarea', label: 'Многострочное поле' },
+      { value: 'date', label: 'Дата/время' },
     ]},
     { group: 'Выбор значений', items: [
       { value: 'select', label: 'Выпадающий список' },
@@ -301,6 +305,117 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
     return null;
   };
   
+  // Получаем доступные разделы из всех полей формы
+  const existingSections = useMemo(() => {
+    // Добавляем вариант без раздела
+    const sections = [
+      {
+        id: '',
+        name: 'Без раздела', 
+        order: 0,
+        sectionNumber: 0 // Секция 000 для полей без раздела
+      }
+    ];
+    
+    // Собираем все существующие заголовки с их номерами секций
+    const headerFields = allFields.filter(field => field.type === 'header');
+    
+    // Получаем существующие номера секций или создаем новые
+    headerFields.forEach(header => {
+      // Пытаемся определить номер секции из order
+      let sectionNumber = Math.floor(header.order / 100);
+      
+      // Если номер секции не соответствует формату (100, 200, и т.д.),
+      // то назначаем новый
+      if (sectionNumber < 1 || sectionNumber * 100 !== Math.floor(header.order)) {
+        // Находим максимальный номер секции среди существующих
+        sectionNumber = sections.length > 0 
+          ? Math.max(...sections.map(s => s.sectionNumber || 0)) + 1 
+          : 1;
+      }
+      
+      sections.push({
+        id: header._id || '',
+        name: header.label,
+        order: header.order,
+        sectionNumber: sectionNumber
+      });
+    });
+    
+    // Сортировка разделов по номеру секции
+    return sections.sort((a, b) => (a.sectionNumber || 0) - (b.sectionNumber || 0));
+  }, [allFields]);
+  
+  // Текущий выбранный раздел при добавлении/редактировании поля
+  const [selectedSection, setSelectedSection] = useState<string>('');
+  
+  // Обработчик выбора раздела
+  const handleSectionChange = (sectionId: string) => {
+    setSelectedSection(sectionId);
+    
+    if (sectionId) {
+      // Находим раздел
+      const section = existingSections.find(s => s.id === sectionId);
+      if (section) {
+        // Получаем номер секции или используем 0 для полей без раздела
+        const sectionNumber = section.sectionNumber || 0;
+        
+        // Фильтруем поля текущей секции, основываясь на первой цифре порядка
+        const fieldsInSection = allFields.filter(field => {
+          // Для заголовка и без id пропускаем
+          if (field.type === 'header' || !field._id) return false;
+          // Пропускаем текущее редактируемое поле
+          if (formField._id && field._id === formField._id) return false;
+          
+          // Получаем номер секции из порядка поля
+          const fieldSectionNumber = Math.floor(field.order / 100);
+          return fieldSectionNumber === sectionNumber;
+        });
+        
+        // Сортируем поля в секции по порядку
+        fieldsInSection.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        // Вычисляем новый порядок в новой трехзначной системе
+        let newOrder;
+        
+        // Базовый порядок для секции - sectionNumber * 100
+        const baseSectionOrder = sectionNumber * 100;
+        
+        if (fieldsInSection.length === 0) {
+          // Если в секции нет полей, первое поле получает порядок baseSectionOrder + 1
+          newOrder = baseSectionOrder + 1;
+        } else {
+          // Находим максимальное значение порядка в секции
+          const maxOrderInSection = Math.max(...fieldsInSection.map(f => f.order || 0));
+          
+          // Убеждаемся, что не выходим за пределы секции (не превышаем следующие 100)
+          const nextValue = maxOrderInSection + 1;
+          if (Math.floor(nextValue / 100) > sectionNumber) {
+            // Если превышаем границу секции, то просто увеличиваем последнюю цифру
+            const lastDigit = maxOrderInSection % 10;
+            newOrder = baseSectionOrder + (lastDigit + 1 > 9 ? 9 : lastDigit + 1);
+          } else {
+            newOrder = nextValue;
+          }
+        }
+        
+        // Проверяем, чтобы порядок всегда имел правильную первую цифру (номер секции)
+        if (Math.floor(newOrder / 100) !== sectionNumber) {
+          newOrder = baseSectionOrder + (newOrder % 100);
+        }
+        
+        // Если больше 99 полей, ограничиваем до 99
+        if ((newOrder % 100) > 99) {
+          newOrder = baseSectionOrder + 99;
+        }
+        
+        console.log(`Установка порядка для поля в разделе ${sectionNumber}: ${newOrder}`);
+        handleFieldChange('order', newOrder);
+      }
+    }
+  };
+
+  
   // Функция для отображения краткой информации о поле
   const getFieldSummary = (): string[] => {
     const summaryParts: string[] = [];
@@ -448,15 +563,39 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
           </Stack>
           
           <Stack sx={{ width: { xs: '100%', md: '50%' } }}>
-            <TextField
-              fullWidth
-              label="Порядок отображения"
-              name="order"
-              type="number"
-              value={formField.order || 0}
-              onChange={(e) => handleFieldChange('order', parseInt(e.target.value))}
-              margin="normal"
-            />
+            <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }} sx={{ width: '100%' }}>
+              <TextField
+                fullWidth
+                label="Порядок отображения"
+                name="order"
+                type="number"
+                value={formField.order || 0}
+                onChange={(e) => handleFieldChange('order', parseInt(e.target.value))}
+                margin="normal"
+              />
+              
+              {formField.type !== 'header' && (
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="section-select-label">Раздел</InputLabel>
+                  <Select
+                    labelId="section-select-label"
+                    value={selectedSection}
+                    onChange={(e) => handleSectionChange(e.target.value as string)}
+                    label="Раздел"
+                  >
+                    <MenuItem value=""><em>Не выбрано</em></MenuItem>
+                    {existingSections.map((section) => (
+                      <MenuItem key={section.id} value={section.id}>
+                        {section.name} (раздел: {section.sectionNumber}00)
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    Выберите раздел, чтобы автоматически установить порядок поля
+                  </FormHelperText>
+                </FormControl>
+              )}
+            </Stack>
           </Stack>
         </Stack>
 

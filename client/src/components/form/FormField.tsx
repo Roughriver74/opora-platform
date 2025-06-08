@@ -171,35 +171,27 @@ const FormField: React.FC<FormFieldProps> = ({ field, value, onChange, error, co
         return (
           <div className="form-divider" style={{ 
             width: '100%', 
-            height: '1px', 
-            backgroundColor: '#E0E0E0', 
+            height: '3px', 
+            backgroundColor: '#BBDEFB', // Светло-синий цвет
             margin: '20px 0',
-            position: 'relative'
-          }}>
-            {field.label && (
-              <div style={{
-                position: 'absolute',
-                top: '-10px',
-                left: '20px',
-                padding: '0 10px',
-                backgroundColor: 'white',
-                color: '#757575',
-                fontSize: '12px'
-              }}>
-                {field.label}
-              </div>
-            )}
-          </div>
+            borderRadius: '2px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+          }} />
         );
       
       case 'header':
         return (
           <div className="form-header" style={{
             width: '100%',
-            margin: '15px 0 5px 0',
+            margin: '25px 0 15px 0',
             fontWeight: 'bold',
-            fontSize: '16px',
-            color: '#333'
+            fontSize: '18px',
+            color: '#1565C0', // Более темный синий цвет текста
+            backgroundColor: '#E3F2FD', // Чуть более насыщенный голубой фон
+            padding: '12px 16px',
+            borderLeft: '5px solid #1976d2', // Более широкая синяя полоса слева
+            borderRadius: '0 4px 4px 0',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
           }}>
             {field.label}
           </div>
@@ -239,8 +231,37 @@ const FormField: React.FC<FormFieldProps> = ({ field, value, onChange, error, co
             placeholder={field.placeholder || ''}
             type="number"
             size={compact ? "small" : "medium"}
+            sx={{ 
+              ...textFieldSx,
+              width: '40%' // Ширина числового поля 40%
+            }}
+            InputLabelProps={{ shrink: true }}
+          />
+        );
+        
+      case 'date':
+        return (
+          <TextField
+            fullWidth
+            id={field.name}
+            name={field.name}
+            label={field.label}
+            margin={compact ? "dense" : "normal"}
+            value={value || ''}
+            onChange={(e) => onChange(field.name, e.target.value)}
+            required={field.required}
+            error={!!error}
+            helperText={error}
+            placeholder={field.placeholder || ''}
+            type="datetime-local" // Поддержка даты и времени
+            size={compact ? "small" : "medium"}
             sx={textFieldSx}
             InputLabelProps={{ shrink: true }}
+            // Устанавливаем часовой пояс Москвы (UTC+3)
+            inputProps={{
+              min: new Date().toISOString().slice(0, 16), // Минимальная дата - текущее время
+              step: 60 // Шаг в секундах для поля времени
+            }}
           />
         );
       

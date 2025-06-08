@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProductsList = exports.getBitrixFields = exports.deleteField = exports.updateField = exports.createField = exports.getFieldById = exports.getAllFields = void 0;
+exports.getContactsList = exports.getCompaniesList = exports.getProductsList = exports.getBitrixFields = exports.deleteField = exports.updateField = exports.createField = exports.getFieldById = exports.getAllFields = void 0;
 const FormField_1 = __importDefault(require("../models/FormField"));
 const bitrix24Service_1 = __importDefault(require("../services/bitrix24Service"));
 // Получение всех полей формы
@@ -130,3 +130,27 @@ const getProductsList = (req, res) => __awaiter(void 0, void 0, void 0, function
     }
 });
 exports.getProductsList = getProductsList;
+// Получение списка компаний из Битрикс24
+const getCompaniesList = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { query } = req.query;
+        const companies = yield bitrix24Service_1.default.getCompanies(query);
+        res.status(200).json(companies);
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+exports.getCompaniesList = getCompaniesList;
+// Получение списка контактов из Битрикс24
+const getContactsList = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { query } = req.query;
+        const contacts = yield bitrix24Service_1.default.getContacts(query);
+        res.status(200).json(contacts);
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+exports.getContactsList = getContactsList;
