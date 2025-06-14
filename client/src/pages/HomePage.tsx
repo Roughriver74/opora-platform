@@ -6,7 +6,7 @@ import {
 	CircularProgress,
 	Alert,
 } from '@mui/material'
-import BetonForm from '../components/form/BetoneForm'
+import BetoneForm from '../components/form/BetoneForm'
 import { Form, FormField } from '../types'
 import { FormService } from '../services/formService'
 
@@ -61,7 +61,7 @@ const HomePage: React.FC = () => {
 					{error}
 				</Alert>
 			) : form ? (
-				<BetonForm form={form} fields={fields} />
+				<BetoneForm form={form} fields={fields} />
 			) : (
 				<Alert severity='info'>
 					В данный момент формы заказа недоступны. Пожалуйста, попробуйте позже.
