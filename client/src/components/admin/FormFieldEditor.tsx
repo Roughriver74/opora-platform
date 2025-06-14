@@ -28,6 +28,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EditIcon from '@mui/icons-material/Edit';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { FormField, FieldType, FormFieldOption } from '../../types';
+import BitrixOptionsLoader from './BitrixOptionsLoader';
+import { FormFieldService } from '../../services/formFieldService';
 
 // Типы для группирования полей
 interface FieldTypeItem {
@@ -64,7 +66,9 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
   // Состояния для управления раскрытием секций и поиском
   const [expanded, setExpanded] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>('');
-  
+  const [loadingEnumValues, setLoadingEnumValues] = useState<boolean>(false);
+  const [enumError, setEnumError] = useState<string | null>(null);
+
   // Обработчик изменения состояния панели
   const handleExpandChange = (event: React.SyntheticEvent, isExpanded: boolean) => {
     setExpanded(isExpanded);
@@ -126,6 +130,54 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
     setFormField((prev) => ({ ...prev, options: updatedOptions }));
   };
 
+  // Обработка загруженных опций из Битрикс24
+  const handleBitrixOptionsLoaded = (bitrixOptions: FormFieldOption[]) => {
+    setOptions(bitrixOptions);
+    // Автоматически обновляем поле формы с новыми опциями
+    setFormField((prev) => ({
+      ...prev,
+      options: bitrixOptions,
+    }));
+  };
+
+  // Функция для автоматической загрузки значений enum поля
+  const loadEnumValues = async (fieldCode: string) => {
+    setLoadingEnumValues(true);
+    setEnumError(null);
+    
+    try {
+      // Сначала получаем информацию о пользовательских полях
+      const userFieldsResponse = await FormFieldService.getUserFields();
+      
+      if (userFieldsResponse?.result) {
+        // Находим поле по коду
+        const targetField = userFieldsResponse.result.find(
+          (field: any) => field.FIELD_NAME === fieldCode
+        );
+        
+        if (targetField && targetField.USER_TYPE_ID === 'enumeration') {
+          // Загружаем значения для этого поля, используя FIELD_NAME для лучшей совместимости
+          const enumValuesResponse = await FormFieldService.getEnumFieldValues(targetField.FIELD_NAME);
+          
+          if (enumValuesResponse?.result) {
+            const enumOptions = enumValuesResponse.result.map((value: any) => ({
+              value: value.ID,
+              label: value.VALUE,
+            }));
+            
+            console.log(`Загружены значения для поля ${fieldCode}:`, enumOptions);
+            handleBitrixOptionsLoaded(enumOptions);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error('Ошибка при загрузке enum значений:', error);
+      setEnumError(`Ошибка загрузки значений: ${error.message}`);
+    } finally {
+      setLoadingEnumValues(false);
+    }
+  };
+
   // Сохранение поля формы
   const handleSave = () => {
     onSave({ ...formField, options });
@@ -156,6 +208,17 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
               // Теперь копируем название в любом случае, не только когда поле пустое
               if (selectedFieldId && newValue) {
                 handleFieldChange('label', newValue.name);
+                
+                // Загрузка значений enum полей при выборе поля из Bitrix24
+                if (newValue.field.enumValues) {
+                  const enumOptions = newValue.field.enumValues.map((value: any) => ({
+                    value: value.value,
+                    label: value.label,
+                  }));
+                  handleBitrixOptionsLoaded(enumOptions);
+                } else if (newValue.field.USER_TYPE_ID === 'enumeration') {
+                  loadEnumValues(newValue.field.FIELD_NAME);
+                }
               }
             }}
             renderInput={(params) => (
@@ -231,38 +294,83 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 
   // Отображение настроек для опций выпадающего списка или радиокнопок
   const renderOptionsEditor = () => {
-    if (
-      (formField.type === 'select' || formField.type === 'radio') &&
-      (!formField.dynamicSource || !formField.dynamicSource.enabled)
-    ) {
-      return (
-        <Box sx={{ mt: 3, mb: 2 }}>
-          <Typography variant="subtitle2" gutterBottom>
-            Опции
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
+    if (!['select', 'radio', 'autocomplete'].includes(formField.type as string)) {
+      return null;
+    }
 
-          {options.map((option, index) => (
-            <Stack direction="row" spacing={2} key={index} sx={{ mb: 1 }}>
-              <Stack sx={{ width: '41.66%' }}>
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Настройки опций
+        </Typography>
+        
+        {/* Показать ошибку загрузки enum значений */}
+        {enumError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {enumError}
+          </Alert>
+        )}
+        
+        {/* Показать состояние загрузки */}
+        {loadingEnumValues && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Загружаются значения из Bitrix24...
+          </Alert>
+        )}
+        
+        {/* Кнопка для ручной загрузки enum значений */}
+        {formField.bitrixFieldId && (
+          <Box sx={{ mb: 2 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              onClick={() => loadEnumValues(formField.bitrixFieldId as string)}
+              disabled={loadingEnumValues}
+            >
+              {loadingEnumValues ? 'Загрузка...' : 'Загрузить значения из Bitrix24'}
+            </Button>
+          </Box>
+        )}
+
+        {/* Опции из Битрикс24 */}
+        {formField.dynamicSource?.enabled && (
+          <BitrixOptionsLoader
+            onOptionsLoaded={handleBitrixOptionsLoaded}
+          />
+        )}
+
+        {/* Ручное редактирование опций */}
+        {!formField.dynamicSource?.enabled && (
+          <div>
+            <Typography variant="subtitle1" gutterBottom>
+              Опции для выбора
+            </Typography>
+            
+            {options.map((option, index) => (
+              <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <TextField
-                  fullWidth
-                  size="small"
                   label="Значение"
                   value={option.value}
-                  disabled
-                />
-              </Stack>
-              <Stack sx={{ width: '41.66%' }}>
-                <TextField
-                  fullWidth
+                  onChange={(e) => {
+                    const newOptions = [...options];
+                    newOptions[index].value = e.target.value;
+                    setOptions(newOptions);
+                  }}
                   size="small"
-                  label="Текст"
-                  value={option.label}
-                  disabled
+                  sx={{ mr: 1, flex: 1 }}
                 />
-              </Stack>
-              <Stack sx={{ width: '16.66%' }}>
+                <TextField
+                  label="Название"
+                  value={option.label}
+                  onChange={(e) => {
+                    const newOptions = [...options];
+                    newOptions[index].label = e.target.value;
+                    setOptions(newOptions);
+                  }}
+                  size="small"
+                  sx={{ mr: 1, flex: 1 }}
+                />
                 <IconButton
                   color="error"
                   onClick={() => removeOption(index)}
@@ -270,41 +378,39 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
                 >
                   <DeleteIcon />
                 </IconButton>
-              </Stack>
-            </Stack>
-          ))}
+              </Box>
+            ))}
 
-          <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-            <Stack sx={{ width: '41.66%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
               <TextField
-                fullWidth
-                size="small"
                 label="Значение"
                 value={newOption.value}
                 onChange={(e) => setNewOption({ ...newOption, value: e.target.value })}
-              />
-            </Stack>
-            <Stack sx={{ width: '41.66%' }}>
-              <TextField
-                fullWidth
                 size="small"
-                label="Текст"
+                sx={{ mr: 1, flex: 1 }}
+              />
+              <TextField
+                label="Название"
                 value={newOption.label}
                 onChange={(e) => setNewOption({ ...newOption, label: e.target.value })}
+                size="small"
+                sx={{ mr: 1, flex: 1 }}
               />
-            </Stack>
-            <Stack sx={{ width: '16.66%' }}>
-              <IconButton color="primary" onClick={addOption} size="small">
-                <AddIcon />
-              </IconButton>
-            </Stack>
-          </Stack>
-        </Box>
-      );
-    }
-    return null;
+              <Button
+                variant="outlined"
+                onClick={addOption}
+                startIcon={<AddIcon />}
+                size="small"
+              >
+                Добавить
+              </Button>
+            </Box>
+          </div>
+        )}
+      </Box>
+    );
   };
-  
+
   // Получаем доступные разделы из всех полей формы
   const existingSections = useMemo(() => {
     // Добавляем вариант без раздела

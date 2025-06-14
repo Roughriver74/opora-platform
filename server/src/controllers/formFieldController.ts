@@ -139,3 +139,48 @@ export const getContactsList = async (req: Request, res: Response): Promise<void
     res.status(500).json({ message: error.message });
   }
 };
+
+// Получение пользовательских полей из Битрикс24
+export const getUserFields = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userFields = await bitrix24Service.getUserFields();
+    res.status(200).json(userFields);
+  } catch (error: any) {
+    console.error('Ошибка при получении пользовательских полей:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Получение значений для конкретного поля типа enumeration
+export const getEnumFieldValues = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { fieldId } = req.params;
+    const enumValues = await bitrix24Service.getEnumFieldValues(fieldId);
+    res.status(200).json(enumValues);
+  } catch (error: any) {
+    console.error(`Ошибка при получении значений для поля ${req.params.fieldId}:`, error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Получение всех полей типа enumeration с их значениями
+export const getAllEnumFieldsWithValues = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const enumFieldsWithValues = await bitrix24Service.getAllEnumFieldsWithValues();
+    res.status(200).json(enumFieldsWithValues);
+  } catch (error: any) {
+    console.error('Ошибка при получении полей с их значениями:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Отладочный метод для исследования структуры полей
+export const debugFieldStructure = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const debugInfo = await bitrix24Service.debugFieldStructure();
+    res.status(200).json(debugInfo);
+  } catch (error: any) {
+    console.error('Ошибка при отладке структуры полей:', error);
+    res.status(500).json({ message: error.message });
+  }
+};

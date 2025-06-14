@@ -22,6 +22,18 @@ router.get('/bitrix/companies', formFieldController.getCompaniesList);
 // Получение списка контактов из Битрикс24
 router.get('/bitrix/contacts', formFieldController.getContactsList);
 
+// Получение пользовательских полей из Битрикс24
+router.get('/bitrix/userfields', formFieldController.getUserFields);
+
+// Получение значений для конкретного поля типа enumeration
+router.get('/bitrix/enumvalues/:fieldId', formFieldController.getEnumFieldValues);
+
+// Получение всех полей типа enumeration с их значениями
+router.get('/bitrix/enum-fields-with-values', formFieldController.getAllEnumFieldsWithValues);
+
+// Отладочный метод для исследования структуры полей (только для разработки)
+router.get('/bitrix/debug-fields', formFieldController.debugFieldStructure);
+
 // Маршруты с параметрами должны идти последними
 router.get('/:id', formFieldController.getFieldById);
 

@@ -74,5 +74,41 @@ export const FormFieldService = {
       params: { query }
     });
     return response.data;
+  },
+
+  // Получение продукта по ID из Битрикс24
+  getProductById: async (id: string) => {
+    const response = await api.get(`/form-fields/bitrix/product/${id}`);
+    return response.data;
+  },
+
+  // Получение компании по ID из Битрикс24
+  getCompanyById: async (id: string) => {
+    const response = await api.get(`/form-fields/bitrix/company/${id}`);
+    return response.data;
+  },
+
+  // Получение контакта по ID из Битрикс24
+  getContactById: async (id: string) => {
+    const response = await api.get(`/form-fields/bitrix/contact/${id}`);
+    return response.data;
+  },
+
+  // Получение пользовательских полей из Битрикс24
+  getUserFields: async () => {
+    const response = await api.get('/form-fields/bitrix/userfields');
+    return response.data;
+  },
+
+  // Получение значений для конкретного поля типа enumeration
+  getEnumFieldValues: async (fieldId: string) => {
+    const response = await api.get(`/form-fields/bitrix/enumvalues/${fieldId}`);
+    return response.data;
+  },
+
+  // Получение всех полей типа enumeration с их значениями
+  getAllEnumFieldsWithValues: async () => {
+    const response = await api.get('/form-fields/bitrix/enum-fields-with-values');
+    return response.data;
   }
 };

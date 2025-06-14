@@ -1,0 +1,110 @@
+import { useState } from 'react';
+import { useFormik } from 'formik';
+import { FormField as FormFieldType } from '../../../../types';
+import { SubmitResult } from '../types';
+import { SubmissionService } from '../../../../services/submissionService';
+import { generateValidationSchema, generateInitialValues } from '../utils/validationHelpers';
+import { useFormSections } from './useFormSections';
+import { useScrollBehavior } from './useScrollBehavior';
+import { useFormProgress } from './useFormProgress';
+
+/**
+ * Основной хук для управления состоянием формы BetoneForm
+ * @param formId - ID формы
+ * @param fields - массив полей формы
+ * @returns объект с состоянием и методами для работы с формой
+ */
+export const useBetoneForm = (formId: string, fields: FormFieldType[]) => {
+	const [submitting, setSubmitting] = useState(false);
+	const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null);
+
+	// Инициализация formik
+	const formik = useFormik({
+		initialValues: generateInitialValues(fields),
+		validationSchema: generateValidationSchema(fields),
+		onSubmit: async (values) => {
+			setSubmitting(true);
+			setSubmitResult(null);
+
+			try {
+				// Создаем объект submission для отправки
+				const submission = {
+					formId: formId,
+					formData: values,
+				};
+
+				const result = await SubmissionService.submitForm(formId, values, submission);
+				
+				if (result.success) {
+					setSubmitResult({
+						success: true,
+						message: result.message || 'Заявка успешно отправлена!',
+					});
+					// Сбрасываем форму при успешной отправке
+					formik.resetForm();
+				} else {
+					setSubmitResult({
+						success: false,
+						message: result.message || 'Произошла ошибка при отправке заявки.',
+					});
+				}
+			} catch (error) {
+				console.error('Ошибка отправки формы:', error);
+				setSubmitResult({
+					success: false,
+					message: 'Произошла ошибка при отправке заявки. Попробуйте еще раз.',
+				});
+			} finally {
+				setSubmitting(false);
+			}
+		},
+	});
+
+	// Подключаем хуки для дополнительной функциональности
+	const sectionsLogic = useFormSections(fields);
+	const scrollBehavior = useScrollBehavior();
+	const progressLogic = useFormProgress(fields, formik.values);
+
+	// Метод для очистки результата отправки
+	const clearSubmitResult = () => {
+		setSubmitResult(null);
+	};
+
+	// Метод для сброса формы
+	const resetForm = () => {
+		formik.resetForm();
+		setSubmitResult(null);
+		sectionsLogic.setActiveSection(0);
+		// Сбрасываем развернутые секции и разворачиваем только первую
+		sectionsLogic.setExpandedSections?.(new Set([0]));
+	};
+
+	return {
+		// Formik
+		formik,
+		
+		// Состояние отправки
+		submitting,
+		submitResult,
+		clearSubmitResult,
+		resetForm,
+		
+		// Логика секций
+		...sectionsLogic,
+		
+		// Логика прокрутки
+		...scrollBehavior,
+		
+		// Логика прогресса
+		...progressLogic,
+		
+		// Вспомогательные методы
+		handleFieldChange: (name: string, value: any) => {
+			formik.setFieldValue(name, value);
+		},
+		
+		getFieldError: (fieldName: string) => {
+			return formik.touched[fieldName] ? (formik.errors[fieldName] as string) : undefined;
+		},
+	};
+};

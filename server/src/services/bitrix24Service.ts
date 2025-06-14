@@ -93,6 +93,192 @@ class Bitrix24Service {
   }
 
   /**
+   * Получение списка пользовательских полей для сделок
+   */
+  async getUserFields() {
+    try {
+      console.log('Запрос пользовательских полей для сделок из Битрикс24');
+      const response = await axios.post(`${this.webhookUrl}crm.deal.userfield.list`);
+      
+      console.log('Получены пользовательские поля:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка при получении пользовательских полей из Битрикс24:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получение значений для пользовательского поля типа enumeration (выпадающий список)
+   */
+  async getEnumFieldValues(fieldIdentifier: string) {
+    try {
+      console.log(`Запрос значений для поля ${fieldIdentifier} из Битрикс24`);
+      
+      // Получаем все пользовательские поля
+      const userFieldsResponse = await this.getUserFields();
+      
+      if (!userFieldsResponse?.result) {
+        throw new Error('Не удалось получить пользовательские поля');
+      }
+      
+      // Ищем поле по FIELD_NAME или ID
+      const targetField = userFieldsResponse.result.find((field: any) => 
+        field.FIELD_NAME === fieldIdentifier || field.ID === fieldIdentifier
+      );
+      
+      if (!targetField) {
+        throw new Error(`Поле ${fieldIdentifier} не найдено`);
+      }
+      
+      console.log(`Найдено поле:`, targetField);
+      
+      // Проверяем, что это поле типа enumeration
+      if (targetField.USER_TYPE_ID !== 'enumeration') {
+        throw new Error(`Поле ${fieldIdentifier} не является полем типа enumeration (тип: ${targetField.USER_TYPE_ID})`);
+      }
+      
+      // Извлекаем значения из свойства LIST (не SETTINGS.LIST!)
+      const enumValues = [];
+      if (targetField.LIST && Array.isArray(targetField.LIST)) {
+        targetField.LIST.forEach((item: any) => {
+          enumValues.push({
+            ID: item.ID,
+            VALUE: item.VALUE,
+            SORT: item.SORT || '100'
+          });
+        });
+      }
+      
+      console.log(`Извлечено ${enumValues.length} значений для поля ${fieldIdentifier}:`, enumValues);
+      
+      // Возвращаем в том же формате, что ожидает фронтенд
+      return {
+        result: enumValues,
+        total: enumValues.length
+      };
+      
+    } catch (error) {
+      console.error(`Ошибка при получении значений поля ${fieldIdentifier} из Битрикс24:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Отладочный метод для исследования структуры полей и доступных методов
+   */
+  async debugFieldStructure() {
+    try {
+      console.log('=== ОТЛАДКА: Исследование структуры полей ===');
+      
+      // Получаем пользовательские поля
+      const userFieldsResponse = await this.getUserFields();
+      
+      if (userFieldsResponse?.result) {
+        console.log(`Найдено ${userFieldsResponse.result.length} пользовательских полей`);
+        
+        // Группируем поля по типам
+        const fieldsByType = userFieldsResponse.result.reduce((acc: any, field: any) => {
+          const type = field.USER_TYPE_ID;
+          if (!acc[type]) acc[type] = [];
+          acc[type].push(field);
+          return acc;
+        }, {});
+        
+        console.log('Поля по типам:', Object.keys(fieldsByType).map(type => 
+          `${type}: ${fieldsByType[type].length} полей`
+        ));
+        
+        // Ищем поля, которые могут содержать варианты выбора
+        const potentialEnumFields = userFieldsResponse.result.filter((field: any) => 
+          field.SETTINGS && (
+            field.SETTINGS.LIST || 
+            field.SETTINGS.VALUES || 
+            field.SETTINGS.ITEMS ||
+            field.USER_TYPE_ID === 'enumeration' ||
+            field.USER_TYPE_ID === 'list'
+          )
+        );
+        
+        console.log(`Найдено ${potentialEnumFields.length} потенциальных enum полей:`, 
+          potentialEnumFields.map((f: any) => ({
+            ID: f.ID,
+            FIELD_NAME: f.FIELD_NAME,
+            USER_TYPE_ID: f.USER_TYPE_ID,
+            SETTINGS: f.SETTINGS
+          }))
+        );
+        
+        return {
+          result: {
+            totalFields: userFieldsResponse.result.length,
+            fieldsByType,
+            potentialEnumFields
+          }
+        };
+      }
+      
+      return { result: { error: 'Не удалось получить поля' } };
+    } catch (error) {
+      console.error('Ошибка при отладке структуры полей:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получение всех значений для всех пользовательских полей типа enumeration
+   */
+  async getAllEnumFieldsWithValues() {
+    try {
+      console.log('Получение всех пользовательских полей и их значений');
+      
+      // Сначала получаем все пользовательские поля
+      const userFieldsResponse = await this.getUserFields();
+      
+      if (!userFieldsResponse.result) {
+        return { result: [] };
+      }
+
+      // Фильтруем только поля типа enumeration
+      const enumFields = userFieldsResponse.result.filter(
+        (field: any) => field.USER_TYPE_ID === 'enumeration'
+      );
+
+      console.log(`Найдено ${enumFields.length} полей типа enumeration`);
+
+      // Извлекаем значения для каждого поля типа enumeration напрямую из LIST
+      const fieldsWithValues = enumFields.map((field: any) => {
+        const enumValues = [];
+        
+        // Извлекаем значения из свойства LIST (не SETTINGS.LIST!)
+        if (field.LIST && Array.isArray(field.LIST)) {
+          field.LIST.forEach((item: any) => {
+            enumValues.push({
+              ID: item.ID,
+              VALUE: item.VALUE,
+              SORT: item.SORT || '100'
+            });
+          });
+        }
+        
+        return {
+          field: field,
+          values: enumValues
+        };
+      });
+
+      console.log(`Обработано ${fieldsWithValues.length} полей с их значениями`);
+
+      return {
+        result: fieldsWithValues
+      };
+    } catch (error) {
+      console.error('Ошибка при получении полей с их значениями:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Получение доступных категорий сделок
    */
   async getDealCategories() {
