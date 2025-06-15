@@ -35,27 +35,48 @@ const authMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
             if (err) {
                 console.error('Ошибка верификации JWT токена:', err.message);
                 req.isAdmin = false;
+                req.user = undefined;
                 return next();
             }
             try {
+                console.log('[AUTH DEBUG] Декодированный токен:', {
+                    userId: decoded.userId,
+                    id: decoded.id,
+                    sub: decoded.sub,
+                    iat: decoded.iat,
+                    exp: decoded.exp,
+                });
                 // Проверяем, есть ли пользователь в базе данных
                 if (decoded.userId) {
                     // Новая система авторизации - токен содержит userId
+                    console.log('[AUTH DEBUG] Поиск пользователя по userId:', decoded.userId);
                     const user = yield User_1.default.findById(decoded.userId);
-                    if (user && user.status === 'active') {
-                        req.user = {
-                            id: user._id.toString(),
+                    if (user) {
+                        console.log('[AUTH DEBUG] Пользователь найден:', {
+                            id: user._id,
+                            email: user.email,
                             role: user.role,
-                            isAdmin: user.role === 'admin',
-                            isUser: user.role === 'user',
-                            tokenType: 'access',
-                        };
-                        req.isAdmin = user.role === 'admin';
-                        // Убираем спам логов - оставляем только для отладки при необходимости
-                        // console.log(`Пользователь авторизован: ${user.email}, role: ${user.role}`)
+                            status: user.status,
+                        });
+                        if (user.status === 'active') {
+                            req.user = {
+                                id: user._id.toString(),
+                                role: user.role,
+                                isAdmin: user.role === 'admin',
+                                isUser: user.role === 'user',
+                                tokenType: 'access',
+                            };
+                            req.isAdmin = user.role === 'admin';
+                            console.log('[AUTH DEBUG] Пользователь успешно авторизован:', user.email);
+                        }
+                        else {
+                            console.log('[AUTH DEBUG] Пользователь неактивен:', user.email, 'статус:', user.status);
+                            req.isAdmin = false;
+                            req.user = undefined;
+                        }
                     }
                     else {
-                        console.log('Пользователь не найден или неактивен');
+                        console.log('[AUTH DEBUG] Пользователь не найден по userId:', decoded.userId);
                         req.isAdmin = false;
                         req.user = undefined;
                     }
@@ -63,26 +84,44 @@ const authMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
                 else if (decoded.id || decoded.sub) {
                     // Проверяем альтернативные поля для ID пользователя
                     const userId = decoded.id || decoded.sub;
+                    console.log('[AUTH DEBUG] Поиск пользователя по альтернативному ID:', userId);
                     const user = yield User_1.default.findById(userId);
-                    if (user && user.status === 'active') {
-                        req.user = {
-                            id: user._id.toString(),
+                    if (user) {
+                        console.log('[AUTH DEBUG] Пользователь найден (альт. ID):', {
+                            id: user._id,
+                            email: user.email,
                             role: user.role,
-                            isAdmin: user.role === 'admin',
-                            isUser: user.role === 'user',
-                            tokenType: 'access',
-                        };
-                        req.isAdmin = user.role === 'admin';
+                            status: user.status,
+                        });
+                        if (user.status === 'active') {
+                            req.user = {
+                                id: user._id.toString(),
+                                role: user.role,
+                                isAdmin: user.role === 'admin',
+                                isUser: user.role === 'user',
+                                tokenType: 'access',
+                            };
+                            req.isAdmin = user.role === 'admin';
+                            console.log('[AUTH DEBUG] Пользователь успешно авторизован (альт. ID):', user.email);
+                        }
+                        else {
+                            console.log('[AUTH DEBUG] Пользователь неактивен (альт. ID):', user.email);
+                            req.isAdmin = false;
+                            req.user = undefined;
+                        }
                     }
                     else {
+                        console.log('[AUTH DEBUG] Пользователь не найден по альтернативному ID:', userId);
                         req.isAdmin = false;
                         req.user = undefined;
                     }
                 }
                 else {
                     // Старая система авторизации - проверяем AdminToken
+                    console.log('[AUTH DEBUG] Проверка AdminToken для старой системы');
                     const tokenDoc = yield AdminToken_1.default.findOne({ token });
                     if (tokenDoc) {
+                        console.log('[AUTH DEBUG] AdminToken найден, авторизация как админ');
                         req.isAdmin = true;
                         // Создаем минимальный объект пользователя для админа
                         req.user = {
@@ -94,16 +133,23 @@ const authMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
                         };
                     }
                     else {
+                        console.log('[AUTH DEBUG] AdminToken не найден');
                         req.isAdmin = false;
                         req.user = undefined;
                     }
                 }
             }
             catch (userError) {
-                console.error('Ошибка получения пользователя:', userError);
+                console.error('[AUTH DEBUG] Ошибка получения пользователя:', userError);
                 req.isAdmin = false;
                 req.user = undefined;
             }
+            console.log('[AUTH DEBUG] Финальное состояние:', {
+                'req.user': req.user
+                    ? `${req.user.id} (${req.user.role})`
+                    : 'undefined',
+                'req.isAdmin': req.isAdmin,
+            });
             next();
         }));
     }

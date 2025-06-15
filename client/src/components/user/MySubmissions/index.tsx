@@ -493,6 +493,10 @@ const MySubmissions: React.FC = () => {
 									handleStatusChange(submission._id, e.target.value)
 								}
 								displayEmpty
+								renderValue={value => {
+									const statusName = getStatusName(submission.status)
+									return statusName || 'Не указан'
+								}}
 							>
 								{bitrixStages.map(stage => (
 									<MenuItem key={stage.id} value={stage.id}>
@@ -728,6 +732,13 @@ const MySubmissions: React.FC = () => {
 																	e.target.value
 																)
 															}
+															displayEmpty
+															renderValue={value => {
+																const statusName = getStatusName(
+																	submission.status
+																)
+																return statusName || 'Не указан'
+															}}
 														>
 															{bitrixStages.map(stage => (
 																<MenuItem key={stage.id} value={stage.id}>

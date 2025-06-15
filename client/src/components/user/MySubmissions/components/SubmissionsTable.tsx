@@ -31,6 +31,7 @@ import {
 	getCleanStatus,
 	getSyncStatusColor,
 	getSyncStatusText,
+	getStatusName,
 } from '../utils/statusUtils'
 
 export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
@@ -94,6 +95,14 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 										onChange={e =>
 											onStatusChange(submission._id, e.target.value)
 										}
+										displayEmpty
+										renderValue={value => {
+											const statusName = getStatusName(
+												submission.status,
+												bitrixStages
+											)
+											return statusName || 'Не указан'
+										}}
 									>
 										{bitrixStages.map(stage => (
 											<MenuItem key={stage.id} value={stage.id}>

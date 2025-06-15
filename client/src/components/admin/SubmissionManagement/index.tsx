@@ -105,6 +105,26 @@ const SubmissionManagement: React.FC = () => {
 	const [detailsOpen, setDetailsOpen] = useState(false)
 	const [formFields, setFormFields] = useState<any[]>([])
 	const [statusComment, setStatusComment] = useState('')
+	const [bitrixStages, setBitrixStages] = useState<
+		{ id: string; name: string }[]
+	>([])
+
+	// Загрузка статусов из Битрикс24
+	const loadBitrixStages = async () => {
+		try {
+			const response = await submissionService.getBitrixDealStages('1')
+			if (response.success && response.data && response.data.length > 0) {
+				setBitrixStages(response.data)
+			}
+		} catch (err: any) {
+			console.error('Ошибка загрузки статусов из Битрикс24:', err)
+		}
+	}
+
+	// Загрузка статусов при монтировании компонента
+	useEffect(() => {
+		loadBitrixStages()
+	}, [])
 
 	// Загрузка заявок
 	const loadSubmissions = async () => {
@@ -175,6 +195,13 @@ const SubmissionManagement: React.FC = () => {
 		return field ? field.label : fieldName
 	}
 
+	// Получение названия статуса из Битрикс24
+	const getStatusName = (status: string): string => {
+		const cleanStatus = status.includes(':') ? status.split(':')[1] : status
+		const stage = bitrixStages.find(stage => stage.id === cleanStatus)
+		return stage?.name || status
+	}
+
 	// Применение фильтров
 	const handleFilterChange = (newFilters: Partial<SubmissionFilters>) => {
 		setFilters({ ...filters, ...newFilters })
@@ -239,9 +266,9 @@ const SubmissionManagement: React.FC = () => {
 							onChange={e => handleFilterChange({ status: e.target.value })}
 						>
 							<MenuItem value=''>Все</MenuItem>
-							{Object.entries(statusLabels).map(([value, label]) => (
-								<MenuItem key={value} value={value}>
-									{label}
+							{bitrixStages.map(stage => (
+								<MenuItem key={stage.id} value={stage.id}>
+									{stage.name}
 								</MenuItem>
 							))}
 						</Select>
@@ -296,20 +323,9 @@ const SubmissionManagement: React.FC = () => {
 										: 'Анонимная заявка'}
 								</TableCell>
 								<TableCell>
-									<FormControl size='small' sx={{ minWidth: 120 }}>
-										<Select
-											value={submission.status}
-											onChange={e =>
-												handleStatusChange(submission._id, e.target.value)
-											}
-										>
-											{Object.entries(statusLabels).map(([value, label]) => (
-												<MenuItem key={value} value={value}>
-													{label}
-												</MenuItem>
-											))}
-										</Select>
-									</FormControl>
+									<Typography variant='body2'>
+										{getStatusName(submission.status)}
+									</Typography>
 								</TableCell>
 								<TableCell>
 									<Chip
@@ -425,13 +441,8 @@ const SubmissionManagement: React.FC = () => {
 												Статус:
 											</Typography>
 											<Chip
-												label={
-													statusLabels[selectedSubmission.status] ||
-													selectedSubmission.status
-												}
-												color={
-													statusColors[selectedSubmission.status] || 'default'
-												}
+												label={getStatusName(selectedSubmission.status)}
+												color='primary'
 												size='small'
 												sx={{ ml: 1 }}
 											/>
@@ -456,13 +467,17 @@ const SubmissionManagement: React.FC = () => {
 															}
 														}}
 													>
-														{Object.entries(statusLabels)
+														{bitrixStages
 															.filter(
-																([value]) => value !== selectedSubmission.status
+																stage =>
+																	stage.id !==
+																	(selectedSubmission.status.includes(':')
+																		? selectedSubmission.status.split(':')[1]
+																		: selectedSubmission.status)
 															)
-															.map(([value, label]) => (
-																<MenuItem key={value} value={value}>
-																	{label}
+															.map(stage => (
+																<MenuItem key={stage.id} value={stage.id}>
+																	{stage.name}
 																</MenuItem>
 															))}
 													</Select>
@@ -569,8 +584,6 @@ const SubmissionManagement: React.FC = () => {
 										<Typography variant='h6' gutterBottom>
 											Данные заявки
 										</Typography>
-
-										
 									</CardContent>
 								</Card>
 

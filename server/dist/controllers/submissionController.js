@@ -340,7 +340,7 @@ const updateSubmissionStatus = (req, res) => __awaiter(void 0, void 0, void 0, f
 exports.updateSubmissionStatus = updateSubmissionStatus;
 // Получение заявки с актуальными данными из Битрикс24 для редактирования - НОВАЯ ЛОГИКА
 const getSubmissionWithBitrixData = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     try {
         const { id } = req.params;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
@@ -363,12 +363,23 @@ const getSubmissionWithBitrixData = (req, res) => __awaiter(void 0, void 0, void
         console.log(`[EDIT NEW] - Статус синхронизации: ${submission.bitrixSyncStatus}`);
         // Проверяем права доступа
         const isAdmin = req.isAdmin;
-        if (!isAdmin && ((_b = submission.userId) === null || _b === void 0 ? void 0 : _b.toString()) !== userId) {
+        console.log(`[EDIT NEW] Проверка прав доступа:`);
+        console.log(`[EDIT NEW] - isAdmin: ${isAdmin}`);
+        console.log(`[EDIT NEW] - userId из токена: ${userId}`);
+        console.log(`[EDIT NEW] - submission.userId: ${submission.userId}`);
+        console.log(`[EDIT NEW] - submission.userId._id: ${(_b = submission.userId) === null || _b === void 0 ? void 0 : _b._id}`);
+        console.log(`[EDIT NEW] - submission.userId._id.toString(): ${(_d = (_c = submission.userId) === null || _c === void 0 ? void 0 : _c._id) === null || _d === void 0 ? void 0 : _d.toString()}`);
+        // Исправляем проверку: сравниваем _id из populate объекта
+        const submissionUserId = ((_f = (_e = submission.userId) === null || _e === void 0 ? void 0 : _e._id) === null || _f === void 0 ? void 0 : _f.toString()) || ((_g = submission.userId) === null || _g === void 0 ? void 0 : _g.toString());
+        console.log(`[EDIT NEW] - Сравнение: ${submissionUserId} === ${userId} -> ${submissionUserId === userId}`);
+        if (!isAdmin && submissionUserId !== userId) {
+            console.log(`[EDIT NEW] ❌ ДОСТУП ЗАПРЕЩЕН: Пользователь ${userId} пытается получить заявку пользователя ${submissionUserId}`);
             return res.status(403).json({
                 success: false,
                 message: 'Нет прав для просмотра этой заявки',
             });
         }
+        console.log(`[EDIT NEW] ✅ ДОСТУП РАЗРЕШЕН: Пользователь имеет права для просмотра заявки`);
         // Получаем актуальные данные из Битрикс24
         let formDataFromBitrix = {};
         let preloadedOptions = {};
@@ -400,7 +411,7 @@ const getSubmissionWithBitrixData = (req, res) => __awaiter(void 0, void 0, void
                             let bitrixValue = dealData[field.bitrixFieldId];
                             // Для полей автокомплита с товарами - загружаем название товара
                             if (field.type === 'autocomplete' &&
-                                ((_c = field.dynamicSource) === null || _c === void 0 ? void 0 : _c.enabled) &&
+                                ((_h = field.dynamicSource) === null || _h === void 0 ? void 0 : _h.enabled) &&
                                 field.dynamicSource.source === 'catalog' &&
                                 bitrixValue) {
                                 try {
@@ -423,6 +434,33 @@ const getSubmissionWithBitrixData = (req, res) => __awaiter(void 0, void 0, void
                                     // Оставляем ID если не удалось загрузить название
                                 }
                             }
+                            // Для полей автокомплита с компаниями - загружаем название компании
+                            if (field.type === 'autocomplete' &&
+                                ((_j = field.dynamicSource) === null || _j === void 0 ? void 0 : _j.enabled) &&
+                                field.dynamicSource.source === 'companies' &&
+                                bitrixValue &&
+                                bitrixValue !== '0' // Пропускаем пустые компании
+                            ) {
+                                try {
+                                    console.log(`[EDIT NEW] 🔍 Загрузка названия компании для ID: ${bitrixValue}`);
+                                    const companyResponse = yield bitrix24Service_1.default.getCompany(bitrixValue);
+                                    if (companyResponse === null || companyResponse === void 0 ? void 0 : companyResponse.result) {
+                                        const companyName = companyResponse.result.TITLE;
+                                        console.log(`[EDIT NEW] 🏢 Компания ${bitrixValue}: "${companyName}"`);
+                                        // Добавляем в предзагруженные опции
+                                        preloadedOptions[field.name] = [
+                                            {
+                                                value: bitrixValue,
+                                                label: companyName,
+                                            },
+                                        ];
+                                    }
+                                }
+                                catch (companyError) {
+                                    console.error(`[EDIT NEW] ❌ Ошибка загрузки компании ${bitrixValue}:`, companyError);
+                                    // Оставляем ID если не удалось загрузить название
+                                }
+                            }
                             formDataFromBitrix[field.name] = bitrixValue;
                             console.log(`[EDIT NEW] ✅ Маппинг ${field.bitrixFieldId} -> ${field.name}:`, bitrixValue);
                         }
@@ -431,6 +469,7 @@ const getSubmissionWithBitrixData = (req, res) => __awaiter(void 0, void 0, void
                         }
                     }
                     console.log('[EDIT NEW] FormData восстановлен из Битрикс24:', Object.keys(formDataFromBitrix));
+                    console.log('[EDIT NEW] Предзагруженные опции:', JSON.stringify(preloadedOptions, null, 2));
                 }
                 else {
                     console.log('[EDIT NEW] Форма не найдена');
@@ -487,7 +526,7 @@ const getSubmissionWithBitrixData = (req, res) => __awaiter(void 0, void 0, void
 exports.getSubmissionWithBitrixData = getSubmissionWithBitrixData;
 // Обновление заявки - НОВАЯ ЛОГИКА: сразу в Битрикс24
 const updateSubmission = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _a, _b, _c, _d, _e;
     try {
         const { id } = req.params;
         const updateData = req.body; // Это formData из клиента
@@ -503,12 +542,21 @@ const updateSubmission = (req, res) => __awaiter(void 0, void 0, void 0, functio
         }
         // Проверяем права доступа
         const isAdmin = req.isAdmin;
-        if (!isAdmin && ((_b = submission.userId) === null || _b === void 0 ? void 0 : _b.toString()) !== userId) {
+        console.log(`[UPDATE NEW] Проверка прав доступа:`);
+        console.log(`[UPDATE NEW] - isAdmin: ${isAdmin}`);
+        console.log(`[UPDATE NEW] - userId из токена: ${userId}`);
+        console.log(`[UPDATE NEW] - submission.userId._id: ${(_b = submission.userId) === null || _b === void 0 ? void 0 : _b._id}`);
+        // Исправляем проверку: сравниваем _id из populate объекта
+        const submissionUserId = ((_d = (_c = submission.userId) === null || _c === void 0 ? void 0 : _c._id) === null || _d === void 0 ? void 0 : _d.toString()) || ((_e = submission.userId) === null || _e === void 0 ? void 0 : _e.toString());
+        console.log(`[UPDATE NEW] - Сравнение: ${submissionUserId} === ${userId} -> ${submissionUserId === userId}`);
+        if (!isAdmin && submissionUserId !== userId) {
+            console.log(`[UPDATE NEW] ❌ ДОСТУП ЗАПРЕЩЕН: Пользователь ${userId} пытается обновить заявку пользователя ${submissionUserId}`);
             return res.status(403).json({
                 success: false,
                 message: 'Нет прав для редактирования этой заявки',
             });
         }
+        console.log(`[UPDATE NEW] ✅ ДОСТУП РАЗРЕШЕН: Пользователь имеет права для обновления заявки`);
         console.log(`[UPDATE NEW] Заявка найдена: ${submission.submissionNumber}`);
         console.log(`[UPDATE NEW] Битрикс Deal ID: ${submission.bitrixDealId}`);
         try {

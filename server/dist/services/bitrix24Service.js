@@ -92,6 +92,28 @@ class Bitrix24Service {
         });
     }
     /**
+     * Получение конкретной компании по ID
+     */
+    getCompany(companyId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                console.log(`Получение компании ${companyId} из Битрикс24`);
+                const response = yield axios_1.default.post(`${this.webhookUrl}crm.company.get`, {
+                    id: companyId,
+                });
+                console.log(`Ответ от Bitrix24 для компании ${companyId}:`, response.data);
+                return response.data;
+            }
+            catch (error) {
+                console.error(`Ошибка при получении компании ${companyId} из Битрикс24:`, error.message);
+                if (error.response) {
+                    console.error('Ответ сервера:', error.response.data);
+                }
+                throw error;
+            }
+        });
+    }
+    /**
      * Создание сделки в Битрикс24
      */
     createDeal(dealData) {

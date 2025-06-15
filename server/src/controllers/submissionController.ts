@@ -413,12 +413,38 @@ export const getSubmissionWithBitrixData = async (
 
 		// Проверяем права доступа
 		const isAdmin = req.isAdmin
-		if (!isAdmin && submission.userId?.toString() !== userId) {
+
+		console.log(`[EDIT NEW] Проверка прав доступа:`)
+		console.log(`[EDIT NEW] - isAdmin: ${isAdmin}`)
+		console.log(`[EDIT NEW] - userId из токена: ${userId}`)
+		console.log(`[EDIT NEW] - submission.userId: ${submission.userId}`)
+		console.log(`[EDIT NEW] - submission.userId._id: ${submission.userId?._id}`)
+		console.log(
+			`[EDIT NEW] - submission.userId._id.toString(): ${submission.userId?._id?.toString()}`
+		)
+
+		// Исправляем проверку: сравниваем _id из populate объекта
+		const submissionUserId =
+			submission.userId?._id?.toString() || submission.userId?.toString()
+		console.log(
+			`[EDIT NEW] - Сравнение: ${submissionUserId} === ${userId} -> ${
+				submissionUserId === userId
+			}`
+		)
+
+		if (!isAdmin && submissionUserId !== userId) {
+			console.log(
+				`[EDIT NEW] ❌ ДОСТУП ЗАПРЕЩЕН: Пользователь ${userId} пытается получить заявку пользователя ${submissionUserId}`
+			)
 			return res.status(403).json({
 				success: false,
 				message: 'Нет прав для просмотра этой заявки',
 			})
 		}
+
+		console.log(
+			`[EDIT NEW] ✅ ДОСТУП РАЗРЕШЕН: Пользователь имеет права для просмотра заявки`
+		)
 
 		// Получаем актуальные данные из Битрикс24
 		let formDataFromBitrix = {}
@@ -651,12 +677,36 @@ export const updateSubmission = async (req: Request, res: Response) => {
 
 		// Проверяем права доступа
 		const isAdmin = req.isAdmin
-		if (!isAdmin && submission.userId?.toString() !== userId) {
+
+		console.log(`[UPDATE NEW] Проверка прав доступа:`)
+		console.log(`[UPDATE NEW] - isAdmin: ${isAdmin}`)
+		console.log(`[UPDATE NEW] - userId из токена: ${userId}`)
+		console.log(
+			`[UPDATE NEW] - submission.userId._id: ${submission.userId?._id}`
+		)
+
+		// Исправляем проверку: сравниваем _id из populate объекта
+		const submissionUserId =
+			submission.userId?._id?.toString() || submission.userId?.toString()
+		console.log(
+			`[UPDATE NEW] - Сравнение: ${submissionUserId} === ${userId} -> ${
+				submissionUserId === userId
+			}`
+		)
+
+		if (!isAdmin && submissionUserId !== userId) {
+			console.log(
+				`[UPDATE NEW] ❌ ДОСТУП ЗАПРЕЩЕН: Пользователь ${userId} пытается обновить заявку пользователя ${submissionUserId}`
+			)
 			return res.status(403).json({
 				success: false,
 				message: 'Нет прав для редактирования этой заявки',
 			})
 		}
+
+		console.log(
+			`[UPDATE NEW] ✅ ДОСТУП РАЗРЕШЕН: Пользователь имеет права для обновления заявки`
+		)
 
 		console.log(`[UPDATE NEW] Заявка найдена: ${submission.submissionNumber}`)
 		console.log(`[UPDATE NEW] Битрикс Deal ID: ${submission.bitrixDealId}`)
