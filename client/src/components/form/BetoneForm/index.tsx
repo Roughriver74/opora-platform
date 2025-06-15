@@ -19,7 +19,12 @@ import { ScrollToTopButton } from './components/ScrollToTopButton'
 import { FormResult } from './components/FormResult'
 import { LinkedFields } from '../LinkedFields'
 
-const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields, editData }) => {
+const BetoneForm: React.FC<BetoneFormProps> = ({
+	form,
+	fields,
+	editData,
+	preloadedOptions,
+}) => {
 	const formRef = useRef<HTMLDivElement>(null)
 
 	const {
@@ -42,7 +47,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields, editData }) => {
 		progressStatus,
 		handleFieldChange,
 		getFieldError,
-	} = useBetoneForm(form._id ?? '', fields, editData)
+	} = useBetoneForm(form._id ?? '', fields, editData, preloadedOptions)
 
 	return (
 		<Box component='form' onSubmit={formik.handleSubmit}>
@@ -156,6 +161,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields, editData }) => {
 												getFieldError={getFieldError}
 												compact={true}
 												showTitle={false}
+												preloadedOptions={preloadedOptions}
 											/>
 										</AccordionDetails>
 									</Accordion>
@@ -183,6 +189,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields, editData }) => {
 									getFieldError={getFieldError}
 									showTitle={false}
 									compact={true}
+									preloadedOptions={preloadedOptions}
 								/>
 								<SubmitButton
 									submitting={submitting}

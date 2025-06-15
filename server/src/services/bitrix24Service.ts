@@ -60,6 +60,31 @@ class Bitrix24Service {
 	}
 
 	/**
+	 * Получение конкретного товара по ID
+	 */
+	async getProduct(productId: string) {
+		try {
+			console.log(`Получение товара ${productId} из Битрикс24`)
+
+			const response = await axios.post(`${this.webhookUrl}crm.product.get`, {
+				id: productId,
+			})
+
+			console.log(`Ответ от Bitrix24 для товара ${productId}:`, response.data)
+			return response.data
+		} catch (error: any) {
+			console.error(
+				`Ошибка при получении товара ${productId} из Битрикс24:`,
+				error.message
+			)
+			if (error.response) {
+				console.error('Ответ сервера:', error.response.data)
+			}
+			throw error
+		}
+	}
+
+	/**
 	 * Создание сделки в Битрикс24
 	 */
 	async createDeal(dealData: any) {

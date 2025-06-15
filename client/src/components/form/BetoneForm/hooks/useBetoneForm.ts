@@ -25,7 +25,8 @@ export const useBetoneForm = (
 		submissionId: string
 		formId: string
 		formData: Record<string, any>
-	}
+	},
+	preloadedOptions?: Record<string, any[]>
 ) => {
 	const [submitting, setSubmitting] = useState(false)
 	const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null)

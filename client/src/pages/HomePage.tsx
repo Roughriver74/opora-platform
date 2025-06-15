@@ -27,6 +27,11 @@ const HomePage: React.FC = () => {
 			if (storedData) {
 				try {
 					const parsedData = JSON.parse(storedData)
+					console.log('🏠 [HomePage] Данные из localStorage:', parsedData)
+					console.log(
+						'🏠 [HomePage] preloadedOptions:',
+						parsedData.preloadedOptions
+					)
 					setEditData(parsedData)
 					// Очищаем localStorage после загрузки
 					localStorage.removeItem('editSubmissionData')
@@ -88,7 +93,12 @@ const HomePage: React.FC = () => {
 					{error}
 				</Alert>
 			) : form ? (
-				<BetoneForm form={form} fields={fields} editData={editData} />
+				<BetoneForm
+					form={form}
+					fields={fields}
+					editData={editData}
+					preloadedOptions={editData?.preloadedOptions}
+				/>
 			) : (
 				<Alert severity='info'>
 					В данный момент формы заказа недоступны. Пожалуйста, попробуйте позже.

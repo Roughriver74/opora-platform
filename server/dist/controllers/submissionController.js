@@ -340,7 +340,7 @@ const updateSubmissionStatus = (req, res) => __awaiter(void 0, void 0, void 0, f
 exports.updateSubmissionStatus = updateSubmissionStatus;
 // Получение заявки с актуальными данными из Битрикс24 для редактирования - НОВАЯ ЛОГИКА
 const getSubmissionWithBitrixData = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _a, _b, _c;
     try {
         const { id } = req.params;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
@@ -371,6 +371,7 @@ const getSubmissionWithBitrixData = (req, res) => __awaiter(void 0, void 0, void
         }
         // Получаем актуальные данные из Битрикс24
         let formDataFromBitrix = {};
+        let preloadedOptions = {};
         try {
             console.log(`[EDIT NEW] Получение актуальных данных сделки ${submission.bitrixDealId}`);
             // Получаем данные сделки из Битрикс24
@@ -380,16 +381,53 @@ const getSubmissionWithBitrixData = (req, res) => __awaiter(void 0, void 0, void
                 const dealData = dealResponse.result;
                 console.log(`[EDIT NEW] Данные сделки из Битрикс24:`, Object.keys(dealData));
                 // Получаем форму для правильного маппинга полей
-                const form = yield Form_1.default.findById(submission.formId);
+                const form = yield Form_1.default.findById(submission.formId).populate('fields');
                 if (form) {
                     console.log(`[EDIT NEW] Форма найдена, полей: ${form.fields.length}`);
+                    // Отладка полей формы
+                    console.log('[EDIT NEW] Поля формы с bitrixFieldId:');
+                    console.log('[EDIT NEW] RAW form.fields:', JSON.stringify(form.fields, null, 2));
+                    form.fields.forEach((field, index) => {
+                        console.log(`[EDIT NEW] Поле ${index}:`, field);
+                        console.log(`[EDIT NEW] Поле ${index}: name="${field.name}", bitrixFieldId="${field.bitrixFieldId}"`);
+                    });
+                    // Собираем предзагруженные опции для автокомплита
                     // Конвертируем данные из Битрикс24 обратно в формат формы
                     for (const field of form.fields) {
+                        console.log(`[EDIT NEW] Проверяем поле: ${field.name}, bitrixFieldId: ${field.bitrixFieldId}`);
                         if (field.bitrixFieldId &&
                             dealData[field.bitrixFieldId] !== undefined) {
-                            const bitrixValue = dealData[field.bitrixFieldId];
+                            let bitrixValue = dealData[field.bitrixFieldId];
+                            // Для полей автокомплита с товарами - загружаем название товара
+                            if (field.type === 'autocomplete' &&
+                                ((_c = field.dynamicSource) === null || _c === void 0 ? void 0 : _c.enabled) &&
+                                field.dynamicSource.source === 'catalog' &&
+                                bitrixValue) {
+                                try {
+                                    console.log(`[EDIT NEW] 🔍 Загрузка названия товара для ID: ${bitrixValue}`);
+                                    const productResponse = yield bitrix24Service_1.default.getProduct(bitrixValue);
+                                    if (productResponse === null || productResponse === void 0 ? void 0 : productResponse.result) {
+                                        const productName = productResponse.result.NAME;
+                                        console.log(`[EDIT NEW] 📦 Товар ${bitrixValue}: "${productName}"`);
+                                        // Добавляем в предзагруженные опции
+                                        preloadedOptions[field.name] = [
+                                            {
+                                                value: bitrixValue,
+                                                label: productName,
+                                            },
+                                        ];
+                                    }
+                                }
+                                catch (productError) {
+                                    console.error(`[EDIT NEW] ❌ Ошибка загрузки товара ${bitrixValue}:`, productError);
+                                    // Оставляем ID если не удалось загрузить название
+                                }
+                            }
                             formDataFromBitrix[field.name] = bitrixValue;
-                            console.log(`[EDIT NEW] Маппинг ${field.bitrixFieldId} -> ${field.name}: "${bitrixValue}"`);
+                            console.log(`[EDIT NEW] ✅ Маппинг ${field.bitrixFieldId} -> ${field.name}:`, bitrixValue);
+                        }
+                        else {
+                            console.log(`[EDIT NEW] ❌ Пропуск поля ${field.name}: bitrixFieldId=${field.bitrixFieldId}, значение в Bitrix=${dealData[field.bitrixFieldId]}`);
                         }
                     }
                     console.log('[EDIT NEW] FormData восстановлен из Битрикс24:', Object.keys(formDataFromBitrix));
@@ -430,6 +468,7 @@ const getSubmissionWithBitrixData = (req, res) => __awaiter(void 0, void 0, void
             createdAt: submission.createdAt,
             updatedAt: submission.updatedAt,
             formData: formDataFromBitrix, // Данные ВСЕГДА из Битрикс24
+            preloadedOptions: preloadedOptions, // Предзагруженные опции для автокомплита
         };
         console.log(`[EDIT NEW] Возвращаем данные заявки`);
         res.json({
@@ -475,10 +514,11 @@ const updateSubmission = (req, res) => __awaiter(void 0, void 0, void 0, functio
         try {
             console.log(`[UPDATE NEW] Обновление сделки ${submission.bitrixDealId} в Битрикс24`);
             // Получаем форму для правильного маппинга полей
-            const form = yield Form_1.default.findById(submission.formId);
+            const form = yield Form_1.default.findById(submission.formId).populate('fields');
             if (!form) {
                 throw new Error('Форма не найдена');
             }
+            console.log(`[UPDATE NEW] Форма найдена, полей: ${form.fields.length}`);
             // Формируем данные для обновления сделки
             const dealData = {};
             let newTitle = submission.title; // fallback

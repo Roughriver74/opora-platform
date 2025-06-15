@@ -147,6 +147,7 @@ export const SubmissionService = {
 			_id: string
 			formId: { _id: string }
 			formData: Record<string, any>
+			preloadedOptions?: Record<string, any[]>
 		}
 	}> => {
 		const response = await api.get(`/submissions/${id}/edit`)

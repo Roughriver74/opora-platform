@@ -70,6 +70,28 @@ class Bitrix24Service {
         });
     }
     /**
+     * Получение конкретного товара по ID
+     */
+    getProduct(productId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                console.log(`Получение товара ${productId} из Битрикс24`);
+                const response = yield axios_1.default.post(`${this.webhookUrl}crm.product.get`, {
+                    id: productId,
+                });
+                console.log(`Ответ от Bitrix24 для товара ${productId}:`, response.data);
+                return response.data;
+            }
+            catch (error) {
+                console.error(`Ошибка при получении товара ${productId} из Битрикс24:`, error.message);
+                if (error.response) {
+                    console.error('Ответ сервера:', error.response.data);
+                }
+                throw error;
+            }
+        });
+    }
+    /**
      * Создание сделки в Битрикс24
      */
     createDeal(dealData) {

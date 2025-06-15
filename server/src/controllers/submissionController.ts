@@ -422,6 +422,7 @@ export const getSubmissionWithBitrixData = async (
 
 		// Получаем актуальные данные из Битрикс24
 		let formDataFromBitrix = {}
+		let preloadedOptions: Record<string, any[]> = {}
 
 		try {
 			console.log(
@@ -460,6 +461,8 @@ export const getSubmissionWithBitrixData = async (
 						)
 					})
 
+					// Собираем предзагруженные опции для автокомплита
+
 					// Конвертируем данные из Битрикс24 обратно в формат формы
 					for (const field of form.fields as unknown as IFormField[]) {
 						console.log(
@@ -470,11 +473,50 @@ export const getSubmissionWithBitrixData = async (
 							field.bitrixFieldId &&
 							dealData[field.bitrixFieldId] !== undefined
 						) {
-							const bitrixValue = dealData[field.bitrixFieldId]
+							let bitrixValue = dealData[field.bitrixFieldId]
+
+							// Для полей автокомплита с товарами - загружаем название товара
+							if (
+								field.type === 'autocomplete' &&
+								field.dynamicSource?.enabled &&
+								field.dynamicSource.source === 'catalog' &&
+								bitrixValue
+							) {
+								try {
+									console.log(
+										`[EDIT NEW] 🔍 Загрузка названия товара для ID: ${bitrixValue}`
+									)
+									const productResponse = await bitrix24Service.getProduct(
+										bitrixValue
+									)
+									if (productResponse?.result) {
+										const productName = productResponse.result.NAME
+										console.log(
+											`[EDIT NEW] 📦 Товар ${bitrixValue}: "${productName}"`
+										)
+
+										// Добавляем в предзагруженные опции
+										preloadedOptions[field.name] = [
+											{
+												value: bitrixValue,
+												label: productName,
+											},
+										]
+									}
+								} catch (productError) {
+									console.error(
+										`[EDIT NEW] ❌ Ошибка загрузки товара ${bitrixValue}:`,
+										productError
+									)
+									// Оставляем ID если не удалось загрузить название
+								}
+							}
+
 							formDataFromBitrix[field.name] = bitrixValue
 
 							console.log(
-								`[EDIT NEW] ✅ Маппинг ${field.bitrixFieldId} -> ${field.name}: "${bitrixValue}"`
+								`[EDIT NEW] ✅ Маппинг ${field.bitrixFieldId} -> ${field.name}:`,
+								bitrixValue
 							)
 						} else {
 							console.log(
@@ -488,6 +530,10 @@ export const getSubmissionWithBitrixData = async (
 					console.log(
 						'[EDIT NEW] FormData восстановлен из Битрикс24:',
 						Object.keys(formDataFromBitrix)
+					)
+					console.log(
+						'[EDIT NEW] Предзагруженные опции:',
+						JSON.stringify(preloadedOptions, null, 2)
 					)
 				} else {
 					console.log('[EDIT NEW] Форма не найдена')
@@ -529,6 +575,7 @@ export const getSubmissionWithBitrixData = async (
 			createdAt: submission.createdAt,
 			updatedAt: submission.updatedAt,
 			formData: formDataFromBitrix, // Данные ВСЕГДА из Битрикс24
+			preloadedOptions: preloadedOptions, // Предзагруженные опции для автокомплита
 		}
 
 		console.log(`[EDIT NEW] Возвращаем данные заявки`)

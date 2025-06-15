@@ -25,6 +25,7 @@ const FormField: React.FC<FormFieldProps> = ({
 	onChange,
 	error,
 	compact = false,
+	preloadedOptions,
 }) => {
 	const [searchQuery, setSearchQuery] = useState('')
 	const [isValueSelected, setIsValueSelected] = useState(false)
@@ -40,7 +41,7 @@ const FormField: React.FC<FormFieldProps> = ({
 		setSelectedOption,
 		loadDynamicOptions,
 		setOptions,
-	} = useDynamicOptions(field.dynamicSource)
+	} = useDynamicOptions(field.dynamicSource, preloadedOptions)
 
 	// Initialize static options
 	useEffect(() => {
@@ -59,13 +60,21 @@ const FormField: React.FC<FormFieldProps> = ({
 
 	// Load dynamic options on search (только для autocomplete)
 	useEffect(() => {
-		if (field.dynamicSource?.enabled && 
-			field.type === FIELD_TYPES.AUTOCOMPLETE && 
-			debouncedSearchQuery && 
-			!isValueSelected) {
+		if (
+			field.dynamicSource?.enabled &&
+			field.type === FIELD_TYPES.AUTOCOMPLETE &&
+			debouncedSearchQuery &&
+			!isValueSelected
+		) {
 			loadDynamicOptions(debouncedSearchQuery)
 		}
-	}, [debouncedSearchQuery, field.dynamicSource?.enabled, field.type, loadDynamicOptions, isValueSelected])
+	}, [
+		debouncedSearchQuery,
+		field.dynamicSource?.enabled,
+		field.type,
+		loadDynamicOptions,
+		isValueSelected,
+	])
 
 	// Handle search change for autocomplete
 	const handleSearchChange = (query: string) => {

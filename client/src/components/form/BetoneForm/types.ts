@@ -8,6 +8,7 @@ export interface BetoneFormProps {
 		formId: string
 		formData: Record<string, any>
 	}
+	preloadedOptions?: Record<string, any[]>
 }
 
 export interface FormSection {

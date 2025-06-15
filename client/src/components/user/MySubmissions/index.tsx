@@ -188,6 +188,11 @@ const MySubmissions: React.FC = () => {
 			)
 
 			console.log('[CLIENT EDIT DEBUG] Ответ от сервера:', response)
+			console.log('[CLIENT EDIT DEBUG] response.data:', response.data)
+			console.log(
+				'[CLIENT EDIT DEBUG] response.data.preloadedOptions:',
+				response.data.preloadedOptions
+			)
 
 			if (response.success) {
 				console.log('[CLIENT EDIT DEBUG] Успешно получены актуальные данные')
@@ -195,12 +200,17 @@ const MySubmissions: React.FC = () => {
 					'[CLIENT EDIT DEBUG] Обновленные formData:',
 					response.data.formData
 				)
+				console.log(
+					'[CLIENT EDIT DEBUG] Предзагруженные опции:',
+					response.data.preloadedOptions
+				)
 
 				// Сохраняем актуальные данные для редактирования
 				const editData = {
 					submissionId: response.data._id,
 					formId: response.data.formId._id,
 					formData: response.data.formData,
+					preloadedOptions: response.data.preloadedOptions || {},
 				}
 
 				console.log('[CLIENT EDIT DEBUG] Сохраняем в localStorage:', editData)

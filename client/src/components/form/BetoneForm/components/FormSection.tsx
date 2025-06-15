@@ -12,6 +12,7 @@ interface FormSectionProps {
 	getFieldError: (fieldName: string) => string | undefined
 	compact?: boolean
 	showTitle?: boolean
+	preloadedOptions?: Record<string, any[]>
 }
 
 export const FormSection: React.FC<FormSectionProps> = ({
@@ -21,6 +22,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
 	getFieldError,
 	compact = false,
 	showTitle = true,
+	preloadedOptions,
 }) => {
 	if (!section || !section.fields || section.fields.length === 0) {
 		return null
@@ -60,6 +62,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
 							onChange={onFieldChange}
 							error={getFieldError(field.name)}
 							compact={compact}
+							preloadedOptions={preloadedOptions?.[field.name]}
 						/>
 					</Box>
 				))}
