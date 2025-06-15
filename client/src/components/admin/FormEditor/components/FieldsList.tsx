@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react'
+import React, { useRef, useCallback, useState } from 'react'
 import {
 	Box,
 	Stack,
@@ -9,11 +9,16 @@ import {
 	IconButton,
 	Tooltip,
 	CircularProgress,
+	TextField,
+	Alert,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import SectionIcon from '@mui/icons-material/ViewHeadline'
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator'
 import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/Edit'
+import SaveIcon from '@mui/icons-material/Save'
+import CancelIcon from '@mui/icons-material/Cancel'
 import { FormField } from '../../../../types'
 import FormFieldEditor from '../../FormFieldEditor'
 import { DragHandlers } from '../types'
@@ -32,8 +37,10 @@ interface FieldsListProps {
 interface Section {
 	id: string
 	header?: FormField
+	headerIndex?: number
 	fields: FormField[]
-	sectionNumber: number
+	startOrder: number
+	endOrder: number
 }
 
 export const FieldsList: React.FC<FieldsListProps> = ({
@@ -47,158 +54,189 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 	dragHandlers,
 }) => {
 	const fieldsRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+	const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
+	const [tempSectionTitle, setTempSectionTitle] = useState('')
 
-	// Группировка полей по разделам
+	// Улучшенная группировка полей по разделам
 	const groupedFields = React.useMemo(() => {
 		const sorted = [...fields].sort((a, b) => (a.order || 0) - (b.order || 0))
 		const sections: Section[] = []
 
-		// Начинаем с раздела по умолчанию (без заголовка)
-		let currentSection: Section = {
-			id: 'section-default',
-			fields: [],
-			sectionNumber: 0,
-		}
+		console.log(
+			'🔍 Сортированные поля:',
+			sorted.map(f => ({ name: f.name, type: f.type, order: f.order }))
+		)
 
-		sorted.forEach(field => {
+		let currentSection: Section | null = null
+		let fieldsWithoutSection: FormField[] = []
+
+		sorted.forEach((field, index) => {
 			if (field.type === 'header') {
-				// Сохраняем предыдущий раздел если в нем есть поля или заголовок
-				if (currentSection.fields.length > 0 || currentSection.header) {
+				// Если есть поля без раздела, создаем для них раздел
+				if (fieldsWithoutSection.length > 0) {
+					sections.push({
+						id: 'section-default',
+						fields: fieldsWithoutSection,
+						startOrder: fieldsWithoutSection[0]?.order || 0,
+						endOrder:
+							fieldsWithoutSection[fieldsWithoutSection.length - 1]?.order || 0,
+					})
+					fieldsWithoutSection = []
+				}
+
+				// Завершаем предыдущий раздел
+				if (currentSection) {
 					sections.push(currentSection)
 				}
 
 				// Начинаем новый раздел
-				const sectionNumber = Math.floor((field.order || 0) / 100)
 				currentSection = {
-					id: `section-${field._id || field.name}-${sectionNumber}`,
+					id: `section-${field._id || field.name}`,
 					header: field,
+					headerIndex: fields.findIndex(f =>
+						f._id ? f._id === field._id : f.name === field.name
+					),
 					fields: [],
-					sectionNumber,
+					startOrder: field.order || 0,
+					endOrder: field.order || 0,
 				}
 			} else if (field.type !== 'divider') {
-				// Добавляем обычные поля в текущий раздел
-				currentSection.fields.push(field)
+				// Обычное поле
+				if (currentSection) {
+					currentSection.fields.push(field)
+					currentSection.endOrder = field.order || currentSection.endOrder
+				} else {
+					fieldsWithoutSection.push(field)
+				}
 			}
 		})
 
 		// Добавляем последний раздел
-		if (currentSection.fields.length > 0 || currentSection.header) {
+		if (currentSection) {
 			sections.push(currentSection)
 		}
 
-		// Если нет разделов, создаем раздел по умолчанию
-		if (sections.length === 0) {
+		// Добавляем поля без раздела в конце
+		if (fieldsWithoutSection.length > 0) {
 			sections.push({
 				id: 'section-default',
-				fields: sorted.filter(f => f.type !== 'header' && f.type !== 'divider'),
-				sectionNumber: 0,
+				fields: fieldsWithoutSection,
+				startOrder: fieldsWithoutSection[0]?.order || 0,
+				endOrder:
+					fieldsWithoutSection[fieldsWithoutSection.length - 1]?.order || 0,
 			})
 		}
 
-		console.log('Группированные разделы:', sections)
+		console.log(
+			'📋 Группированные разделы:',
+			sections.map(s => ({
+				id: s.id,
+				title: s.header?.label || 'Без раздела',
+				fieldsCount: s.fields.length,
+				startOrder: s.startOrder,
+				endOrder: s.endOrder,
+			}))
+		)
+
 		return sections
 	}, [fields])
 
+	// Функция редактирования названия раздела
+	const handleStartEditingSection = (
+		sectionId: string,
+		currentTitle: string
+	) => {
+		setEditingSectionId(sectionId)
+		setTempSectionTitle(currentTitle)
+	}
+
+	const handleSaveSectionTitle = (section: Section) => {
+		if (!section.header || !section.headerIndex === undefined) return
+
+		const updatedField = {
+			...section.header,
+			label: tempSectionTitle.trim(),
+		}
+
+		onFieldSave(section.headerIndex!, updatedField)
+		setEditingSectionId(null)
+		setTempSectionTitle('')
+	}
+
+	const handleCancelEditingSection = () => {
+		setEditingSectionId(null)
+		setTempSectionTitle('')
+	}
+
+	const handleKeyPress = (event: React.KeyboardEvent, section: Section) => {
+		if (event.key === 'Enter') {
+			event.preventDefault()
+			handleSaveSectionTitle(section)
+		} else if (event.key === 'Escape') {
+			event.preventDefault()
+			handleCancelEditingSection()
+		}
+	}
+
 	// Функция удаления раздела
 	const deleteSection = useCallback(
-		(sectionHeader: FormField) => {
-			if (!sectionHeader) return
+		(section: Section) => {
+			if (!section.header || section.headerIndex === undefined) return
 
-			// Находим индекс заголовка раздела
-			const headerIndex = fields.findIndex(f => {
-				if (f._id && sectionHeader._id) {
-					return f._id === sectionHeader._id
-				}
-				return f.name === sectionHeader.name && f.type === 'header'
+			// Удаляем заголовок раздела
+			onFieldDelete(section.headerIndex)
+
+			// Удаляем все поля раздела (в обратном порядке, чтобы не сбить индексы)
+			const fieldIndicesToDelete = section.fields
+				.map(field =>
+					fields.findIndex(f =>
+						f._id ? f._id === field._id : f.name === field.name
+					)
+				)
+				.filter(index => index >= 0)
+				.sort((a, b) => b - a) // Сортируем по убыванию
+
+			fieldIndicesToDelete.forEach((index, i) => {
+				setTimeout(() => onFieldDelete(index), i * 50)
 			})
-
-			if (headerIndex >= 0) {
-				// Удаляем заголовок раздела
-				onFieldDelete(headerIndex)
-
-				// Также удаляем все поля этого раздела
-				const sectionNumber = Math.floor((sectionHeader.order || 0) / 100)
-				const fieldsToDelete = fields
-					.map((field, index) => ({ field, index }))
-					.filter(({ field }) => {
-						if (field.type === 'header' || field.type === 'divider')
-							return false
-						const fieldSectionNumber = Math.floor((field.order || 0) / 100)
-						return fieldSectionNumber === sectionNumber
-					})
-					.sort((a, b) => b.index - a.index) // Удаляем с конца, чтобы индексы не сбивались
-
-				// Удаляем поля раздела с задержкой
-				fieldsToDelete.forEach(({ index }, i) => {
-					setTimeout(() => onFieldDelete(index), i * 50)
-				})
-			}
 		},
 		[fields, onFieldDelete]
 	)
 
 	// Функция добавления поля в конкретный раздел
 	const addFieldToSection = useCallback(
-		(sectionNumber: number) => {
-			const baseSectionOrder = sectionNumber * 100
-
-			// Находим поля в этом разделе (исключая заголовки и разделители)
-			const fieldsInSection = fields.filter(field => {
-				if (field.type === 'header' || field.type === 'divider') return false
-				const fieldOrder = field.order || 0
-				const fieldSectionNumber = Math.floor(fieldOrder / 100)
-				return fieldSectionNumber === sectionNumber
-			})
-
+		(section: Section) => {
 			let newOrder: number
-			if (fieldsInSection.length === 0) {
-				// Первое поле в разделе
-				newOrder = baseSectionOrder + 1
+
+			if (section.fields.length === 0) {
+				// Первое поле в разделе - ставим сразу после заголовка
+				newOrder = section.startOrder + 1
 			} else {
 				// Следующее поле после последнего в разделе
-				const maxOrder = Math.max(...fieldsInSection.map(f => f.order || 0))
-				newOrder = maxOrder + 1
-
-				// Убедимся что не выходим за границы раздела
-				if (newOrder >= baseSectionOrder + 100) {
-					newOrder = baseSectionOrder + 99
-				}
+				newOrder = section.endOrder + 1
 			}
 
 			const newField: Partial<FormField> = {
-				name: `field_${Math.floor(Math.random() * 1000)}`, // Более простое имя
+				name: `field_${Date.now()}`,
 				label: `Новое поле`,
 				type: 'text',
 				order: newOrder,
 				required: false,
 			}
 
-			// Добавляем поле
 			onFieldSave(-1, newField)
 
-			// Прокручиваем к новому полю через небольшую задержку
+			// Прокручиваем к новому полю
 			setTimeout(() => {
-				const fieldKey = `new-field-${newOrder}`
 				const fieldElement = document.querySelector(
-					`[data-field-key="${fieldKey}"]`
+					`[data-field-key="new-field-${newOrder}"]`
 				) as HTMLElement
 				if (fieldElement) {
-					fieldElement.scrollIntoView({
-						behavior: 'smooth',
-						block: 'center',
-					})
-
-					// Автоматически раскрываем редактор поля
-					const editorToggle = fieldElement.querySelector(
-						'[data-field-toggle]'
-					) as HTMLButtonElement
-					if (editorToggle) {
-						setTimeout(() => editorToggle.click(), 300)
-					}
+					fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
 				}
 			}, 200)
 		},
-		[fields, onFieldSave]
+		[onFieldSave]
 	)
 
 	if (loading) {
@@ -215,9 +253,9 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 				direction='row'
 				alignItems='center'
 				justifyContent='space-between'
-				sx={{ mb: 2 }}
+				sx={{ mb: 3 }}
 			>
-				<Typography variant='h6' component='h2' sx={{ fontWeight: 500 }}>
+				<Typography variant='h6' component='h2' sx={{ fontWeight: 600 }}>
 					Поля формы
 				</Typography>
 
@@ -226,15 +264,18 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 						variant='outlined'
 						startIcon={<SectionIcon />}
 						onClick={() => {
-							// Создаем новый раздел
 							const existingHeaders = fields.filter(
 								field => field.type === 'header'
 							)
 							const nextSectionNumber = existingHeaders.length + 1
-							const nextSectionOrder = nextSectionNumber * 100
+							const maxOrder = Math.max(...fields.map(f => f.order || 0), 0)
+							const nextSectionOrder = Math.max(
+								maxOrder + 100,
+								nextSectionNumber * 100
+							)
 
 							const newSection: Partial<FormField> = {
-								name: `section_${Math.floor(Math.random() * 1000)}`,
+								name: `section_${Date.now()}`,
 								label: `Раздел ${nextSectionNumber}`,
 								type: 'header',
 								order: nextSectionOrder,
@@ -244,7 +285,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 							onFieldSave(-1, newSection)
 						}}
 						size='small'
-						sx={{ fontSize: '0.875rem' }}
 					>
 						Добавить раздел
 					</Button>
@@ -254,7 +294,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 						startIcon={<AddIcon />}
 						onClick={onAddField}
 						size='small'
-						sx={{ fontSize: '0.875rem' }}
 					>
 						Добавить поле
 					</Button>
@@ -262,84 +301,134 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 			</Stack>
 
 			{fields.length === 0 ? (
-				<Box
-					sx={{
-						textAlign: 'center',
-						py: 4,
-						color: 'text.secondary',
-						border: '1px dashed',
-						borderColor: 'divider',
-						borderRadius: 1,
-					}}
-				>
+				<Alert severity='info' sx={{ textAlign: 'center' }}>
 					<Typography variant='subtitle2' gutterBottom>
 						Поля не добавлены
 					</Typography>
-					<Typography variant='body2' sx={{ fontSize: '0.875rem' }}>
+					<Typography variant='body2'>
 						Нажмите "Добавить поле" чтобы создать первое поле формы
 					</Typography>
-				</Box>
+				</Alert>
 			) : (
-				<Stack spacing={4}>
+				<Stack spacing={3}>
 					{groupedFields.map((section, sectionIndex) => (
-						<Box
+						<Paper
 							key={section.id}
+							elevation={2}
 							sx={{
-								border: '1px solid',
-								borderColor: 'divider',
 								borderRadius: 2,
 								overflow: 'hidden',
-								bgcolor: 'background.paper',
-								boxShadow: 1,
+								border: '1px solid',
+								borderColor: 'divider',
 							}}
 						>
 							{/* Заголовок раздела */}
 							{section.header ? (
-								<Paper
-									elevation={0}
+								<Box
 									sx={{
 										p: 2,
 										bgcolor: 'primary.main',
 										color: 'primary.contrastText',
-										borderRadius: 0,
-										position: 'relative',
 									}}
 								>
 									<Stack direction='row' alignItems='center' spacing={1}>
-										<DragIndicatorIcon
-											sx={{ color: 'inherit', opacity: 0.7 }}
-										/>
-										<SectionIcon sx={{ color: 'inherit' }} />
-										<Typography
-											variant='h6'
-											sx={{ fontWeight: 600, flexGrow: 1 }}
-										>
-											{section.header.label}
-										</Typography>
-										<Chip
-											label={`${section.fields.length} полей`}
-											size='small'
-											sx={{
-												bgcolor: 'rgba(255,255,255,0.2)',
-												color: 'inherit',
-												fontWeight: 500,
-											}}
-										/>
-										<Tooltip title='Удалить раздел'>
-											<IconButton
-												size='small'
-												onClick={() => deleteSection(section.header!)}
+										<DragIndicatorIcon sx={{ opacity: 0.7 }} />
+										<SectionIcon />
+
+										{editingSectionId === section.id ? (
+											<Box
 												sx={{
-													color: 'inherit',
-													bgcolor: 'rgba(255,255,255,0.1)',
-													'&:hover': {
-														bgcolor: 'rgba(255,255,255,0.2)',
-													},
+													display: 'flex',
+													alignItems: 'center',
+													gap: 1,
+													flex: 1,
 												}}
 											>
-												<DeleteIcon fontSize='small' />
-											</IconButton>
-										</Tooltip>
+												<TextField
+													value={tempSectionTitle}
+													onChange={e => setTempSectionTitle(e.target.value)}
+													onKeyDown={e => handleKeyPress(e, section)}
+													variant='outlined'
+													size='small'
+													autoFocus
+													sx={{
+														flex: 1,
+														'& .MuiOutlinedInput-root': {
+															bgcolor: 'rgba(255,255,255,0.9)',
+															fontSize: '1.1rem',
+															fontWeight: 600,
+														},
+													}}
+												/>
+												<Tooltip title='Сохранить'>
+													<IconButton
+														onClick={() => handleSaveSectionTitle(section)}
+														size='small'
+														sx={{ color: 'inherit' }}
+													>
+														<SaveIcon />
+													</IconButton>
+												</Tooltip>
+												<Tooltip title='Отменить'>
+													<IconButton
+														onClick={handleCancelEditingSection}
+														size='small'
+														sx={{ color: 'inherit' }}
+													>
+														<CancelIcon />
+													</IconButton>
+												</Tooltip>
+											</Box>
+										) : (
+											<>
+												<Typography
+													variant='h6'
+													sx={{ fontWeight: 600, flexGrow: 1 }}
+												>
+													{section.header.label}
+												</Typography>
+												<Chip
+													label={`${section.fields.length} полей`}
+													size='small'
+													sx={{
+														bgcolor: 'rgba(255,255,255,0.2)',
+														color: 'inherit',
+														fontWeight: 500,
+													}}
+												/>
+												<Tooltip title='Редактировать название'>
+													<IconButton
+														size='small'
+														onClick={() =>
+															handleStartEditingSection(
+																section.id,
+																section.header!.label
+															)
+														}
+														sx={{
+															color: 'inherit',
+															bgcolor: 'rgba(255,255,255,0.1)',
+															'&:hover': { bgcolor: 'rgba(255,255,255,0.2)' },
+														}}
+													>
+														<EditIcon fontSize='small' />
+													</IconButton>
+												</Tooltip>
+												<Tooltip title='Удалить раздел'>
+													<IconButton
+														size='small'
+														onClick={() => deleteSection(section)}
+														sx={{
+															color: 'inherit',
+															bgcolor: 'rgba(255,255,255,0.1)',
+															'&:hover': { bgcolor: 'rgba(255,255,255,0.2)' },
+														}}
+													>
+														<DeleteIcon fontSize='small' />
+													</IconButton>
+												</Tooltip>
+											</>
+										)}
 									</Stack>
 
 									{/* Кнопка добавления поля в раздел */}
@@ -348,20 +437,18 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 											variant='contained'
 											size='small'
 											startIcon={<AddIcon />}
-											onClick={() => addFieldToSection(section.sectionNumber)}
+											onClick={() => addFieldToSection(section)}
 											sx={{
 												bgcolor: 'rgba(255,255,255,0.15)',
 												color: 'inherit',
-												'&:hover': {
-													bgcolor: 'rgba(255,255,255,0.25)',
-												},
+												'&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
 												fontWeight: 500,
 											}}
 										>
 											Добавить поле в этот раздел
 										</Button>
 									</Box>
-								</Paper>
+								</Box>
 							) : (
 								// Заголовок для раздела по умолчанию
 								<Box
@@ -372,29 +459,39 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 										borderColor: 'divider',
 									}}
 								>
-									<Typography variant='h6' sx={{ fontWeight: 600 }}>
-										Поля без раздела
-									</Typography>
+									<Stack direction='row' alignItems='center' spacing={1}>
+										<SectionIcon sx={{ color: 'text.secondary' }} />
+										<Typography
+											variant='h6'
+											sx={{ fontWeight: 600, color: 'text.secondary' }}
+										>
+											Поля без раздела
+										</Typography>
+										<Chip
+											label={`${section.fields.length} полей`}
+											size='small'
+											variant='outlined'
+										/>
+									</Stack>
 								</Box>
 							)}
 
 							{/* Содержимое раздела */}
 							<Box sx={{ p: 2 }}>
-								{/* Поля раздела */}
 								{section.fields.length === 0 ? (
 									<Box
 										sx={{
 											textAlign: 'center',
-											py: 3,
+											py: 4,
 											px: 2,
 											color: 'text.secondary',
-											border: '1px dashed',
+											border: '2px dashed',
 											borderColor: 'divider',
-											borderRadius: 1,
+											borderRadius: 2,
 											bgcolor: 'grey.50',
 										}}
 									>
-										<Typography variant='body2'>
+										<Typography variant='body2' gutterBottom>
 											{section.header
 												? 'В этом разделе пока нет полей'
 												: 'Поля не добавлены'}
@@ -405,7 +502,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 											startIcon={<AddIcon />}
 											onClick={() =>
 												section.header
-													? addFieldToSection(section.sectionNumber)
+													? addFieldToSection(section)
 													: onAddField()
 											}
 											sx={{ mt: 1 }}
@@ -416,15 +513,11 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 										</Button>
 									</Box>
 								) : (
-									<Stack spacing={1}>
-										{section.fields.map((field, fieldIndex) => {
-											const originalIndex = fields.findIndex(f => {
-												if (f._id && field._id) {
-													return f._id === field._id
-												}
-												return f.name === field.name && f.order === field.order
-											})
-
+									<Stack spacing={2}>
+										{section.fields.map(field => {
+											const originalIndex = fields.findIndex(f =>
+												f._id ? f._id === field._id : f.name === field.name
+											)
 											const fieldKey =
 												field._id || `field-${field.name}-${field.order}`
 
@@ -487,20 +580,9 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 														<FormFieldEditor
 															field={field}
 															onSave={updatedField =>
-																onFieldSave(
-																	originalIndex >= 0
-																		? originalIndex
-																		: fieldIndex,
-																	updatedField
-																)
+																onFieldSave(originalIndex, updatedField)
 															}
-															onDelete={() =>
-																onFieldDelete(
-																	originalIndex >= 0
-																		? originalIndex
-																		: fieldIndex
-																)
-															}
+															onDelete={() => onFieldDelete(originalIndex)}
 															availableBitrixFields={bitrixFields}
 															isDraggable={true}
 															allFields={fields}
@@ -512,7 +594,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 									</Stack>
 								)}
 							</Box>
-						</Box>
+						</Paper>
 					))}
 				</Stack>
 			)}

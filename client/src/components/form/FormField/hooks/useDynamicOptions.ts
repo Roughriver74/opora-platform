@@ -7,10 +7,7 @@ export const useDynamicOptions = (
 	dynamicSource?: { enabled: boolean; source: string },
 	preloadedOptions?: FormFieldOption[]
 ) => {
-	console.log(
-		'🔧 [useDynamicOptions] Инициализация с предзагруженными опциями:',
-		preloadedOptions
-	)
+	
 	const [options, setOptions] = useState<FormFieldOption[]>(
 		preloadedOptions || []
 	)

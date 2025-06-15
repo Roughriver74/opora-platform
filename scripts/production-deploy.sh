@@ -1,4 +1,4 @@
-.#!/bin/bash
+#!/bin/bash
 
 # Скрипт для деплоя приложения beton-crm на продакшн сервер
 # Включает установку MongoDB, Node.js, PM2 и всех зависимостей
@@ -56,20 +56,46 @@ echo -e "${GREEN}✓ Проект успешно собран${NC}"
 # 3. Создание архива для деплоя
 echo -e "${YELLOW}3. Создание архива для деплоя...${NC}"
 ARCHIVE_NAME="production-deploy-$(date +%s).tar.gz"
+
+# Проверяем наличие необходимых файлов и папок
+if [ ! -d "server/dist" ]; then
+    echo -e "${RED}Ошибка: server/dist не найден. Запустите сборку сервера!${NC}"
+    exit 1
+fi
+
+if [ ! -d "client/build" ]; then
+    echo -e "${RED}Ошибка: client/build не найден. Запустите сборку клиента!${NC}"
+    exit 1
+fi
+
+# Создаем архив с проверкой каждого файла
 tar -czf "$ARCHIVE_NAME" \
     --exclude="node_modules" \
     --exclude=".git" \
     --exclude="client/node_modules" \
     --exclude="server/node_modules" \
-    server/dist \
+    --exclude="*.log" \
+    --exclude=".env" \
+    server/dist/ \
     server/package.json \
     server/package-lock.json \
-    client/build \
+    client/build/ \
     package.json \
     ecosystem.config.js \
-    scripts/migrate-production-db.js
+    scripts/migrate-production-db.js \
+    scripts/setup-production-data.js \
+    .env.production
 
-echo -e "${GREEN}✓ Архив $ARCHIVE_NAME успешно создан${NC}"
+# Проверяем размер архива
+ARCHIVE_SIZE=$(ls -la "$ARCHIVE_NAME" | awk '{print $5}')
+if [ "$ARCHIVE_SIZE" -lt 1000 ]; then
+    echo -e "${RED}Ошибка: Архив слишком мал ($ARCHIVE_SIZE байт). Возможно, не все файлы были добавлены.${NC}"
+    echo "Содержимое архива:"
+    tar -tzf "$ARCHIVE_NAME" | head -10
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Архив $ARCHIVE_NAME успешно создан (размер: $ARCHIVE_SIZE байт)${NC}"
 
 # 4. Проверка соединения с сервером
 echo -e "${YELLOW}4. Проверка соединения с сервером...${NC}"
@@ -240,6 +266,12 @@ if mongosh --eval "db.adminCommand('listDatabases')" | grep -q "beton-crm\""; th
     # Запуск скрипта миграции
     echo "y" | node scripts/migrate-production-db.js || echo "⚠️  Не удалось выполнить автоматическую миграцию"
 fi
+
+# Настройка полей формы для продакшн среды
+echo -e "${YELLOW}Настройка полей формы для продакшн среды...${NC}"
+export NODE_ENV=production
+export MONGODB_URI="mongodb://localhost:27017/beton-crm-production"
+node scripts/setup-production-data.js || echo "⚠️  Не удалось выполнить настройку полей формы"
 
 # Создание администратора по умолчанию
 echo "Создание администратора по умолчанию..."

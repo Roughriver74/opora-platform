@@ -9,8 +9,12 @@ import {
 	Button,
 	Alert,
 	Snackbar,
+	TextField,
+	IconButton,
+	Tooltip,
 } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import { Edit, Save, Cancel } from '@mui/icons-material'
 import { BetoneFormProps } from './types'
 import { useBetoneForm } from './hooks/useBetoneForm'
 import { getSortedFields } from './utils/sectionHelpers'
@@ -39,6 +43,10 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 		open: false,
 		message: '',
 	})
+
+	// Состояние для редактирования заголовков в аккордеонах
+	const [editingSection, setEditingSection] = useState<number | null>(null)
+	const [tempTitle, setTempTitle] = useState('')
 
 	const {
 		formik,
@@ -86,6 +94,55 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 				message: 'Ошибка при обновлении названия раздела',
 				severity: 'error',
 			})
+		}
+	}
+
+	// Обработчики для редактирования в аккордеонах
+	const handleStartEditingAccordion = (
+		index: number,
+		currentTitle: string,
+		event: React.MouseEvent
+	) => {
+		event.stopPropagation() // Предотвращаем сворачивание/разворачивание аккордеона
+		setEditingSection(index)
+		setTempTitle(currentTitle)
+	}
+
+	const handleSaveAccordionTitle = async (
+		section: any,
+		index: number,
+		event?: React.MouseEvent
+	) => {
+		if (event) {
+			event.stopPropagation()
+		}
+
+		if (section.id && tempTitle.trim() && tempTitle !== section.title) {
+			await handleSectionTitleChange(section.id, tempTitle.trim())
+		}
+		setEditingSection(null)
+		setTempTitle('')
+	}
+
+	const handleCancelEditingAccordion = (event?: React.MouseEvent) => {
+		if (event) {
+			event.stopPropagation()
+		}
+		setEditingSection(null)
+		setTempTitle('')
+	}
+
+	const handleKeyPressAccordion = (
+		event: React.KeyboardEvent,
+		section: any,
+		index: number
+	) => {
+		if (event.key === 'Enter') {
+			event.preventDefault()
+			handleSaveAccordionTitle(section, index)
+		} else if (event.key === 'Escape') {
+			event.preventDefault()
+			handleCancelEditingAccordion()
 		}
 	}
 
@@ -154,7 +211,9 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 									<Accordion
 										key={index}
 										expanded={isSectionExpanded(index)}
-										onChange={() => toggleSectionExpanded(index)}
+										onChange={() =>
+											editingSection !== index && toggleSectionExpanded(index)
+										}
 										sx={{ mb: 1 }}
 									>
 										<AccordionSummary
@@ -165,16 +224,100 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 												},
 											}}
 										>
-											<Typography variant='h6' component='h3'>
-												{section.title}
-											</Typography>
-											<Typography
-												variant='body2'
-												sx={{ ml: 2, color: 'text.secondary' }}
-											>
-												({section.fields.length}{' '}
-												{section.fields.length === 1 ? 'поле' : 'полей'})
-											</Typography>
+											{editingSection === index && isAdminMode ? (
+												<Box
+													sx={{
+														display: 'flex',
+														alignItems: 'center',
+														gap: 1,
+														flex: 1,
+														mr: 2,
+													}}
+													onClick={e => e.stopPropagation()}
+												>
+													<TextField
+														value={tempTitle}
+														onChange={e => setTempTitle(e.target.value)}
+														onKeyDown={e =>
+															handleKeyPressAccordion(e, section, index)
+														}
+														variant='outlined'
+														size='small'
+														autoFocus
+														sx={{
+															flex: 1,
+															'& .MuiOutlinedInput-root': {
+																fontSize: '1.25rem',
+																fontWeight: 600,
+															},
+														}}
+													/>
+													<Tooltip title='Сохранить'>
+														<IconButton
+															onClick={e =>
+																handleSaveAccordionTitle(section, index, e)
+															}
+															color='primary'
+															size='small'
+														>
+															<Save />
+														</IconButton>
+													</Tooltip>
+													<Tooltip title='Отменить'>
+														<IconButton
+															onClick={handleCancelEditingAccordion}
+															color='secondary'
+															size='small'
+														>
+															<Cancel />
+														</IconButton>
+													</Tooltip>
+												</Box>
+											) : (
+												<Box
+													sx={{
+														display: 'flex',
+														alignItems: 'center',
+														flex: 1,
+													}}
+												>
+													<Typography
+														variant='h6'
+														component='h3'
+														sx={{ flex: 1 }}
+													>
+														{section.title}
+													</Typography>
+													<Typography
+														variant='body2'
+														sx={{ ml: 2, color: 'text.secondary' }}
+													>
+														({section.fields.length}{' '}
+														{section.fields.length === 1 ? 'поле' : 'полей'})
+													</Typography>
+													{isAdminMode && section.id && (
+														<Tooltip title='Редактировать название раздела'>
+															<IconButton
+																onClick={e =>
+																	handleStartEditingAccordion(
+																		index,
+																		section.title,
+																		e
+																	)
+																}
+																size='small'
+																sx={{
+																	ml: 1,
+																	opacity: 0.7,
+																	'&:hover': { opacity: 1 },
+																}}
+															>
+																<Edit fontSize='small' />
+															</IconButton>
+														</Tooltip>
+													)}
+												</Box>
+											)}
 										</AccordionSummary>
 										<AccordionDetails>
 											{/* Кнопка копирования для текущей секции */}
