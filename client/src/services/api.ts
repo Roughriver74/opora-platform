@@ -20,9 +20,17 @@ const api = axios.create({
 // Интерцептор для добавления токена авторизации к запросам
 api.interceptors.request.use(
 	config => {
-		const token = localStorage.getItem('adminToken')
-		if (token) {
-			config.headers['Authorization'] = `Bearer ${token}`
+		// Получаем токены из правильного места в localStorage
+		try {
+			const tokens = localStorage.getItem('auth_tokens')
+			if (tokens) {
+				const parsedTokens = JSON.parse(tokens)
+				if (parsedTokens.accessToken) {
+					config.headers['Authorization'] = `Bearer ${parsedTokens.accessToken}`
+				}
+			}
+		} catch (error) {
+			console.error('Ошибка при получении токена:', error)
 		}
 		return config
 	},
@@ -35,10 +43,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
 	response => response,
 	error => {
-		// Если сервер вернул 401 Unauthorized, очищаем токен
+		// Если сервер вернул 401 Unauthorized, очищаем токены
 		if (error.response && error.response.status === 401) {
-			console.log('Unauthorized, clearing token')
-			localStorage.removeItem('adminToken')
+			console.log('Unauthorized, clearing tokens')
+			localStorage.removeItem('auth_tokens')
+			// Перезагружаем страницу для принудительного выхода
+			window.location.reload()
 		}
 		return Promise.reject(error)
 	}

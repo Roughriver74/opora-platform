@@ -11,6 +11,7 @@ import {
 	LoginCredentials,
 	AuthTokens,
 } from './types'
+import api from '../../services/api'
 
 // Начальное состояние
 const initialState: AuthState = {
@@ -128,19 +129,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		}
 
 		try {
-			const response = await fetch('/api/auth/verify', {
+			const response = await api.get('/auth/check', {
 				headers: {
 					Authorization: `Bearer ${tokens.accessToken}`,
 				},
 			})
 
-			if (response.ok) {
-				const data = await response.json()
+			if (response.status === 200 && response.data.success) {
+				const data = response.data
 				dispatch({
 					type: 'AUTH_SUCCESS',
 					payload: {
-						user: {
-							role: 'admin', // Пока что только админы
+						user: data.user || {
+							role: 'admin', // Fallback для старых токенов
 						},
 					},
 				})
@@ -160,17 +161,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		dispatch({ type: 'AUTH_START' })
 
 		try {
-			const response = await fetch('/api/auth/admin-login', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ password: credentials.password }),
+			// Сначала пробуем авторизацию как обычный пользователь
+			if (credentials.email) {
+				try {
+					const response = await api.post('/auth/user-login', {
+						email: credentials.email,
+						password: credentials.password,
+					})
+
+					const data = response.data
+
+					if (response.status === 200 && data.success) {
+						const tokens: AuthTokens = {
+							accessToken: data.accessToken,
+							refreshToken: data.refreshToken,
+							expiresIn: data.expiresIn,
+						}
+
+						setTokens(tokens)
+						dispatch({
+							type: 'AUTH_SUCCESS',
+							payload: {
+								user: {
+									...data.user,
+									role: data.user.role,
+								},
+							},
+						})
+						return true
+					}
+				} catch (userError) {
+					// Если не удалось войти как пользователь, пробуем как админ
+					console.log('User login failed, trying admin login')
+				}
+			}
+
+			// Пробуем авторизацию как админ (старая логика)
+			const response = await api.post('/auth/admin-login', {
+				password: credentials.password,
 			})
 
-			const data = await response.json()
+			const data = response.data
 
-			if (response.ok && data.success) {
+			if (response.status === 200 && data.success) {
 				const tokens: AuthTokens = {
 					accessToken: data.token,
 					refreshToken: data.token, // Используем тот же токен
@@ -192,7 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			} else {
 				dispatch({
 					type: 'AUTH_FAILURE',
-					payload: { error: data.message || 'Ошибка авторизации' },
+					payload: { error: data.message || 'Неверный логин или пароль' },
 				})
 				return false
 			}

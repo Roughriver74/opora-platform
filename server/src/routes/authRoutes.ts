@@ -1,16 +1,19 @@
-import { Router } from 'express';
-import * as authController from '../controllers/authController';
-import { authMiddleware, requireAdmin } from '../middleware/authMiddleware';
+import { Router } from 'express'
+import * as authController from '../controllers/authController'
+import { authMiddleware, requireAdmin } from '../middleware/authMiddleware'
 
-const router = Router();
+const router = Router()
 
 // Авторизация админа
-router.post('/admin-login', authController.adminLogin);
+router.post('/admin-login', authController.adminLogin)
+
+// Авторизация пользователя
+router.post('/user-login', authController.userLogin)
 
 // Проверка текущего состояния авторизации
-router.get('/check', authMiddleware, authController.verifyToken);
+router.get('/check', authMiddleware, authController.verifyToken)
 
 // Выход
-router.post('/logout', authMiddleware, requireAdmin, authController.logout);
+router.post('/logout', authMiddleware, requireAdmin, authController.logout)
 
-export default router;
+export default router

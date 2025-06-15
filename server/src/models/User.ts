@@ -6,6 +6,9 @@ export interface IUser extends Document {
 	password: string
 	firstName?: string
 	lastName?: string
+	phone?: string
+	bitrix_id?: string
+	status?: 'active' | 'inactive'
 	role: 'user' | 'admin'
 	isActive: boolean
 	createdAt: Date
@@ -35,6 +38,19 @@ const UserSchema: Schema = new Schema(
 			type: String,
 			trim: true,
 		},
+		phone: {
+			type: String,
+			trim: true,
+		},
+		bitrix_id: {
+			type: String,
+			trim: true,
+		},
+		status: {
+			type: String,
+			enum: ['active', 'inactive'],
+			default: 'active',
+		},
 		role: {
 			type: String,
 			enum: ['user', 'admin'],
@@ -60,7 +76,7 @@ UserSchema.pre('save', async function (next) {
 
 	try {
 		const salt = await bcrypt.genSalt(10)
-		this.password = await bcrypt.hash(this.password, salt)
+		this.password = await bcrypt.hash(this.password.toString(), salt)
 		next()
 	} catch (error: any) {
 		next(error)

@@ -1,34 +1,151 @@
 #!/bin/bash
 
-echo "🚀 Запуск Beton CRM..."
+echo "🚀 Запуск Beton CRM системы..."
 
-# Функция для остановки процессов при выходе
-cleanup() {
-    echo "🛑 Остановка процессов..."
-    kill $SERVER_PID $CLIENT_PID 2>/dev/null
-    exit
+# Цвета для вывода
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Функция для вывода цветного текста
+print_status() {
+    echo -e "${BLUE}[СИСТЕМА]${NC} $1"
 }
 
-# Устанавливаем обработчик сигналов
+print_success() {
+    echo -e "${GREEN}[УСПЕХ]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[ПРЕДУПРЕЖДЕНИЕ]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ОШИБКА]${NC} $1"
+}
+
+# Проверка наличия Node.js
+if ! command -v node &> /dev/null; then
+    print_error "Node.js не установлен. Установите Node.js версии 16 или выше."
+    exit 1
+fi
+
+# Проверка версии Node.js
+NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+if [ "$NODE_VERSION" -lt 16 ]; then
+    print_error "Требуется Node.js версии 16 или выше. Текущая версия: $(node -v)"
+    exit 1
+fi
+
+print_success "Node.js версии $(node -v) найден"
+
+# Проверка наличия npm
+if ! command -v npm &> /dev/null; then
+    print_error "npm не установлен"
+    exit 1
+fi
+
+print_success "npm версии $(npm -v) найден"
+
+# Проверка .env файлов
+print_status "Проверка конфигурации..."
+
+if [ ! -f "server/.env" ]; then
+    print_error "Не найден файл server/.env"
+    print_warning "Создайте файл server/.env на основе server/.env.example"
+    exit 1
+fi
+
+if [ ! -f "client/.env" ]; then
+    print_warning "Не найден файл client/.env. Используются настройки по умолчанию."
+fi
+
+print_success "Конфигурация проверена"
+
+# Установка зависимостей сервера
+print_status "Проверка зависимостей сервера..."
+cd server
+if [ ! -d "node_modules" ]; then
+    print_status "Установка зависимостей сервера..."
+    npm install
+    if [ $? -ne 0 ]; then
+        print_error "Ошибка установки зависимостей сервера"
+        exit 1
+    fi
+    print_success "Зависимости сервера установлены"
+else
+    print_success "Зависимости сервера уже установлены"
+fi
+
+# Компиляция сервера
+print_status "Компиляция сервера..."
+npm run build
+if [ $? -ne 0 ]; then
+    print_error "Ошибка компиляции сервера"
+    exit 1
+fi
+print_success "Сервер скомпилирован"
+
+cd ..
+
+# Установка зависимостей клиента
+print_status "Проверка зависимостей клиента..."
+cd client
+if [ ! -d "node_modules" ]; then
+    print_status "Установка зависимостей клиента..."
+    npm install
+    if [ $? -ne 0 ]; then
+        print_error "Ошибка установки зависимостей клиента"
+        exit 1
+    fi
+    print_success "Зависимости клиента установлены"
+else
+    print_success "Зависимости клиента уже установлены"
+fi
+
+cd ..
+
+# Функция для завершения процессов
+cleanup() {
+    print_status "Завершение процессов..."
+    kill $SERVER_PID 2>/dev/null
+    kill $CLIENT_PID 2>/dev/null
+    exit 0
+}
+
+# Обработка сигнала завершения
 trap cleanup SIGINT SIGTERM
 
-# Запускаем сервер
-echo "📡 Запуск сервера на порту 5001..."
-cd server && npm run dev &
-SERVER_PID=$!
+print_success "Система готова к запуску!"
+print_status "=================================="
+print_status "🖥️  Сервер: http://localhost:5001"
+print_status "🌐 Клиент: http://localhost:3000"
+print_status "📋 Админка: http://localhost:3000/admin"
+print_status "=================================="
+print_warning "Для остановки нажмите Ctrl+C"
+print_status ""
 
-# Ждем немного для запуска сервера
+# Запуск сервера в фоне
+print_status "Запуск сервера..."
+cd server
+npm run dev &
+SERVER_PID=$!
+cd ..
+
+# Ждем 3 секунды для запуска сервера
 sleep 3
 
-# Запускаем клиент
-echo "🌐 Запуск клиента на порту 3000..."
-cd client && npm start &
+# Запуск клиента в фоне
+print_status "Запуск клиента..."
+cd client
+npm start &
 CLIENT_PID=$!
+cd ..
 
-echo "✅ Приложение запущено!"
-echo "🌐 Клиент: http://localhost:3000"
-echo "📡 Сервер: http://localhost:5001"
-echo "Нажмите Ctrl+C для остановки"
+print_success "Система запущена!"
+print_status "Логи процессов:"
 
-# Ждем завершения процессов
+# Ожидание завершения процессов
 wait 
