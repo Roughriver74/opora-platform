@@ -512,6 +512,44 @@ export const getSubmissionWithBitrixData = async (
 								}
 							}
 
+							// Для полей автокомплита с компаниями - загружаем название компании
+							if (
+								field.type === 'autocomplete' &&
+								field.dynamicSource?.enabled &&
+								field.dynamicSource.source === 'companies' &&
+								bitrixValue &&
+								bitrixValue !== '0' // Пропускаем пустые компании
+							) {
+								try {
+									console.log(
+										`[EDIT NEW] 🔍 Загрузка названия компании для ID: ${bitrixValue}`
+									)
+									const companyResponse = await bitrix24Service.getCompany(
+										bitrixValue
+									)
+									if (companyResponse?.result) {
+										const companyName = companyResponse.result.TITLE
+										console.log(
+											`[EDIT NEW] 🏢 Компания ${bitrixValue}: "${companyName}"`
+										)
+
+										// Добавляем в предзагруженные опции
+										preloadedOptions[field.name] = [
+											{
+												value: bitrixValue,
+												label: companyName,
+											},
+										]
+									}
+								} catch (companyError) {
+									console.error(
+										`[EDIT NEW] ❌ Ошибка загрузки компании ${bitrixValue}:`,
+										companyError
+									)
+									// Оставляем ID если не удалось загрузить название
+								}
+							}
+
 							formDataFromBitrix[field.name] = bitrixValue
 
 							console.log(

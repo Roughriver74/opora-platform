@@ -182,7 +182,11 @@ const AdminPage: React.FC = () => {
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={1}>
-				<FormEditor form={currentForm} onSave={handleSaveForm} />
+				<FormEditor
+					form={currentForm}
+					onSave={handleSaveForm}
+					onBack={() => setTabValue(0)}
+				/>
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={2}>
