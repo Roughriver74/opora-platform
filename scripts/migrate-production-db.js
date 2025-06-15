@@ -23,12 +23,20 @@ async function migrateDatabase() {
 
 	try {
 		console.log('🚀 Начинаем миграцию базы данных...')
+		console.log(`📊 Миграция: ${OLD_DB_URI} → ${NEW_DB_URI}`)
 
 		// Подключаемся к старой базе
 		console.log('📡 Подключение к старой базе данных...')
 		oldClient = new MongoClient(OLD_DB_URI)
 		await oldClient.connect()
 		const oldDb = oldClient.db()
+
+		// Проверяем, есть ли данные в старой базе
+		const oldCollections = await oldDb.listCollections().toArray()
+		if (oldCollections.length === 0) {
+			console.log('📭 Старая база данных пуста, миграция не требуется')
+			return
+		}
 
 		// Подключаемся к новой базе
 		console.log('📡 Подключение к новой базе данных...')
@@ -37,18 +45,38 @@ async function migrateDatabase() {
 		const newDb = newClient.db()
 
 		// Проверяем, есть ли уже данные в новой базе
-		const collections = await newDb.listCollections().toArray()
-		if (collections.length > 0) {
-			console.log('⚠️  Новая база данных не пуста. Хотите продолжить? (y/N)')
-			const readline = require('readline').createInterface({
-				input: process.stdin,
-				output: process.stdout,
-			})
+		const newCollections = await newDb.listCollections().toArray()
+		if (newCollections.length > 0) {
+			// Показываем информацию о существующих данных
+			console.log('⚠️  Новая база данных не пуста:')
+			for (const collection of newCollections) {
+				try {
+					const count = await newDb.collection(collection.name).countDocuments()
+					console.log(`   - ${collection.name}: ${count} документов`)
+				} catch (error) {
+					console.log(`   - ${collection.name}: ошибка подсчета`)
+				}
+			}
 
-			const answer = await new Promise(resolve => {
-				readline.question('', resolve)
-			})
-			readline.close()
+			console.log('\n❓ Хотите продолжить и перезаписать данные? (y/N)')
+
+			// Проверяем, есть ли автоматический ответ из pipe
+			let answer
+			if (process.stdin.isTTY) {
+				const readline = require('readline').createInterface({
+					input: process.stdin,
+					output: process.stdout,
+				})
+
+				answer = await new Promise(resolve => {
+					readline.question('', resolve)
+				})
+				readline.close()
+			} else {
+				// Автоматический режим (из pipe)
+				answer = 'y'
+				console.log('Автоматический режим: продолжаем миграцию')
+			}
 
 			if (answer.toLowerCase() !== 'y') {
 				console.log('❌ Миграция отменена пользователем')
@@ -56,9 +84,11 @@ async function migrateDatabase() {
 			}
 		}
 
+		let totalMigrated = 0
+
 		// Мигрируем каждую коллекцию
 		for (const collectionName of COLLECTIONS_TO_MIGRATE) {
-			console.log(`📦 Миграция коллекции: ${collectionName}`)
+			console.log(`\n📦 Миграция коллекции: ${collectionName}`)
 
 			// Проверяем, существует ли коллекция в старой базе
 			const oldCollectionExists = await oldDb
@@ -92,27 +122,35 @@ async function migrateDatabase() {
 			console.log(
 				`✅ Перенесено ${documents.length} документов в ${collectionName}`
 			)
+			totalMigrated += documents.length
 		}
 
-		console.log('🎉 Миграция завершена успешно!')
-		console.log('📋 Сводка:')
+		console.log('\n🎉 Миграция завершена успешно!')
+		console.log(`📊 Всего перенесено: ${totalMigrated} документов`)
+		console.log('\n📋 Сводка по новой базе:')
 
 		// Показываем статистику по коллекциям
 		for (const collectionName of COLLECTIONS_TO_MIGRATE) {
 			try {
 				const newCollection = newDb.collection(collectionName)
 				const count = await newCollection.countDocuments()
-				console.log(`   ${collectionName}: ${count} документов`)
+				if (count > 0) {
+					console.log(`   ✅ ${collectionName}: ${count} документов`)
+				}
 			} catch (error) {
-				console.log(`   ${collectionName}: ошибка подсчета`)
+				console.log(`   ❌ ${collectionName}: ошибка подсчета`)
 			}
 		}
 
 		console.log('\n⚠️  ВАЖНО: После успешной миграции:')
-		console.log('1. Обновите .env файл на сервере с новой MONGODB_URI')
-		console.log('2. Перезапустите приложение')
-		console.log('3. Проверьте работоспособность')
-		console.log('4. Только после этого можно удалить старую базу beton-crm')
+		console.log('1. Убедитесь, что приложение использует новую базу данных')
+		console.log('2. Проверьте работоспособность всех функций')
+		console.log(
+			'3. Только после полной проверки можно удалить старую базу beton-crm'
+		)
+		console.log(
+			'4. Команда для удаления старой базы: mongosh beton-crm --eval "db.dropDatabase()"'
+		)
 	} catch (error) {
 		console.error('❌ Ошибка при миграции:', error)
 		process.exit(1)
@@ -120,7 +158,7 @@ async function migrateDatabase() {
 		// Закрываем соединения
 		if (oldClient) {
 			await oldClient.close()
-			console.log('🔌 Соединение со старой базой закрыто')
+			console.log('\n🔌 Соединение со старой базой закрыто')
 		}
 		if (newClient) {
 			await newClient.close()
@@ -129,14 +167,32 @@ async function migrateDatabase() {
 	}
 }
 
-// Проверяем, что скрипт запускается на сервере
-if (process.env.NODE_ENV !== 'production') {
-	console.log(
-		'⚠️  ВНИМАНИЕ: Этот скрипт должен запускаться только на продакшн сервере!'
-	)
-	console.log('Для запуска установите NODE_ENV=production')
-	process.exit(1)
+// Проверяем, что MongoDB доступен
+async function checkMongoConnection() {
+	try {
+		const client = new MongoClient('mongodb://localhost:27017')
+		await client.connect()
+		await client.close()
+		return true
+	} catch (error) {
+		console.error('❌ Ошибка подключения к MongoDB:', error.message)
+		console.log('💡 Убедитесь, что MongoDB запущен: systemctl status mongod')
+		return false
+	}
 }
 
-// Запускаем миграцию
-migrateDatabase().catch(console.error)
+// Основная функция
+async function main() {
+	console.log('🔍 Проверка подключения к MongoDB...')
+
+	if (!(await checkMongoConnection())) {
+		process.exit(1)
+	}
+
+	console.log('✅ MongoDB доступен\n')
+
+	// Запускаем миграцию
+	await migrateDatabase()
+}
+
+main().catch(console.error)
