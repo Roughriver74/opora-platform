@@ -38,9 +38,40 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const submissionController = __importStar(require("../controllers/submissionController"));
+const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = express_1.default.Router();
-// Маршрут для отправки формы
+// Применяем middleware авторизации для всех роутов
+router.use(authMiddleware_1.authMiddleware);
+// Маршрут для отправки формы (доступен всем авторизованным)
 router.post('/submit', (req, res) => {
     submissionController.submitForm(req, res);
+});
+// Получение всех заявок (только для админов)
+router.get('/', authMiddleware_1.requireAdmin, (req, res) => {
+    submissionController.getAllSubmissions(req, res);
+});
+// Получение заявок текущего пользователя
+router.get('/my', authMiddleware_1.requireAuth, (req, res) => {
+    submissionController.getMySubmissions(req, res);
+});
+// Получение заявки по ID
+router.get('/:id', authMiddleware_1.requireAuth, (req, res) => {
+    submissionController.getSubmissionById(req, res);
+});
+// Обновление статуса заявки
+router.patch('/:id/status', authMiddleware_1.requireAuth, (req, res) => {
+    submissionController.updateSubmissionStatus(req, res);
+});
+// Обновление заявки
+router.put('/:id', authMiddleware_1.requireAuth, (req, res) => {
+    submissionController.updateSubmission(req, res);
+});
+// Удаление заявки (только админы)
+router.delete('/:id', authMiddleware_1.requireAdmin, (req, res) => {
+    submissionController.deleteSubmission(req, res);
+});
+// Получение статусов из Битрикс24
+router.get('/bitrix/stages/:categoryId', authMiddleware_1.requireAuth, (req, res) => {
+    submissionController.getBitrixStages(req, res);
 });
 exports.default = router;

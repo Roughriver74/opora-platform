@@ -601,6 +601,71 @@ class Bitrix24Service {
 			throw error
 		}
 	}
+
+	/**
+	 * Обновление статуса сделки в Битрикс24
+	 */
+	async updateDealStatus(
+		dealId: string,
+		newStatus: string,
+		categoryId?: string
+	) {
+		try {
+			console.log(`Обновление статуса сделки ${dealId} на ${newStatus}`)
+
+			// Формируем корректный STAGE_ID с учетом категории
+			let stageId = newStatus
+			if (categoryId && categoryId !== '0') {
+				// Если у нас есть категория и статус не содержит префикс категории
+				if (!newStatus.startsWith(`C${categoryId}:`)) {
+					stageId = `C${categoryId}:${newStatus}`
+				}
+			}
+
+			const updateData = {
+				STAGE_ID: stageId,
+			}
+
+			console.log('Данные для обновления сделки:', updateData)
+
+			const response = await axios.post(`${this.webhookUrl}crm.deal.update`, {
+				id: dealId,
+				fields: updateData,
+			})
+
+			console.log('Ответ от Bitrix24 (обновление сделки):', response.data)
+			return response.data
+		} catch (error) {
+			console.error('Ошибка при обновлении статуса сделки в Битрикс24:', error)
+			if (error.response) {
+				console.error('Ответ сервера:', error.response.data)
+			}
+			throw error
+		}
+	}
+
+	/**
+	 * Обновление сделки в Битрикс24
+	 */
+	async updateDeal(dealId: string, dealData: any) {
+		try {
+			console.log(`Обновление сделки ${dealId}`, dealData)
+
+			const response = await axios.post(`${this.webhookUrl}crm.deal.update`, {
+				id: dealId,
+				fields: dealData,
+			})
+
+			console.log('Ответ от Bitrix24 (обновление сделки):', response.data)
+			return response.data
+		} catch (error) {
+			console.error('Ошибка при обновлении сделки в Битрикс24:', error)
+			if (error.response) {
+				console.error('Ответ сервера:', error.response.data)
+			}
+			throw error
+		}
+	}
 }
 
 export default new Bitrix24Service()

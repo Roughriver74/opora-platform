@@ -62,13 +62,13 @@ const Navbar: React.FC = () => {
 						>
 							<img
 								src='/logo.png'
-								alt='Бетон-Экспресс'
+								alt='БетонЭкспресс'
 								style={{ height: '40px', marginRight: '10px' }}
 								onError={e => {
 									e.currentTarget.style.display = 'none'
 								}}
 							/>
-							БЕТОН-ЭКСПРЕСС
+							БЕТОНЭКСПРЕСС
 						</Typography>
 					</Toolbar>
 				</Container>
@@ -98,13 +98,13 @@ const Navbar: React.FC = () => {
 					>
 						<img
 							src='/logo.png'
-							alt='Бетон-Экспресс'
+							alt='БетонЭкспресс'
 							style={{ height: '40px', marginRight: '10px' }}
 							onError={e => {
 								e.currentTarget.style.display = 'none'
 							}}
 						/>
-						БЕТОН-ЭКСПРЕСС
+						БЕТОНЭКСПРЕСС
 					</Typography>
 
 					<Box sx={{ flexGrow: 1 }} />
@@ -117,7 +117,7 @@ const Navbar: React.FC = () => {
 							startIcon={<HomeIcon />}
 							sx={{ my: 2, display: 'flex' }}
 						>
-							Главная
+				
 						</Button>
 
 						<Button
@@ -127,7 +127,7 @@ const Navbar: React.FC = () => {
 							startIcon={<AssignmentIcon />}
 							sx={{ my: 2, display: 'flex' }}
 						>
-							Мои заявки
+							
 						</Button>
 
 						{user?.role === 'admin' && (
@@ -138,7 +138,7 @@ const Navbar: React.FC = () => {
 								startIcon={<AdminPanelSettingsIcon />}
 								sx={{ my: 2, display: 'flex' }}
 							>
-								Администрирование
+								
 							</Button>
 						)}
 

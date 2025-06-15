@@ -46,11 +46,7 @@ const HomePage: React.FC = () => {
 
 	return (
 		<Container maxWidth='md' sx={{ mt: 4 }}>
-			<Box sx={{ textAlign: 'center', mb: 4 }}>
-				<Typography variant='h3' component='h1' gutterBottom>
-					Заказ бетона
-				</Typography>
-			</Box>
+		
 
 			{loading ? (
 				<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>

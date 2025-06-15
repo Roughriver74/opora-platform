@@ -514,5 +514,63 @@ class Bitrix24Service {
             }
         });
     }
+    /**
+     * Обновление статуса сделки в Битрикс24
+     */
+    updateDealStatus(dealId, newStatus, categoryId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                console.log(`Обновление статуса сделки ${dealId} на ${newStatus}`);
+                // Формируем корректный STAGE_ID с учетом категории
+                let stageId = newStatus;
+                if (categoryId && categoryId !== '0') {
+                    // Если у нас есть категория и статус не содержит префикс категории
+                    if (!newStatus.startsWith(`C${categoryId}:`)) {
+                        stageId = `C${categoryId}:${newStatus}`;
+                    }
+                }
+                const updateData = {
+                    STAGE_ID: stageId,
+                };
+                console.log('Данные для обновления сделки:', updateData);
+                const response = yield axios_1.default.post(`${this.webhookUrl}crm.deal.update`, {
+                    id: dealId,
+                    fields: updateData,
+                });
+                console.log('Ответ от Bitrix24 (обновление сделки):', response.data);
+                return response.data;
+            }
+            catch (error) {
+                console.error('Ошибка при обновлении статуса сделки в Битрикс24:', error);
+                if (error.response) {
+                    console.error('Ответ сервера:', error.response.data);
+                }
+                throw error;
+            }
+        });
+    }
+    /**
+     * Обновление сделки в Битрикс24
+     */
+    updateDeal(dealId, dealData) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                console.log(`Обновление сделки ${dealId}`, dealData);
+                const response = yield axios_1.default.post(`${this.webhookUrl}crm.deal.update`, {
+                    id: dealId,
+                    fields: dealData,
+                });
+                console.log('Ответ от Bitrix24 (обновление сделки):', response.data);
+                return response.data;
+            }
+            catch (error) {
+                console.error('Ошибка при обновлении сделки в Битрикс24:', error);
+                if (error.response) {
+                    console.error('Ответ сервера:', error.response.data);
+                }
+                throw error;
+            }
+        });
+    }
 }
 exports.default = new Bitrix24Service();
