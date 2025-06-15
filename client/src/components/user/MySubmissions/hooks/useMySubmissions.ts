@@ -90,6 +90,7 @@ export const useMySubmissions = () => {
 	// Обработчики событий
 	const handleEditSubmission = async (submission: any) => {
 		try {
+			console.log('🔥 [CLIENT EDIT] КНОПКА РЕДАКТИРОВАТЬ НАЖАТА!')
 			console.log(
 				'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
 				submission._id

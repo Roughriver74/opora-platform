@@ -70,8 +70,23 @@ export const useBetoneForm = (
 								? 'Заявка успешно обновлена!'
 								: 'Заявка успешно отправлена!'),
 					})
-					// Сбрасываем форму при успешной отправке
-					formik.resetForm()
+					// Сбрасываем форму только для новых заявок, не для редактирования
+					if (!editData?.submissionId) {
+						formik.resetForm()
+					} else {
+						// Для редактирования - загружаем свежие данные из Битрикс24
+						try {
+							const updatedData = await SubmissionService.getSubmissionForEdit(
+								editData.submissionId
+							)
+							if (updatedData.success && updatedData.data.formData) {
+								// Обновляем форму свежими данными
+								formik.setValues(updatedData.data.formData)
+							}
+						} catch (error) {
+							console.error('Ошибка загрузки обновленных данных:', error)
+						}
+					}
 				} else {
 					setSubmitResult({
 						success: false,

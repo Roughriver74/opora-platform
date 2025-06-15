@@ -443,12 +443,29 @@ export const getSubmissionWithBitrixData = async (
 				)
 
 				// Получаем форму для правильного маппинга полей
-				const form = await Form.findById(submission.formId)
+				const form = await Form.findById(submission.formId).populate('fields')
 				if (form) {
 					console.log(`[EDIT NEW] Форма найдена, полей: ${form.fields.length}`)
 
+					// Отладка полей формы
+					console.log('[EDIT NEW] Поля формы с bitrixFieldId:')
+					console.log(
+						'[EDIT NEW] RAW form.fields:',
+						JSON.stringify(form.fields, null, 2)
+					)
+					form.fields.forEach((field: any, index: number) => {
+						console.log(`[EDIT NEW] Поле ${index}:`, field)
+						console.log(
+							`[EDIT NEW] Поле ${index}: name="${field.name}", bitrixFieldId="${field.bitrixFieldId}"`
+						)
+					})
+
 					// Конвертируем данные из Битрикс24 обратно в формат формы
 					for (const field of form.fields as unknown as IFormField[]) {
+						console.log(
+							`[EDIT NEW] Проверяем поле: ${field.name}, bitrixFieldId: ${field.bitrixFieldId}`
+						)
+
 						if (
 							field.bitrixFieldId &&
 							dealData[field.bitrixFieldId] !== undefined
@@ -457,7 +474,13 @@ export const getSubmissionWithBitrixData = async (
 							formDataFromBitrix[field.name] = bitrixValue
 
 							console.log(
-								`[EDIT NEW] Маппинг ${field.bitrixFieldId} -> ${field.name}: "${bitrixValue}"`
+								`[EDIT NEW] ✅ Маппинг ${field.bitrixFieldId} -> ${field.name}: "${bitrixValue}"`
+							)
+						} else {
+							console.log(
+								`[EDIT NEW] ❌ Пропуск поля ${field.name}: bitrixFieldId=${
+									field.bitrixFieldId
+								}, значение в Bitrix=${dealData[field.bitrixFieldId]}`
 							)
 						}
 					}
@@ -559,10 +582,12 @@ export const updateSubmission = async (req: Request, res: Response) => {
 			)
 
 			// Получаем форму для правильного маппинга полей
-			const form = await Form.findById(submission.formId)
+			const form = await Form.findById(submission.formId).populate('fields')
 			if (!form) {
 				throw new Error('Форма не найдена')
 			}
+
+			console.log(`[UPDATE NEW] Форма найдена, полей: ${form.fields.length}`)
 
 			// Формируем данные для обновления сделки
 			const dealData: any = {}

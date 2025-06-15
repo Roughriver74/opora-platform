@@ -169,20 +169,73 @@ const MySubmissions: React.FC = () => {
 		loadSubmissions()
 	}, [page, rowsPerPage, filters, isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Функция для редактирования заявки
-	const handleEditSubmission = (submission: Submission) => {
-		// Сохраняем данные заявки в localStorage для передачи в форму
-		localStorage.setItem(
-			'editSubmissionData',
-			JSON.stringify({
-				submissionId: submission._id,
-				formId: submission.formId._id,
-				title: submission.title,
-			})
-		)
+	// Функция для редактирования заявки - НОВАЯ ЛОГИКА
+	const handleEditSubmission = async (submission: Submission) => {
+		try {
+			console.log('🔥 [CLIENT EDIT] КНОПКА РЕДАКТИРОВАТЬ НАЖАТА!')
+			console.log(
+				'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
+				submission._id
+			)
+			console.log('[CLIENT EDIT DEBUG] Данные заявки:', submission)
 
-		// Переходим к форме с параметром редактирования
-		navigate(`/?edit=${submission._id}`)
+			// Получаем заявку с актуальными данными из Битрикс24
+			console.log(
+				'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
+			)
+			const response = await submissionService.getSubmissionForEdit(
+				submission._id
+			)
+
+			console.log('[CLIENT EDIT DEBUG] Ответ от сервера:', response)
+
+			if (response.success) {
+				console.log('[CLIENT EDIT DEBUG] Успешно получены актуальные данные')
+				console.log(
+					'[CLIENT EDIT DEBUG] Обновленные formData:',
+					response.data.formData
+				)
+
+				// Сохраняем актуальные данные для редактирования
+				const editData = {
+					submissionId: response.data._id,
+					formId: response.data.formId._id,
+					formData: response.data.formData,
+				}
+
+				console.log('[CLIENT EDIT DEBUG] Сохраняем в localStorage:', editData)
+				localStorage.setItem('editSubmissionData', JSON.stringify(editData))
+
+				console.log('[CLIENT EDIT DEBUG] Переход к форме редактирования...')
+				navigate(`/?edit=${submission._id}`)
+			} else {
+				console.warn(
+					'[CLIENT EDIT DEBUG] Не удалось получить актуальные данные'
+				)
+				// В случае ошибки используем локальные данные
+				localStorage.setItem(
+					'editSubmissionData',
+					JSON.stringify({
+						submissionId: submission._id,
+						formId: submission.formId._id,
+						formData: {},
+					})
+				)
+				navigate(`/?edit=${submission._id}`)
+			}
+		} catch (error: any) {
+			console.error('[CLIENT EDIT DEBUG] Ошибка получения данных:', error)
+			// В случае ошибки переходим к форме с пустыми данными
+			localStorage.setItem(
+				'editSubmissionData',
+				JSON.stringify({
+					submissionId: submission._id,
+					formId: submission.formId._id,
+					formData: {},
+				})
+			)
+			navigate(`/?edit=${submission._id}`)
+		}
 	}
 
 	// Обновление статуса заявки
