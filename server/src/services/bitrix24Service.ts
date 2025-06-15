@@ -613,14 +613,9 @@ class Bitrix24Service {
 		try {
 			console.log(`Обновление статуса сделки ${dealId} на ${newStatus}`)
 
-			// Формируем корректный STAGE_ID с учетом категории
+			// Используем статус как есть, без дополнительных префиксов
+			// Статусы уже приходят в правильном формате (NEW, C1:UC_GJLIZP, C1:WON)
 			let stageId = newStatus
-			if (categoryId && categoryId !== '0') {
-				// Если у нас есть категория и статус не содержит префикс категории
-				if (!newStatus.startsWith(`C${categoryId}:`)) {
-					stageId = `C${categoryId}:${newStatus}`
-				}
-			}
 
 			const updateData = {
 				STAGE_ID: stageId,
@@ -637,6 +632,28 @@ class Bitrix24Service {
 			return response.data
 		} catch (error) {
 			console.error('Ошибка при обновлении статуса сделки в Битрикс24:', error)
+			if (error.response) {
+				console.error('Ответ сервера:', error.response.data)
+			}
+			throw error
+		}
+	}
+
+	/**
+	 * Получение данных сделки из Битрикс24
+	 */
+	async getDeal(dealId: string) {
+		try {
+			console.log(`Получение данных сделки ${dealId} из Битрикс24`)
+
+			const response = await axios.post(`${this.webhookUrl}crm.deal.get`, {
+				id: dealId,
+			})
+
+			console.log('Ответ от Bitrix24 (получение сделки):', response.data)
+			return response.data
+		} catch (error) {
+			console.error('Ошибка при получении данных сделки из Битрикс24:', error)
 			if (error.response) {
 				console.error('Ответ сервера:', error.response.data)
 			}

@@ -47,59 +47,61 @@ const SubmissionSchema = new mongoose_1.Schema({
     submissionNumber: {
         type: String,
         unique: true,
-        required: false // Убираем required, так как генерируется в pre-save hook
+        required: false, // Убираем required, так как генерируется в pre-save hook
     },
     formId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Form',
-        required: true
+        required: true,
     },
     userId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
-        required: false // Может быть анонимная заявка
+        required: false, // Может быть анонимная заявка
     },
-    formData: {
-        type: mongoose_1.Schema.Types.Mixed,
-        required: true
+    title: {
+        type: String,
+        required: true,
     },
     status: {
         type: String,
-        default: 'NEW'
+        default: 'NEW',
     },
     priority: {
         type: String,
         enum: ['low', 'medium', 'high', 'urgent'],
-        default: 'medium'
+        default: 'medium',
     },
     bitrixDealId: {
         type: String,
-        sparse: true
+        required: true,
     },
     bitrixCategoryId: {
         type: String,
-        sparse: true
+        sparse: true,
     },
     bitrixSyncStatus: {
         type: String,
         enum: ['pending', 'synced', 'failed'],
-        default: 'pending'
+        default: 'pending',
     },
     bitrixSyncError: {
-        type: String
+        type: String,
     },
     assignedTo: {
         type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'User',
     },
     notes: {
-        type: String
+        type: String,
     },
-    tags: [{
-            type: String
-        }]
+    tags: [
+        {
+            type: String,
+        },
+    ],
 }, {
-    timestamps: true // автоматически добавляет createdAt и updatedAt
+    timestamps: true, // автоматически добавляет createdAt и updatedAt
 });
 // Создание уникального номера заявки
 SubmissionSchema.pre('save', function (next) {
@@ -113,7 +115,9 @@ SubmissionSchema.pre('save', function (next) {
                 const day = String(today.getDate()).padStart(2, '0');
                 console.log('Дата для номера заявки:', { year, month, day });
                 // Более простая и надежная генерация номера
-                const randomSuffix = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+                const randomSuffix = Math.floor(Math.random() * 9999)
+                    .toString()
+                    .padStart(4, '0');
                 this.submissionNumber = `${year}${month}${day}${randomSuffix}`;
                 console.log('Сгенерированный номер заявки:', this.submissionNumber);
             }

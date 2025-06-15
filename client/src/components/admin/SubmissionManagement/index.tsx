@@ -570,22 +570,7 @@ const SubmissionManagement: React.FC = () => {
 											Данные заявки
 										</Typography>
 
-										{Object.entries(selectedSubmission.formData).map(
-											([key, value]) => {
-												const fieldLabel = getFieldLabel(key)
-
-												return (
-													<Typography
-														key={key}
-														variant='body2'
-														color='textSecondary'
-														gutterBottom
-													>
-														<strong>{fieldLabel}:</strong> {String(value)}
-													</Typography>
-												)
-											}
-										)}
+										
 									</CardContent>
 								</Card>
 

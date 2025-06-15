@@ -47,15 +47,36 @@ export const authMiddleware = async (
 
 		jwt.verify(token, secret, async (err, decoded: any) => {
 			if (err) {
+				console.error('Ошибка верификации JWT токена:', err.message)
 				req.isAdmin = false
 				return next()
 			}
 
-			// Проверяем, есть ли пользователь в базе данных
-			if (decoded.userId) {
-				// Новая система авторизации - токен содержит userId
-				try {
+			try {
+				// Проверяем, есть ли пользователь в базе данных
+				if (decoded.userId) {
+					// Новая система авторизации - токен содержит userId
 					const user = await User.findById(decoded.userId)
+					if (user && user.status === 'active') {
+						req.user = {
+							id: user._id.toString(),
+							role: user.role,
+							isAdmin: user.role === 'admin',
+							isUser: user.role === 'user',
+							tokenType: 'access',
+						}
+						req.isAdmin = user.role === 'admin'
+						// Убираем спам логов - оставляем только для отладки при необходимости
+						// console.log(`Пользователь авторизован: ${user.email}, role: ${user.role}`)
+					} else {
+						console.log('Пользователь не найден или неактивен')
+						req.isAdmin = false
+						req.user = undefined
+					}
+				} else if (decoded.id || decoded.sub) {
+					// Проверяем альтернативные поля для ID пользователя
+					const userId = decoded.id || decoded.sub
+					const user = await User.findById(userId)
 					if (user && user.status === 'active') {
 						req.user = {
 							id: user._id.toString(),
@@ -67,19 +88,30 @@ export const authMiddleware = async (
 						req.isAdmin = user.role === 'admin'
 					} else {
 						req.isAdmin = false
+						req.user = undefined
 					}
-				} catch (userError) {
-					console.error('Ошибка получения пользователя:', userError)
-					req.isAdmin = false
-				}
-			} else {
-				// Старая система авторизации - проверяем AdminToken
-				const tokenDoc = await AdminToken.findOne({ token })
-				if (tokenDoc) {
-					req.isAdmin = true
 				} else {
-					req.isAdmin = false
+					// Старая система авторизации - проверяем AdminToken
+					const tokenDoc = await AdminToken.findOne({ token })
+					if (tokenDoc) {
+						req.isAdmin = true
+						// Создаем минимальный объект пользователя для админа
+						req.user = {
+							id: 'admin',
+							role: 'admin',
+							isAdmin: true,
+							isUser: false,
+							tokenType: 'access',
+						}
+					} else {
+						req.isAdmin = false
+						req.user = undefined
+					}
 				}
+			} catch (userError) {
+				console.error('Ошибка получения пользователя:', userError)
+				req.isAdmin = false
+				req.user = undefined
 			}
 
 			next()
@@ -119,7 +151,8 @@ export const requireAuth = (
 	res: Response,
 	next: NextFunction
 ): void => {
-	if (!req.user && !req.isAdmin) {
+	// Проверяем, есть ли авторизованный пользователь или админ
+	if (!req.user) {
 		res.status(401).json({
 			success: false,
 			message: 'Требуется авторизация',

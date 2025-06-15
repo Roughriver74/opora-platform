@@ -17,10 +17,10 @@ export interface Submission {
 		firstName?: string
 		lastName?: string
 	}
-	formData: Record<string, any>
+	title: string // Название заявки из Битрикс24
 	status: string
 	priority: 'low' | 'medium' | 'high' | 'urgent'
-	bitrixDealId?: string
+	bitrixDealId: string // Теперь обязательно
 	bitrixCategoryId?: string
 	bitrixSyncStatus: 'pending' | 'synced' | 'failed'
 	bitrixSyncError?: string
@@ -135,6 +135,21 @@ export const SubmissionService = {
 	// Получение заявки по ID
 	getSubmissionById: async (id: string): Promise<SubmissionDetailsResponse> => {
 		const response = await api.get(`/submissions/${id}`)
+		return response.data
+	},
+
+	// Получение заявки с актуальными данными из Битрикс24 для редактирования
+	getSubmissionForEdit: async (
+		id: string
+	): Promise<{
+		success: boolean
+		data: {
+			_id: string
+			formId: { _id: string }
+			formData: Record<string, any>
+		}
+	}> => {
+		const response = await api.get(`/submissions/${id}/edit`)
 		return response.data
 	},
 

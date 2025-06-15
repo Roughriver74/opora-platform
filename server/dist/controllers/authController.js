@@ -75,7 +75,11 @@ exports.adminLogin = adminLogin;
 const userLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { email, password } = req.body;
+        console.log('=== НАЧАЛО ПРОЦЕССА АВТОРИЗАЦИИ ===');
+        console.log('Email:', email);
+        console.log('Password length:', password ? password.length : 0);
         if (!email || !password) {
+            console.log('❌ Отсутствует email или пароль');
             res.status(400).json({
                 success: false,
                 message: 'Email и пароль обязательны',
@@ -83,31 +87,53 @@ const userLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             return;
         }
         // Ищем пользователя по email
+        console.log('🔍 Поиск пользователя по email:', email.toLowerCase());
         const user = yield User_1.default.findOne({ email: email.toLowerCase() });
         if (!user) {
+            console.log('❌ Пользователь не найден в базе данных');
             res.status(401).json({
                 success: false,
                 message: 'Неверный email или пароль',
             });
             return;
         }
+        console.log('✅ Пользователь найден:', {
+            id: user._id,
+            email: user.email,
+            role: user.role,
+            isActive: user.isActive,
+            status: user.status,
+        });
         // Проверяем пароль
+        console.log('🔐 Проверка пароля...');
         const isPasswordValid = yield user.comparePassword(password);
         if (!isPasswordValid) {
+            console.log('❌ Неверный пароль');
             res.status(401).json({
                 success: false,
                 message: 'Неверный email или пароль',
             });
             return;
         }
+        console.log('✅ Пароль правильный');
         // Проверяем, активен ли пользователь
         if (!user.isActive) {
+            console.log('❌ Пользователь неактивен:', user.isActive);
             res.status(401).json({
                 success: false,
                 message: 'Аккаунт деактивирован',
             });
             return;
         }
+        if (user.status === 'inactive') {
+            console.log('❌ Статус пользователя inactive:', user.status);
+            res.status(401).json({
+                success: false,
+                message: 'Аккаунт деактивирован',
+            });
+            return;
+        }
+        console.log('✅ Пользователь активен');
         // Создаем JWT токены
         const secret = process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production';
         const accessToken = jsonwebtoken_1.default.sign({
@@ -123,6 +149,13 @@ const userLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             type: 'refresh',
         }, secret, { expiresIn: '7d' });
         // Возвращаем токены и информацию о пользователе
+        console.log('🎉 АВТОРИЗАЦИЯ УСПЕШНА!');
+        console.log('Выданные токены:', {
+            accessTokenLength: accessToken.length,
+            refreshTokenLength: refreshToken.length,
+            userRole: user.role,
+        });
+        console.log('=== КОНЕЦ ПРОЦЕССА АВТОРИЗАЦИИ ===');
         res.json({
             success: true,
             accessToken,
@@ -139,7 +172,8 @@ const userLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         });
     }
     catch (error) {
-        console.error('Ошибка аутентификации пользователя:', error);
+        console.error('❌ КРИТИЧЕСКАЯ ОШИБКА АВТОРИЗАЦИИ:', error);
+        console.log('=== КОНЕЦ ПРОЦЕССА АВТОРИЗАЦИИ (С ОШИБКОЙ) ===');
         res.status(500).json({
             success: false,
             message: 'Внутренняя ошибка сервера',

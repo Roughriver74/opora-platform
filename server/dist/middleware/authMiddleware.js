@@ -33,14 +33,37 @@ const authMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
         const secret = process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production';
         jsonwebtoken_1.default.verify(token, secret, (err, decoded) => __awaiter(void 0, void 0, void 0, function* () {
             if (err) {
+                console.error('Ошибка верификации JWT токена:', err.message);
                 req.isAdmin = false;
                 return next();
             }
-            // Проверяем, есть ли пользователь в базе данных
-            if (decoded.userId) {
-                // Новая система авторизации - токен содержит userId
-                try {
+            try {
+                // Проверяем, есть ли пользователь в базе данных
+                if (decoded.userId) {
+                    // Новая система авторизации - токен содержит userId
                     const user = yield User_1.default.findById(decoded.userId);
+                    if (user && user.status === 'active') {
+                        req.user = {
+                            id: user._id.toString(),
+                            role: user.role,
+                            isAdmin: user.role === 'admin',
+                            isUser: user.role === 'user',
+                            tokenType: 'access',
+                        };
+                        req.isAdmin = user.role === 'admin';
+                        // Убираем спам логов - оставляем только для отладки при необходимости
+                        // console.log(`Пользователь авторизован: ${user.email}, role: ${user.role}`)
+                    }
+                    else {
+                        console.log('Пользователь не найден или неактивен');
+                        req.isAdmin = false;
+                        req.user = undefined;
+                    }
+                }
+                else if (decoded.id || decoded.sub) {
+                    // Проверяем альтернативные поля для ID пользователя
+                    const userId = decoded.id || decoded.sub;
+                    const user = yield User_1.default.findById(userId);
                     if (user && user.status === 'active') {
                         req.user = {
                             id: user._id.toString(),
@@ -53,22 +76,33 @@ const authMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
                     }
                     else {
                         req.isAdmin = false;
+                        req.user = undefined;
                     }
                 }
-                catch (userError) {
-                    console.error('Ошибка получения пользователя:', userError);
-                    req.isAdmin = false;
+                else {
+                    // Старая система авторизации - проверяем AdminToken
+                    const tokenDoc = yield AdminToken_1.default.findOne({ token });
+                    if (tokenDoc) {
+                        req.isAdmin = true;
+                        // Создаем минимальный объект пользователя для админа
+                        req.user = {
+                            id: 'admin',
+                            role: 'admin',
+                            isAdmin: true,
+                            isUser: false,
+                            tokenType: 'access',
+                        };
+                    }
+                    else {
+                        req.isAdmin = false;
+                        req.user = undefined;
+                    }
                 }
             }
-            else {
-                // Старая система авторизации - проверяем AdminToken
-                const tokenDoc = yield AdminToken_1.default.findOne({ token });
-                if (tokenDoc) {
-                    req.isAdmin = true;
-                }
-                else {
-                    req.isAdmin = false;
-                }
+            catch (userError) {
+                console.error('Ошибка получения пользователя:', userError);
+                req.isAdmin = false;
+                req.user = undefined;
             }
             next();
         }));
@@ -99,7 +133,8 @@ exports.requireAdmin = requireAdmin;
  * Middleware для проверки авторизации (любая роль)
  */
 const requireAuth = (req, res, next) => {
-    if (!req.user && !req.isAdmin) {
+    // Проверяем, есть ли авторизованный пользователь или админ
+    if (!req.user) {
         res.status(401).json({
             success: false,
             message: 'Требуется авторизация',

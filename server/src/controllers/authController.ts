@@ -74,7 +74,12 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 	try {
 		const { email, password } = req.body
 
+		console.log('=== НАЧАЛО ПРОЦЕССА АВТОРИЗАЦИИ ===')
+		console.log('Email:', email)
+		console.log('Password length:', password ? password.length : 0)
+
 		if (!email || !password) {
+			console.log('❌ Отсутствует email или пароль')
 			res.status(400).json({
 				success: false,
 				message: 'Email и пароль обязательны',
@@ -83,9 +88,11 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 		}
 
 		// Ищем пользователя по email
+		console.log('🔍 Поиск пользователя по email:', email.toLowerCase())
 		const user = await User.findOne({ email: email.toLowerCase() })
 
 		if (!user) {
+			console.log('❌ Пользователь не найден в базе данных')
 			res.status(401).json({
 				success: false,
 				message: 'Неверный email или пароль',
@@ -93,10 +100,20 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 			return
 		}
 
+		console.log('✅ Пользователь найден:', {
+			id: user._id,
+			email: user.email,
+			role: user.role,
+			isActive: user.isActive,
+			status: user.status,
+		})
+
 		// Проверяем пароль
+		console.log('🔐 Проверка пароля...')
 		const isPasswordValid = await user.comparePassword(password)
 
 		if (!isPasswordValid) {
+			console.log('❌ Неверный пароль')
 			res.status(401).json({
 				success: false,
 				message: 'Неверный email или пароль',
@@ -104,14 +121,28 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 			return
 		}
 
+		console.log('✅ Пароль правильный')
+
 		// Проверяем, активен ли пользователь
 		if (!user.isActive) {
+			console.log('❌ Пользователь неактивен:', user.isActive)
 			res.status(401).json({
 				success: false,
 				message: 'Аккаунт деактивирован',
 			})
 			return
 		}
+
+		if (user.status === 'inactive') {
+			console.log('❌ Статус пользователя inactive:', user.status)
+			res.status(401).json({
+				success: false,
+				message: 'Аккаунт деактивирован',
+			})
+			return
+		}
+
+		console.log('✅ Пользователь активен')
 
 		// Создаем JWT токены
 		const secret =
@@ -140,6 +171,14 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 		)
 
 		// Возвращаем токены и информацию о пользователе
+		console.log('🎉 АВТОРИЗАЦИЯ УСПЕШНА!')
+		console.log('Выданные токены:', {
+			accessTokenLength: accessToken.length,
+			refreshTokenLength: refreshToken.length,
+			userRole: user.role,
+		})
+		console.log('=== КОНЕЦ ПРОЦЕССА АВТОРИЗАЦИИ ===')
+
 		res.json({
 			success: true,
 			accessToken,
@@ -155,7 +194,8 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 			},
 		})
 	} catch (error) {
-		console.error('Ошибка аутентификации пользователя:', error)
+		console.error('❌ КРИТИЧЕСКАЯ ОШИБКА АВТОРИЗАЦИИ:', error)
+		console.log('=== КОНЕЦ ПРОЦЕССА АВТОРИЗАЦИИ (С ОШИБКОЙ) ===')
 		res.status(500).json({
 			success: false,
 			message: 'Внутренняя ошибка сервера',

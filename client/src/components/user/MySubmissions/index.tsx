@@ -59,6 +59,7 @@ import {
 	Email as EmailIcon,
 	Business as BusinessIcon,
 	Info as InfoIcon,
+	Description as DescriptionIcon,
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
@@ -176,7 +177,7 @@ const MySubmissions: React.FC = () => {
 			JSON.stringify({
 				submissionId: submission._id,
 				formId: submission.formId._id,
-				formData: submission.formData,
+				title: submission.title,
 			})
 		)
 
@@ -273,16 +274,7 @@ const MySubmissions: React.FC = () => {
 	}
 
 	// Получение значения поля заявки
-	const getSubmissionFieldValue = (
-		submission: Submission,
-		fieldName: string
-	): string => {
-		const value = submission.formData[fieldName]
-		if (Array.isArray(value)) {
-			return value.join(', ')
-		}
-		return value?.toString() || ''
-	}
+	// Функция больше не нужна, так как formData убрано
 
 	// Мобильная карточка заявки
 	const SubmissionCard: React.FC<{ submission: Submission }> = ({
@@ -392,24 +384,13 @@ const MySubmissions: React.FC = () => {
 						)}
 					</Box>
 
-					{/* Ключевые поля заявки */}
-					{submission.formData['phone'] && (
-						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-							<PhoneIcon fontSize='small' color='action' />
-							<Typography variant='body2'>
-								{getSubmissionFieldValue(submission, 'phone')}
-							</Typography>
-						</Box>
-					)}
-
-					{submission.formData['email'] && (
-						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-							<EmailIcon fontSize='small' color='action' />
-							<Typography variant='body2'>
-								{getSubmissionFieldValue(submission, 'email')}
-							</Typography>
-						</Box>
-					)}
+					{/* Название заявки */}
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+						<DescriptionIcon fontSize='small' color='action' />
+						<Typography variant='body2' sx={{ fontWeight: 'medium' }}>
+							{submission.title}
+						</Typography>
+					</Box>
 				</Stack>
 
 				{/* Действия */}
@@ -899,35 +880,21 @@ const MySubmissions: React.FC = () => {
 							<Card>
 								<CardContent>
 									<Typography variant='h6' gutterBottom>
-										Данные заявки
+										Название заявки
 									</Typography>
-									<Stack spacing={1}>
-										{Object.entries(selectedSubmission.formData).map(
-											([key, value]) => (
-												<Box
-													key={key}
-													sx={{
-														display: 'flex',
-														flexDirection: { xs: 'column', sm: 'row' },
-														gap: 1,
-													}}
-												>
-													<Typography
-														variant='body2'
-														color='text.secondary'
-														sx={{ minWidth: { sm: 150 } }}
-													>
-														<strong>{getFieldLabel(key)}:</strong>
-													</Typography>
-													<Typography variant='body2'>
-														{Array.isArray(value)
-															? value.join(', ')
-															: value?.toString() || 'Не указано'}
-													</Typography>
-												</Box>
-											)
-										)}
-									</Stack>
+									<Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+										<Typography variant='body1'>
+											{selectedSubmission.title}
+										</Typography>
+									</Box>
+									<Typography
+										variant='body2'
+										color='text.secondary'
+										sx={{ mt: 1 }}
+									>
+										Подробные данные заявки отображаются в Битрикс24. Для полной
+										информации используйте редактирование.
+									</Typography>
 								</CardContent>
 							</Card>
 						</Stack>

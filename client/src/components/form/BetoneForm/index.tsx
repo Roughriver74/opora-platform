@@ -19,7 +19,7 @@ import { ScrollToTopButton } from './components/ScrollToTopButton'
 import { FormResult } from './components/FormResult'
 import { LinkedFields } from '../LinkedFields'
 
-const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
+const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields, editData }) => {
 	const formRef = useRef<HTMLDivElement>(null)
 
 	const {
@@ -42,7 +42,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 		progressStatus,
 		handleFieldChange,
 		getFieldError,
-	} = useBetoneForm(form._id ?? '', fields)
+	} = useBetoneForm(form._id ?? '', fields, editData)
 
 	return (
 		<Box component='form' onSubmit={formik.handleSubmit}>
