@@ -1,15 +1,14 @@
 import React, { useRef, useCallback } from 'react'
 import {
 	Box,
+	Stack,
 	Typography,
 	Button,
-	CircularProgress,
-	Stack,
-	Divider,
 	Paper,
 	Chip,
 	IconButton,
 	Tooltip,
+	CircularProgress,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import SectionIcon from '@mui/icons-material/ViewHeadline'
@@ -63,8 +62,8 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 
 		sorted.forEach(field => {
 			if (field.type === 'header') {
-				// Сохраняем предыдущий раздел если в нем есть поля
-				if (currentSection.fields.length > 0) {
+				// Сохраняем предыдущий раздел если в нем есть поля или заголовок
+				if (currentSection.fields.length > 0 || currentSection.header) {
 					sections.push(currentSection)
 				}
 
@@ -91,11 +90,12 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 		if (sections.length === 0) {
 			sections.push({
 				id: 'section-default',
-				fields: [],
+				fields: sorted.filter(f => f.type !== 'header' && f.type !== 'divider'),
 				sectionNumber: 0,
 			})
 		}
 
+		console.log('Группированные разделы:', sections)
 		return sections
 	}, [fields])
 
@@ -280,19 +280,28 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 					</Typography>
 				</Box>
 			) : (
-				<Stack spacing={3}>
+				<Stack spacing={4}>
 					{groupedFields.map((section, sectionIndex) => (
-						<Box key={section.id}>
+						<Box
+							key={section.id}
+							sx={{
+								border: '1px solid',
+								borderColor: 'divider',
+								borderRadius: 2,
+								overflow: 'hidden',
+								bgcolor: 'background.paper',
+								boxShadow: 1,
+							}}
+						>
 							{/* Заголовок раздела */}
-							{section.header && (
+							{section.header ? (
 								<Paper
-									elevation={1}
+									elevation={0}
 									sx={{
 										p: 2,
-										mb: 2,
 										bgcolor: 'primary.main',
 										color: 'primary.contrastText',
-										borderRadius: 2,
+										borderRadius: 0,
 										position: 'relative',
 									}}
 								>
@@ -353,156 +362,156 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 										</Button>
 									</Box>
 								</Paper>
-							)}
-
-							{/* Поля раздела */}
-							{section.fields.length === 0 && section.header ? (
+							) : (
+								// Заголовок для раздела по умолчанию
 								<Box
 									sx={{
-										textAlign: 'center',
-										py: 3,
-										px: 2,
-										color: 'text.secondary',
-										border: '1px dashed',
+										p: 2,
+										bgcolor: 'grey.100',
+										borderBottom: '1px solid',
 										borderColor: 'divider',
-										borderRadius: 1,
-										bgcolor: 'grey.50',
 									}}
 								>
-									<Typography variant='body2'>
-										В этом разделе пока нет полей
+									<Typography variant='h6' sx={{ fontWeight: 600 }}>
+										Поля без раздела
 									</Typography>
-									<Button
-										variant='outlined'
-										size='small'
-										startIcon={<AddIcon />}
-										onClick={() => addFieldToSection(section.sectionNumber)}
-										sx={{ mt: 1 }}
-									>
-										Добавить первое поле
-									</Button>
 								</Box>
-							) : (
-								<Stack spacing={1}>
-									{section.fields.map((field, fieldIndex) => {
-										const originalIndex = fields.findIndex(f => {
-											if (f._id && field._id) {
-												return f._id === field._id
-											}
-											return f.name === field.name && f.order === field.order
-										})
-
-										const fieldKey =
-											field._id || `field-${field.name}-${field.order}`
-
-										return (
-											<Box
-												key={fieldKey}
-												data-field-key={fieldKey}
-												ref={(el: HTMLDivElement | null) => {
-													fieldsRefs.current[fieldKey] = el
-												}}
-												sx={{
-													position: 'relative',
-													transition: 'all 0.2s ease-in-out',
-													transform:
-														dragOverIndex === originalIndex
-															? 'translateY(-4px)'
-															: 'translateY(0)',
-													'&::before':
-														dragOverIndex === originalIndex
-															? {
-																	content: '""',
-																	position: 'absolute',
-																	top: -2,
-																	left: 0,
-																	right: 0,
-																	height: 4,
-																	bgcolor: 'primary.main',
-																	borderRadius: 1,
-																	zIndex: 1,
-															  }
-															: {},
-												}}
-											>
-												<Box
-													draggable
-													onDragStart={e =>
-														dragHandlers.handleDragStart(
-															e,
-															field,
-															originalIndex
-														)
-													}
-													onDragOver={e =>
-														dragHandlers.handleDragOver(e, originalIndex)
-													}
-													onDragLeave={dragHandlers.handleDragLeave}
-													onDrop={e =>
-														dragHandlers.handleDrop(e, originalIndex)
-													}
-													onDragEnd={dragHandlers.handleDragEnd}
-													sx={{
-														cursor: 'move',
-														transition: 'all 0.2s ease-in-out',
-														'&:hover': {
-															transform: 'translateY(-2px)',
-															boxShadow: 4,
-														},
-													}}
-												>
-													<FormFieldEditor
-														field={field}
-														onSave={updatedField =>
-															onFieldSave(
-																originalIndex >= 0 ? originalIndex : fieldIndex,
-																updatedField
-															)
-														}
-														onDelete={() =>
-															onFieldDelete(
-																originalIndex >= 0 ? originalIndex : fieldIndex
-															)
-														}
-														availableBitrixFields={bitrixFields}
-														isDraggable={true}
-														allFields={fields}
-													/>
-												</Box>
-											</Box>
-										)
-									})}
-								</Stack>
 							)}
 
-							{/* Кнопка добавления поля в конце раздела */}
-							{section.fields.length > 0 && (
-								<Box sx={{ mt: 2, textAlign: 'center' }}>
-									<Button
-										variant='outlined'
-										size='small'
-										startIcon={<AddIcon />}
-										onClick={() => addFieldToSection(section.sectionNumber)}
+							{/* Содержимое раздела */}
+							<Box sx={{ p: 2 }}>
+								{/* Поля раздела */}
+								{section.fields.length === 0 ? (
+									<Box
 										sx={{
-											borderStyle: 'dashed',
+											textAlign: 'center',
+											py: 3,
+											px: 2,
 											color: 'text.secondary',
-											borderColor: 'text.secondary',
-											'&:hover': {
-												borderStyle: 'solid',
-												color: 'primary.main',
-												borderColor: 'primary.main',
-											},
+											border: '1px dashed',
+											borderColor: 'divider',
+											borderRadius: 1,
+											bgcolor: 'grey.50',
 										}}
 									>
-										Добавить ещё поле
-									</Button>
-								</Box>
-							)}
+										<Typography variant='body2'>
+											{section.header
+												? 'В этом разделе пока нет полей'
+												: 'Поля не добавлены'}
+										</Typography>
+										<Button
+											variant='outlined'
+											size='small'
+											startIcon={<AddIcon />}
+											onClick={() =>
+												section.header
+													? addFieldToSection(section.sectionNumber)
+													: onAddField()
+											}
+											sx={{ mt: 1 }}
+										>
+											{section.header
+												? 'Добавить первое поле'
+												: 'Добавить поле'}
+										</Button>
+									</Box>
+								) : (
+									<Stack spacing={1}>
+										{section.fields.map((field, fieldIndex) => {
+											const originalIndex = fields.findIndex(f => {
+												if (f._id && field._id) {
+													return f._id === field._id
+												}
+												return f.name === field.name && f.order === field.order
+											})
 
-							{/* Разделитель между разделами */}
-							{sectionIndex < groupedFields.length - 1 && (
-								<Divider sx={{ mt: 4, mb: 2 }} />
-							)}
+											const fieldKey =
+												field._id || `field-${field.name}-${field.order}`
+
+											return (
+												<Box
+													key={fieldKey}
+													data-field-key={fieldKey}
+													ref={(el: HTMLDivElement | null) => {
+														fieldsRefs.current[fieldKey] = el
+													}}
+													sx={{
+														position: 'relative',
+														transition: 'all 0.2s ease-in-out',
+														transform:
+															dragOverIndex === originalIndex
+																? 'translateY(-4px)'
+																: 'translateY(0)',
+														'&::before':
+															dragOverIndex === originalIndex
+																? {
+																		content: '""',
+																		position: 'absolute',
+																		top: -2,
+																		left: 0,
+																		right: 0,
+																		height: 4,
+																		bgcolor: 'primary.main',
+																		borderRadius: 1,
+																		zIndex: 1,
+																  }
+																: {},
+													}}
+												>
+													<Box
+														draggable
+														onDragStart={e =>
+															dragHandlers.handleDragStart(
+																e,
+																field,
+																originalIndex
+															)
+														}
+														onDragOver={e =>
+															dragHandlers.handleDragOver(e, originalIndex)
+														}
+														onDragLeave={dragHandlers.handleDragLeave}
+														onDrop={e =>
+															dragHandlers.handleDrop(e, originalIndex)
+														}
+														onDragEnd={dragHandlers.handleDragEnd}
+														sx={{
+															cursor: 'move',
+															transition: 'all 0.2s ease-in-out',
+															'&:hover': {
+																transform: 'translateY(-2px)',
+																boxShadow: 4,
+															},
+														}}
+													>
+														<FormFieldEditor
+															field={field}
+															onSave={updatedField =>
+																onFieldSave(
+																	originalIndex >= 0
+																		? originalIndex
+																		: fieldIndex,
+																	updatedField
+																)
+															}
+															onDelete={() =>
+																onFieldDelete(
+																	originalIndex >= 0
+																		? originalIndex
+																		: fieldIndex
+																)
+															}
+															availableBitrixFields={bitrixFields}
+															isDraggable={true}
+															allFields={fields}
+														/>
+													</Box>
+												</Box>
+											)
+										})}
+									</Stack>
+								)}
+							</Box>
 						</Box>
 					))}
 				</Stack>

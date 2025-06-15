@@ -9,9 +9,12 @@ export interface BetoneFormProps {
 		formData: Record<string, any>
 	}
 	preloadedOptions?: Record<string, any[]>
+	isAdminMode?: boolean
+	onFieldUpdate?: (fieldId: string, updates: Partial<FormFieldType>) => void
 }
 
 export interface FormSection {
+	id?: string
 	title: string
 	fields: FormFieldType[]
 	number?: number

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import {
 	Box,
 	Paper,
@@ -7,6 +7,8 @@ import {
 	AccordionSummary,
 	AccordionDetails,
 	Button,
+	Alert,
+	Snackbar,
 } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { BetoneFormProps } from './types'
@@ -18,14 +20,25 @@ import { SubmitButton } from './components/SubmitButton'
 import { ScrollToTopButton } from './components/ScrollToTopButton'
 import { FormResult } from './components/FormResult'
 import { LinkedFields } from '../LinkedFields'
+import { FormFieldService } from '../../../services/formFieldService'
 
 const BetoneForm: React.FC<BetoneFormProps> = ({
 	form,
 	fields,
 	editData,
 	preloadedOptions,
+	isAdminMode = false,
+	onFieldUpdate,
 }) => {
 	const formRef = useRef<HTMLDivElement>(null)
+	const [snackbar, setSnackbar] = useState<{
+		open: boolean
+		message: string
+		severity?: 'success' | 'error'
+	}>({
+		open: false,
+		message: '',
+	})
 
 	const {
 		formik,
@@ -48,6 +61,33 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 		handleFieldChange,
 		getFieldError,
 	} = useBetoneForm(form._id ?? '', fields, editData, preloadedOptions)
+
+	// Обработчик изменения названия раздела
+	const handleSectionTitleChange = async (
+		sectionId: string,
+		newTitle: string
+	) => {
+		try {
+			await FormFieldService.updateSectionTitle(sectionId, newTitle)
+			setSnackbar({
+				open: true,
+				message: 'Название раздела успешно обновлено',
+				severity: 'success',
+			})
+
+			// Обновляем локальное состояние через пропс
+			if (onFieldUpdate) {
+				onFieldUpdate(sectionId, { label: newTitle })
+			}
+		} catch (error) {
+			console.error('Ошибка при обновлении названия раздела:', error)
+			setSnackbar({
+				open: true,
+				message: 'Ошибка при обновлении названия раздела',
+				severity: 'error',
+			})
+		}
+	}
 
 	return (
 		<Box component='form' onSubmit={formik.handleSubmit}>
@@ -162,6 +202,8 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 												compact={true}
 												showTitle={false}
 												preloadedOptions={preloadedOptions}
+												isAdminMode={isAdminMode}
+												onSectionTitleChange={handleSectionTitleChange}
 											/>
 										</AccordionDetails>
 									</Accordion>
@@ -190,6 +232,8 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 									showTitle={false}
 									compact={true}
 									preloadedOptions={preloadedOptions}
+									isAdminMode={isAdminMode}
+									onSectionTitleChange={handleSectionTitleChange}
 								/>
 								<SubmitButton
 									submitting={submitting}
@@ -204,6 +248,20 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 
 			{/* Кнопка "наверх" */}
 			<ScrollToTopButton show={showScrollTop} onClick={scrollToTop} />
+
+			{/* Snackbar для уведомлений */}
+			<Snackbar
+				open={snackbar.open}
+				autoHideDuration={6000}
+				onClose={() => setSnackbar({ ...snackbar, open: false })}
+			>
+				<Alert
+					onClose={() => setSnackbar({ ...snackbar, open: false })}
+					severity={snackbar.severity}
+				>
+					{snackbar.message}
+				</Alert>
+			</Snackbar>
 		</Box>
 	)
 }

@@ -10,14 +10,28 @@ import { useSearchParams } from 'react-router-dom'
 import BetoneForm from '../components/form/BetoneForm'
 import { Form, FormField } from '../types'
 import { FormService } from '../services/formService'
+import { useAuth } from '../contexts/auth'
 
 const HomePage: React.FC = () => {
 	const [searchParams] = useSearchParams()
+	const { user } = useAuth()
 	const [form, setForm] = useState<Form | null>(null)
 	const [fields, setFields] = useState<FormField[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const [editData, setEditData] = useState<any>(null)
+
+	// Проверяем, является ли пользователь администратором
+	const isAdminMode = user?.role === 'admin'
+
+	// Функция для обновления полей локально
+	const handleFieldUpdate = (fieldId: string, updates: Partial<FormField>) => {
+		setFields(prevFields =>
+			prevFields.map(field =>
+				field._id === fieldId ? { ...field, ...updates } : field
+			)
+		)
+	}
 
 	// Проверяем режим редактирования
 	useEffect(() => {
@@ -98,6 +112,8 @@ const HomePage: React.FC = () => {
 					fields={fields}
 					editData={editData}
 					preloadedOptions={editData?.preloadedOptions}
+					isAdminMode={isAdminMode}
+					onFieldUpdate={handleFieldUpdate}
 				/>
 			) : (
 				<Alert severity='info'>
