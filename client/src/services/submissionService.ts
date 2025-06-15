@@ -14,6 +14,8 @@ export interface Submission {
 		_id: string
 		name: string
 		email: string
+		firstName?: string
+		lastName?: string
 	}
 	formData: Record<string, any>
 	status: string
@@ -37,13 +39,25 @@ export interface SubmissionHistory {
 	_id: string
 	submissionId: string
 	action: string
+	changeType: 'status_change' | 'assignment' | 'note_added' | 'data_update'
+	description: string
 	oldValue?: any
 	newValue?: any
 	comment?: string
+	changedBy: {
+		_id: string
+		name: string
+		email: string
+		firstName?: string
+		lastName?: string
+	}
+	changedAt: string
 	userId?: {
 		_id: string
 		name: string
 		email: string
+		firstName?: string
+		lastName?: string
 	}
 	createdAt: string
 }

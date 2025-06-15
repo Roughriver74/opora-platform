@@ -1,18 +1,27 @@
-import React, { useRef } from 'react';
-import { Box, Paper, Typography, Accordion, AccordionSummary, AccordionDetails, Button } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { BetoneFormProps } from './types';
-import { useBetoneForm } from './hooks/useBetoneForm';
-import { getSortedFields } from './utils/sectionHelpers';
-import { FormProgressBar } from './components/FormProgressBar';
-import { FormSection } from './components/FormSection';
-import { SubmitButton } from './components/SubmitButton';
-import { ScrollToTopButton } from './components/ScrollToTopButton';
-import { FormResult } from './components/FormResult';
+import React, { useRef } from 'react'
+import {
+	Box,
+	Paper,
+	Typography,
+	Accordion,
+	AccordionSummary,
+	AccordionDetails,
+	Button,
+} from '@mui/material'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import { BetoneFormProps } from './types'
+import { useBetoneForm } from './hooks/useBetoneForm'
+import { getSortedFields } from './utils/sectionHelpers'
+import { FormProgressBar } from './components/FormProgressBar'
+import { FormSection } from './components/FormSection'
+import { SubmitButton } from './components/SubmitButton'
+import { ScrollToTopButton } from './components/ScrollToTopButton'
+import { FormResult } from './components/FormResult'
+import { LinkedFields } from '../LinkedFields'
 
 const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
-	const formRef = useRef<HTMLDivElement>(null);
-	
+	const formRef = useRef<HTMLDivElement>(null)
+
 	const {
 		formik,
 		submitting,
@@ -33,19 +42,19 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 		progressStatus,
 		handleFieldChange,
 		getFieldError,
-	} = useBetoneForm(form._id ?? '', fields);
+	} = useBetoneForm(form._id ?? '', fields)
 
 	return (
-		<Box component="form" onSubmit={formik.handleSubmit}>
+		<Box component='form' onSubmit={formik.handleSubmit}>
 			<Box sx={{ maxWidth: '800px', mx: 'auto', p: { xs: 1, sm: 2 } }}>
 				<Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }}>
 					{/* Заголовок формы */}
 					<Box sx={{ p: 3, bgcolor: 'primary.main', color: 'white' }}>
-						<Typography variant="h4" component="h1" gutterBottom>
+						<Typography variant='h4' component='h1' gutterBottom>
 							{form.title}
 						</Typography>
 						{form.description && (
-							<Typography variant="body1" sx={{ opacity: 0.9 }}>
+							<Typography variant='body1' sx={{ opacity: 0.9 }}>
 								{form.description}
 							</Typography>
 						)}
@@ -80,15 +89,15 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 								{/* Кнопки управления секциями */}
 								<Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
 									<Button
-										size="small"
-										variant="outlined"
+										size='small'
+										variant='outlined'
 										onClick={expandAllSections}
 									>
 										Развернуть все
 									</Button>
 									<Button
-										size="small"
-										variant="outlined"
+										size='small'
+										variant='outlined'
 										onClick={collapseAllSections}
 									>
 										Свернуть все
@@ -108,17 +117,38 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 											sx={{
 												'&:hover': {
 													backgroundColor: 'rgba(0, 0, 0, 0.04)',
-												}
+												},
 											}}
 										>
-											<Typography variant="h6" component="h3">
+											<Typography variant='h6' component='h3'>
 												{section.title}
 											</Typography>
-											<Typography variant="body2" sx={{ ml: 2, color: 'text.secondary' }}>
-												({section.fields.length} {section.fields.length === 1 ? 'поле' : 'полей'})
+											<Typography
+												variant='body2'
+												sx={{ ml: 2, color: 'text.secondary' }}
+											>
+												({section.fields.length}{' '}
+												{section.fields.length === 1 ? 'поле' : 'полей'})
 											</Typography>
 										</AccordionSummary>
 										<AccordionDetails>
+											{/* Кнопка копирования для текущей секции */}
+											{fieldSections.length > 1 && (
+												<Box sx={{ mb: 2 }}>
+													<LinkedFields
+														sections={fieldSections}
+														values={formik.values}
+														onValuesChange={newValues => {
+															Object.keys(newValues).forEach(key => {
+																formik.setFieldValue(key, newValues[key])
+															})
+														}}
+														sourceSection={section.title}
+														showInline={true}
+													/>
+												</Box>
+											)}
+
 											<FormSection
 												section={section}
 												values={formik.values}
@@ -135,7 +165,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 								<Box sx={{ mt: 3 }}>
 									<SubmitButton
 										submitting={submitting}
-										variant="success"
+										variant='success'
 										fullWidth
 									/>
 								</Box>
@@ -144,7 +174,10 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 							// Обычное отображение для коротких форм
 							<Box sx={{ p: 3 }}>
 								<FormSection
-									section={{ title: form.title, fields: getSortedFields(fields) }}
+									section={{
+										title: form.title,
+										fields: getSortedFields(fields),
+									}}
 									values={formik.values}
 									onFieldChange={handleFieldChange}
 									getFieldError={getFieldError}
@@ -153,7 +186,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 								/>
 								<SubmitButton
 									submitting={submitting}
-									variant="primary"
+									variant='primary'
 									fullWidth
 								/>
 							</Box>
@@ -165,7 +198,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({ form, fields }) => {
 			{/* Кнопка "наверх" */}
 			<ScrollToTopButton show={showScrollTop} onClick={scrollToTop} />
 		</Box>
-	);
-};
+	)
+}
 
-export default BetoneForm;
+export default BetoneForm
