@@ -43,12 +43,26 @@ api.interceptors.request.use(
 api.interceptors.response.use(
 	response => response,
 	error => {
-		// Если сервер вернул 401 Unauthorized, очищаем токены
+		// Если сервер вернул 401 Unauthorized, проверяем причину
 		if (error.response && error.response.status === 401) {
-			console.log('Unauthorized, clearing tokens')
-			localStorage.removeItem('auth_tokens')
-			// Перезагружаем страницу для принудительного выхода
-			window.location.reload()
+			const errorMessage = error.response.data?.message || ''
+
+			// Разлогиниваем только если токен недействителен или истек
+			if (
+				errorMessage.includes('недействителен') ||
+				errorMessage.includes('истек') ||
+				errorMessage.includes('отсутствует') ||
+				errorMessage.includes('invalid token') ||
+				errorMessage.includes('expired')
+			) {
+				console.log('Token expired or invalid, clearing tokens')
+				localStorage.removeItem('auth_tokens')
+				// Перезагружаем страницу для принудительного выхода
+				window.location.reload()
+			} else {
+				// Для других ошибок 401 (например, недостаток прав) - просто логируем
+				console.log('Access denied, but token is valid:', errorMessage)
+			}
 		}
 		return Promise.reject(error)
 	}
