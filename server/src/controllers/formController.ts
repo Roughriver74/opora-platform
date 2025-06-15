@@ -52,18 +52,47 @@ export const updateForm = async (
 	res: Response
 ): Promise<void> => {
 	try {
+		console.log('updateForm вызван с ID:', req.params.id)
+		console.log('updateForm данные:', JSON.stringify(req.body, null, 2))
+
 		const form = await Form.findById(req.params.id)
 		if (!form) {
+			console.log('Форма не найдена с ID:', req.params.id)
 			res.status(404).json({ message: 'Форма не найдена' })
 			return
 		}
 
+		console.log('Текущая форма:', JSON.stringify(form, null, 2))
+
+		// Проверяем уникальность имени, если оно изменяется
+		if (req.body.name && req.body.name !== form.name) {
+			const existingForm = await Form.findOne({
+				name: req.body.name,
+				_id: { $ne: req.params.id },
+			})
+			if (existingForm) {
+				console.log('Попытка использовать существующее имя:', req.body.name)
+				res.status(400).json({ message: 'Форма с таким именем уже существует' })
+				return
+			}
+		}
+
 		Object.assign(form, req.body)
+
+		console.log('Форма после обновления:', JSON.stringify(form, null, 2))
+
 		const updatedForm = await form.save()
+
+		console.log('Форма успешно сохранена:', updatedForm._id)
 
 		res.status(200).json(updatedForm)
 	} catch (error: any) {
-		res.status(400).json({ message: error.message })
+		console.error('Ошибка в updateForm:', error)
+		console.error('Stack trace:', error.stack)
+		res.status(400).json({
+			message: error.message,
+			details: error.name === 'ValidationError' ? error.errors : undefined,
+		})
 	}
 }
 
