@@ -80,7 +80,7 @@ const Navbar: React.FC = () => {
 					borderColor: 'divider',
 				}}
 			>
-				<Logo size={32} showText={true} variant='default' />
+				<Logo size={32} variant='default' />
 			</Box>
 			<List>
 				{menuItems.map(item => (
@@ -128,12 +128,7 @@ const Navbar: React.FC = () => {
 								flexGrow: 1,
 							}}
 						>
-							<Logo
-								size={isMobile ? 32 : 40}
-								showText={!isMobile}
-								variant='white'
-							/>
-							{isMobile && <Box sx={{ ml: 1, fontSize: '1rem' }}>БЭ</Box>}
+							<Logo size={isMobile ? 32 : 40} variant='white' />
 						</Typography>
 					</Toolbar>
 				</Container>
@@ -163,12 +158,7 @@ const Navbar: React.FC = () => {
 								flexGrow: isMobile ? 1 : 0,
 							}}
 						>
-							<Logo
-								size={isMobile ? 32 : 40}
-								showText={!isMobile}
-								variant='white'
-							/>
-							{isMobile && <Box sx={{ ml: 1, fontSize: '1rem' }}>БЭ</Box>}
+							<Logo size={isMobile ? 32 : 40} variant='white' />
 						</Typography>
 
 						{!isMobile && <Box sx={{ flexGrow: 1 }} />}

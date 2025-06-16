@@ -1,123 +1,133 @@
-import React from 'react';
-import { useLogin } from './hooks/useLogin';
-import './LoginForm.css';
+import React from 'react'
+import { useLogin } from './hooks/useLogin'
+import Logo from '../../common/Logo'
+import './LoginForm.css'
 
 export const LoginForm: React.FC = () => {
-  const {
-    email,
-    password,
-    isLoading,
-    error,
-    validationErrors,
-    isFormValid,
-    handleEmailChange,
-    handlePasswordChange,
-    handleSubmit,
-    clearError
-  } = useLogin();
+	const {
+		email,
+		password,
+		isLoading,
+		error,
+		validationErrors,
+		isFormValid,
+		handleEmailChange,
+		handlePasswordChange,
+		handleSubmit,
+		clearError,
+	} = useLogin()
 
-  const handleFormSubmit = (e: React.FormEvent): void => {
-    e.preventDefault();
-    handleSubmit();
-  };
+	const handleFormSubmit = (e: React.FormEvent): void => {
+		e.preventDefault()
+		handleSubmit()
+	}
 
-  const handleKeyPress = (e: React.KeyboardEvent): void => {
-    if (e.key === 'Enter' && isFormValid && !isLoading) {
-      handleSubmit();
-    }
-  };
+	const handleKeyPress = (e: React.KeyboardEvent): void => {
+		if (e.key === 'Enter' && isFormValid && !isLoading) {
+			handleSubmit()
+		}
+	}
 
-  return (
-    <div className="login-form-container">
-      <div className="login-form-card">
-        <div className="login-form-header">
-          <h1 className="login-form-title">Вход в систему</h1>
-          <p className="login-form-subtitle">
-            Введите пароль для доступа к системе Beton CRM
-          </p>
-        </div>
+	return (
+		<div className='login-form-container'>
+			<div className='login-form-card'>
+				<div className='login-form-header'>
+					<div className='login-form-logo'>
+						<Logo size={60} variant='default' />
+					</div>
+					<h1 className='login-form-title'>Вход в систему</h1>
+					<p className='login-form-subtitle'>
+						Введите пароль для доступа к системе Beton CRM
+					</p>
+				</div>
 
-        <form onSubmit={handleFormSubmit} className="login-form">
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => handleEmailChange(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className={`form-input ${validationErrors.email ? 'form-input-error' : ''}`}
-              placeholder="Введите email"
-              disabled={isLoading}
-              autoComplete="username"
-              autoFocus
-            />
-            {validationErrors.email && (
-              <div className="form-error">{validationErrors.email}</div>
-            )}
-          </div>
+				<form onSubmit={handleFormSubmit} className='login-form'>
+					<div className='form-group'>
+						<label htmlFor='email' className='form-label'>
+							Email
+						</label>
+						<input
+							id='email'
+							type='email'
+							value={email}
+							onChange={e => handleEmailChange(e.target.value)}
+							onKeyPress={handleKeyPress}
+							className={`form-input ${
+								validationErrors.email ? 'form-input-error' : ''
+							}`}
+							placeholder='Введите email'
+							disabled={isLoading}
+							autoComplete='username'
+							autoFocus
+						/>
+						{validationErrors.email && (
+							<div className='form-error'>{validationErrors.email}</div>
+						)}
+					</div>
 
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              Пароль
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => handlePasswordChange(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className={`form-input ${validationErrors.password ? 'form-input-error' : ''}`}
-              placeholder="Введите пароль"
-              disabled={isLoading}
-              autoComplete="current-password"
-            />
-            {validationErrors.password && (
-              <div className="form-error">{validationErrors.password}</div>
-            )}
-          </div>
+					<div className='form-group'>
+						<label htmlFor='password' className='form-label'>
+							Пароль
+						</label>
+						<input
+							id='password'
+							type='password'
+							value={password}
+							onChange={e => handlePasswordChange(e.target.value)}
+							onKeyPress={handleKeyPress}
+							className={`form-input ${
+								validationErrors.password ? 'form-input-error' : ''
+							}`}
+							placeholder='Введите пароль'
+							disabled={isLoading}
+							autoComplete='current-password'
+						/>
+						{validationErrors.password && (
+							<div className='form-error'>{validationErrors.password}</div>
+						)}
+					</div>
 
-          {error && (
-            <div className="alert alert-error">
-              <div className="alert-content">
-                <span className="alert-icon">⚠️</span>
-                <span className="alert-message">{error}</span>
-                <button
-                  type="button"
-                  onClick={clearError}
-                  className="alert-close"
-                  aria-label="Закрыть ошибку"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          )}
+					{error && (
+						<div className='alert alert-error'>
+							<div className='alert-content'>
+								<span className='alert-icon'>⚠️</span>
+								<span className='alert-message'>{error}</span>
+								<button
+									type='button'
+									onClick={clearError}
+									className='alert-close'
+									aria-label='Закрыть ошибку'
+								>
+									×
+								</button>
+							</div>
+						</div>
+					)}
 
-          <button
-            type="submit"
-            disabled={!isFormValid || isLoading}
-            className={`login-button ${!isFormValid || isLoading ? 'login-button-disabled' : ''}`}
-          >
-            {isLoading ? (
-              <span className="login-button-loading">
-                <span className="spinner"></span>
-                Вход...
-              </span>
-            ) : (
-              'Войти'
-            )}
-          </button>
-        </form>
+					<button
+						type='submit'
+						disabled={!isFormValid || isLoading}
+						className={`login-button ${
+							!isFormValid || isLoading ? 'login-button-disabled' : ''
+						}`}
+					>
+						{isLoading ? (
+							<span className='login-button-loading'>
+								<span className='spinner'></span>
+								Вход...
+							</span>
+						) : (
+							'Войти'
+						)}
+					</button>
+				</form>
 
-        <div className="login-form-footer">
-          <p className="login-form-help">
-            Если вы забыли пароль, обратитесь к системному администратору
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
+				<div className='login-form-footer'>
+					<p className='login-form-help'>
+						Если вы забыли пароль, обратитесь к системному администратору
+					</p>
+				</div>
+			</div>
+		</div>
+	)
+}

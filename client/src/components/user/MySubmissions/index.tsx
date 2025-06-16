@@ -108,10 +108,15 @@ const MySubmissions: React.FC = () => {
 	// Загрузка статусов из Битрикс24
 	const loadBitrixStages = async () => {
 		try {
+			console.log('Загрузка статусов из Битрикс24...')
 			const response = await submissionService.getBitrixDealStages('1') // Используем категорию 1
+			console.log('Ответ от сервера:', response)
 
 			if (response.success && response.data && response.data.length > 0) {
+				console.log('Статусы загружены:', response.data)
 				setBitrixStages(response.data)
+			} else {
+				console.warn('Нет данных о статусах или некорректный ответ')
 			}
 		} catch (err: any) {
 			console.error('Ошибка загрузки статусов из Битрикс24:', err)
@@ -290,8 +295,26 @@ const MySubmissions: React.FC = () => {
 	// Получение названия статуса из Битрикс24
 	const getStatusName = (status: string): string => {
 		const cleanStatus = getCleanStatus(status)
-		const stage = bitrixStages.find(stage => stage.id === cleanStatus)
-		return stage?.name || status
+		const stage = bitrixStages.find(
+			stage => stage.id === status || stage.id === cleanStatus
+		)
+
+		// Если статус найден в загруженных данных из Битрикса
+		if (stage) {
+			return stage.name
+		}
+
+		// Fallback для основных статусов, если данные из Битрикса не загрузились
+		switch (status) {
+			case 'C1:NEW':
+				return 'Новая'
+			case 'C1:UC_GJLIZP':
+				return 'Отправлено'
+			case 'C1:WON':
+				return 'Отгружено'
+			default:
+				return status // Показываем код, если название не найдено
+		}
 	}
 
 	const handleChangePage = (event: unknown, newPage: number) => {
@@ -342,174 +365,173 @@ const MySubmissions: React.FC = () => {
 	// Мобильная карточка заявки
 	const SubmissionCard: React.FC<{ submission: Submission }> = ({
 		submission,
-	}) => (
-		<Card
-			sx={{
-				mb: 2,
-				border: '1px solid',
-				borderColor: 'divider',
-				'&:hover': {
-					boxShadow: 2,
-					borderColor: 'primary.main',
-				},
-			}}
-		>
-			<CardContent sx={{ pb: 1 }}>
-				{/* Заголовок карточки */}
-				<Box
-					sx={{
-						display: 'flex',
-						justifyContent: 'space-between',
-						alignItems: 'flex-start',
-						mb: 2,
-					}}
-				>
-					<Box>
-						<Typography
-							variant='h6'
-							component='div'
-							sx={{ fontWeight: 'bold', color: 'primary.main' }}
-						>
-							№ {submission.submissionNumber}
-						</Typography>
-						<Typography variant='body2' color='text.secondary'>
-							{submission.formId?.title || 'Форма не найдена'}
-						</Typography>
-					</Box>
-					<Chip
-						label={getStatusName(submission.status)}
-						color='primary'
-						size='small'
-						sx={{ ml: 1 }}
-					/>
-				</Box>
+	}) => {
+		// Проверяем, является ли статус "Отгружено" (C1:WON)
+		const isShipped = submission.status === 'C1:WON'
 
-				{/* Основная информация */}
-				<Stack spacing={1} sx={{ mb: 2 }}>
-					{submission.userId && (
-						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-							<PersonIcon fontSize='small' color='action' />
-							<Typography variant='body2'>
+		return (
+			<Card
+				sx={{
+					mb: 2,
+					border: '1px solid',
+					borderColor: 'divider',
+					'&:hover': {
+						boxShadow: 2,
+						borderColor: 'primary.main',
+					},
+				}}
+			>
+				<CardContent sx={{ pb: 1 }}>
+					{/* Заголовок карточки */}
+					<Box
+						sx={{
+							display: 'flex',
+							justifyContent: 'space-between',
+							alignItems: 'flex-start',
+							mb: 2,
+						}}
+					>
+						<Box>
+							<Typography
+								variant='h6'
+								component='div'
+								sx={{ fontWeight: 'bold', color: 'primary.main' }}
+							>
+								Bitrix ID: {submission.bitrixDealId || 'Не указан'}
+							</Typography>
+							<Typography variant='body2' color='text.secondary'>
+								User:{' '}
 								{submission.userId?.firstName && submission.userId?.lastName
 									? `${submission.userId.firstName} ${submission.userId.lastName}`
-									: submission.userId?.name || 'Не указан'}
+									: submission.userId?.name || 'Анонимная заявка'}
 							</Typography>
 						</Box>
-					)}
-
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-						<ScheduleIcon fontSize='small' color='action' />
-						<Typography variant='body2'>
-							{format(new Date(submission.createdAt), 'dd.MM.yyyy HH:mm', {
-								locale: ru,
-							})}
-						</Typography>
+						<Chip
+							label={getStatusName(submission.status)}
+							color='primary'
+							size='small'
+							sx={{ ml: 1 }}
+						/>
 					</Box>
 
-					{/* Битрикс24 статус */}
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-						<BusinessIcon fontSize='small' color='action' />
-						{submission.bitrixDealId ? (
-							<Chip
-								icon={
-									submission.bitrixSyncStatus === 'synced' ? (
-										<CheckCircleIcon />
-									) : submission.bitrixSyncStatus === 'failed' ? (
-										<ErrorIcon />
-									) : (
-										<PendingIcon />
-									)
-								}
-								label={
-									submission.bitrixSyncStatus === 'synced'
-										? 'Синхронизировано'
-										: submission.bitrixSyncStatus === 'failed'
-										? 'Ошибка синхронизации'
-										: 'Ожидает синхронизации'
-								}
-								color={
-									submission.bitrixSyncStatus === 'synced'
-										? 'success'
-										: submission.bitrixSyncStatus === 'failed'
-										? 'error'
-										: 'warning'
-								}
-								size='small'
-								variant='outlined'
-							/>
-						) : (
-							<Chip
-								label='Не создано в Битрикс24'
-								color='default'
-								size='small'
-								variant='outlined'
-							/>
+					{/* Основная информация */}
+					<Stack spacing={1} sx={{ mb: 2 }}>
+						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+							<ScheduleIcon fontSize='small' color='action' />
+							<Typography variant='body2'>
+								{format(new Date(submission.createdAt), 'dd.MM.yyyy HH:mm', {
+									locale: ru,
+								})}
+							</Typography>
+						</Box>
+
+						{/* Битрикс24 статус */}
+						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+							<BusinessIcon fontSize='small' color='action' />
+							{submission.bitrixDealId ? (
+								<Chip
+									icon={
+										submission.bitrixSyncStatus === 'synced' ? (
+											<CheckCircleIcon />
+										) : submission.bitrixSyncStatus === 'failed' ? (
+											<ErrorIcon />
+										) : (
+											<PendingIcon />
+										)
+									}
+									label={
+										submission.bitrixSyncStatus === 'synced'
+											? 'Синхронизировано'
+											: submission.bitrixSyncStatus === 'failed'
+											? 'Ошибка синхронизации'
+											: 'Ожидает синхронизации'
+									}
+									color={
+										submission.bitrixSyncStatus === 'synced'
+											? 'success'
+											: submission.bitrixSyncStatus === 'failed'
+											? 'error'
+											: 'warning'
+									}
+									size='small'
+									variant='outlined'
+								/>
+							) : (
+								<Chip
+									label='Не создано в Битрикс24'
+									color='default'
+									size='small'
+									variant='outlined'
+								/>
+							)}
+						</Box>
+
+						{/* Название заявки */}
+						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+							<DescriptionIcon fontSize='small' color='action' />
+							<Typography variant='body2' sx={{ fontWeight: 'medium' }}>
+								{submission.title}
+							</Typography>
+						</Box>
+					</Stack>
+
+					{/* Действия */}
+					<Box
+						sx={{
+							display: 'flex',
+							justifyContent: 'space-between',
+							alignItems: 'center',
+							mt: 2,
+							pt: 1,
+							borderTop: '1px solid',
+							borderColor: 'divider',
+						}}
+					>
+						<ButtonGroup size='small' variant='outlined'>
+							<Button
+								startIcon={<VisibilityIcon />}
+								onClick={() => handleShowDetails(submission)}
+							>
+								{isSmallMobile ? '' : 'Подробнее'}
+							</Button>
+							{!isShipped && (
+								<Button
+									startIcon={<EditIcon />}
+									onClick={() => handleEditSubmission(submission)}
+									color='primary'
+								>
+									{isSmallMobile ? '' : 'Редактировать'}
+								</Button>
+							)}
+						</ButtonGroup>
+
+						{/* Смена статуса для админов */}
+						{isAdmin && (
+							<FormControl size='small' sx={{ minWidth: 120 }}>
+								<Select
+									value={getCleanStatus(submission.status)}
+									onChange={e =>
+										handleStatusChange(submission._id, e.target.value)
+									}
+									displayEmpty
+									renderValue={value => {
+										const statusName = getStatusName(submission.status)
+										return statusName || 'Не указан'
+									}}
+								>
+									{bitrixStages.map(stage => (
+										<MenuItem key={stage.id} value={stage.id}>
+											{stage.name}
+										</MenuItem>
+									))}
+								</Select>
+							</FormControl>
 						)}
 					</Box>
-
-					{/* Название заявки */}
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-						<DescriptionIcon fontSize='small' color='action' />
-						<Typography variant='body2' sx={{ fontWeight: 'medium' }}>
-							{submission.title}
-						</Typography>
-					</Box>
-				</Stack>
-
-				{/* Действия */}
-				<Box
-					sx={{
-						display: 'flex',
-						justifyContent: 'space-between',
-						alignItems: 'center',
-						mt: 2,
-						pt: 1,
-						borderTop: '1px solid',
-						borderColor: 'divider',
-					}}
-				>
-					<ButtonGroup size='small' variant='outlined'>
-						<Button
-							startIcon={<VisibilityIcon />}
-							onClick={() => handleShowDetails(submission)}
-						>
-							{isSmallMobile ? '' : 'Подробнее'}
-						</Button>
-						<Button
-							startIcon={<EditIcon />}
-							onClick={() => handleEditSubmission(submission)}
-							color='primary'
-						>
-							{isSmallMobile ? '' : 'Редактировать'}
-						</Button>
-					</ButtonGroup>
-
-					{/* Смена статуса для админов */}
-					{isAdmin && (
-						<FormControl size='small' sx={{ minWidth: 120 }}>
-							<Select
-								value={getCleanStatus(submission.status)}
-								onChange={e =>
-									handleStatusChange(submission._id, e.target.value)
-								}
-								displayEmpty
-								renderValue={value => {
-									const statusName = getStatusName(submission.status)
-									return statusName || 'Не указан'
-								}}
-							>
-								{bitrixStages.map(stage => (
-									<MenuItem key={stage.id} value={stage.id}>
-										{stage.name}
-									</MenuItem>
-								))}
-							</Select>
-						</FormControl>
-					)}
-				</Box>
-			</CardContent>
-		</Card>
-	)
+				</CardContent>
+			</Card>
+		)
+	}
 
 	return (
 		<Container
@@ -693,9 +715,8 @@ const MySubmissions: React.FC = () => {
 							<Table>
 								<TableHead>
 									<TableRow>
-										<TableCell>№ заявки</TableCell>
-										<TableCell>Форма</TableCell>
-										<TableCell>Клиент</TableCell>
+										<TableCell>Bitrix ID</TableCell>
+										<TableCell>User</TableCell>
 										<TableCell>Статус</TableCell>
 										<TableCell>Битрикс24</TableCell>
 										<TableCell>Дата создания</TableCell>
@@ -709,15 +730,15 @@ const MySubmissions: React.FC = () => {
 											return null
 										}
 
+										// Проверяем, является ли статус "Отгружено" (C1:WON)
+										const isShipped = submission.status === 'C1:WON'
+
 										return (
 											<TableRow key={submission._id}>
 												<TableCell>
 													<Typography variant='body2' fontWeight='bold'>
-														{submission.submissionNumber || 'Не указан'}
+														{submission.bitrixDealId || 'Не указан'}
 													</Typography>
-												</TableCell>
-												<TableCell>
-													{submission.formId?.title || 'Форма не найдена'}
 												</TableCell>
 												<TableCell>
 													{submission.userId && (
@@ -726,6 +747,11 @@ const MySubmissions: React.FC = () => {
 															submission.userId.lastName
 																? `${submission.userId.firstName} ${submission.userId.lastName}`
 																: submission.userId.name || 'Не указан'}
+														</Typography>
+													)}
+													{!submission.userId && (
+														<Typography variant='body2' color='text.secondary'>
+															Анонимная заявка
 														</Typography>
 													)}
 												</TableCell>
@@ -826,13 +852,15 @@ const MySubmissions: React.FC = () => {
 														>
 															<VisibilityIcon />
 														</IconButton>
-														<IconButton
-															onClick={() => handleEditSubmission(submission)}
-															color='primary'
-															title='Редактировать заявку'
-														>
-															<EditIcon />
-														</IconButton>
+														{!isShipped && (
+															<IconButton
+																onClick={() => handleEditSubmission(submission)}
+																color='primary'
+																title='Редактировать заявку'
+															>
+																<EditIcon />
+															</IconButton>
+														)}
 													</ButtonGroup>
 												</TableCell>
 											</TableRow>

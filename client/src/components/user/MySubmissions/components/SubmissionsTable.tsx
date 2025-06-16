@@ -63,9 +63,8 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 			<Table>
 				<TableHead>
 					<TableRow>
-						<TableCell>№ заявки</TableCell>
-						<TableCell>Форма</TableCell>
-						<TableCell>Клиент</TableCell>
+						<TableCell>Bitrix ID</TableCell>
+						<TableCell>User</TableCell>
 						<TableCell>Статус</TableCell>
 						<TableCell>Битрикс24</TableCell>
 						<TableCell>Дата создания</TableCell>
@@ -73,79 +72,98 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 					</TableRow>
 				</TableHead>
 				<TableBody>
-					{submissions.map(submission => (
-						<TableRow key={submission._id}>
-							<TableCell>
-								<Typography variant='body2' fontWeight='bold'>
-									{submission.submissionNumber}
-								</Typography>
-							</TableCell>
-							<TableCell>{submission.formId.title}</TableCell>
-							<TableCell>
-								{submission.userId
-									? submission.userId.firstName && submission.userId.lastName
-										? `${submission.userId.firstName} ${submission.userId.lastName}`
-										: submission.userId.name
-									: 'Анонимная заявка'}
-							</TableCell>
-							<TableCell>
-								<FormControl size='small' sx={{ minWidth: 120 }}>
-									<Select
-										value={getCleanStatus(submission.status)}
-										onChange={e =>
-											onStatusChange(submission._id, e.target.value)
-										}
-										displayEmpty
-										renderValue={value => {
-											const statusName = getStatusName(
-												submission.status,
-												bitrixStages
-											)
-											return statusName || 'Не указан'
-										}}
-									>
-										{bitrixStages.map(stage => (
-											<MenuItem key={stage.id} value={stage.id}>
-												{stage.name}
-											</MenuItem>
-										))}
-									</Select>
-								</FormControl>
-							</TableCell>
-							<TableCell>
-								<Stack direction='row' spacing={1} alignItems='center'>
-									{submission.bitrixDealId ? (
-										<Tooltip title={`Сделка ID: ${submission.bitrixDealId}`}>
-											<Chip
-												icon={
-													getSyncIcon(submission.bitrixSyncStatus) || undefined
+					{submissions.map(submission => {
+						// Проверяем, является ли статус "Отгружено" (C1:WON)
+						const isShipped = submission.status === 'C1:WON'
+
+						return (
+							<TableRow key={submission._id}>
+								<TableCell>
+									<Typography variant='body2' fontWeight='bold'>
+										{submission.bitrixDealId || 'Не указан'}
+									</Typography>
+								</TableCell>
+								<TableCell>
+									{submission.userId
+										? submission.userId.firstName && submission.userId.lastName
+											? `${submission.userId.firstName} ${submission.userId.lastName}`
+											: submission.userId.name || 'Не указан'
+										: 'Анонимная заявка'}
+								</TableCell>
+								<TableCell>
+									<FormControl size='small' sx={{ minWidth: 120 }}>
+										<Select
+											value={getCleanStatus(submission.status)}
+											onChange={e =>
+												onStatusChange(submission._id, e.target.value)
+											}
+											displayEmpty
+											renderValue={value => {
+												// Используем fallback для отображения понятного текста
+												switch (submission.status) {
+													case 'C1:NEW':
+														return 'Новая'
+													case 'C1:UC_GJLIZP':
+														return 'Отправлено'
+													case 'C1:WON':
+														return 'Отгружено'
+													default:
+														const statusName = getStatusName(
+															submission.status,
+															bitrixStages
+														)
+														return statusName || 'Не указан'
 												}
-												label={getSyncStatusText(submission.bitrixSyncStatus)}
-												color={getSyncStatusColor(submission.bitrixSyncStatus)}
-												size='small'
-											/>
-										</Tooltip>
-									) : (
-										<Chip label='Не создано' color='default' size='small' />
+											}}
+										>
+											{bitrixStages.map(stage => (
+												<MenuItem key={stage.id} value={stage.id}>
+													{stage.name}
+												</MenuItem>
+											))}
+										</Select>
+									</FormControl>
+								</TableCell>
+								<TableCell>
+									<Stack direction='row' spacing={1} alignItems='center'>
+										{submission.bitrixDealId ? (
+											<Tooltip title={`Сделка ID: ${submission.bitrixDealId}`}>
+												<Chip
+													icon={
+														getSyncIcon(submission.bitrixSyncStatus) ||
+														undefined
+													}
+													label={getSyncStatusText(submission.bitrixSyncStatus)}
+													color={getSyncStatusColor(
+														submission.bitrixSyncStatus
+													)}
+													size='small'
+												/>
+											</Tooltip>
+										) : (
+											<Chip label='Не создано' color='default' size='small' />
+										)}
+									</Stack>
+								</TableCell>
+								<TableCell>
+									{format(new Date(submission.createdAt), 'dd.MM.yyyy HH:mm', {
+										locale: ru,
+									})}
+								</TableCell>
+								<TableCell>
+									{!isShipped && (
+										<IconButton
+											onClick={() => onEditSubmission(submission)}
+											color='primary'
+											title='Редактировать заявку'
+										>
+											<EditIcon />
+										</IconButton>
 									)}
-								</Stack>
-							</TableCell>
-							<TableCell>
-								{format(new Date(submission.createdAt), 'dd.MM.yyyy HH:mm', {
-									locale: ru,
-								})}
-							</TableCell>
-							<TableCell>
-								<IconButton
-									onClick={() => onEditSubmission(submission)}
-									color='primary'
-									title='Редактировать заявку'
-								>
-									<EditIcon />
-								</IconButton>
-							</TableCell>
-						</TableRow>
-					))}
+								</TableCell>
+							</TableRow>
+						)
+					})}
 				</TableBody>
 			</Table>
 			<TablePagination

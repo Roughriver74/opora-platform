@@ -9,31 +9,22 @@ interface LogoProps {
 
 const Logo: React.FC<LogoProps> = ({
 	size = 40,
-	showText = true,
+	showText = false,
 	variant = 'default',
 	className = '',
 }) => {
 	const colors = {
 		default: {
-			bg: '#2563eb',
-			hexagon: '#ffffff',
-			innerHexagon: '#2563eb',
-			text: '#ffffff',
-			brandText: '#2563eb',
+			hexagon1: '#54C3C3',
+			hexagon2: 'black',
 		},
 		white: {
-			bg: '#ffffff',
-			hexagon: '#2563eb',
-			innerHexagon: '#ffffff',
-			text: '#2563eb',
-			brandText: '#ffffff',
+			hexagon1: '#FFFFFF',
+			hexagon2: '#54C3C3',
 		},
 		dark: {
-			bg: '#1f2937',
-			hexagon: '#ffffff',
-			innerHexagon: '#1f2937',
-			text: '#ffffff',
-			brandText: '#ffffff',
+			hexagon1: '#54C3C3',
+			hexagon2: '#FFFFFF',
 		},
 	}
 
@@ -44,52 +35,18 @@ const Logo: React.FC<LogoProps> = ({
 			<svg
 				width={size}
 				height={size}
-				viewBox='0 0 32 32'
+				viewBox='0 1800 2902 2082'
 				xmlns='http://www.w3.org/2000/svg'
-				style={{ marginRight: showText ? '8px' : '0' }}
 			>
-				{/* Фон */}
-				<rect width='32' height='32' fill={colorScheme.bg} rx='4' />
-
-				{/* Шестиугольник */}
 				<polygon
-					points='16,6 24,11 24,21 16,26 8,21 8,11'
-					fill={colorScheme.hexagon}
+					points='1011.17,1828.11 417.29,2856.83 802.78,3524.55 802.79,3524.56 1437.69,3524.56 1437.67,3524.55 1573.46,3524.55 1958.92,2856.92 1627.98,2283.72 2045.16,2283.72 2376.05,2856.83 1782.13,3885.53 593.9,3885.53 297.06,3371.34 0,2856.83 593.9,1828.11'
+					fill={colorScheme.hexagon1}
 				/>
-
-				{/* Внутренний шестиугольник */}
 				<polygon
-					points='16,12 20,14.5 20,17.5 16,20 12,17.5 12,14.5'
-					fill={colorScheme.innerHexagon}
+					points='2308.21,1828.11 1119.99,1828.11 526.09,2856.83 856.95,3429.92 1274.24,3429.92 943.38,2856.83 1328.88,2189.08 2099.54,2189.08 2485.06,2856.83 1891.14,3885.53 2308.21,3885.53 2902.13,2856.83'
+					fill={colorScheme.hexagon2}
 				/>
-
-				{/* Буква Б */}
-				<text
-					x='16'
-					y='16'
-					fontFamily='Arial, sans-serif'
-					fontSize='6'
-					fontWeight='bold'
-					textAnchor='middle'
-					dominantBaseline='central'
-					fill={colorScheme.text}
-				>
-					Б
-				</text>
 			</svg>
-
-			{showText && (
-				<span
-					style={{
-						color: colorScheme.brandText,
-						fontSize: `${size * 0.6}px`,
-						fontWeight: 'bold',
-						fontFamily: 'system-ui, -apple-system, sans-serif',
-					}}
-				>
-					БетонЭкспресс
-				</span>
-			)}
 		</div>
 	)
 }

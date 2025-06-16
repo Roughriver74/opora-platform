@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken'
 import AdminToken from '../models/AdminToken'
 import User from '../models/User'
 
-// Время жизни токена - 7 дней
-const TOKEN_EXPIRY = '7d'
+// Время жизни токена - 4 часа
+const TOKEN_EXPIRY = '4h'
 
 /**
  * Аутентификация администратора
