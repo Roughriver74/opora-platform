@@ -40,6 +40,15 @@ const express_1 = __importDefault(require("express"));
 const submissionController = __importStar(require("../controllers/submissionController"));
 const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = express_1.default.Router();
+// Публичный роут для обновления статуса по Битрикс ID (без авторизации)
+// Используется для внешних интеграций
+router.get('/update-status', (req, res) => {
+    submissionController.updateStatusByBitrixId(req, res);
+});
+// Публичный роут для проверки поля UF_CRM_1750107484181 в Битрикс24
+router.get('/check-field/:dealId', (req, res) => {
+    submissionController.checkBitrixField(req, res);
+});
 // Применяем middleware авторизации для всех роутов
 router.use(authMiddleware_1.authMiddleware);
 // Маршрут для отправки формы (доступен всем авторизованным)

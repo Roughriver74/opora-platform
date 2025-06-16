@@ -136,3 +136,7 @@ beton-crm/
     │   └─ services/       # Сервисы для работы с внешними API
     └─ dist/               # Скомпилированный код (после сборки)
 ```
+
+```
+curl "http://localhost:5001/api/submissions/update-status?bitrixid=999999&status=C1:EXECUTING"
+```

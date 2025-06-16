@@ -74,7 +74,7 @@ const SubmissionSchema = new mongoose_1.Schema({
     },
     bitrixDealId: {
         type: String,
-        required: true,
+        required: false, // Может быть пустым при создании, заполняется после создания сделки в Битрикс24
     },
     bitrixCategoryId: {
         type: String,

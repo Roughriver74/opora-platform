@@ -10,7 +10,7 @@ export interface ISubmission extends Document {
 	priority: 'low' | 'medium' | 'high' | 'urgent'
 
 	// Битрикс24 интеграция - основное хранилище данных
-	bitrixDealId: string // Обязательное поле - все данные в Битрикс24
+	bitrixDealId?: string // Может быть пустым при создании, заполняется после создания сделки в Битрикс24
 	bitrixCategoryId?: string // ID категории сделки в Битрикс24
 	bitrixSyncStatus: 'pending' | 'synced' | 'failed'
 	bitrixSyncError?: string
@@ -56,7 +56,7 @@ const SubmissionSchema = new Schema<ISubmission>(
 		},
 		bitrixDealId: {
 			type: String,
-			required: true,
+			required: false, // Может быть пустым при создании, заполняется после создания сделки в Битрикс24
 		},
 		bitrixCategoryId: {
 			type: String,

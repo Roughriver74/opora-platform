@@ -16,8 +16,8 @@ exports.logout = exports.verifyToken = exports.userLogin = exports.adminLogin = 
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const AdminToken_1 = __importDefault(require("../models/AdminToken"));
 const User_1 = __importDefault(require("../models/User"));
-// Время жизни токена - 7 дней
-const TOKEN_EXPIRY = '7d';
+// Время жизни токена - 4 часа
+const TOKEN_EXPIRY = '4h';
 /**
  * Аутентификация администратора
  */

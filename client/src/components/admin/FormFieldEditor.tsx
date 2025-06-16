@@ -27,6 +27,7 @@ import DragIndicatorIcon from '@mui/icons-material/DragIndicator'
 import { FormField, FieldType, FormFieldOption } from '../../types'
 import BitrixOptionsLoader from './BitrixOptionsLoader'
 import { FormFieldService } from '../../services/formFieldService'
+import { LinkedFieldsSettings } from './FormFieldEditor/components/LinkedFieldsSettings'
 
 // Типы для группирования полей
 interface FieldTypeItem {
@@ -816,6 +817,15 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 				{formField.type !== 'header' &&
 					formField.type !== 'divider' &&
 					renderOptionsEditor()}
+
+				{/* Настройки связанных полей только для обычных полей */}
+				{formField.type !== 'header' && formField.type !== 'divider' && (
+					<LinkedFieldsSettings
+						formField={formField as FormField}
+						availableFields={allFields}
+						onChange={updatedField => setFormField(updatedField)}
+					/>
+				)}
 
 				<Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
 					<Button

@@ -9,6 +9,17 @@ import { Request, Response } from 'express'
 
 const router = express.Router()
 
+// Публичный роут для обновления статуса по Битрикс ID (без авторизации)
+// Используется для внешних интеграций
+router.get('/update-status', (req: Request, res: Response) => {
+	submissionController.updateStatusByBitrixId(req, res)
+})
+
+// Публичный роут для проверки поля UF_CRM_1750107484181 в Битрикс24
+router.get('/check-field/:dealId', (req: Request, res: Response) => {
+	submissionController.checkBitrixField(req, res)
+})
+
 // Применяем middleware авторизации для всех роутов
 router.use(authMiddleware)
 

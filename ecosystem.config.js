@@ -17,7 +17,7 @@ module.exports = {
 				JWT_EXPIRES_IN: '4h',
 				// Bitrix24
 				BITRIX24_WEBHOOK_URL:
-					'https://b24-iu9rq6.bitrix24.by/rest/68/xqg9zfhz88b5q0zl/',
+					'https://crm.betonexpress.pro/rest/3/74sbx907svrq1v10/',
 				// Админ пароль
 				ADMIN_PASSWORD: 'admin123',
 			},

@@ -53,6 +53,25 @@ const FormFieldSchema = new mongoose_1.Schema({
         source: { type: String },
         filter: { type: mongoose_1.Schema.Types.Mixed },
     },
+    linkedFields: {
+        enabled: { type: Boolean, default: false },
+        mappings: [
+            {
+                targetFieldName: { type: String, required: true },
+                copyDirection: {
+                    type: String,
+                    enum: ['from', 'to', 'both'],
+                    default: 'both',
+                },
+                transformFunction: { type: String },
+            },
+        ],
+        sourceField: {
+            sourceFieldName: { type: String },
+            sourceFieldLabel: { type: String },
+            sourceSectionName: { type: String },
+        },
+    },
     order: { type: Number, default: 0 },
 }, { timestamps: true });
 exports.default = mongoose_1.default.model('FormField', FormFieldSchema);

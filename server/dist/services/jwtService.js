@@ -16,14 +16,15 @@ exports.jwtService = exports.JWTService = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const AdminToken_1 = __importDefault(require("../models/AdminToken"));
 // Время жизни токенов
-const ACCESS_TOKEN_EXPIRY = '15m'; // Короткое время для access токена
+const ACCESS_TOKEN_EXPIRY = '4h'; // Увеличено время для access токена до 4 часов
 const REFRESH_TOKEN_EXPIRY = '7d'; // Длинное время для refresh токена
 /**
  * JWT сервис для создания и верификации токенов
  */
 class JWTService {
     constructor() {
-        this.secret = process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production';
+        this.secret =
+            process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production';
     }
     /**
      * Создание пары access и refresh токенов
@@ -31,18 +32,20 @@ class JWTService {
     generateTokenPair(payload) {
         return __awaiter(this, void 0, void 0, function* () {
             // Создаем access токен
-            const accessToken = jsonwebtoken_1.default.sign(Object.assign(Object.assign({}, payload), { type: 'access' }), this.secret, { expiresIn: ACCESS_TOKEN_EXPIRY });
+            const accessToken = jsonwebtoken_1.default.sign(Object.assign(Object.assign({}, payload), { type: 'access' }), this.secret, {
+                expiresIn: ACCESS_TOKEN_EXPIRY,
+            });
             // Создаем refresh токен
             const refreshToken = jsonwebtoken_1.default.sign(Object.assign(Object.assign({}, payload), { type: 'refresh' }), this.secret, { expiresIn: REFRESH_TOKEN_EXPIRY });
             // Сохраняем refresh токен в базе данных
             yield AdminToken_1.default.create({
                 token: refreshToken,
-                type: 'refresh'
+                type: 'refresh',
             });
             return {
                 accessToken,
                 refreshToken,
-                expiresIn: ACCESS_TOKEN_EXPIRY
+                expiresIn: ACCESS_TOKEN_EXPIRY,
             };
         });
     }
@@ -81,7 +84,7 @@ class JWTService {
                 const newAccessToken = jsonwebtoken_1.default.sign({
                     id: decoded.id,
                     role: decoded.role,
-                    type: 'access'
+                    type: 'access',
                 }, this.secret, { expiresIn: ACCESS_TOKEN_EXPIRY });
                 return newAccessToken;
             }

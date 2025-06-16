@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBitrixStages = exports.deleteSubmission = exports.updateSubmission = exports.getSubmissionWithBitrixData = exports.updateSubmissionStatus = exports.getSubmissionById = exports.getMySubmissions = exports.getAllSubmissions = exports.submitForm = void 0;
+exports.checkBitrixField = exports.updateStatusByBitrixId = exports.getBitrixStages = exports.deleteSubmission = exports.updateSubmission = exports.getSubmissionWithBitrixData = exports.updateSubmissionStatus = exports.getSubmissionById = exports.getMySubmissions = exports.getAllSubmissions = exports.submitForm = void 0;
 const Form_1 = __importDefault(require("../models/Form"));
 const Submission_1 = __importDefault(require("../models/Submission"));
 const SubmissionHistory_1 = __importDefault(require("../models/SubmissionHistory"));
@@ -26,6 +26,13 @@ const submitForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         if (!formId || !formData) {
             return res.status(400).json({
                 message: 'Необходимо указать ID формы и данные формы',
+            });
+        }
+        // Проверяем валидность ObjectId
+        const mongoose = require('mongoose');
+        if (!mongoose.Types.ObjectId.isValid(formId)) {
+            return res.status(400).json({
+                message: 'Некорректный ID формы',
             });
         }
         console.log('[SUBMIT NEW] Начало обработки заявки');
@@ -82,24 +89,40 @@ const submitForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         dealData['CATEGORY_ID'] = categoryId;
         console.log(`[SUBMIT NEW] Категория: ${categoryId}`);
         console.log('[SUBMIT NEW] Данные для Битрикс24:', dealData);
+        let submission = null;
         try {
-            // ОСНОВНОЕ: создаем сделку в Битрикс24 СРАЗУ
-            console.log('[SUBMIT NEW] Создание сделки в Битрикс24...');
-            const dealResponse = yield bitrix24Service_1.default.createDeal(dealData);
-            console.log('[SUBMIT NEW] Сделка создана в Битрикс24:', dealResponse.result);
-            // Только ПОСЛЕ успешного создания в Битрикс24 сохраняем в БД
-            const submission = new Submission_1.default({
+            // СНАЧАЛА создаем заявку в БД для получения ID
+            console.log('[SUBMIT NEW] Создание заявки в БД...');
+            submission = new Submission_1.default({
                 formId: formId,
                 userId: ((_b = req.user) === null || _b === void 0 ? void 0 : _b.id) || null,
                 title: dealTitle,
                 status: 'C1:NEW',
                 priority: 'medium',
-                bitrixDealId: dealResponse.result.toString(),
+                // bitrixDealId не указываем - заполним после создания сделки
                 bitrixCategoryId: categoryId,
-                bitrixSyncStatus: 'synced',
+                bitrixSyncStatus: 'pending',
             });
             yield submission.save();
-            console.log(`[SUBMIT NEW] Заявка сохранена в БД: ${submission.submissionNumber}`);
+            console.log(`[SUBMIT NEW] Заявка сохранена в БД: ${submission.submissionNumber}, ID: ${submission._id}`);
+            // Добавляем ID заявки в поле UF_CRM_1750107484181
+            dealData['UF_CRM_1750107484181'] = submission._id.toString();
+            console.log(`[SUBMIT NEW] ✅ Добавлен ID заявки в поле UF_CRM_1750107484181:`);
+            console.log(`[SUBMIT NEW] - FormID: ${formId}`);
+            console.log(`[SUBMIT NEW] - Submission ID: ${submission._id}`);
+            console.log(`[SUBMIT NEW] - Submission Number: ${submission.submissionNumber}`);
+            console.log(`[SUBMIT NEW] - Значение в UF_CRM_1750107484181: ${dealData['UF_CRM_1750107484181']}`);
+            // ТЕПЕРЬ создаем сделку в Битрикс24 с ID заявки
+            console.log('[SUBMIT NEW] Создание сделки в Битрикс24...');
+            console.log('[SUBMIT NEW] 📋 Все данные для Битрикс24:');
+            console.log(JSON.stringify(dealData, null, 2));
+            const dealResponse = yield bitrix24Service_1.default.createDeal(dealData);
+            console.log('[SUBMIT NEW] Сделка создана в Битрикс24:', dealResponse.result);
+            // Обновляем заявку с полученным bitrixDealId
+            submission.bitrixDealId = dealResponse.result.toString();
+            submission.bitrixSyncStatus = 'synced';
+            yield submission.save();
+            console.log(`[SUBMIT NEW] Заявка обновлена с bitrixDealId: ${submission.bitrixDealId}`);
             // Добавляем запись в историю
             yield new SubmissionHistory_1.default({
                 submissionId: submission._id,
@@ -120,7 +143,16 @@ const submitForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         }
         catch (bitrixError) {
             console.error('[SUBMIT NEW] КРИТИЧЕСКАЯ ОШИБКА - не удалось создать сделку в Битрикс24:', bitrixError);
-            // Если не удалось создать в Битрикс24 - НЕ создаем заявку в БД
+            // Удаляем созданную заявку из БД, если не удалось создать сделку в Битрикс24
+            if (submission && submission._id) {
+                try {
+                    yield Submission_1.default.findByIdAndDelete(submission._id);
+                    console.log(`[SUBMIT NEW] Заявка ${submission._id} удалена из БД после ошибки Битрикс24`);
+                }
+                catch (deleteError) {
+                    console.error(`[SUBMIT NEW] Ошибка удаления заявки ${submission._id}:`, deleteError);
+                }
+            }
             return res.status(500).json({
                 message: 'Ошибка создания заявки в системе',
                 error: bitrixError.message,
@@ -696,3 +728,106 @@ const getBitrixStages = (req, res) => __awaiter(void 0, void 0, void 0, function
     }
 });
 exports.getBitrixStages = getBitrixStages;
+// Обновление статуса заявки по Битрикс ID (публичный API)
+const updateStatusByBitrixId = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { bitrixid, status } = req.query;
+        // Валидация параметров
+        if (!bitrixid || !status) {
+            return res.status(400).json({
+                success: false,
+                message: 'Параметры bitrixid и status обязательны',
+                example: '/api/submissions/update-status?bitrixid=123&status=C1:EXECUTING',
+            });
+        }
+        console.log(`[API UPDATE STATUS] Поиск заявки с bitrixDealId: ${bitrixid}`);
+        // Ищем заявку по bitrixDealId
+        const submission = yield Submission_1.default.findOne({ bitrixDealId: bitrixid });
+        if (!submission) {
+            return res.status(404).json({
+                success: false,
+                message: `Заявка с bitrixDealId ${bitrixid} не найдена`,
+            });
+        }
+        console.log(`[API UPDATE STATUS] Заявка найдена: ${submission.submissionNumber}`);
+        console.log(`[API UPDATE STATUS] Старый статус: ${submission.status}`);
+        console.log(`[API UPDATE STATUS] Новый статус: ${status}`);
+        const oldStatus = submission.status;
+        submission.status = status;
+        yield submission.save();
+        console.log(`[API UPDATE STATUS] Статус успешно обновлен в БД`);
+        // Добавляем запись в историю (от системы)
+        yield new SubmissionHistory_1.default({
+            submissionId: submission._id,
+            action: 'status_changed',
+            changeType: 'status_change',
+            description: `Статус изменен автоматически с "${oldStatus}" на "${status}" через API`,
+            oldValue: oldStatus,
+            newValue: status,
+            comment: 'Автоматическое обновление через внешний API',
+            changedBy: null, // null означает системное изменение
+        }).save();
+        console.log(`[API UPDATE STATUS] Запись в историю добавлена`);
+        res.json({
+            success: true,
+            message: 'Статус заявки обновлен успешно',
+            data: {
+                submissionNumber: submission.submissionNumber,
+                bitrixDealId: submission.bitrixDealId,
+                oldStatus,
+                newStatus: status,
+                updatedAt: new Date(),
+            },
+        });
+        console.log(`[API UPDATE STATUS] Ответ отправлен`);
+    }
+    catch (error) {
+        console.error('[API UPDATE STATUS] Ошибка:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутренняя ошибка сервера',
+            error: error.message,
+        });
+    }
+});
+exports.updateStatusByBitrixId = updateStatusByBitrixId;
+// Проверка поля UF_CRM_1750107484181 в Битрикс24 (для отладки)
+const checkBitrixField = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { dealId } = req.params;
+        if (!dealId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Параметр dealId обязателен',
+            });
+        }
+        console.log(`[CHECK FIELD] Проверка поля UF_CRM_1750107484181 для сделки ${dealId}`);
+        // Получаем данные сделки из Битрикс24
+        const dealData = yield bitrix24Service_1.default.getDeal(dealId);
+        if (!(dealData === null || dealData === void 0 ? void 0 : dealData.result)) {
+            return res.status(404).json({
+                success: false,
+                message: `Сделка с ID ${dealId} не найдена в Битрикс24`,
+            });
+        }
+        const fieldValue = dealData.result.UF_CRM_1750107484181;
+        console.log(`[CHECK FIELD] Значение поля UF_CRM_1750107484181: ${fieldValue}`);
+        res.json({
+            success: true,
+            data: {
+                dealId: dealId,
+                fieldValue: fieldValue,
+                allFields: dealData.result,
+            },
+        });
+    }
+    catch (error) {
+        console.error('[CHECK FIELD] Ошибка:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Ошибка получения данных из Битрикс24',
+            error: error.message,
+        });
+    }
+});
+exports.checkBitrixField = checkBitrixField;

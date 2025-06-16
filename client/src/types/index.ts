@@ -1,4 +1,4 @@
-import { ReactNode } from "react"
+import { ReactNode } from 'react'
 
 // Типы для полей формы
 export interface FormFieldOption {
@@ -14,15 +14,24 @@ export interface DynamicSource {
 
 // Типы для связанных полей
 export interface LinkedFieldMapping {
-  [x: string]: ReactNode
+	[x: string]: ReactNode
 	targetFieldName: string
 	copyDirection: 'from' | 'to' | 'both'
 	transformFunction?: string
 }
 
+// Новый улучшенный тип для простой настройки связанных полей
+export interface SimpleLinkedField {
+	sourceFieldName: string // Поле, из которого копировать
+	sourceFieldLabel?: string // Название поля-источника (для отображения)
+	sourceSectionName?: string // Секция, из которой копировать (опционально)
+}
+
 export interface LinkedFields {
 	enabled: boolean
 	mappings: LinkedFieldMapping[]
+	// Новое: простая настройка - из какого поля копировать значение
+	sourceField?: SimpleLinkedField
 }
 
 // Типы полей формы
