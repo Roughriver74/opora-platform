@@ -9,7 +9,7 @@ import './App.css'
 const theme = createTheme({
 	palette: {
 		primary: {
-			main: '#2a3eb1',
+			main: '#4ecdc4',
 		},
 		secondary: {
 			main: '#f50057',
