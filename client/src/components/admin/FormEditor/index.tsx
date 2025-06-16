@@ -6,6 +6,7 @@ import {
 	CardContent,
 	LinearProgress,
 	Snackbar,
+	Typography,
 } from '@mui/material'
 import AutoSaveIcon from '@mui/icons-material/CloudDone'
 import { FormEditorProps } from './types'

@@ -208,7 +208,7 @@ const MySubmissions: React.FC = () => {
 				// Сохраняем актуальные данные для редактирования
 				const editData = {
 					submissionId: response.data._id,
-					formId: response.data.formId._id,
+					formId: response.data.formId?._id || submission.formId?._id,
 					formData: response.data.formData,
 					preloadedOptions: response.data.preloadedOptions || {},
 				}
@@ -227,7 +227,7 @@ const MySubmissions: React.FC = () => {
 					'editSubmissionData',
 					JSON.stringify({
 						submissionId: submission._id,
-						formId: submission.formId._id,
+						formId: submission.formId?._id || 'unknown',
 						formData: {},
 					})
 				)
@@ -240,7 +240,7 @@ const MySubmissions: React.FC = () => {
 				'editSubmissionData',
 				JSON.stringify({
 					submissionId: submission._id,
-					formId: submission.formId._id,
+					formId: submission.formId?._id || 'unknown',
 					formData: {},
 				})
 			)
@@ -373,7 +373,7 @@ const MySubmissions: React.FC = () => {
 							№ {submission.submissionNumber}
 						</Typography>
 						<Typography variant='body2' color='text.secondary'>
-							{submission.formId.title}
+							{submission.formId?.title || 'Форма не найдена'}
 						</Typography>
 					</Box>
 					<Chip
@@ -390,9 +390,9 @@ const MySubmissions: React.FC = () => {
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 							<PersonIcon fontSize='small' color='action' />
 							<Typography variant='body2'>
-								{submission.userId.firstName && submission.userId.lastName
+								{submission.userId?.firstName && submission.userId?.lastName
 									? `${submission.userId.firstName} ${submission.userId.lastName}`
-									: submission.userId.name}
+									: submission.userId?.name || 'Не указан'}
 							</Typography>
 						</Box>
 					)}
@@ -703,128 +703,141 @@ const MySubmissions: React.FC = () => {
 									</TableRow>
 								</TableHead>
 								<TableBody>
-									{submissions.map(submission => (
-										<TableRow key={submission._id}>
-											<TableCell>
-												<Typography variant='body2' fontWeight='bold'>
-													{submission.submissionNumber}
-												</Typography>
-											</TableCell>
-											<TableCell>{submission.formId.title}</TableCell>
-											<TableCell>
-												{submission.userId && (
-													<Typography variant='body2'>
-														{submission.userId.firstName &&
-														submission.userId.lastName
-															? `${submission.userId.firstName} ${submission.userId.lastName}`
-															: submission.userId.name}
+									{submissions.map(submission => {
+										// Защита от некорректных данных
+										if (!submission || !submission._id) {
+											return null
+										}
+
+										return (
+											<TableRow key={submission._id}>
+												<TableCell>
+													<Typography variant='body2' fontWeight='bold'>
+														{submission.submissionNumber || 'Не указан'}
 													</Typography>
-												)}
-											</TableCell>
-											<TableCell>
-												{isAdmin ? (
-													<FormControl size='small' sx={{ minWidth: 120 }}>
-														<Select
-															value={getCleanStatus(submission.status)}
-															onChange={e =>
-																handleStatusChange(
-																	submission._id,
-																	e.target.value
-																)
-															}
-															displayEmpty
-															renderValue={value => {
-																const statusName = getStatusName(
-																	submission.status
-																)
-																return statusName || 'Не указан'
-															}}
-														>
-															{bitrixStages.map(stage => (
-																<MenuItem key={stage.id} value={stage.id}>
-																	{stage.name}
-																</MenuItem>
-															))}
-														</Select>
-													</FormControl>
-												) : (
-													<Chip
-														label={getStatusName(submission.status)}
-														color='primary'
-														size='small'
-													/>
-												)}
-											</TableCell>
-											<TableCell>
-												<Stack direction='row' spacing={1} alignItems='center'>
-													{submission.bitrixDealId ? (
-														<Tooltip
-															title={`Сделка ID: ${submission.bitrixDealId}`}
-														>
-															<Chip
-																icon={
-																	submission.bitrixSyncStatus === 'synced' ? (
-																		<CheckCircleIcon />
-																	) : submission.bitrixSyncStatus ===
-																	  'failed' ? (
-																		<ErrorIcon />
-																	) : (
-																		<PendingIcon />
+												</TableCell>
+												<TableCell>
+													{submission.formId?.title || 'Форма не найдена'}
+												</TableCell>
+												<TableCell>
+													{submission.userId && (
+														<Typography variant='body2'>
+															{submission.userId.firstName &&
+															submission.userId.lastName
+																? `${submission.userId.firstName} ${submission.userId.lastName}`
+																: submission.userId.name || 'Не указан'}
+														</Typography>
+													)}
+												</TableCell>
+												<TableCell>
+													{isAdmin ? (
+														<FormControl size='small' sx={{ minWidth: 120 }}>
+															<Select
+																value={getCleanStatus(submission.status)}
+																onChange={e =>
+																	handleStatusChange(
+																		submission._id,
+																		e.target.value
 																	)
 																}
-																label={
-																	submission.bitrixSyncStatus === 'synced'
-																		? 'Синхр.'
-																		: submission.bitrixSyncStatus === 'failed'
-																		? 'Ошибка'
-																		: 'Ожидает'
-																}
-																color={
-																	submission.bitrixSyncStatus === 'synced'
-																		? 'success'
-																		: submission.bitrixSyncStatus === 'failed'
-																		? 'error'
-																		: 'warning'
-																}
-																size='small'
-															/>
-														</Tooltip>
+																displayEmpty
+																renderValue={value => {
+																	const statusName = getStatusName(
+																		submission.status
+																	)
+																	return statusName || 'Не указан'
+																}}
+															>
+																{bitrixStages.map(stage => (
+																	<MenuItem key={stage.id} value={stage.id}>
+																		{stage.name}
+																	</MenuItem>
+																))}
+															</Select>
+														</FormControl>
 													) : (
 														<Chip
-															label='Не создано'
-															color='default'
+															label={getStatusName(submission.status)}
+															color='primary'
 															size='small'
 														/>
 													)}
-												</Stack>
-											</TableCell>
-											<TableCell>
-												{format(
-													new Date(submission.createdAt),
-													'dd.MM.yyyy HH:mm',
-													{ locale: ru }
-												)}
-											</TableCell>
-											<TableCell>
-												<ButtonGroup size='small'>
-													<IconButton
-														onClick={() => handleShowDetails(submission)}
-														color='info'
-														title='Подробнее'
+												</TableCell>
+												<TableCell>
+													<Stack
+														direction='row'
+														spacing={1}
+														alignItems='center'
 													>
-														<VisibilityIcon />
-													</IconButton>
-													<IconButton
-														onClick={() => handleEditSubmission(submission)}
-														color='primary'
-														title='Редактировать заявку'
-													>
-														<EditIcon />
-													</IconButton>
-												</ButtonGroup>
-											</TableCell>
-										</TableRow>
-									))}
+														{submission.bitrixDealId ? (
+															<Tooltip
+																title={`Сделка ID: ${submission.bitrixDealId}`}
+															>
+																<Chip
+																	icon={
+																		submission.bitrixSyncStatus === 'synced' ? (
+																			<CheckCircleIcon />
+																		) : submission.bitrixSyncStatus ===
+																		  'failed' ? (
+																			<ErrorIcon />
+																		) : (
+																			<PendingIcon />
+																		)
+																	}
+																	label={
+																		submission.bitrixSyncStatus === 'synced'
+																			? 'Синхр.'
+																			: submission.bitrixSyncStatus === 'failed'
+																			? 'Ошибка'
+																			: 'Ожидает'
+																	}
+																	color={
+																		submission.bitrixSyncStatus === 'synced'
+																			? 'success'
+																			: submission.bitrixSyncStatus === 'failed'
+																			? 'error'
+																			: 'warning'
+																	}
+																	size='small'
+																/>
+															</Tooltip>
+														) : (
+															<Chip
+																label='Не создано'
+																color='default'
+																size='small'
+															/>
+														)}
+													</Stack>
+												</TableCell>
+												<TableCell>
+													{format(
+														new Date(submission.createdAt),
+														'dd.MM.yyyy HH:mm',
+														{ locale: ru }
+													)}
+												</TableCell>
+												<TableCell>
+													<ButtonGroup size='small'>
+														<IconButton
+															onClick={() => handleShowDetails(submission)}
+															color='info'
+															title='Подробнее'
+														>
+															<VisibilityIcon />
+														</IconButton>
+														<IconButton
+															onClick={() => handleEditSubmission(submission)}
+															color='primary'
+															title='Редактировать заявку'
+														>
+															<EditIcon />
+														</IconButton>
+													</ButtonGroup>
+												</TableCell>
+											</TableRow>
+										)
+									})}
 								</TableBody>
 							</Table>
 						</TableContainer>
@@ -907,7 +920,7 @@ const MySubmissions: React.FC = () => {
 										<Box>
 											<Typography variant='body2' color='text.secondary'>
 												<strong>Форма:</strong>{' '}
-												{selectedSubmission.formId.title}
+												{selectedSubmission.formId?.title || 'Форма не найдена'}
 											</Typography>
 										</Box>
 										<Box>
@@ -939,10 +952,10 @@ const MySubmissions: React.FC = () => {
 											<Box>
 												<Typography variant='body2' color='text.secondary'>
 													<strong>Клиент:</strong>{' '}
-													{selectedSubmission.userId.firstName &&
-													selectedSubmission.userId.lastName
+													{selectedSubmission.userId?.firstName &&
+													selectedSubmission.userId?.lastName
 														? `${selectedSubmission.userId.firstName} ${selectedSubmission.userId.lastName}`
-														: selectedSubmission.userId.name}
+														: selectedSubmission.userId?.name || 'Не указан'}
 												</Typography>
 											</Box>
 										)}

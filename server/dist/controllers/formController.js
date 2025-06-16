@@ -58,6 +58,11 @@ const updateForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     try {
         console.log('updateForm вызван с ID:', req.params.id);
         console.log('updateForm данные:', JSON.stringify(req.body, null, 2));
+        // Проверяем валидность ObjectId
+        if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+            res.status(400).json({ message: 'Некорректный ID формы' });
+            return;
+        }
         const form = yield Form_1.default.findById(req.params.id);
         if (!form) {
             console.log('Форма не найдена с ID:', req.params.id);
@@ -77,19 +82,57 @@ const updateForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 return;
             }
         }
-        Object.assign(form, req.body);
-        console.log('Форма после обновления:', JSON.stringify(form, null, 2));
-        const updatedForm = yield form.save();
+        // Безопасное обновление только разрешенных полей
+        const allowedFields = [
+            'name',
+            'title',
+            'description',
+            'isActive',
+            'fields',
+            'bitrixDealCategory',
+            'successMessage',
+        ];
+        const updateData = {};
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                updateData[field] = req.body[field];
+            }
+        }
+        // Обновляем форму с использованием findByIdAndUpdate для лучшей обработки версионности
+        const updatedForm = yield Form_1.default.findByIdAndUpdate(req.params.id, updateData, {
+            new: true,
+            runValidators: true,
+            lean: false,
+        });
+        if (!updatedForm) {
+            res.status(404).json({ message: 'Форма не найдена после обновления' });
+            return;
+        }
         console.log('Форма успешно сохранена:', updatedForm._id);
         res.status(200).json(updatedForm);
     }
     catch (error) {
         console.error('Ошибка в updateForm:', error);
         console.error('Stack trace:', error.stack);
-        res.status(400).json({
-            message: error.message,
-            details: error.name === 'ValidationError' ? error.errors : undefined,
-        });
+        // Более детальная обработка ошибок
+        if (error.name === 'ValidationError') {
+            res.status(400).json({
+                message: 'Ошибка валидации данных',
+                details: error.errors,
+            });
+        }
+        else if (error.name === 'MongoError' ||
+            error.name === 'MongoServerError') {
+            res.status(500).json({
+                message: 'Ошибка базы данных',
+                details: error.code === 11000 ? 'Дублирование данных' : error.message,
+            });
+        }
+        else {
+            res.status(400).json({
+                message: error.message || 'Неизвестная ошибка при обновлении формы',
+            });
+        }
     }
 });
 exports.updateForm = updateForm;
