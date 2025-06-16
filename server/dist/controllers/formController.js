@@ -171,7 +171,7 @@ exports.getDealCategories = getDealCategories;
 // Получение статусов сделок для определенной категории
 const getDealStages = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const categoryId = req.query.categoryId || '0';
+        const categoryId = req.query.categoryId || '1';
         const stages = yield bitrix24Service_1.default.getDealStages(categoryId);
         res.status(200).json({
             success: true,

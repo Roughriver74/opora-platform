@@ -193,7 +193,7 @@ export const getDealStages = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		const categoryId = (req.query.categoryId as string) || '0'
+		const categoryId = (req.query.categoryId as string) || '1'
 		const stages = await bitrix24Service.getDealStages(categoryId)
 
 		res.status(200).json({

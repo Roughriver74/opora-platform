@@ -79,11 +79,10 @@ export const submitForm = async (req: Request, res: Response) => {
 			}
 		}
 
-		// Если указана категория сделки, устанавливаем её
-		if (form.bitrixDealCategory) {
-			dealData['CATEGORY_ID'] = form.bitrixDealCategory
-			console.log(`[SUBMIT NEW] Категория: ${form.bitrixDealCategory}`)
-		}
+		// Устанавливаем категорию сделки (по умолчанию 1, если не указана)
+		const categoryId = form.bitrixDealCategory || '1'
+		dealData['CATEGORY_ID'] = categoryId
+		console.log(`[SUBMIT NEW] Категория: ${categoryId}`)
 
 		console.log('[SUBMIT NEW] Данные для Битрикс24:', dealData)
 
@@ -105,7 +104,7 @@ export const submitForm = async (req: Request, res: Response) => {
 				status: 'C1:NEW',
 				priority: 'medium',
 				bitrixDealId: dealResponse.result.toString(),
-				bitrixCategoryId: form.bitrixDealCategory,
+				bitrixCategoryId: categoryId,
 				bitrixSyncStatus: 'synced',
 			})
 
