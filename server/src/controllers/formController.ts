@@ -55,6 +55,12 @@ export const updateForm = async (
 		console.log('updateForm вызван с ID:', req.params.id)
 		console.log('updateForm данные:', JSON.stringify(req.body, null, 2))
 
+		// Проверяем валидность ObjectId
+		if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+			res.status(400).json({ message: 'Некорректный ID формы' })
+			return
+		}
+
 		const form = await Form.findById(req.params.id)
 		if (!form) {
 			console.log('Форма не найдена с ID:', req.params.id)
@@ -77,11 +83,39 @@ export const updateForm = async (
 			}
 		}
 
-		Object.assign(form, req.body)
+		// Безопасное обновление только разрешенных полей
+		const allowedFields = [
+			'name',
+			'title',
+			'description',
+			'isActive',
+			'fields',
+			'bitrixDealCategory',
+			'successMessage',
+		]
 
-		console.log('Форма после обновления:', JSON.stringify(form, null, 2))
+		const updateData: any = {}
+		for (const field of allowedFields) {
+			if (req.body[field] !== undefined) {
+				updateData[field] = req.body[field]
+			}
+		}
 
-		const updatedForm = await form.save()
+		// Обновляем форму с использованием findByIdAndUpdate для лучшей обработки версионности
+		const updatedForm = await Form.findByIdAndUpdate(
+			req.params.id,
+			updateData,
+			{
+				new: true,
+				runValidators: true,
+				lean: false,
+			}
+		)
+
+		if (!updatedForm) {
+			res.status(404).json({ message: 'Форма не найдена после обновления' })
+			return
+		}
 
 		console.log('Форма успешно сохранена:', updatedForm._id)
 
@@ -89,10 +123,26 @@ export const updateForm = async (
 	} catch (error: any) {
 		console.error('Ошибка в updateForm:', error)
 		console.error('Stack trace:', error.stack)
-		res.status(400).json({
-			message: error.message,
-			details: error.name === 'ValidationError' ? error.errors : undefined,
-		})
+
+		// Более детальная обработка ошибок
+		if (error.name === 'ValidationError') {
+			res.status(400).json({
+				message: 'Ошибка валидации данных',
+				details: error.errors,
+			})
+		} else if (
+			error.name === 'MongoError' ||
+			error.name === 'MongoServerError'
+		) {
+			res.status(500).json({
+				message: 'Ошибка базы данных',
+				details: error.code === 11000 ? 'Дублирование данных' : error.message,
+			})
+		} else {
+			res.status(400).json({
+				message: error.message || 'Неизвестная ошибка при обновлении формы',
+			})
+		}
 	}
 }
 

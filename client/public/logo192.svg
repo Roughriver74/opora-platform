@@ -1,0 +1,13 @@
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <!-- Фон -->
+  <rect width="192" height="192" fill="#2563eb" rx="20"/>
+  
+  <!-- Шестиугольник -->
+  <polygon points="96,28 144,62 144,130 96,164 48,130 48,62" fill="#ffffff"/>
+  
+  <!-- Внутренний шестиугольник -->
+  <polygon points="96,58 120,74 120,118 96,134 72,118 72,74" fill="#2563eb"/>
+  
+  <!-- Буква Б -->
+  <text x="96" y="96" font-family="Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="white">Б</text>
+</svg> 

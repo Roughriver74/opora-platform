@@ -12,47 +12,46 @@ export const useAutoSave = (
 
 	// Автосохранение
 	const autoSave = useCallback(async () => {
-		if (state.hasChanges && !state.saving && !state.autoSaving) {
+		if (
+			state.hasChanges &&
+			!state.saving &&
+			!state.autoSaving &&
+			state.formData._id
+		) {
 			setState(prev => ({ ...prev, autoSaving: true }))
 
 			try {
-				const fieldIds = state.fields.map(field => field._id).filter(id => id)
+				// Создаем копию данных формы без полей для автосохранения
+				// Поля сохраняются отдельно через свой API
 				const formToSave: Partial<Form> = {
-					...state.formData,
-					fields: fieldIds as string[],
+					name: state.formData.name,
+					title: state.formData.title,
+					description: state.formData.description,
+					isActive: state.formData.isActive,
+					bitrixDealCategory: state.formData.bitrixDealCategory,
+					successMessage: state.formData.successMessage,
 				}
 
-				let savedForm: Form
-				if (state.formData._id) {
-					savedForm = await FormService.updateForm(
-						state.formData._id,
-						formToSave
-					)
-				} else {
-					savedForm = await FormService.createForm(
-						formToSave as Omit<Form, '_id'>
-					)
-					setState(prev => ({
-						...prev,
-						formData: { ...prev.formData, _id: savedForm._id },
-					}))
-				}
+				// Автосохранение только для существующих форм
+				const savedForm = await FormService.updateForm(
+					state.formData._id,
+					formToSave
+				)
 
 				setState(prev => ({
 					...prev,
 					hasChanges: false,
 					lastSaved: new Date(),
-					showSuccess: true,
 					autoSaving: false,
 				}))
 
-				setTimeout(() => {
-					setState(prev => ({ ...prev, showSuccess: false }))
-				}, NOTIFICATION_DURATION.AUTO_SAVE)
+				console.log('Автосохранение успешно:', savedForm._id)
 			} catch (err: any) {
+				console.error('Ошибка автосохранения:', err)
+
+				// Не показываем ошибки автосохранения пользователю, только логируем
 				setState(prev => ({
 					...prev,
-					error: 'Ошибка автосохранения: ' + err.message,
 					autoSaving: false,
 				}))
 			}
@@ -62,7 +61,6 @@ export const useAutoSave = (
 		state.saving,
 		state.autoSaving,
 		state.formData,
-		state.fields,
 		setState,
 	])
 

@@ -37,7 +37,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 				}}
 			>
 				<Container maxWidth='lg'>
-					© {new Date().getFullYear()} Бетон-Экспресс. Все права защищены.
+					© {new Date().getFullYear()} БетонЭкспресс. Все права защищены.
 					Create by shknv.
 				</Container>
 			</Box>

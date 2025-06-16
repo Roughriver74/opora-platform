@@ -31,6 +31,11 @@ interface FieldsListProps {
 	onAddField: () => void
 	onFieldSave: (index: number, field: Partial<FormField>) => void
 	onFieldDelete: (index: number) => void
+	onMoveFieldToSection: (
+		fieldId: string,
+		targetSectionOrder: number,
+		newPosition?: number
+	) => void
 	dragHandlers: DragHandlers
 }
 
@@ -51,15 +56,21 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 	onAddField,
 	onFieldSave,
 	onFieldDelete,
+	onMoveFieldToSection,
 	dragHandlers,
 }) => {
+	// Защита от некорректных данных
+	const safeFields = fields || []
+	const safeBitrixFields = bitrixFields || {}
 	const fieldsRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 	const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
 	const [tempSectionTitle, setTempSectionTitle] = useState('')
 
 	// Улучшенная группировка полей по разделам
 	const groupedFields = React.useMemo(() => {
-		const sorted = [...fields].sort((a, b) => (a.order || 0) - (b.order || 0))
+		const sorted = [...safeFields].sort(
+			(a, b) => (a.order || 0) - (b.order || 0)
+		)
 		const sections: Section[] = []
 
 		console.log(
@@ -93,7 +104,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 				currentSection = {
 					id: `section-${field._id || field.name}`,
 					header: field,
-					headerIndex: fields.findIndex(f =>
+					headerIndex: safeFields.findIndex(f =>
 						f._id ? f._id === field._id : f.name === field.name
 					),
 					fields: [],
@@ -139,7 +150,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 		)
 
 		return sections
-	}, [fields])
+	}, [safeFields])
 
 	// Функция редактирования названия раздела
 	const handleStartEditingSection = (
@@ -189,7 +200,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 			// Удаляем все поля раздела (в обратном порядке, чтобы не сбить индексы)
 			const fieldIndicesToDelete = section.fields
 				.map(field =>
-					fields.findIndex(f =>
+					safeFields.findIndex(f =>
 						f._id ? f._id === field._id : f.name === field.name
 					)
 				)
@@ -200,7 +211,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 				setTimeout(() => onFieldDelete(index), i * 50)
 			})
 		},
-		[fields, onFieldDelete]
+		[safeFields, onFieldDelete]
 	)
 
 	// Функция добавления поля в конкретный раздел
@@ -385,7 +396,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 													variant='h6'
 													sx={{ fontWeight: 600, flexGrow: 1 }}
 												>
-													{section.header.label}
+													{section.header?.label || 'Раздел'}
 												</Typography>
 												<Chip
 													label={`${section.fields.length} полей`}
@@ -402,7 +413,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 														onClick={() =>
 															handleStartEditingSection(
 																section.id,
-																section.header!.label
+																section.header?.label || 'Раздел'
 															)
 														}
 														sx={{
@@ -515,7 +526,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 								) : (
 									<Stack spacing={2}>
 										{section.fields.map(field => {
-											const originalIndex = fields.findIndex(f =>
+											const originalIndex = safeFields.findIndex(f =>
 												f._id ? f._id === field._id : f.name === field.name
 											)
 											const fieldKey =
@@ -583,9 +594,9 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 																onFieldSave(originalIndex, updatedField)
 															}
 															onDelete={() => onFieldDelete(originalIndex)}
-															availableBitrixFields={bitrixFields}
+															availableBitrixFields={safeBitrixFields}
 															isDraggable={true}
-															allFields={fields}
+															allFields={safeFields}
 														/>
 													</Box>
 												</Box>
