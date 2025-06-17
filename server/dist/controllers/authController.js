@@ -141,7 +141,7 @@ const userLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             id: user._id, // Для обратной совместимости
             role: user.role,
             type: 'access',
-        }, secret, { expiresIn: '15m' });
+        }, secret, { expiresIn: '4h' });
         const refreshToken = jsonwebtoken_1.default.sign({
             userId: user._id,
             id: user._id, // Для обратной совместимости
@@ -160,7 +160,7 @@ const userLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             success: true,
             accessToken,
             refreshToken,
-            expiresIn: '15m',
+            expiresIn: '4h',
             user: {
                 id: user._id,
                 email: user.email,

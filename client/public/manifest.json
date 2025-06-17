@@ -35,7 +35,7 @@
 	],
 	"start_url": ".",
 	"display": "standalone",
-	"theme_color": "#54C3C3",
+	"theme_color": "#4c1130",
 	"background_color": "#ffffff",
 	"description": "CRM система для управления заказами бетона и строительных материалов"
 }

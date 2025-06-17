@@ -156,7 +156,7 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 				type: 'access',
 			},
 			secret,
-			{ expiresIn: '15m' }
+			{ expiresIn: '4h' }
 		)
 
 		const refreshToken = jwt.sign(
@@ -183,7 +183,7 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 			success: true,
 			accessToken,
 			refreshToken,
-			expiresIn: '15m',
+			expiresIn: '4h',
 			user: {
 				id: user._id,
 				email: user.email,
