@@ -5,7 +5,11 @@ import {
 	createFieldMapping,
 	getDefaultFieldMappings,
 } from '../utils/fieldMapper'
-import { convertFieldValue } from '../utils/valueConverter'
+import {
+	convertFieldValue,
+	convertFieldValueAdvanced,
+} from '../utils/valueConverter'
+import { AutocompleteValue } from '../utils/autocompleteHandler'
 import {
 	validateCopyOperation,
 	canCopyBetweenSections,
@@ -15,12 +19,14 @@ interface UseLinkedFieldsProps {
 	sections: FormSection[]
 	values: Record<string, any>
 	onValuesChange: (values: Record<string, any>) => void
+	fieldOptions?: Record<string, AutocompleteValue[]> // Опции для полей автозаполнения
 }
 
 export const useLinkedFields = ({
 	sections,
 	values,
 	onValuesChange,
+	fieldOptions = {},
 }: UseLinkedFieldsProps) => {
 	const [copyHistory, setCopyHistory] = useState<CopyOperation[]>([])
 
@@ -245,11 +251,11 @@ export const useLinkedFields = ({
 
 	// Выполняет копирование полей
 	const copyFieldsBetweenSections = useCallback(
-		(
+		async (
 			fromSection: string,
 			toSection: string,
 			selectedMappings?: FieldMapping[]
-		): boolean => {
+		): Promise<boolean> => {
 			const sourceSection = sections.find(s => s.title === fromSection)
 			const targetSection = sections.find(s => s.title === toSection)
 
@@ -292,7 +298,8 @@ export const useLinkedFields = ({
 			const newValues = { ...values }
 			let copiedCount = 0
 
-			mappingsToUse.forEach(mapping => {
+			// Обрабатываем каждый маппинг
+			for (const mapping of mappingsToUse) {
 				const sourceField = sourceSection.fields.find(
 					f => f.name === mapping.sourceField
 				)
@@ -308,29 +315,87 @@ export const useLinkedFields = ({
 					sourceValue !== null &&
 					sourceValue !== ''
 				) {
-					const convertedValue = convertFieldValue(
-						sourceValue,
-						sourceField.type,
-						targetField.type
-					)
-					newValues[mapping.targetField] = convertedValue
-					copiedCount++
+					// Используем улучшенную конвертацию для автозаполнения
+					if (targetField.type === 'autocomplete') {
+						try {
+							const sourceOptions = fieldOptions[mapping.sourceField] || []
+							const targetOptions = fieldOptions[mapping.targetField] || []
+
+							const result = await convertFieldValueAdvanced(
+								sourceValue,
+								sourceField,
+								targetField,
+								sourceOptions,
+								targetOptions
+							)
+
+							newValues[mapping.targetField] = result.value
+
+							// Логируем информацию о копировании автозаполнения
+							if (result.newOption) {
+								console.log(
+									`🔄 Автозаполнение "${targetField.label}": скопировано "${result.newOption.label}" (${result.value})`
+								)
+							} else {
+								console.log(
+									`🔄 Автозаполнение "${targetField.label}": найдена существующая опция (${result.value})`
+								)
+							}
+
+							copiedCount++
+						} catch (error) {
+							console.warn(
+								`Ошибка копирования автозаполнения ${mapping.sourceField} -> ${mapping.targetField}:`,
+								error
+							)
+							// Fallback на обычную конвертацию
+							const convertedValue = convertFieldValue(
+								sourceValue,
+								sourceField.type,
+								targetField.type
+							)
+							newValues[mapping.targetField] = convertedValue
+							copiedCount++
+						}
+					} else {
+						// Обычная конвертация для не-автозаполнения
+						const convertedValue = convertFieldValue(
+							sourceValue,
+							sourceField.type,
+							targetField.type
+						)
+						newValues[mapping.targetField] = convertedValue
+						copiedCount++
+					}
 				}
-			})
+			}
 
 			if (copiedCount > 0) {
+				console.log('📋 До изменения значений:', Object.keys(values))
+				console.log('📋 Новые значения для передачи:', Object.keys(newValues))
+				console.log(
+					'📋 Изменения:',
+					Object.keys(newValues)
+						.filter(key => newValues[key] !== values[key])
+						.map(key => ({
+							key,
+							old: values[key],
+							new: newValues[key],
+						}))
+				)
+
 				onValuesChange(newValues)
 
 				// Сохраняем в историю
 				setCopyHistory(prev => [...prev, operation])
 
-				console.log(`Скопировано полей: ${copiedCount}`, validation.warnings)
+				console.log(`✅ Скопировано полей: ${copiedCount}`, validation.warnings)
 				return true
 			}
 
 			return false
 		},
-		[sections, values, onValuesChange, getAvailableMappings]
+		[sections, values, onValuesChange, getAvailableMappings, fieldOptions]
 	)
 
 	// Отменяет последнее копирование

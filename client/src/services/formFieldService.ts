@@ -45,8 +45,20 @@ export const FormFieldService = {
 
 	// Удаление поля
 	deleteField: async (id: string) => {
-		const response = await api.delete(`/form-fields/${id}`)
-		return response.data
+		try {
+			console.log('🗑️ Удаление поля с ID:', id)
+			const response = await api.delete(`/form-fields/${id}`)
+			console.log('✅ Поле успешно удалено:', response.data)
+			return response.data
+		} catch (error: any) {
+			console.error('❌ Ошибка при удалении поля:', error)
+			if (error.response) {
+				console.error('Статус ответа:', error.response.status)
+				console.error('Данные ответа:', error.response.data)
+				console.error('URL запроса:', error.config?.url)
+			}
+			throw error
+		}
 	},
 
 	// Получение полей из Битрикс24

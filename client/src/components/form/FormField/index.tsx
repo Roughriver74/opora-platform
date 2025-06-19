@@ -29,6 +29,8 @@ const FormField: React.FC<FormFieldProps> = ({
 }) => {
 	const [searchQuery, setSearchQuery] = useState('')
 	const [isValueSelected, setIsValueSelected] = useState(false)
+	const [forceUpdateKey, setForceUpdateKey] = useState(0)
+	const [lastValue, setLastValue] = useState(value)
 	const debouncedSearchQuery = useDebounce(
 		searchQuery,
 		FIELD_CONSTANTS.DEBOUNCE_DELAY
@@ -41,6 +43,7 @@ const FormField: React.FC<FormFieldProps> = ({
 		setSelectedOption,
 		loadDynamicOptions,
 		setOptions,
+		syncWithOptions,
 	} = useDynamicOptions(field.dynamicSource, preloadedOptions)
 
 	// Initialize static options
@@ -85,19 +88,75 @@ const FormField: React.FC<FormFieldProps> = ({
 		}
 	}
 
+	// Обнаружение изменения value извне (например, при копировании)
+	useEffect(() => {
+		if (value !== lastValue) {
+			setLastValue(value)
+
+			// Если значение изменилось извне и это автокомплит с динамической загрузкой
+			if (
+				field.type === FIELD_TYPES.AUTOCOMPLETE &&
+				field.dynamicSource?.enabled &&
+				value &&
+				value !== ''
+			) {
+				console.log(
+					`🔍 FormField: Значение изменилось извне для ${field.name}, инициируем автоматический поиск: "${value}"`
+				)
+
+				// Принудительно загружаем опции для нового значения
+				setIsValueSelected(false)
+				setSearchQuery(String(value))
+				loadDynamicOptions(String(value))
+			}
+		}
+	}, [
+		value,
+		lastValue,
+		field.type,
+		field.dynamicSource?.enabled,
+		field.name,
+		loadDynamicOptions,
+	])
+
 	// Update selected option when value changes
 	useEffect(() => {
 		if (value && options.length > 0) {
-			const selected = options.find(opt => opt.value === value)
-			if (selected) {
-				setSelectedOption(selected)
+			const synced = syncWithOptions(value)
+			if (synced) {
 				setIsValueSelected(true)
 				setSearchQuery('') // Очищаем поиск после выбора
+				console.log(
+					`✅ FormField: Автоматически выбрана опция для ${field.name}:`,
+					synced
+				)
+			} else if (field.type === FIELD_TYPES.AUTOCOMPLETE) {
+				// Для автозаполнения, если опция не найдена, инициируем поиск
+				console.log(
+					`🔍 FormField: Опция не найдена для ${field.name}, инициируем поиск для: ${value}`
+				)
+				setIsValueSelected(false)
+				handleSearchChange(String(value))
 			}
 		} else if (!value) {
+			setSelectedOption(null)
 			setIsValueSelected(false)
 		}
-	}, [value, options, setSelectedOption])
+	}, [value, options, syncWithOptions, field.name, field.type])
+
+	// Принудительное обновление для автозаполнения
+	useEffect(() => {
+		if (field.type === FIELD_TYPES.AUTOCOMPLETE && value) {
+			// Небольшая задержка для принудительного обновления
+			const timer = setTimeout(() => {
+				console.log(
+					`🔄 FormField: Принудительное обновление автозаполнения ${field.name}`
+				)
+				setForceUpdateKey(prev => prev + 1)
+			}, 300)
+			return () => clearTimeout(timer)
+		}
+	}, [value, field.type, field.name])
 
 	const renderField = () => {
 		const commonProps = {
@@ -125,7 +184,12 @@ const FormField: React.FC<FormFieldProps> = ({
 				return <SelectInput {...commonProps} />
 
 			case FIELD_TYPES.AUTOCOMPLETE:
-				return <AutocompleteInput {...commonProps} />
+				return (
+					<AutocompleteInput
+						key={`${field.name}-${forceUpdateKey}`}
+						{...commonProps}
+					/>
+				)
 
 			case FIELD_TYPES.CHECKBOX:
 				return <CheckboxInput {...commonProps} />

@@ -31,7 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 					py: 2,
 					px: 2,
 					mt: 'auto',
-					backgroundColor: '#0b5394',
+					backgroundColor: '#4c1130',
 					color: 'white',
 					textAlign: 'center',
 				}}

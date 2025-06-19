@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.debugFieldStructure = exports.getAllEnumFieldsWithValues = exports.getEnumFieldValues = exports.getUserFields = exports.getContactsList = exports.getCompaniesList = exports.getProductsList = exports.getBitrixFields = exports.deleteField = exports.updateField = exports.createField = exports.getFieldById = exports.getAllFields = void 0;
 const FormField_1 = __importDefault(require("../models/FormField"));
+const Form_1 = __importDefault(require("../models/Form"));
 const bitrix24Service_1 = __importDefault(require("../services/bitrix24Service"));
 // Получение всех полей формы
 const getAllFields = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -44,11 +45,45 @@ exports.getFieldById = getFieldById;
 // Создание нового поля формы
 const createField = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const field = new FormField_1.default(req.body);
+        const fieldData = req.body;
+        console.log('📝 Создание поля с данными:', {
+            name: fieldData.name,
+            type: fieldData.type,
+            formId: fieldData.formId,
+        });
+        const field = new FormField_1.default(fieldData);
         const savedField = yield field.save();
+        // Автоматически добавляем поле в форму
+        if (fieldData.formId) {
+            // Используем formId из запроса
+            const form = yield Form_1.default.findById(fieldData.formId);
+            if (form) {
+                yield Form_1.default.findByIdAndUpdate(fieldData.formId, {
+                    $push: { fields: savedField._id },
+                });
+                console.log(`📋 Поле ${savedField.name} добавлено в форму ${form.title} (ID: ${fieldData.formId})`);
+            }
+            else {
+                console.warn(`⚠️ Форма с ID ${fieldData.formId} не найдена`);
+            }
+        }
+        else {
+            // Если formId не передан, используем первую найденную форму (backward compatibility)
+            const form = yield Form_1.default.findOne();
+            if (form) {
+                yield Form_1.default.findByIdAndUpdate(form._id, {
+                    $push: { fields: savedField._id },
+                });
+                console.log(`📋 Поле ${savedField.name} добавлено в первую найденную форму ${form.title} (ID: ${form._id})`);
+            }
+            else {
+                console.warn('⚠️ Ни одной формы не найдено, поле создано но не привязано');
+            }
+        }
         res.status(201).json(savedField);
     }
     catch (error) {
+        console.error('❌ Ошибка при создании поля:', error);
         res.status(400).json({ message: error.message });
     }
 });
@@ -78,10 +113,15 @@ const deleteField = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             res.status(404).json({ message: 'Поле не найдено' });
             return;
         }
+        // Удаляем поле из всех форм
+        yield Form_1.default.updateMany({ fields: req.params.id }, { $pull: { fields: req.params.id } });
+        // Удаляем само поле
         yield FormField_1.default.findByIdAndDelete(req.params.id);
+        console.log(`🗑️ Поле ${field.name} удалено из базы и всех форм`);
         res.status(200).json({ message: 'Поле успешно удалено' });
     }
     catch (error) {
+        console.error('❌ Ошибка при удалении поля:', error);
         res.status(500).json({ message: error.message });
     }
 });
@@ -95,7 +135,10 @@ const getBitrixFields = (req, res) => __awaiter(void 0, void 0, void 0, function
             return;
         }
         const formattedFields = Object.entries(fieldsResponse.result).reduce((acc, [fieldCode, fieldData]) => {
-            const fieldName = fieldData.formLabel || fieldData.listLabel || fieldData.title || fieldCode;
+            const fieldName = fieldData.formLabel ||
+                fieldData.listLabel ||
+                fieldData.title ||
+                fieldCode;
             acc[fieldCode] = {
                 code: fieldCode,
                 name: fieldName,
@@ -103,13 +146,13 @@ const getBitrixFields = (req, res) => __awaiter(void 0, void 0, void 0, function
                 isRequired: fieldData.isRequired,
                 isMultiple: fieldData.isMultiple,
                 items: fieldData.items, // Для полей типа enumeration
-                originalData: fieldData // Сохраняем исходные данные для полной совместимости
+                originalData: fieldData, // Сохраняем исходные данные для полной совместимости
             };
             return acc;
         }, {});
         res.status(200).json({
             result: formattedFields,
-            time: fieldsResponse.time
+            time: fieldsResponse.time,
         });
     }
     catch (error) {

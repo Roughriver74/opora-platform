@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
 	Box,
 	Typography,
@@ -47,6 +47,8 @@ interface FormFieldEditorProps {
 	availableBitrixFields: Record<string, any>
 	isDraggable?: boolean // Флаг для включения перетаскивания
 	allFields?: FormField[] // Все поля формы для определения разделов
+	expanded?: boolean // Контролируемое состояние раскрытия
+	onExpandedChange?: (expanded: boolean) => void // Callback для изменения состояния
 }
 
 const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
@@ -56,6 +58,8 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 	availableBitrixFields,
 	isDraggable,
 	allFields = [], // По умолчанию пустой массив
+	expanded,
+	onExpandedChange,
 }) => {
 	const [formField, setFormField] = useState<Partial<FormField>>(field)
 	const [options, setOptions] = useState<FormFieldOption[]>(field.options || [])
@@ -65,16 +69,35 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 	})
 
 	// Состояния для управления раскрытием секций и поиском
-	const [expanded, setExpanded] = useState<boolean>(false)
 	const [loadingEnumValues, setLoadingEnumValues] = useState<boolean>(false)
 	const [enumError, setEnumError] = useState<string | null>(null)
+
+	// Валидация и исправление данных поля при инициализации
+	useEffect(() => {
+		if (field.dynamicSource?.source) {
+			const validSources = ['catalog', 'companies', 'contacts']
+			if (!validSources.includes(field.dynamicSource.source)) {
+				console.warn(
+					`Некорректный source "${field.dynamicSource.source}" заменен на "catalog"`
+				)
+				setFormField(prev => ({
+					...prev,
+					dynamicSource: {
+						enabled: prev.dynamicSource?.enabled || false,
+						source: 'catalog',
+						...prev.dynamicSource,
+					},
+				}))
+			}
+		}
+	}, [field])
 
 	// Обработчик изменения состояния панели
 	const handleExpandChange = (
 		event: React.SyntheticEvent,
 		isExpanded: boolean
 	) => {
-		setExpanded(isExpanded)
+		onExpandedChange?.(isExpanded)
 	}
 
 	const [fieldTypes] = useState<FieldTypeGroup[]>([
@@ -113,14 +136,20 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 
 	// Обработчик изменения динамического источника данных
 	const handleDynamicSourceChange = (enabled: boolean) => {
-		// Сохраняем текущий источник данных, или устанавливаем по умолчанию 'catalog'
+		// Валидные источники данных
+		const validSources = ['catalog', 'companies', 'contacts']
+
+		// Сохраняем текущий источник данных, если он валидный, иначе устанавливаем по умолчанию 'catalog'
 		const currentSource = formField.dynamicSource?.source || 'catalog'
+		const validatedSource = validSources.includes(currentSource)
+			? currentSource
+			: 'catalog'
 
 		setFormField(prev => ({
 			...prev,
 			dynamicSource: {
 				enabled,
-				source: currentSource,
+				source: validatedSource,
 			},
 		}))
 	}
@@ -609,12 +638,12 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 
 	return (
 		<Accordion
-			expanded={expanded}
+			expanded={expanded ?? false}
 			onChange={handleExpandChange}
 			sx={{
 				mb: 1.5,
 				'&:before': { display: 'none' }, // убираем линию перед аккордеоном
-				boxShadow: expanded ? 3 : 1,
+				boxShadow: expanded ?? false ? 3 : 1,
 			}}
 		>
 			<AccordionSummary

@@ -14,12 +14,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.submitForm = exports.testSync = exports.testConnection = exports.getDealStages = exports.getDealCategories = exports.deleteForm = exports.updateForm = exports.createForm = exports.getFormById = exports.getAllForms = void 0;
 const Form_1 = __importDefault(require("../models/Form"));
+const FormField_1 = __importDefault(require("../models/FormField"));
 const bitrix24Service_1 = __importDefault(require("../services/bitrix24Service"));
 // Получение всех форм
 const getAllForms = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const forms = yield Form_1.default.find().populate('fields');
-        res.status(200).json(forms);
+        const forms = yield Form_1.default.find();
+        // Ручное заполнение полей для каждой формы
+        const formsWithFields = yield Promise.all(forms.map((form) => __awaiter(void 0, void 0, void 0, function* () {
+            // Получаем все поля для этой формы по formId
+            const fields = yield FormField_1.default.find({
+                formId: form._id,
+            }).sort({ order: 1 });
+            return Object.assign(Object.assign({}, form.toObject()), { fields: fields });
+        })));
+        res.status(200).json(formsWithFields);
     }
     catch (error) {
         res.status(500).json({ message: error.message });
@@ -29,12 +38,17 @@ exports.getAllForms = getAllForms;
 // Получение конкретной формы по ID
 const getFormById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const form = yield Form_1.default.findById(req.params.id).populate('fields');
+        const form = yield Form_1.default.findById(req.params.id);
         if (!form) {
             res.status(404).json({ message: 'Форма не найдена' });
             return;
         }
-        res.status(200).json(form);
+        // Ручное заполнение полей
+        const fields = yield FormField_1.default.find({
+            formId: form._id,
+        }).sort({ order: 1 });
+        const formWithFields = Object.assign(Object.assign({}, form.toObject()), { fields: fields });
+        res.status(200).json(formWithFields);
     }
     catch (error) {
         res.status(500).json({ message: error.message });

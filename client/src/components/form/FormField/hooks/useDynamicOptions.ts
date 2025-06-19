@@ -7,7 +7,6 @@ export const useDynamicOptions = (
 	dynamicSource?: { enabled: boolean; source: string },
 	preloadedOptions?: FormFieldOption[]
 ) => {
-	
 	const [options, setOptions] = useState<FormFieldOption[]>(
 		preloadedOptions || []
 	)
@@ -28,7 +27,7 @@ export const useDynamicOptions = (
 	}, [preloadedOptions])
 
 	const loadDynamicOptions = useCallback(
-		async (query: string) => {
+		async (query: string, autoSelectFirst = false) => {
 			if (!dynamicSource?.enabled) {
 				return
 			}
@@ -114,7 +113,31 @@ export const useDynamicOptions = (
 					dataOptions.unshift(selectedOption)
 				}
 
+				console.log(
+					`🔍 useDynamicOptions: Загружены опции для "${query}":`,
+					dataOptions.length,
+					'штук'
+				)
 				setOptions(dataOptions)
+
+				// Автоматически выбираем опцию, если поиск был по конкретному значению
+				if (query && dataOptions.length > 0) {
+					const exactMatch = dataOptions.find(opt => opt.value === query)
+					if (exactMatch) {
+						console.log(
+							`✅ useDynamicOptions: Автоматически выбираем точное совпадение:`,
+							exactMatch
+						)
+						setSelectedOption(exactMatch)
+					} else if (autoSelectFirst && dataOptions.length === 1) {
+						// Если был запрос на автоматический выбор и найдена только одна опция
+						console.log(
+							`✅ useDynamicOptions: Автоматически выбираем единственную найденную опцию:`,
+							dataOptions[0]
+						)
+						setSelectedOption(dataOptions[0])
+					}
+				}
 			} catch (error) {
 				console.error(
 					`Ошибка при загрузке данных из ${dynamicSource.source}:`,
@@ -128,6 +151,25 @@ export const useDynamicOptions = (
 		[dynamicSource, selectedOption]
 	)
 
+	// Функция для принудительной синхронизации с опциями
+	const syncWithOptions = useCallback(
+		(value: any) => {
+			if (value && options.length > 0) {
+				const foundOption = options.find(opt => opt.value === value)
+				if (foundOption) {
+					console.log(
+						`🔄 useDynamicOptions: Принудительная синхронизация с опцией:`,
+						foundOption
+					)
+					setSelectedOption(foundOption)
+					return foundOption
+				}
+			}
+			return null
+		},
+		[options]
+	)
+
 	return {
 		options,
 		loading,
@@ -135,5 +177,6 @@ export const useDynamicOptions = (
 		setSelectedOption,
 		loadDynamicOptions,
 		setOptions,
+		syncWithOptions,
 	}
 }

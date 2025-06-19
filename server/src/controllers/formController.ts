@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import Form from '../models/Form'
+import FormField from '../models/FormField'
 import bitrix24Service from '../services/bitrix24Service'
 
 // Получение всех форм
@@ -8,8 +9,24 @@ export const getAllForms = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		const forms = await Form.find().populate('fields')
-		res.status(200).json(forms)
+		const forms = await Form.find()
+
+		// Ручное заполнение полей для каждой формы
+		const formsWithFields = await Promise.all(
+			forms.map(async form => {
+				// Получаем все поля для этой формы по formId
+				const fields = await FormField.find({
+					formId: form._id,
+				}).sort({ order: 1 })
+
+				return {
+					...form.toObject(),
+					fields: fields,
+				}
+			})
+		)
+
+		res.status(200).json(formsWithFields)
 	} catch (error: any) {
 		res.status(500).json({ message: error.message })
 	}
@@ -21,12 +38,22 @@ export const getFormById = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		const form = await Form.findById(req.params.id).populate('fields')
+		const form = await Form.findById(req.params.id)
 		if (!form) {
 			res.status(404).json({ message: 'Форма не найдена' })
 			return
 		}
-		res.status(200).json(form)
+
+		// Ручное заполнение полей
+		const fields = await FormField.find({
+			formId: form._id,
+		}).sort({ order: 1 })
+
+		const formWithFields = {
+			...form.toObject(),
+			fields: fields,
+		}
+		res.status(200).json(formWithFields)
 	} catch (error: any) {
 		res.status(500).json({ message: error.message })
 	}

@@ -8,6 +8,7 @@ export interface IFormField extends Document {
 	placeholder?: string
 	bitrixFieldId: string
 	bitrixFieldType: string
+	formId?: string
 	options?: Array<{
 		value: string
 		label: string
@@ -73,6 +74,7 @@ const FormFieldSchema: Schema = new Schema(
 			},
 		},
 		order: { type: Number, default: 0 },
+		formId: { type: String },
 	},
 	{ timestamps: true }
 )

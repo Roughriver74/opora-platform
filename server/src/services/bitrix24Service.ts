@@ -29,9 +29,22 @@ class Bitrix24Service {
 			console.log(`Поиск продуктов в Битрикс24 по запросу: '${query}'`)
 			console.log('Вебхук URL:', this.webhookUrl)
 
-			// Формирование фильтра для поиска по имени товара, если указан query
-			// Исправляем формат фильтра - в Bitrix24 API %NAME означает "содержит"
-			const filter = query ? { NAME: `%${query}%` } : {}
+			let filter = {}
+
+			if (query) {
+				// Проверяем, является ли запрос числом (ID)
+				const isNumericId = /^\d+$/.test(query.trim())
+
+				if (isNumericId) {
+					// Если запрос - это число, ищем по ID
+					filter = { ID: query.trim() }
+					console.log(`Поиск по ID продукта: ${query}`)
+				} else {
+					// Иначе ищем по имени
+					filter = { NAME: `%${query}%` }
+					console.log(`Поиск по имени продукта: ${query}`)
+				}
+			}
 
 			console.log('Данные запроса:', {
 				filter,
@@ -406,14 +419,20 @@ class Bitrix24Service {
 		try {
 			console.log(`Поиск компаний в Битрикс24 по запросу: '${query}'`)
 
-			// Формирование фильтра для поиска по названию компании
-			// Для Bitrix24 мы попробуем несколько вариантов фильтрации
 			let filter = {}
 
 			if (query) {
-				// Используем оператор полнотекстового поиска, который лучше работает в Bitrix24
-				filter = {
-					'?TITLE': query,
+				// Проверяем, является ли запрос числом (ID)
+				const isNumericId = /^\d+$/.test(query.trim())
+
+				if (isNumericId) {
+					// Если запрос - это число, ищем по ID
+					filter = { ID: query.trim() }
+					console.log(`Поиск по ID компании: ${query}`)
+				} else {
+					// Иначе ищем по названию
+					filter = { '?TITLE': query }
+					console.log(`Поиск по названию компании: ${query}`)
 				}
 			}
 
@@ -432,7 +451,6 @@ class Bitrix24Service {
 				order: { TITLE: 'ASC' },
 			})
 
-			// Если поиск по оператору ? не даст результатов, попробуем получить все компании и фильтровать их на стороне сервера
 			const response = await axios.post(`${this.webhookUrl}crm.company.list`, {
 				filter,
 				select: [
@@ -451,8 +469,13 @@ class Bitrix24Service {
 
 			let results = response.data
 
-			// Если полученный результат пуст и есть поисковый запрос, попробуем альтернативный метод получения всех компаний
-			if (query && results.result && results.result.length === 0) {
+			// Если полученный результат пуст и есть поисковый запрос по тексту, попробуем альтернативный метод
+			if (
+				query &&
+				results.result &&
+				results.result.length === 0 &&
+				!/^\d+$/.test(query.trim())
+			) {
 				console.log(
 					'Не найдено результатов, пробуем получить все компании и фильтровать локально'
 				)
@@ -472,7 +495,7 @@ class Bitrix24Service {
 							'EMAIL',
 						],
 						start: 0,
-						limit: 50, // Ограничиваем результаты для производительности
+						limit: 50,
 						order: { TITLE: 'ASC' },
 					}
 				)
@@ -480,10 +503,11 @@ class Bitrix24Service {
 				// Фильтруем компании локально
 				if (allCompaniesResponse.data && allCompaniesResponse.data.result) {
 					const filteredCompanies = allCompaniesResponse.data.result.filter(
-						company => company.TITLE.toLowerCase().includes(query.toLowerCase())
+						company =>
+							company.TITLE &&
+							company.TITLE.toLowerCase().includes(query.toLowerCase())
 					)
 
-					// Заменяем результаты
 					results = {
 						...allCompaniesResponse.data,
 						result: filteredCompanies,
@@ -510,14 +534,26 @@ class Bitrix24Service {
 		try {
 			console.log(`Поиск контактов в Битрикс24 по запросу: '${query}'`)
 
-			// Формирование фильтра для поиска по имени или фамилии контакта, если указан query
-			const filter = query
-				? {
+			let filter = {}
+
+			if (query) {
+				// Проверяем, является ли запрос числом (ID)
+				const isNumericId = /^\d+$/.test(query.trim())
+
+				if (isNumericId) {
+					// Если запрос - это число, ищем по ID
+					filter = { ID: query.trim() }
+					console.log(`Поиск по ID контакта: ${query}`)
+				} else {
+					// Иначе ищем по имени или фамилии
+					filter = {
 						LOGIC: 'OR',
 						NAME: `%${query}%`,
 						LAST_NAME: `%${query}%`,
-				  }
-				: {}
+					}
+					console.log(`Поиск по имени/фамилии контакта: ${query}`)
+				}
+			}
 
 			console.log('Данные запроса контактов:', {
 				filter,

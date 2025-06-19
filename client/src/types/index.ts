@@ -59,10 +59,16 @@ export interface FormField {
 	placeholder?: string
 	bitrixFieldId: string
 	bitrixFieldType: string
+	formId?: string
 	options?: FormFieldOption[]
 	dynamicSource?: DynamicSource
 	linkedFields?: LinkedFields
 	order: number
+	// Данные для заголовков разделов
+	headerData?: {
+		label: string
+		level?: number
+	}
 	createdAt?: string
 	updatedAt?: string
 }

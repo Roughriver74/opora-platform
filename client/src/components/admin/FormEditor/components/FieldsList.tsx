@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState } from 'react'
+import React, { useRef, useCallback, useState, useEffect } from 'react'
 import {
 	Box,
 	Stack,
@@ -29,6 +29,8 @@ interface FieldsListProps {
 	bitrixFields: Record<string, any>
 	dragOverIndex: number | null
 	onAddField: () => void
+	onAddSection: () => void
+	onAddFieldToSection: (sectionOrder: number) => void
 	onFieldSave: (index: number, field: Partial<FormField>) => void
 	onFieldDelete: (index: number) => void
 	onMoveFieldToSection: (
@@ -36,6 +38,7 @@ interface FieldsListProps {
 		targetSectionOrder: number,
 		newPosition?: number
 	) => void
+	onNormalizeOrders: () => void
 	dragHandlers: DragHandlers
 }
 
@@ -54,17 +57,72 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 	bitrixFields,
 	dragOverIndex,
 	onAddField,
+	onAddSection,
+	onAddFieldToSection,
 	onFieldSave,
 	onFieldDelete,
 	onMoveFieldToSection,
+	onNormalizeOrders,
 	dragHandlers,
 }) => {
-	// Защита от некорректных данных
-	const safeFields = fields || []
-	const safeBitrixFields = bitrixFields || {}
-	const fieldsRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+	const fieldsRefs = useRef<Record<string, HTMLDivElement | null>>({})
+	const containerRef = useRef<HTMLDivElement | null>(null)
+	const scrollPositionRef = useRef<number>(0)
+
+	// Состояния для редактирования разделов
 	const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
 	const [tempSectionTitle, setTempSectionTitle] = useState('')
+
+	// Состояние для управления раскрытыми аккордеонами
+	const [expandedAccordions, setExpandedAccordions] = useState<
+		Record<string, boolean>
+	>({})
+
+	// Сохранение позиции прокрутки
+	const saveScrollPosition = useCallback(() => {
+		if (containerRef.current) {
+			scrollPositionRef.current =
+				window.pageYOffset || document.documentElement.scrollTop
+		}
+	}, [])
+
+	// Восстановление позиции прокрутки
+	const restoreScrollPosition = useCallback(() => {
+		if (scrollPositionRef.current > 0) {
+			setTimeout(() => {
+				window.scrollTo({
+					top: scrollPositionRef.current,
+					behavior: 'auto', // Без анимации для мгновенного восстановления
+				})
+			}, 50) // Небольшая задержка для завершения рендеринга
+		}
+	}, [])
+
+	// Обёртка для onFieldSave с сохранением позиции
+	const handleFieldSaveWithScroll = useCallback(
+		(index: number, field: Partial<FormField>) => {
+			saveScrollPosition()
+			onFieldSave(index, field)
+		},
+		[onFieldSave, saveScrollPosition]
+	)
+
+	// Восстановление позиции при изменении полей
+	useEffect(() => {
+		restoreScrollPosition()
+	}, [fields, restoreScrollPosition])
+
+	// Проверяем, что fields определен и является массивом
+	const safeFields = Array.isArray(fields) ? fields : []
+	const safeBitrixFields = bitrixFields || {}
+
+	// Логирование для диагностики
+	console.log('🎯 FieldsList: Render with props:', {
+		fieldsLength: fields?.length || 0,
+		loading,
+		bitrixFieldsKeys: Object.keys(bitrixFields || {}).length,
+		dragOverIndex,
+	})
 
 	// Улучшенная группировка полей по разделам
 	const groupedFields = React.useMemo(() => {
@@ -169,7 +227,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 			label: tempSectionTitle.trim(),
 		}
 
-		onFieldSave(section.headerIndex!, updatedField)
+		handleFieldSaveWithScroll(section.headerIndex!, updatedField)
 		setEditingSectionId(null)
 		setTempSectionTitle('')
 	}
@@ -215,39 +273,22 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 	)
 
 	// Функция добавления поля в конкретный раздел
-	const addFieldToSection = useCallback(
+	const addFieldToSectionLocal = useCallback(
 		(section: Section) => {
-			let newOrder: number
-
-			if (section.fields.length === 0) {
-				// Первое поле в разделе - ставим сразу после заголовка
-				newOrder = section.startOrder + 1
-			} else {
-				// Следующее поле после последнего в разделе
-				newOrder = section.endOrder + 1
-			}
-
-			const newField: Partial<FormField> = {
-				name: `field_${Date.now()}`,
-				label: `Новое поле`,
-				type: 'text',
-				order: newOrder,
-				required: false,
-			}
-
-			onFieldSave(-1, newField)
-
-			// Прокручиваем к новому полю
-			setTimeout(() => {
-				const fieldElement = document.querySelector(
-					`[data-field-key="new-field-${newOrder}"]`
-				) as HTMLElement
-				if (fieldElement) {
-					fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
-				}
-			}, 200)
+			onAddFieldToSection(section.startOrder)
 		},
-		[onFieldSave]
+		[onAddFieldToSection]
+	)
+
+	// Функция для переключения состояния аккордеона
+	const handleAccordionChange = useCallback(
+		(fieldKey: string, expanded: boolean) => {
+			setExpandedAccordions(prev => ({
+				...prev,
+				[fieldKey]: expanded,
+			}))
+		},
+		[]
 	)
 
 	if (loading) {
@@ -259,7 +300,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 	}
 
 	return (
-		<Box>
+		<Box ref={containerRef}>
 			<Stack
 				direction='row'
 				alignItems='center'
@@ -274,27 +315,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 					<Button
 						variant='outlined'
 						startIcon={<SectionIcon />}
-						onClick={() => {
-							const existingHeaders = fields.filter(
-								field => field.type === 'header'
-							)
-							const nextSectionNumber = existingHeaders.length + 1
-							const maxOrder = Math.max(...fields.map(f => f.order || 0), 0)
-							const nextSectionOrder = Math.max(
-								maxOrder + 100,
-								nextSectionNumber * 100
-							)
-
-							const newSection: Partial<FormField> = {
-								name: `section_${Date.now()}`,
-								label: `Раздел ${nextSectionNumber}`,
-								type: 'header',
-								order: nextSectionOrder,
-								required: false,
-							}
-
-							onFieldSave(-1, newSection)
-						}}
+						onClick={onAddSection}
 						size='small'
 					>
 						Добавить раздел
@@ -307,6 +328,16 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 						size='small'
 					>
 						Добавить поле
+					</Button>
+
+					<Button
+						variant='outlined'
+						color='warning'
+						onClick={onNormalizeOrders}
+						size='small'
+						title='Исправить порядок: разделы 100,200,300... поля 101,102,103...'
+					>
+						Исправить порядок
 					</Button>
 				</Stack>
 			</Stack>
@@ -448,7 +479,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 											variant='contained'
 											size='small'
 											startIcon={<AddIcon />}
-											onClick={() => addFieldToSection(section)}
+											onClick={() => addFieldToSectionLocal(section)}
 											sx={{
 												bgcolor: 'rgba(255,255,255,0.15)',
 												color: 'inherit',
@@ -513,7 +544,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 											startIcon={<AddIcon />}
 											onClick={() =>
 												section.header
-													? addFieldToSection(section)
+													? addFieldToSectionLocal(section)
 													: onAddField()
 											}
 											sx={{ mt: 1 }}
@@ -591,12 +622,19 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 														<FormFieldEditor
 															field={field}
 															onSave={updatedField =>
-																onFieldSave(originalIndex, updatedField)
+																handleFieldSaveWithScroll(
+																	originalIndex,
+																	updatedField
+																)
 															}
 															onDelete={() => onFieldDelete(originalIndex)}
 															availableBitrixFields={safeBitrixFields}
 															isDraggable={true}
 															allFields={safeFields}
+															expanded={expandedAccordions[fieldKey] ?? false}
+															onExpandedChange={expanded =>
+																handleAccordionChange(fieldKey, expanded)
+															}
 														/>
 													</Box>
 												</Box>

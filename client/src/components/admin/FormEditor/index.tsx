@@ -32,10 +32,13 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 
 	const {
 		addNewField,
+		addNewSection,
+		addFieldToSection,
 		handleFieldSave,
 		handleFieldDelete,
 		moveFieldToSection,
-	} = useFieldManagement(state, setState, reloadFields)
+		normalizeOrders,
+	} = useFieldManagement(state, setState, reloadFields, form?._id)
 
 	const saveStatus = getSaveStatus()
 
@@ -95,9 +98,12 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 						bitrixFields={state.bitrixFields}
 						dragOverIndex={state.dragOverIndex}
 						onAddField={addNewField}
+						onAddSection={addNewSection}
+						onAddFieldToSection={addFieldToSection}
 						onFieldSave={handleFieldSave}
 						onFieldDelete={handleFieldDelete}
 						onMoveFieldToSection={moveFieldToSection}
+						onNormalizeOrders={normalizeOrders}
 						dragHandlers={dragHandlers}
 					/>
 				</CardContent>

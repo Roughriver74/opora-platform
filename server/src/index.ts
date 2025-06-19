@@ -4,6 +4,7 @@ import bodyParser from 'body-parser'
 import connectDB from './config/database'
 import config from './config/config'
 import { authMiddleware } from './middleware/authMiddleware'
+import { validateAndFixDatabase } from './utils/databaseValidation'
 
 // Импорт маршрутизаторов
 import formFieldRoutes from './routes/formFieldRoutes'
@@ -11,12 +12,19 @@ import formRoutes from './routes/formRoutes'
 import submissionRoutes from './routes/submissionRoutes'
 import authRoutes from './routes/authRoutes'
 import userRoutes from './routes/userRoutes'
+import diagnosticRoutes from './routes/diagnosticRoutes'
 
 // Инициализация Express приложения
 const app = express()
 
-// Подключение к MongoDB
-connectDB()
+// Подключение к MongoDB и валидация данных
+const initializeServer = async () => {
+	await connectDB()
+
+	// Проверяем целостность базы данных при запуске
+	await validateAndFixDatabase(true) // autoFix = true для автоматического исправления
+}
+initializeServer()
 
 // Middleware
 // Простая настройка CORS для всех маршрутов
@@ -41,6 +49,7 @@ app.use('/api/form-fields', formFieldRoutes)
 app.use('/api/forms', formRoutes)
 app.use('/api/submissions', submissionRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/diagnostic', diagnosticRoutes)
 
 // Базовый маршрут для проверки работоспособности API
 app.get('/', (req, res) => {

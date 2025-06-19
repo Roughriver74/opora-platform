@@ -327,9 +327,61 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 														sections={fieldSections}
 														values={formik.values}
 														onValuesChange={newValues => {
+															console.log(
+																'🔄 LinkedFields onValuesChange получены новые значения:',
+																newValues
+															)
+															console.log(
+																'🔄 Текущие значения formik:',
+																formik.values
+															)
+
+															// Используем setValues для массового обновления
+															const updatedValues = {
+																...formik.values,
+																...newValues,
+															}
+
 															Object.keys(newValues).forEach(key => {
-																formik.setFieldValue(key, newValues[key])
+																const newValue = newValues[key]
+																const currentValue = formik.values[key]
+																console.log(
+																	`🔄 Обновление поля ${key}: ${currentValue} -> ${newValue}`
+																)
 															})
+
+															formik.setValues(updatedValues)
+
+															// Принудительно обновляем компоненты через изменение key
+															setTimeout(() => {
+																const autocompleteFields = Object.keys(
+																	newValues
+																).filter(key => {
+																	const field = fields.find(f => f.name === key)
+																	return (
+																		field?.type === 'autocomplete' &&
+																		newValues[key]
+																	)
+																})
+
+																if (autocompleteFields.length > 0) {
+																	console.log(
+																		'🔄 Принудительное обновление автозаполнения:',
+																		autocompleteFields
+																	)
+																	// Принудительно перерендериваем форму
+																	setSnackbar({
+																		open: false,
+																		message: '',
+																		severity: 'success',
+																	})
+																}
+															}, 200)
+
+															console.log(
+																'🔄 Значения formik после обновления:',
+																updatedValues
+															)
 														}}
 														sourceSection={section.title}
 														showInline={true}
