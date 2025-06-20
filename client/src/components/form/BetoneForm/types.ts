@@ -18,6 +18,9 @@ export interface FormSection {
 	title: string
 	fields: FormFieldType[]
 	number?: number
+	order?: number
+	header?: FormFieldType
+	divider?: FormFieldType
 }
 
 export interface SectionMap {

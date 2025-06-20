@@ -18,7 +18,6 @@ import { Edit, Save, Cancel } from '@mui/icons-material'
 import { BetoneFormProps } from './types'
 import { useBetoneForm } from './hooks/useBetoneForm'
 import { getSortedFields } from './utils/sectionHelpers'
-import { FormProgressBar } from './components/FormProgressBar'
 import { FormSection } from './components/FormSection'
 import { SubmitButton } from './components/SubmitButton'
 import { ScrollToTopButton } from './components/ScrollToTopButton'
@@ -62,10 +61,6 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 		collapseAllSections,
 		showScrollTop,
 		scrollToTop,
-		progress,
-		progressColor,
-		progressText,
-		progressStatus,
 		handleFieldChange,
 		getFieldError,
 	} = useBetoneForm(form._id ?? '', fields, editData, preloadedOptions)
@@ -172,16 +167,6 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 							/>
 						</Box>
 					)}
-
-					{/* Прогресс заполнения */}
-					<Box sx={{ p: 3, pb: 0 }}>
-						<FormProgressBar
-							progress={progress}
-							progressColor={progressColor}
-							progressText={progressText}
-							progressStatus={progressStatus}
-						/>
-					</Box>
 
 					{/* Содержимое формы */}
 					<Box ref={formRef}>

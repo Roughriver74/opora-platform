@@ -9,7 +9,6 @@ import {
 } from '../utils/validationHelpers'
 import { useFormSections } from './useFormSections'
 import { useScrollBehavior } from './useScrollBehavior'
-import { useFormProgress } from './useFormProgress'
 
 /**
  * Основной хук для управления состоянием формы BetoneForm
@@ -113,7 +112,6 @@ export const useBetoneForm = (
 	// Подключаем хуки для дополнительной функциональности
 	const sectionsLogic = useFormSections(fields)
 	const scrollBehavior = useScrollBehavior()
-	const progressLogic = useFormProgress(fields, formik.values)
 
 	// Метод для очистки результата отправки
 	const clearSubmitResult = () => {
@@ -144,9 +142,6 @@ export const useBetoneForm = (
 
 		// Логика прокрутки
 		...scrollBehavior,
-
-		// Логика прогресса
-		...progressLogic,
 
 		// Вспомогательные методы
 		handleFieldChange: (name: string, value: any) => {

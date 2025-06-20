@@ -95,3 +95,82 @@ export const shouldUseSectionMode = (fields: FormFieldType[]): boolean => {
 export const getSortedFields = (fields: FormFieldType[]): FormFieldType[] => {
 	return [...fields].sort((a, b) => (a.order || 0) - (b.order || 0))
 }
+
+/**
+ * Группирует поля по разделителям (divider полям)
+ * Каждое поле типа 'divider' создает новую группу для последующих полей
+ */
+export const groupFieldsByDividers = (
+	fields: FormFieldType[]
+): FormSection[] => {
+	const sections: FormSection[] = []
+	let currentFields: FormFieldType[] = []
+	let currentDivider: FormFieldType | undefined = undefined
+	let sectionIndex = 0
+
+	// Сортируем поля по order
+	const sortedFields = [...fields].sort(
+		(a, b) => (a.order || 0) - (b.order || 0)
+	)
+
+	console.log('🔧 groupFieldsByDividers: Начинаем группировку', {
+		totalFields: sortedFields.length,
+		fieldTypes: sortedFields.map(f => f.type),
+	})
+
+	for (const field of sortedFields) {
+		if (field.type === 'divider') {
+			// Если есть накопленные поля, создаем секцию
+			if (currentFields.length > 0) {
+				const section: FormSection = {
+					id: currentDivider
+						? `divider-${currentDivider._id || sectionIndex}`
+						: `initial-${sectionIndex}`,
+					title: currentDivider?.label || 'Поля формы',
+					fields: [...currentFields],
+					number: sectionIndex,
+					divider: currentDivider,
+				}
+				sections.push(section)
+				console.log(
+					`📋 Создана секция "${section.title}" с ${currentFields.length} полями`
+				)
+				sectionIndex++
+			}
+
+			// Начинаем новую группу
+			currentFields = []
+			currentDivider = field
+		} else {
+			// Добавляем обычное поле в текущую группу
+			currentFields.push(field)
+		}
+	}
+
+	// Добавляем последнюю группу, если есть поля
+	if (currentFields.length > 0) {
+		const section: FormSection = {
+			id: currentDivider
+				? `divider-${currentDivider._id || sectionIndex}`
+				: `final-${sectionIndex}`,
+			title: currentDivider?.label || 'Остальные поля',
+			fields: [...currentFields],
+			number: sectionIndex,
+			divider: currentDivider,
+		}
+		sections.push(section)
+		console.log(
+			`📋 Создана финальная секция "${section.title}" с ${currentFields.length} полями`
+		)
+	}
+
+	console.log('✅ groupFieldsByDividers: Группировка завершена', {
+		totalSections: sections.length,
+		sectionsInfo: sections.map(s => ({
+			title: s.title,
+			fieldsCount: s.fields.length,
+		})),
+	})
+
+	return sections
+}
