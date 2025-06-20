@@ -91,16 +91,45 @@ exports.createField = createField;
 // Обновление существующего поля формы
 const updateField = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        console.log('🔄 Обновление поля ID:', req.params.id);
+        console.log('📝 Данные для обновления:', JSON.stringify(req.body, null, 2));
         const field = yield FormField_1.default.findById(req.params.id);
         if (!field) {
+            console.log('❌ Поле не найдено:', req.params.id);
             res.status(404).json({ message: 'Поле не найдено' });
             return;
         }
+        console.log('📋 Оригинальное поле:', {
+            _id: field._id,
+            name: field.name,
+            label: field.label,
+            type: field.type,
+            order: field.order,
+        });
         Object.assign(field, req.body);
+        console.log('📝 Поле после объединения данных:', {
+            _id: field._id,
+            name: field.name,
+            label: field.label,
+            type: field.type,
+            order: field.order,
+        });
         const updatedField = yield field.save();
+        console.log('✅ Поле успешно обновлено:', {
+            _id: updatedField._id,
+            name: updatedField.name,
+            label: updatedField.label,
+            type: updatedField.type,
+            order: updatedField.order,
+        });
         res.status(200).json(updatedField);
     }
     catch (error) {
+        console.error('❌ Ошибка при обновлении поля:', error);
+        console.error('📋 Детали ошибки:', error.message);
+        if (error.name === 'ValidationError') {
+            console.error('💥 Ошибки валидации:', error.errors);
+        }
         res.status(400).json({ message: error.message });
     }
 });

@@ -26,9 +26,30 @@ export const useFieldManagement = (
 
 				if (updatedField._id) {
 					// Обновляем существующее поле
+					// Находим оригинальное поле для получения всех данных
+					const originalField = state.fields.find(
+						f => f._id === updatedField._id
+					)
+					if (!originalField) {
+						throw new Error('Оригинальное поле не найдено')
+					}
+
+					// Объединяем оригинальные данные с обновлениями
+					const completeField = {
+						...originalField,
+						...updatedField,
+						_id: updatedField._id, // Убеждаемся что _id сохранен
+					} as FormField
+
+					console.log('🔄 Обновляем поле с полными данными:', {
+						original: originalField,
+						updates: updatedField,
+						complete: completeField,
+					})
+
 					savedField = await FormFieldService.updateField(
 						updatedField._id,
-						updatedField as FormField
+						completeField
 					)
 					console.log('Поле обновлено:', savedField)
 				} else {
@@ -290,39 +311,34 @@ export const useFieldManagement = (
 			const regularFields = state.fields.filter(f => f.type !== 'header')
 
 			const updates: Promise<any>[] = []
+			const localUpdates: FormField[] = []
 
-			// Переупорядочиваем разделы: 100, 200, 300...
-			sections.forEach((section, index) => {
-				const newOrder = (index + 1) * ORDER_CONSTANTS.SECTION_STEP
-				if (section.order !== newOrder && section._id) {
-					console.log(
-						`📁 Раздел "${section.label}": ${section.order} → ${newOrder}`
-					)
-					updates.push(
-						FormFieldService.updateField(section._id, { order: newOrder })
-					)
-				}
-			})
+			// Первый проход: пересчитываем разделы на основе их текущего порядка
+			// НЕ меняем порядок разделов, только нормализуем поля внутри разделов
+			console.log(
+				'📋 Разделы в текущем порядке:',
+				sections.map(s => ({ label: s.label, order: s.order }))
+			)
 
-			// Переупорядочиваем поля внутри разделов
-			sections.forEach((section, sectionIndex) => {
-				const sectionOrder = (sectionIndex + 1) * ORDER_CONSTANTS.SECTION_STEP
+			// Переупорядочиваем поля внутри каждого раздела
+			sections.forEach(section => {
+				const sectionOrder = section.order || 0
 
 				// Находим поля этого раздела
 				const sectionFields = regularFields
 					.filter(field => {
 						const fieldOrder = field.order || 0
-						return (
-							fieldOrder > sectionOrder &&
-							fieldOrder < sectionOrder + ORDER_CONSTANTS.SECTION_STEP
-						)
+						return fieldOrder > sectionOrder && fieldOrder < sectionOrder + 100
 					})
 					.sort((a, b) => (a.order || 0) - (b.order || 0))
 
-				// Переупорядочиваем поля: 101, 102, 103...
+				console.log(
+					`📁 Раздел "${section.label}" (${sectionOrder}): ${sectionFields.length} полей`
+				)
+
+				// Переупорядочиваем поля: sectionOrder+1, sectionOrder+2, sectionOrder+3...
 				sectionFields.forEach((field, fieldIndex) => {
-					const newOrder =
-						sectionOrder + ORDER_CONSTANTS.FIELD_START_OFFSET + fieldIndex
+					const newOrder = sectionOrder + 1 + fieldIndex
 					if (field.order !== newOrder && field._id) {
 						console.log(
 							`🔹 Поле "${field.label}": ${field.order} → ${newOrder}`
@@ -330,6 +346,9 @@ export const useFieldManagement = (
 						updates.push(
 							FormFieldService.updateField(field._id, { order: newOrder })
 						)
+
+						// Обновляем локальное состояние
+						localUpdates.push({ ...field, order: newOrder })
 					}
 				})
 			})
@@ -339,19 +358,29 @@ export const useFieldManagement = (
 				const fieldOrder = field.order || 0
 				return !sections.some(section => {
 					const sectionOrder = section.order || 0
-					return (
-						fieldOrder > sectionOrder &&
-						fieldOrder < sectionOrder + ORDER_CONSTANTS.SECTION_STEP
-					)
+					return fieldOrder > sectionOrder && fieldOrder < sectionOrder + 100
 				})
 			})
 
 			if (orphanFields.length > 0) {
 				console.warn(
 					'⚠️ Найдены поля без раздела:',
-					orphanFields.map(f => f.label)
+					orphanFields.map(f => ({ label: f.label, order: f.order }))
 				)
-				// Можно добавить логику для их размещения
+
+				// Размещаем поля без раздела в начале (order: 1, 2, 3...)
+				orphanFields.forEach((field, index) => {
+					const newOrder = index + 1
+					if (field.order !== newOrder && field._id) {
+						console.log(
+							`🔸 Поле без раздела "${field.label}": ${field.order} → ${newOrder}`
+						)
+						updates.push(
+							FormFieldService.updateField(field._id, { order: newOrder })
+						)
+						localUpdates.push({ ...field, order: newOrder })
+					}
+				})
 			}
 
 			// Выполняем все обновления
@@ -359,13 +388,15 @@ export const useFieldManagement = (
 				await Promise.all(updates)
 				console.log(`✅ Обновлено ${updates.length} полей`)
 
-				// Перезагружаем поля
-				if (reloadFields) {
-					await reloadFields()
-				}
-
+				// Обновляем локальное состояние без перезагрузки из БД
 				setState(prev => ({
 					...prev,
+					fields: prev.fields
+						.map(field => {
+							const updatedField = localUpdates.find(u => u._id === field._id)
+							return updatedField || field
+						})
+						.sort((a, b) => (a.order || 0) - (b.order || 0)),
 					hasChanges: true,
 				}))
 			} else {
@@ -379,7 +410,7 @@ export const useFieldManagement = (
 					'Ошибка при нормализации порядка полей: ' + (error as Error).message,
 			}))
 		}
-	}, [state.fields, setState, reloadFields])
+	}, [state.fields, setState])
 
 	return {
 		addNewField,

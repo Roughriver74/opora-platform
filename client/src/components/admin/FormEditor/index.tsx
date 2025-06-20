@@ -12,10 +12,12 @@ import AutoSaveIcon from '@mui/icons-material/CloudDone'
 import { FormEditorProps } from './types'
 import { useFormEditor } from './hooks/useFormEditor'
 import { useDragAndDrop } from './hooks/useDragAndDrop'
+
 import { useFieldManagement } from './hooks/useFieldManagement'
 import { FormHeader } from './components/FormHeader'
 import { FormSettings } from './components/FormSettings'
 import { FieldsList } from './components/FieldsList'
+import { FormFieldService } from '../../../services/formFieldService'
 
 const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 	const {

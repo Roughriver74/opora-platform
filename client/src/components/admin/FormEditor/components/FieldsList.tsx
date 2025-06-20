@@ -11,14 +11,24 @@ import {
 	CircularProgress,
 	TextField,
 	Alert,
+	Badge,
+	Checkbox,
+	FormControlLabel,
+	Menu,
+	MenuItem,
+	Divider,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import SectionIcon from '@mui/icons-material/ViewHeadline'
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import SaveIcon from '@mui/icons-material/Save'
 import CancelIcon from '@mui/icons-material/Cancel'
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank'
+import CheckBoxIcon from '@mui/icons-material/CheckBox'
+import MoveToInboxIcon from '@mui/icons-material/MoveToInbox'
+import SelectAllIcon from '@mui/icons-material/SelectAll'
+
 import { FormField } from '../../../../types'
 import FormFieldEditor from '../../FormFieldEditor'
 import { DragHandlers } from '../types'
@@ -73,10 +83,20 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 	const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
 	const [tempSectionTitle, setTempSectionTitle] = useState('')
 
+	// Локальное состояние для изменений порядка разделов (до сохранения)
+	const [localOrderChanges, setLocalOrderChanges] = useState<
+		Record<string, number>
+	>({})
+
 	// Состояние для управления раскрытыми аккордеонами
 	const [expandedAccordions, setExpandedAccordions] = useState<
 		Record<string, boolean>
 	>({})
+
+	// Состояния для множественного выбора полей
+	const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set())
+	const [selectionMode, setSelectionMode] = useState(false)
+	const [moveMenuAnchor, setMoveMenuAnchor] = useState<null | HTMLElement>(null)
 
 	// Сохранение позиции прокрутки
 	const saveScrollPosition = useCallback(() => {
@@ -247,6 +267,197 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 		}
 	}
 
+	// Функции для множественного выбора полей
+	const toggleSelectionMode = useCallback(() => {
+		setSelectionMode(prev => !prev)
+		if (selectionMode) {
+			setSelectedFields(new Set())
+		}
+	}, [selectionMode])
+
+	const toggleFieldSelection = useCallback((fieldId: string) => {
+		setSelectedFields(prev => {
+			const newSelection = new Set(prev)
+			if (newSelection.has(fieldId)) {
+				newSelection.delete(fieldId)
+			} else {
+				newSelection.add(fieldId)
+			}
+			return newSelection
+		})
+	}, [])
+
+	const selectAllFields = useCallback(() => {
+		const allFieldIds = safeFields
+			.filter(field => field.type !== 'header' && field.type !== 'divider')
+			.map(field => field._id || field.name)
+		setSelectedFields(new Set(allFieldIds))
+	}, [safeFields])
+
+	const handleMoveToSection = useCallback(
+		(targetSectionOrder: number) => {
+			if (selectedFields.size === 0) return
+
+			console.log(
+				`📦 Перемещаем ${selectedFields.size} полей в раздел с order ${targetSectionOrder}`
+			)
+
+			// Перемещаем каждое выбранное поле
+			Array.from(selectedFields).forEach(fieldId => {
+				onMoveFieldToSection(fieldId, targetSectionOrder)
+			})
+
+			// Очищаем выбор и выходим из режима выбора
+			setSelectedFields(new Set())
+			setSelectionMode(false)
+			setMoveMenuAnchor(null)
+		},
+		[selectedFields, onMoveFieldToSection]
+	)
+
+	const openMoveMenu = useCallback((event: React.MouseEvent<HTMLElement>) => {
+		setMoveMenuAnchor(event.currentTarget)
+	}, [])
+
+	const closeMoveMenu = useCallback(() => {
+		setMoveMenuAnchor(null)
+	}, [])
+
+	// Функция применения локальных изменений порядка разделов
+	const applyLocalOrderChanges = useCallback(async () => {
+		if (Object.keys(localOrderChanges).length === 0) {
+			// Если нет локальных изменений, просто вызываем нормализацию
+			onNormalizeOrders()
+			return
+		}
+
+		console.log(
+			'🔄 Применяем локальные изменения порядка разделов:',
+			localOrderChanges
+		)
+
+		// Создаем массив всех обновлений (разделы + их поля)
+		const allUpdatePromises: Promise<void>[] = []
+
+		// Применяем все локальные изменения к соответствующим разделам и их полям
+		for (const [sectionId, newSectionOrder] of Object.entries(
+			localOrderChanges
+		)) {
+			// Находим раздел и его индекс
+			const section = groupedFields.find(s => s.id === sectionId)
+			if (!section?.header || section.headerIndex === undefined) {
+				console.warn(
+					`⚠️ Раздел ${sectionId} не найден для применения изменений`
+				)
+				continue
+			}
+
+			// Убеждаемся что header существует для TypeScript
+			const sectionHeader = section.header
+			const oldSectionOrder = sectionHeader.order || 0
+
+			console.log(`📁 Обрабатываем раздел "${sectionHeader.name}":`, {
+				oldOrder: oldSectionOrder,
+				newOrder: newSectionOrder,
+				fieldsCount: section.fields.length,
+			})
+
+			// 1. Обновляем сам раздел
+			const updatedSectionField = {
+				...sectionHeader,
+				order: newSectionOrder,
+			}
+
+			allUpdatePromises.push(
+				new Promise<void>((resolve, reject) => {
+					try {
+						console.log(
+							`📝 Обновляем раздел ${sectionHeader.name}: ${oldSectionOrder} → ${newSectionOrder}`
+						)
+						onFieldSave(section.headerIndex!, updatedSectionField)
+						resolve()
+					} catch (error) {
+						reject(error)
+					}
+				})
+			)
+
+			// 2. Обновляем все поля внутри раздела
+			section.fields.forEach((field, fieldIndex) => {
+				// Находим глобальный индекс поля
+				const globalFieldIndex = safeFields.findIndex(f =>
+					f._id ? f._id === field._id : f.name === field.name
+				)
+
+				if (globalFieldIndex === -1) {
+					console.warn(`⚠️ Глобальный индекс поля ${field.name} не найден`)
+					return
+				}
+
+				// Вычисляем новый order для поля: новый порядок раздела + позиция поля + 1
+				const oldFieldOrder = field.order || 0
+				const newFieldOrder =
+					parseInt(newSectionOrder.toString()) + fieldIndex + 1
+
+				console.log(
+					`🔍 Анализ поля "${field.name}": section=${newSectionOrder}, fieldIndex=${fieldIndex}, newOrder=${newFieldOrder}`
+				)
+
+				if (oldFieldOrder !== newFieldOrder) {
+					const updatedField = {
+						...field,
+						order: newFieldOrder,
+					}
+
+					console.log(
+						`🔹 Перемещаем поле "${field.name}": ${oldFieldOrder} → ${newFieldOrder}`
+					)
+
+					allUpdatePromises.push(
+						new Promise<void>((resolve, reject) => {
+							try {
+								onFieldSave(globalFieldIndex, updatedField)
+								resolve()
+							} catch (error) {
+								reject(error)
+							}
+						})
+					)
+				} else {
+					console.log(
+						`⏭️ Поле "${field.name}" остается на месте: order=${oldFieldOrder}`
+					)
+				}
+			})
+		}
+
+		try {
+			// Ждем выполнения всех обновлений (разделы + поля)
+			console.log(`⏳ Выполняем ${allUpdatePromises.length} обновлений...`)
+			await Promise.all(allUpdatePromises)
+
+			// Очищаем локальные изменения
+			setLocalOrderChanges({})
+
+			console.log(
+				'✅ Все изменения применены, запускаем финальную нормализацию...'
+			)
+
+			// Финальная нормализация для исправления возможных конфликтов порядка
+			setTimeout(() => {
+				onNormalizeOrders()
+			}, 500) // Небольшая задержка чтобы обновления успели сохраниться
+		} catch (error) {
+			console.error('❌ Ошибка при применении локальных изменений:', error)
+		}
+	}, [
+		localOrderChanges,
+		groupedFields,
+		onFieldSave,
+		onNormalizeOrders,
+		safeFields,
+	])
+
 	// Функция удаления раздела
 	const deleteSection = useCallback(
 		(section: Section) => {
@@ -307,9 +518,16 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 				justifyContent='space-between'
 				sx={{ mb: 3 }}
 			>
-				<Typography variant='h6' component='h2' sx={{ fontWeight: 600 }}>
-					Поля формы
-				</Typography>
+				<Box>
+					<Typography variant='h6' component='h2' sx={{ fontWeight: 600 }}>
+						Поля формы
+					</Typography>
+					{selectionMode && (
+						<Typography variant='body2' color='secondary.main' sx={{ mt: 0.5 }}>
+							Режим выбора активен. Выберите поля и нажмите "Переместить"
+						</Typography>
+					)}
+				</Box>
 
 				<Stack direction='row' spacing={1}>
 					<Button
@@ -330,15 +548,77 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 						Добавить поле
 					</Button>
 
+					{/* Кнопки для множественного выбора */}
 					<Button
-						variant='outlined'
-						color='warning'
-						onClick={onNormalizeOrders}
+						variant={selectionMode ? 'contained' : 'outlined'}
+						startIcon={
+							selectionMode ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />
+						}
+						onClick={toggleSelectionMode}
 						size='small'
-						title='Исправить порядок: разделы 100,200,300... поля 101,102,103...'
+						color={selectionMode ? 'secondary' : 'primary'}
 					>
-						Исправить порядок
+						{selectionMode ? 'Отменить' : 'Выбрать'}
 					</Button>
+
+					{selectionMode && (
+						<>
+							<Button
+								variant='outlined'
+								startIcon={<SelectAllIcon />}
+								onClick={selectAllFields}
+								size='small'
+								disabled={selectedFields.size === safeFields.length}
+							>
+								Все
+							</Button>
+
+							<Badge
+								badgeContent={selectedFields.size}
+								color='secondary'
+								sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem' } }}
+							>
+								<Button
+									variant='contained'
+									startIcon={<MoveToInboxIcon />}
+									onClick={openMoveMenu}
+									size='small'
+									disabled={selectedFields.size === 0}
+									color='secondary'
+								>
+									Переместить
+								</Button>
+							</Badge>
+						</>
+					)}
+
+					<Badge
+						badgeContent={Object.keys(localOrderChanges).length}
+						color='error'
+						sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem' } }}
+					>
+						<Button
+							variant='outlined'
+							color='warning'
+							onClick={applyLocalOrderChanges}
+							size='small'
+							title={`Применить ${
+								Object.keys(localOrderChanges).length
+							} локальных изменений порядка разделов и исправить порядок всех полей`}
+							sx={{
+								bgcolor:
+									Object.keys(localOrderChanges).length > 0
+										? 'warning.light'
+										: 'transparent',
+								color:
+									Object.keys(localOrderChanges).length > 0
+										? 'warning.contrastText'
+										: 'warning.main',
+							}}
+						>
+							Исправить порядок
+						</Button>
+					</Badge>
 				</Stack>
 			</Stack>
 
@@ -374,7 +654,51 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 									}}
 								>
 									<Stack direction='row' alignItems='center' spacing={1}>
-										<DragIndicatorIcon sx={{ opacity: 0.7 }} />
+										{/* Редактирование порядка раздела */}
+										<Tooltip title='Введите порядок раздела (100, 200, 300...) и нажмите "Исправить порядок"'>
+											<TextField
+												size='small'
+												type='number'
+												value={
+													localOrderChanges[section.id] ??
+													section.header?.order ??
+													0
+												}
+												onChange={e => {
+													// НЕ сохраняем в БД, только обновляем локальное состояние
+													const newOrder = parseInt(e.target.value) || 0
+													console.log(
+														'📝 Локальное изменение порядка раздела:',
+														{
+															sectionId: section.id,
+															sectionName: section.header?.name,
+															oldOrder: section.header?.order,
+															newOrder,
+															note: 'НЕ сохраняется в БД до нажатия "Исправить порядок"',
+														}
+													)
+
+													// Сохраняем изменение в локальном состоянии
+													setLocalOrderChanges(prev => ({
+														...prev,
+														[section.id]: newOrder,
+													}))
+												}}
+												sx={{
+													width: 80,
+													'& .MuiOutlinedInput-root': {
+														bgcolor: 'rgba(255,255,255,0.9)',
+														fontSize: '0.875rem',
+														// Подсветка что поле изменено, но не сохранено
+														border:
+															localOrderChanges[section.id] !== undefined
+																? '2px solid orange'
+																: 'none',
+													},
+												}}
+												inputProps={{ min: 0, step: 100 }}
+											/>
+										</Tooltip>
 										<SectionIcon />
 
 										{editingSectionId === section.id ? (
@@ -594,48 +918,104 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 													}}
 												>
 													<Box
-														draggable
-														onDragStart={e =>
-															dragHandlers.handleDragStart(
-																e,
-																field,
-																originalIndex
-															)
-														}
-														onDragOver={e =>
-															dragHandlers.handleDragOver(e, originalIndex)
-														}
-														onDragLeave={dragHandlers.handleDragLeave}
-														onDrop={e =>
-															dragHandlers.handleDrop(e, originalIndex)
-														}
-														onDragEnd={dragHandlers.handleDragEnd}
 														sx={{
-															cursor: 'move',
-															transition: 'all 0.2s ease-in-out',
-															'&:hover': {
-																transform: 'translateY(-2px)',
-																boxShadow: 4,
-															},
+															display: 'flex',
+															alignItems: 'flex-start',
+															gap: 1,
 														}}
 													>
-														<FormFieldEditor
-															field={field}
-															onSave={updatedField =>
-																handleFieldSaveWithScroll(
-																	originalIndex,
-																	updatedField
+														{/* Чекбокс для множественного выбора */}
+														{selectionMode &&
+															field.type !== 'header' &&
+															field.type !== 'divider' && (
+																<FormControlLabel
+																	control={
+																		<Checkbox
+																			checked={selectedFields.has(
+																				field._id || field.name
+																			)}
+																			onChange={() =>
+																				toggleFieldSelection(
+																					field._id || field.name
+																				)
+																			}
+																			size='small'
+																			color='secondary'
+																		/>
+																	}
+																	label=''
+																	sx={{
+																		m: 0,
+																		mt: 1,
+																		'& .MuiFormControlLabel-label': {
+																			display: 'none',
+																		},
+																	}}
+																/>
+															)}
+
+														<Box
+															draggable={!selectionMode}
+															onDragStart={e =>
+																!selectionMode &&
+																dragHandlers.handleDragStart(
+																	e,
+																	field,
+																	originalIndex
 																)
 															}
-															onDelete={() => onFieldDelete(originalIndex)}
-															availableBitrixFields={safeBitrixFields}
-															isDraggable={true}
-															allFields={safeFields}
-															expanded={expandedAccordions[fieldKey] ?? false}
-															onExpandedChange={expanded =>
-																handleAccordionChange(fieldKey, expanded)
+															onDragOver={e =>
+																!selectionMode &&
+																dragHandlers.handleDragOver(e, originalIndex)
 															}
-														/>
+															onDragLeave={dragHandlers.handleDragLeave}
+															onDrop={e =>
+																!selectionMode &&
+																dragHandlers.handleDrop(e, originalIndex)
+															}
+															onDragEnd={dragHandlers.handleDragEnd}
+															sx={{
+																flex: 1,
+																cursor: selectionMode ? 'default' : 'move',
+																transition: 'all 0.2s ease-in-out',
+																'&:hover': selectionMode
+																	? {}
+																	: {
+																			transform: 'translateY(-2px)',
+																			boxShadow: 4,
+																	  },
+																opacity: selectedFields.has(
+																	field._id || field.name
+																)
+																	? 0.7
+																	: 1,
+																border: selectedFields.has(
+																	field._id || field.name
+																)
+																	? '2px solid'
+																	: 'none',
+																borderColor: 'secondary.main',
+																borderRadius: 1,
+															}}
+														>
+															<FormFieldEditor
+																field={field}
+																onSave={updatedField =>
+																	handleFieldSaveWithScroll(
+																		originalIndex,
+																		updatedField
+																	)
+																}
+																onDelete={() => onFieldDelete(originalIndex)}
+																availableBitrixFields={safeBitrixFields}
+																isDraggable={!selectionMode}
+																allFields={safeFields}
+																expanded={expandedAccordions[fieldKey] ?? false}
+																onExpandedChange={expanded =>
+																	handleAccordionChange(fieldKey, expanded)
+																}
+															/>
+														</Box>
 													</Box>
 												</Box>
 											)
@@ -647,6 +1027,63 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 					))}
 				</Stack>
 			)}
+
+			{/* Меню для выбора целевого раздела */}
+			<Menu
+				anchorEl={moveMenuAnchor}
+				open={Boolean(moveMenuAnchor)}
+				onClose={closeMoveMenu}
+				transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+				anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+			>
+				<MenuItem disabled>
+					<Typography variant='subtitle2' color='text.secondary'>
+						Переместить {selectedFields.size} полей в:
+					</Typography>
+				</MenuItem>
+				<Divider />
+
+				{/* Опция для перемещения в поля без раздела */}
+				<MenuItem
+					onClick={() => handleMoveToSection(0)}
+					sx={{
+						minWidth: 200,
+						display: 'flex',
+						alignItems: 'center',
+						gap: 1,
+					}}
+				>
+					<SectionIcon fontSize='small' />
+					<Typography>Поля без раздела</Typography>
+				</MenuItem>
+
+				{/* Опции для перемещения в существующие разделы */}
+				{groupedFields
+					.filter(section => section.header) // Только разделы с заголовками
+					.map(section => (
+						<MenuItem
+							key={section.id}
+							onClick={() => handleMoveToSection(section.header?.order || 0)}
+							sx={{
+								minWidth: 200,
+								display: 'flex',
+								alignItems: 'center',
+								gap: 1,
+							}}
+						>
+							<SectionIcon fontSize='small' />
+							<Typography>
+								{section.header?.label || section.header?.name || 'Раздел'}
+							</Typography>
+							<Chip
+								label={`order: ${section.header?.order}`}
+								size='small'
+								variant='outlined'
+								sx={{ ml: 'auto', fontSize: '0.7rem' }}
+							/>
+						</MenuItem>
+					))}
+			</Menu>
 		</Box>
 	)
 }

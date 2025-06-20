@@ -39,8 +39,21 @@ export const FormFieldService = {
 
 	// Обновление существующего поля
 	updateField: async (id: string, fieldData: Partial<FormField>) => {
-		const response = await api.put(`/form-fields/${id}`, fieldData)
-		return response.data
+		try {
+			console.log('🔄 FormFieldService.updateField:', { id, fieldData })
+			const response = await api.put(`/form-fields/${id}`, fieldData)
+			console.log('✅ Поле успешно обновлено:', response.data)
+			return response.data
+		} catch (error: any) {
+			console.error('❌ Ошибка при обновлении поля:', error)
+			if (error.response) {
+				console.error('Статус ответа:', error.response.status)
+				console.error('Данные ответа:', error.response.data)
+				console.error('URL запроса:', error.config?.url)
+				console.error('Отправленные данные:', fieldData)
+			}
+			throw error
+		}
 	},
 
 	// Удаление поля
