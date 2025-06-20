@@ -46,27 +46,21 @@ export const AutocompleteInput = forwardRef<
 			ref,
 			() => ({
 				triggerSearch: (searchValue: string) => {
-					console.log(
-						`🔍 Программный поиск для ${field.name}: "${searchValue}"`
-					)
 					setInputValue(searchValue)
 					onSearchChange?.(searchValue)
 				},
 			}),
-			[field.name, onSearchChange]
+			[onSearchChange]
 		)
 
 		// Синхронизируем inputValue с выбранным значением
 		useEffect(() => {
 			if (selectedOption && !isSelectingRef.current) {
 				setInputValue(selectedOption.label)
-				console.log(
-					`🔄 AutocompleteInput: Синхронизация с выбранной опцией для ${field.name}: "${selectedOption.label}"`
-				)
 			} else if (!value && !isSelectingRef.current) {
 				setInputValue('')
 			}
-		}, [selectedOption, value, field.name])
+		}, [selectedOption, value])
 
 		// Обработка изменения value извне (копирование)
 		useEffect(() => {
@@ -74,36 +68,11 @@ export const AutocompleteInput = forwardRef<
 				lastValueRef.current = value
 
 				if (value && !selectedOption && !isSelectingRef.current) {
-					// Значение изменилось, но опция не найдена - показываем значение как есть
-					console.log(
-						`🔄 AutocompleteInput: Значение изменилось извне для ${field.name}: "${value}", но опция не найдена. Устанавливаем inputValue.`
-					)
 					setInputValue(String(value))
-
-					// Инициируем поиск для загрузки опций
-					if (onSearchChange) {
-						setTimeout(() => {
-							onSearchChange(String(value))
-						}, 100)
-					}
+					onSearchChange?.(String(value))
 				}
 			}
-		}, [value, selectedOption, field.name, onSearchChange])
-
-		// Специальная обработка для копирования - принудительное обновление
-		useEffect(() => {
-			if (
-				value &&
-				options.length > 0 &&
-				selectedOption &&
-				inputValue !== selectedOption.label
-			) {
-				console.log(
-					`🔄 AutocompleteInput: Принудительная синхронизация для ${field.name}: "${selectedOption.label}"`
-				)
-				setInputValue(selectedOption.label)
-			}
-		}, [value, options, selectedOption, inputValue, field.name])
+		}, [value, selectedOption, onSearchChange])
 
 		return (
 			<FormControl fullWidth margin={compact ? 'dense' : 'normal'}>
@@ -112,7 +81,6 @@ export const AutocompleteInput = forwardRef<
 					value={selectedOption}
 					inputValue={inputValue}
 					onInputChange={(_, newInputValue, reason) => {
-						// Не отправляем запросы если пользователь выбирает из списка
 						if (reason === 'reset' && isSelectingRef.current) {
 							isSelectingRef.current = false
 							return
@@ -120,7 +88,6 @@ export const AutocompleteInput = forwardRef<
 
 						setInputValue(newInputValue || '')
 
-						// Отправляем запрос только при печати пользователем
 						if (reason === 'input') {
 							onSearchChange?.(newInputValue || '')
 						}
@@ -129,14 +96,12 @@ export const AutocompleteInput = forwardRef<
 						isSelectingRef.current = true
 						onChange(field.name, newValue ? newValue.value : '')
 
-						// После выбора показываем выбранное значение
 						if (newValue) {
 							setInputValue(newValue.label)
 						} else {
 							setInputValue('')
 						}
 
-						// Сбрасываем флаг через небольшой таймаут
 						setTimeout(() => {
 							isSelectingRef.current = false
 						}, 100)
