@@ -154,6 +154,23 @@ export const SubmissionService = {
 		return response.data
 	},
 
+	// Копирование заявки
+	copySubmission: async (
+		id: string
+	): Promise<{
+		success: boolean
+		message: string
+		data: {
+			formId: string
+			formData: Record<string, any>
+			originalTitle: string
+			originalSubmissionNumber: string
+		}
+	}> => {
+		const response = await api.get(`/submissions/${id}/copy`)
+		return response.data
+	},
+
 	// Обновление статуса заявки
 	updateStatus: async (
 		id: string,

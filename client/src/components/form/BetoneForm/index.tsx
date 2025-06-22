@@ -157,6 +157,19 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 						)}
 					</Box>
 
+					{/* Уведомление о копировании */}
+					{editData?.isCopy && (
+						<Box sx={{ p: 3, pb: 0 }}>
+							<Alert severity='info' sx={{ mb: 2 }}>
+								<Typography variant='body2'>
+									Вы копируете заявку "{editData.originalTitle}" (№
+									{editData.originalSubmissionNumber}). Данные предзаполнены, но
+									будет создана новая заявка.
+								</Typography>
+							</Alert>
+						</Box>
+					)}
+
 					{/* Результат отправки */}
 					{submitResult && (
 						<Box sx={{ p: 3, pb: 0 }}>

@@ -14,6 +14,7 @@ NC='\033[0m' # No Color
 SERVER_USER="root"
 SERVER_IP="31.128.39.123"
 APP_DIR="/var/www/beton-crm"
+BACKUP_DIR_REMOTE="/var/www/beton-crm-backups"
 DB_NAME="beton-crm-production"
 
 echo -e "${BLUE}=== ДЕПЛОЙ BETON-CRM НА ПРОДАКШН СЕРВЕР ===${NC}"
@@ -24,8 +25,28 @@ echo -e "3. Сборку и деплой приложения"
 echo -e "4. Настройку автозапуска"
 echo ""
 
-# 1. Настройка API URL для фронтенда
-echo -e "${YELLOW}1. Настройка API URL для фронтенда...${NC}"
+# 1. Проверка git статуса и создание коммита
+echo -e "${YELLOW}1. Проверка Git статуса и создание коммита...${NC}"
+
+if ! git diff-index --quiet HEAD --; then
+    echo -e "${YELLOW}Найдены не закоммиченные изменения.${NC}"
+    git status -s
+    read -p "Введите сообщение коммита: " COMMIT_MESSAGE
+    if [ -z "$COMMIT_MESSAGE" ]; then
+        echo -e "${RED}Сообщение коммита не может быть пустым. Прерывание.${NC}"
+        exit 1
+    fi
+    git add .
+    git commit -m "$COMMIT_MESSAGE"
+    echo -e "${GREEN}✓ Изменения закоммичены.${NC}"
+    git push
+    echo -e "${GREEN}✓ Изменения отправлены в удаленный репозиторий.${NC}"
+else
+    echo -e "${GREEN}✓ Нет не закоммиченных изменений.${NC}"
+fi
+
+# 2. Настройка API URL для фронтенда
+echo -e "${YELLOW}2. Настройка API URL для фронтенда...${NC}"
 ENV_FILE="client/.env"
 ENV_BACKUP="client/.env.backup"
 
@@ -36,8 +57,8 @@ if [ -f "$ENV_FILE" ]; then
     echo -e "${GREEN}✓ Установлен API URL для продакшн-сборки${NC}"
 fi
 
-# 2. Сборка проекта
-echo -e "${YELLOW}2. Сборка проекта...${NC}"
+# 3. Сборка проекта
+echo -e "${YELLOW}3. Сборка проекта...${NC}"
 npm run build
 BUILD_STATUS=$?
 
@@ -53,8 +74,8 @@ if [ $BUILD_STATUS -ne 0 ]; then
 fi
 echo -e "${GREEN}✓ Проект успешно собран${NC}"
 
-# 3. Создание архива для деплоя
-echo -e "${YELLOW}3. Создание архива для деплоя...${NC}"
+# 4. Создание архива для деплоя
+echo -e "${YELLOW}4. Создание архива для деплоя...${NC}"
 ARCHIVE_NAME="production-deploy-$(date +%s).tar.gz"
 
 # Проверяем наличие необходимых файлов и папок
@@ -76,6 +97,7 @@ tar -czf "$ARCHIVE_NAME" \
     --exclude="server/node_modules" \
     --exclude="*.log" \
     --exclude=".env" \
+    --exclude="backups" \
     server/dist/ \
     server/package.json \
     server/package-lock.json \
@@ -97,8 +119,8 @@ fi
 
 echo -e "${GREEN}✓ Архив $ARCHIVE_NAME успешно создан (размер: $ARCHIVE_SIZE байт)${NC}"
 
-# 4. Проверка соединения с сервером
-echo -e "${YELLOW}4. Проверка соединения с сервером...${NC}"
+# 5. Проверка соединения с сервером
+echo -e "${YELLOW}5. Проверка соединения с сервером...${NC}"
 ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP "echo 'Соединение установлено'"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Ошибка соединения с сервером!${NC}"
@@ -106,8 +128,8 @@ if [ $? -ne 0 ]; then
 fi
 echo -e "${GREEN}✓ Соединение с сервером успешно установлено${NC}"
 
-# 5. Установка системных зависимостей на сервере
-echo -e "${YELLOW}5. Установка системных зависимостей на сервере...${NC}"
+# 6. Установка системных зависимостей на сервере
+echo -e "${YELLOW}6. Установка системных зависимостей на сервере...${NC}"
 ssh $SERVER_USER@$SERVER_IP << 'ENDSSH'
 echo -e "${BLUE}=== УСТАНОВКА СИСТЕМНЫХ ЗАВИСИМОСТЕЙ ===${NC}"
 
@@ -180,31 +202,31 @@ fi
 echo -e "${GREEN}=== ВСЕ СИСТЕМНЫЕ ЗАВИСИМОСТИ УСТАНОВЛЕНЫ ===${NC}"
 ENDSSH
 
-# 6. Остановка текущего приложения и резервное копирование
-echo -e "${YELLOW}6. Остановка текущего приложения и резервное копирование...${NC}"
+# 7. Остановка текущего приложения и создание полного бэкапа
+echo -e "${YELLOW}7. Остановка текущего приложения и создание полного бэкапа...${NC}"
 ssh $SERVER_USER@$SERVER_IP << ENDSSH
+export BACKUP_DIR_REMOTE="$BACKUP_DIR_REMOTE"
+export APP_DIR="$APP_DIR"
+export DB_NAME="$DB_NAME"
+
 # Остановка приложения PM2 (если запущено)
 pm2 stop beton-crm 2>/dev/null || echo "Приложение не запущено"
 
-# Создание резервной копии текущего приложения
-if [ -d "$APP_DIR" ]; then
-    BACKUP_DIR="/tmp/beton-crm-backup-\$(date +%s)"
-    echo "Создание резервной копии в \$BACKUP_DIR..."
-    cp -r "$APP_DIR" "\$BACKUP_DIR"
-    echo -e "${GREEN}✓ Резервная копия создана: \$BACKUP_DIR${NC}"
-fi
-
-# Создание резервной копии базы данных (если существует старая база)
-if mongosh --eval "db.adminCommand('listDatabases')" | grep -q "beton-crm"; then
-    echo "Создание резервной копии базы данных..."
-    BACKUP_DB="/tmp/beton-crm-db-backup-\$(date +%s)"
-    mongodump --db beton-crm --out "\$BACKUP_DB" || echo "Не удалось создать резервную копию БД"
-    echo -e "${GREEN}✓ Резервная копия БД: \$BACKUP_DB${NC}"
+# Создание полного бэкапа
+if [ -d "\$APP_DIR" ]; then
+    BACKUP_TIMESTAMP=\$(date +%Y-%m-%d_%H-%M-%S)
+    CURRENT_BACKUP_PATH="\$BACKUP_DIR_REMOTE/\$BACKUP_TIMESTAMP"
+    mkdir -p "\$CURRENT_BACKUP_PATH"
+    echo "Создание бэкапа базы данных \$DB_NAME..."
+    mongodump --db "\$DB_NAME" --out="\$CURRENT_BACKUP_PATH/db" || echo "Не удалось создать бэкап БД."
+    echo "Создание бэкапа файлов приложения..."
+    tar -czf "\$CURRENT_BACKUP_PATH/app.tar.gz" -C "\$APP_DIR" . || echo "Не удалось создать бэкап файлов."
+    echo -e "${GREEN}✓ Полный бэкап создан в \$CURRENT_BACKUP_PATH${NC}"
 fi
 ENDSSH
 
-# 7. Копирование файлов на сервер
-echo -e "${YELLOW}7. Копирование файлов на сервер...${NC}"
+# 8. Копирование файлов на сервер
+echo -e "${YELLOW}8. Копирование файлов на сервер...${NC}"
 
 # Создание директории приложения если не существует
 ssh $SERVER_USER@$SERVER_IP "mkdir -p $APP_DIR"
@@ -215,12 +237,12 @@ echo -e "${GREEN}✓ Архив скопирован на сервер${NC}"
 
 # Копирование .env файла
 if [ -f ".env.production" ]; then
-    echo -e "${YELLOW}8. Копирование .env файла...${NC}"
+    echo -e "${YELLOW}Копирование .env файла...${NC}"
     scp ".env.production" $SERVER_USER@$SERVER_IP:$APP_DIR/.env
     echo -e "${GREEN}✓ .env файл скопирован${NC}"
 fi
 
-# 8. Установка приложения на сервере
+# 9. Установка приложения на сервере
 echo -e "${YELLOW}9. Установка приложения на сервере...${NC}"
 ssh $SERVER_USER@$SERVER_IP << ENDSSH
 cd "$APP_DIR"
@@ -298,11 +320,11 @@ rm -f "$ARCHIVE_NAME"
 echo -e "${GREEN}=== УСТАНОВКА ПРИЛОЖЕНИЯ ЗАВЕРШЕНА ===${NC}"
 ENDSSH
 
-# 9. Удаление локального архива
+# 10. Удаление локального архива
 rm "$ARCHIVE_NAME"
 
-# 10. Проверка работоспособности
-echo -e "${YELLOW}10. Проверка работоспособности приложения...${NC}"
+# 11. Проверка работоспособности
+echo -e "${YELLOW}11. Проверка работоспособности приложения...${NC}"
 sleep 5
 
 # Проверка статуса PM2

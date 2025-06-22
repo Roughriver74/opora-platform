@@ -12,6 +12,8 @@ import {
 import FormsList from '../../components/admin/FormsList'
 import FormEditor from '../../components/admin/FormEditor'
 import BitrixIntegration from '../../components/admin/BitrixIntegration'
+import BackupManagement from '../../components/admin/BackupManagement'
+import Settings from '../../components/admin/Settings'
 import { Form } from '../../types'
 import { FormService } from '../../services/formService'
 import { useAuth } from '../../contexts/auth'
@@ -158,6 +160,8 @@ const AdminPage: React.FC = () => {
 						{...a11yProps(1)}
 					/>
 					<Tab label='Битрикс24' {...a11yProps(2)} />
+					<Tab label='Резервные копии' {...a11yProps(3)} />
+					<Tab label='Настройки' {...a11yProps(4)} />
 				</Tabs>
 			</Box>
 
@@ -191,6 +195,14 @@ const AdminPage: React.FC = () => {
 
 			<TabPanel value={tabValue} index={2}>
 				<BitrixIntegration />
+			</TabPanel>
+
+			<TabPanel value={tabValue} index={3}>
+				<BackupManagement />
+			</TabPanel>
+
+			<TabPanel value={tabValue} index={4}>
+				<Settings />
 			</TabPanel>
 		</Container>
 	)

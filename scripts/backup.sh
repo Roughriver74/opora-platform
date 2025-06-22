@@ -1,44 +1,100 @@
 #!/bin/bash
 
-# Скрипт для резервного копирования базы данных MongoDB
-# Сохраняет архивы в директорию backup с датой в имени файла
-# Поддерживает ротацию резервных копий (удаляет старые)
+# Скрипт для создания бэкапов (локально и на продакшене)
 
-# Настройки
-DB_NAME="beton-crm"
-BACKUP_DIR="/backup/mongodb"
-DAYS_TO_KEEP=14  # Количество дней хранения копий
+# Цвета
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# Создание директории для бэкапа, если она не существует
-mkdir -p $BACKUP_DIR
+# --- Конфигурация ---
 
-# Текущая дата для имени файла
-DATE=$(date +%Y-%m-%d_%H-%M-%S)
-ARCHIVE_NAME="$BACKUP_DIR/$DB_NAME-$DATE.gz"
+# Локальная
+LOCAL_DB_NAME="beton-crm" # Уточните, если имя другое
+LOCAL_BACKUP_DIR="backups"
 
-echo "Starting backup of MongoDB database '$DB_NAME' to $ARCHIVE_NAME..."
+# Продакшн
+PROD_SERVER_USER="root"
+PROD_SERVER_IP="31.128.39.123"
+PROD_APP_DIR="/var/www/beton-crm"
+PROD_DB_NAME="beton-crm-production"
+PROD_BACKUP_DIR="/var/www/beton-crm-backups"
 
-# Создание резервной копии с компрессией
-mongodump --db=$DB_NAME --archive=$ARCHIVE_NAME --gzip
+# --- Функции ---
 
-# Проверка результата
-if [ $? -eq 0 ]; then
-    echo "Backup completed successfully!"
+function create_local_backup() {
+    echo -e "${BLUE}=== Создание локального бэкапа ===${NC}"
     
-    # Статистика файла
-    echo "Backup file details:"
-    ls -lh $ARCHIVE_NAME
+    mkdir -p "$LOCAL_BACKUP_DIR"
     
-    # Удаление старых резервных копий
-    echo "Removing backups older than $DAYS_TO_KEEP days..."
-    find $BACKUP_DIR -name "$DB_NAME-*.gz" -type f -mtime +$DAYS_TO_KEEP -delete
+    BACKUP_TIMESTAMP=$(date +'%Y-%m-%d_%H-%M-%S')
+    CURRENT_BACKUP_PATH="$LOCAL_BACKUP_DIR/$BACKUP_TIMESTAMP"
+    mkdir -p "$CURRENT_BACKUP_PATH"
     
-    echo "Backup rotation completed."
+    echo "1. Создание бэкапа базы данных '$LOCAL_DB_NAME'..."
+    mongodump --db "$LOCAL_DB_NAME" --out="$CURRENT_BACKUP_PATH/db"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Ошибка при создании бэкапа базы данных!${NC}"
+        rm -rf "$CURRENT_BACKUP_PATH"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Бэкап базы данных успешно создан.${NC}"
+    
+    echo "2. Создание бэкапа файлов проекта..."
+    tar -czf "$CURRENT_BACKUP_PATH/app.tar.gz" --exclude="./$LOCAL_BACKUP_DIR" --exclude="./node_modules" --exclude="./.git" .
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Ошибка при архивации файлов проекта!${NC}"
+        rm -rf "$CURRENT_BACKUP_PATH"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Бэкап файлов проекта успешно создан.${NC}"
+    
+    echo -e "${GREEN}=== Локальный бэкап успешно создан в: $CURRENT_BACKUP_PATH ===${NC}"
+}
+
+function create_production_backup() {
+    echo -e "${BLUE}=== Создание бэкапа на продакшн сервере ===${NC}"
+    
+    ssh $PROD_SERVER_USER@$PROD_SERVER_IP << ENDSSH
+        echo "Запуск создания бэкапа на сервере..."
+        
+        mkdir -p "$PROD_BACKUP_DIR"
+        
+        BACKUP_TIMESTAMP=\$(date +'%Y-%m-%d_%H-%M-%S')
+        CURRENT_BACKUP_PATH="\$PROD_BACKUP_DIR/\$BACKUP_TIMESTAMP"
+        mkdir -p "\$CURRENT_BACKUP_PATH"
+        
+        echo "1. Создание бэкапа базы данных '$PROD_DB_NAME'..."
+        mongodump --db "$PROD_DB_NAME" --out="\$CURRENT_BACKUP_PATH/db"
+        if [ \$? -ne 0 ]; then
+            echo -e "${RED}Ошибка при создании бэкапа базы данных на сервере!${NC}"
+            rm -rf "\$CURRENT_BACKUP_PATH"
+            exit 1
+        fi
+        echo -e "${GREEN}✓ Бэкап базы данных на сервере успешно создан.${NC}"
+
+        echo "2. Создание бэкапа файлов приложения '$PROD_APP_DIR'..."
+        tar -czf "\$CURRENT_BACKUP_PATH/app.tar.gz" -C "$PROD_APP_DIR" .
+        if [ \$? -ne 0 ]; then
+            echo -e "${RED}Ошибка при архивации файлов на сервере!${NC}"
+            rm -rf "\$CURRENT_BACKUP_PATH"
+            exit 1
+        fi
+        echo -e "${GREEN}✓ Бэкап файлов на сервере успешно создан.${NC}"
+
+        echo -e "${GREEN}=== Бэкап на продакшене успешно создан в: \$CURRENT_BACKUP_PATH ===${NC}"
+ENDSSH
+}
+
+# --- Основная логика ---
+
+if [ "$1" == "local" ]; then
+    create_local_backup
+elif [ "$1" == "production" ]; then
+    create_production_backup
 else
-    echo "Backup failed!"
+    echo -e "${YELLOW}Использование: $0 [local|production]${NC}"
     exit 1
 fi
-
-# Список всех текущих резервных копий
-echo "Current backups:"
-ls -lh $BACKUP_DIR

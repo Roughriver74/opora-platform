@@ -1,0 +1,459 @@
+[
+  {
+    "_id": "6852ee11d6e5781f7088a649",
+    "name": "section_1750265361735",
+    "label": "Раздел 11",
+    "type": "header",
+    "required": false,
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 200,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-18T16:49:21.750Z",
+    "updatedAt": "2025-06-20T13:17:05.551Z",
+    "__v": 0
+  },
+  {
+    "_id": "6852ee1fd6e5781f7088a658",
+    "name": "field_1750265375092",
+    "label": "Название",
+    "type": "text",
+    "required": false,
+    "bitrixFieldId": "TITLE",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 401,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-18T16:49:35.102Z",
+    "updatedAt": "2025-06-20T14:12:22.605Z",
+    "__v": 0
+  },
+  {
+    "_id": "6852ee34d6e5781f7088a684",
+    "name": "section_1750265396175",
+    "label": "Раздел 13",
+    "type": "header",
+    "required": false,
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 400,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-18T16:49:56.182Z",
+    "updatedAt": "2025-06-20T13:06:42.648Z",
+    "__v": 0
+  },
+  {
+    "_id": "6852ee53d6e5781f7088a6a2",
+    "name": "field_1750265427938",
+    "label": "Бетон*(Завод)",
+    "type": "autocomplete",
+    "required": false,
+    "bitrixFieldId": "UF_CRM_1726227410",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": true,
+      "source": "catalog"
+    },
+    "linkedFields": {
+      "enabled": true,
+      "mappings": [],
+      "sourceField": {
+        "sourceFieldName": "field_1750365587259",
+        "sourceFieldLabel": "Бетон*(Покупатель)",
+        "sourceSectionName": "Раздел 1"
+      }
+    },
+    "order": 103,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-18T16:50:27.943Z",
+    "updatedAt": "2025-06-20T14:13:43.084Z",
+    "__v": 0
+  },
+  {
+    "_id": "6854759385653d7675f9d228",
+    "name": "field_1750365587259",
+    "label": "Бетон*(Покупатель)",
+    "type": "autocomplete",
+    "required": false,
+    "bitrixFieldId": "UF_CRM_1726227037",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": true,
+      "source": "catalog"
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 401,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:39:47.271Z",
+    "updatedAt": "2025-06-20T14:12:22.604Z",
+    "__v": 0
+  },
+  {
+    "_id": "685475ba85653d7675f9d255",
+    "name": "field_1750365626978",
+    "label": "Объем м3",
+    "type": "number",
+    "required": false,
+    "bitrixFieldId": "UF_CRM_DEAL_AMO_SDLLUUKQTVRWOVQK",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 304,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:40:26.988Z",
+    "updatedAt": "2025-06-20T14:12:36.526Z",
+    "__v": 0
+  },
+  {
+    "_id": "685475cf85653d7675f9d267",
+    "name": "field_1750365647032",
+    "label": "Продажа цена",
+    "type": "number",
+    "required": false,
+    "bitrixFieldId": "UF_CRM_1701767765591",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 402,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:40:47.037Z",
+    "updatedAt": "2025-06-20T14:13:00.994Z",
+    "__v": 0
+  },
+  {
+    "_id": "685475db85653d7675f9d275",
+    "name": "field_1750365659748",
+    "label": "Раствор",
+    "type": "divider",
+    "required": false,
+    "bitrixFieldId": "",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 7,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:40:59.754Z",
+    "updatedAt": "2025-06-20T11:57:24.997Z",
+    "__v": 0
+  },
+  {
+    "_id": "6854760885653d7675f9d287",
+    "name": "field_1750365704478",
+    "label": "Раствор*(покупатель)",
+    "type": "autocomplete",
+    "required": false,
+    "bitrixFieldId": "UF_CRM_1726645181",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": true,
+      "source": "catalog"
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 402,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:41:44.488Z",
+    "updatedAt": "2025-06-20T14:13:00.995Z",
+    "__v": 0
+  },
+  {
+    "_id": "6854768385653d7675f9d2ae",
+    "name": "field_1750365827152",
+    "label": "Объем раствора м3",
+    "type": "text",
+    "required": false,
+    "bitrixFieldId": "UF_CRM_1717006045698",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 102,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:43:47.161Z",
+    "updatedAt": "2025-06-20T14:13:35.958Z",
+    "__v": 0
+  },
+  {
+    "_id": "6854769c85653d7675f9d2c0",
+    "name": "field_1750365852471",
+    "label": "Объем м3 (завод)",
+    "type": "number",
+    "required": false,
+    "bitrixFieldId": "UF_CRM_1703322858101",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": true,
+      "mappings": [],
+      "sourceField": {
+        "sourceFieldName": "field_1750365626978",
+        "sourceFieldLabel": "Объем м3",
+        "sourceSectionName": "Раздел 11"
+      }
+    },
+    "order": 302,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:44:12.481Z",
+    "updatedAt": "2025-06-20T13:20:01.338Z",
+    "__v": 0
+  },
+  {
+    "_id": "6854772485653d7675f9d2e9",
+    "name": "field_1750365988007",
+    "label": "Закупка цена",
+    "type": "number",
+    "required": false,
+    "bitrixFieldId": "UF_CRM_1701767745071",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": true,
+      "mappings": [],
+      "sourceField": {
+        "sourceFieldName": "field_1750365647032",
+        "sourceFieldLabel": "Продажа цена",
+        "sourceSectionName": "Раздел 11"
+      }
+    },
+    "order": 303,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:46:28.017Z",
+    "updatedAt": "2025-06-20T13:20:01.340Z",
+    "__v": 0
+  },
+  {
+    "_id": "6854774985653d7675f9d2fb",
+    "name": "field_1750366025933",
+    "label": "Раствор*(завод)",
+    "type": "autocomplete",
+    "required": false,
+    "bitrixFieldId": "UF_CRM_1726645231",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": true,
+      "source": "catalog"
+    },
+    "linkedFields": {
+      "enabled": true,
+      "mappings": [],
+      "sourceField": {
+        "sourceFieldName": "field_1750365704478",
+        "sourceFieldLabel": "Раствор*(покупатель)",
+        "sourceSectionName": "Раздел 11"
+      }
+    },
+    "order": 101,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:47:05.943Z",
+    "updatedAt": "2025-06-20T13:20:01.900Z",
+    "__v": 0
+  },
+  {
+    "_id": "6854776a85653d7675f9d315",
+    "name": "field_1750366058589",
+    "label": "Раствор",
+    "type": "divider",
+    "required": false,
+    "bitrixFieldId": "",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 12,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:47:38.596Z",
+    "updatedAt": "2025-06-20T13:20:01.903Z",
+    "__v": 0
+  },
+  {
+    "_id": "685477a185653d7675f9d384",
+    "name": "field_1750366113785",
+    "label": "Закупка цена",
+    "type": "number",
+    "required": false,
+    "bitrixFieldId": "UF_CRM_1701767745071",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": true,
+      "mappings": [],
+      "sourceField": {
+        "sourceFieldName": "field_1750365647032",
+        "sourceFieldLabel": "Продажа цена",
+        "sourceSectionName": "Раздел 11"
+      }
+    },
+    "order": 201,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:48:33.794Z",
+    "updatedAt": "2025-06-20T13:17:05.548Z",
+    "__v": 0
+  },
+  {
+    "_id": "685478d285653d7675f9d425",
+    "name": "divider_1750366418736",
+    "label": "Бетон",
+    "type": "divider",
+    "required": false,
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 1,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:53:38.748Z",
+    "updatedAt": "2025-06-20T11:57:24.984Z",
+    "__v": 0
+  },
+  {
+    "_id": "6854793485653d7675f9d4c0",
+    "name": "divider_1750366516014",
+    "label": "Бетон",
+    "type": "divider",
+    "required": false,
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 10,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-19T20:55:16.021Z",
+    "updatedAt": "2025-06-20T13:06:43.768Z",
+    "__v": 0
+  },
+  {
+    "_id": "68554086d3b1f16f7b19d040",
+    "name": "field_1750417542374",
+    "label": "Комментарий",
+    "type": "textarea",
+    "required": false,
+    "bitrixFieldId": "COMMENTS",
+    "bitrixFieldType": "",
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 304,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-20T11:05:42.397Z",
+    "updatedAt": "2025-06-20T14:12:36.525Z",
+    "__v": 0
+  },
+  {
+    "_id": "6855539ed3b1f16f7b19d1f5",
+    "name": "section_1750422430847",
+    "label": "Раздел 3",
+    "type": "header",
+    "required": false,
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 300,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-20T12:27:10.861Z",
+    "updatedAt": "2025-06-20T13:20:01.335Z",
+    "__v": 0
+  },
+  {
+    "_id": "685553a2d3b1f16f7b19d1fb",
+    "name": "section_1750422434380",
+    "label": "Раздел 4",
+    "type": "header",
+    "required": false,
+    "dynamicSource": {
+      "enabled": false
+    },
+    "linkedFields": {
+      "enabled": false,
+      "mappings": []
+    },
+    "order": 100,
+    "formId": "6852ece595049e61337bb843",
+    "options": [],
+    "createdAt": "2025-06-20T12:27:14.393Z",
+    "updatedAt": "2025-06-20T13:17:05.552Z",
+    "__v": 0
+  }
+]

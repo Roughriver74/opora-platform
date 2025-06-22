@@ -60,6 +60,7 @@ import {
 	Business as BusinessIcon,
 	Info as InfoIcon,
 	Description as DescriptionIcon,
+	FileCopy as FileCopyIcon,
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
@@ -94,7 +95,7 @@ const MySubmissions: React.FC = () => {
 	>([])
 	const [detailsOpen, setDetailsOpen] = useState(false)
 	const [formFields] = useState<any[]>([])
-	const [statusComment, setStatusComment] = useState('')
+
 	const [filters, setFilters] = useState<SubmissionFilters>({})
 	const [bitrixStages, setBitrixStages] = useState<any[]>([])
 	const [users, setUsers] = useState<any[]>([])
@@ -253,6 +254,40 @@ const MySubmissions: React.FC = () => {
 		}
 	}
 
+	// Копирование заявки
+	const handleCopySubmission = async (submission: Submission) => {
+		try {
+			console.log('🔥 [CLIENT COPY] КНОПКА КОПИРОВАТЬ НАЖАТА!')
+			console.log('[CLIENT COPY] Копирование заявки:', submission._id)
+
+			// Получаем данные заявки для копирования
+			const response = await submissionService.copySubmission(submission._id)
+
+			if (response.success) {
+				console.log('[CLIENT COPY] Данные получены:', response.data)
+
+				// Перенаправляем на форму с предзаполненными данными
+				// Сохраняем данные в sessionStorage для передачи в форму
+				sessionStorage.setItem(
+					'copyFormData',
+					JSON.stringify({
+						formId: response.data.formId,
+						formData: response.data.formData,
+						isCopy: true,
+						originalTitle: response.data.originalTitle,
+						originalSubmissionNumber: response.data.originalSubmissionNumber,
+					})
+				)
+
+				// Перенаправляем на главную страницу с параметром копирования
+				navigate(`/?copy=${submission._id}`)
+			}
+		} catch (err: any) {
+			console.error('[CLIENT COPY] Ошибка копирования:', err)
+			setError(err.message || 'Ошибка копирования заявки')
+		}
+	}
+
 	// Обновление статуса заявки
 	const handleStatusChange = async (
 		submissionId: string,
@@ -262,9 +297,8 @@ const MySubmissions: React.FC = () => {
 			await submissionService.updateStatus(
 				submissionId,
 				newStatus,
-				statusComment
+				'' // Пустой комментарий
 			)
-			setStatusComment('')
 			loadSubmissions() // Перезагружаем список
 
 			// Если детали открыты, обновляем их тоже
@@ -503,30 +537,35 @@ const MySubmissions: React.FC = () => {
 									{isSmallMobile ? '' : 'Редактировать'}
 								</Button>
 							)}
+							<Button
+								startIcon={<FileCopyIcon />}
+								onClick={() => handleCopySubmission(submission)}
+								color='secondary'
+							>
+								{isSmallMobile ? '' : 'Копировать'}
+							</Button>
 						</ButtonGroup>
 
-						{/* Смена статуса для админов */}
-						{isAdmin && (
-							<FormControl size='small' sx={{ minWidth: 120 }}>
-								<Select
-									value={getCleanStatus(submission.status)}
-									onChange={e =>
-										handleStatusChange(submission._id, e.target.value)
-									}
-									displayEmpty
-									renderValue={value => {
-										const statusName = getStatusName(submission.status)
-										return statusName || 'Не указан'
-									}}
-								>
-									{bitrixStages.map(stage => (
-										<MenuItem key={stage.id} value={stage.id}>
-											{stage.name}
-										</MenuItem>
-									))}
-								</Select>
-							</FormControl>
-						)}
+						{/* Смена статуса для всех пользователей */}
+						<FormControl size='small' sx={{ minWidth: 120 }}>
+							<Select
+								value={getCleanStatus(submission.status)}
+								onChange={e =>
+									handleStatusChange(submission._id, e.target.value)
+								}
+								displayEmpty
+								renderValue={value => {
+									const statusName = getStatusName(submission.status)
+									return statusName || 'Не указан'
+								}}
+							>
+								{bitrixStages.map(stage => (
+									<MenuItem key={stage.id} value={stage.id}>
+										{stage.name}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
 					</Box>
 				</CardContent>
 			</Card>
@@ -756,38 +795,30 @@ const MySubmissions: React.FC = () => {
 													)}
 												</TableCell>
 												<TableCell>
-													{isAdmin ? (
-														<FormControl size='small' sx={{ minWidth: 120 }}>
-															<Select
-																value={getCleanStatus(submission.status)}
-																onChange={e =>
-																	handleStatusChange(
-																		submission._id,
-																		e.target.value
-																	)
-																}
-																displayEmpty
-																renderValue={value => {
-																	const statusName = getStatusName(
-																		submission.status
-																	)
-																	return statusName || 'Не указан'
-																}}
-															>
-																{bitrixStages.map(stage => (
-																	<MenuItem key={stage.id} value={stage.id}>
-																		{stage.name}
-																	</MenuItem>
-																))}
-															</Select>
-														</FormControl>
-													) : (
-														<Chip
-															label={getStatusName(submission.status)}
-															color='primary'
-															size='small'
-														/>
-													)}
+													<FormControl size='small' sx={{ minWidth: 120 }}>
+														<Select
+															value={getCleanStatus(submission.status)}
+															onChange={e =>
+																handleStatusChange(
+																	submission._id,
+																	e.target.value
+																)
+															}
+															displayEmpty
+															renderValue={value => {
+																const statusName = getStatusName(
+																	submission.status
+																)
+																return statusName || 'Не указан'
+															}}
+														>
+															{bitrixStages.map(stage => (
+																<MenuItem key={stage.id} value={stage.id}>
+																	{stage.name}
+																</MenuItem>
+															))}
+														</Select>
+													</FormControl>
 												</TableCell>
 												<TableCell>
 													<Stack
@@ -861,6 +892,13 @@ const MySubmissions: React.FC = () => {
 																<EditIcon />
 															</IconButton>
 														)}
+														<IconButton
+															onClick={() => handleCopySubmission(submission)}
+															color='secondary'
+															title='Копировать заявку'
+														>
+															<FileCopyIcon />
+														</IconButton>
 													</ButtonGroup>
 												</TableCell>
 											</TableRow>
@@ -956,15 +994,34 @@ const MySubmissions: React.FC = () => {
 												variant='body2'
 												color='text.secondary'
 												component='span'
+												sx={{ mb: 1, display: 'block' }}
 											>
 												<strong>Статус:</strong>
 											</Typography>
-											<Chip
-												label={getStatusName(selectedSubmission.status)}
-												color='primary'
-												size='small'
-												sx={{ ml: 1 }}
-											/>
+											<FormControl size='small' sx={{ minWidth: 200 }}>
+												<Select
+													value={getCleanStatus(selectedSubmission.status)}
+													onChange={e =>
+														handleStatusChange(
+															selectedSubmission._id,
+															e.target.value
+														)
+													}
+													displayEmpty
+													renderValue={value => {
+														const statusName = getStatusName(
+															selectedSubmission.status
+														)
+														return statusName || 'Не указан'
+													}}
+												>
+													{bitrixStages.map(stage => (
+														<MenuItem key={stage.id} value={stage.id}>
+															{stage.name}
+														</MenuItem>
+													))}
+												</Select>
+											</FormControl>
 										</Box>
 										<Box>
 											<Typography variant='body2' color='text.secondary'>

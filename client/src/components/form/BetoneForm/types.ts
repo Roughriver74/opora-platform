@@ -7,6 +7,9 @@ export interface BetoneFormProps {
 		submissionId: string
 		formId: string
 		formData: Record<string, any>
+		isCopy?: boolean
+		originalTitle?: string
+		originalSubmissionNumber?: string
 	}
 	preloadedOptions?: Record<string, any[]>
 	isAdminMode?: boolean

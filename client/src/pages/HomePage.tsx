@@ -33,9 +33,11 @@ const HomePage: React.FC = () => {
 		)
 	}
 
-	// Проверяем режим редактирования
+	// Проверяем режим редактирования и копирования
 	useEffect(() => {
 		const editId = searchParams.get('edit')
+		const copyId = searchParams.get('copy')
+
 		if (editId) {
 			const storedData = localStorage.getItem('editSubmissionData')
 			if (storedData) {
@@ -51,6 +53,32 @@ const HomePage: React.FC = () => {
 					localStorage.removeItem('editSubmissionData')
 				} catch (err) {
 					console.error('Ошибка парсинга данных редактирования:', err)
+				}
+			}
+		} else if (copyId) {
+			const storedData = sessionStorage.getItem('copyFormData')
+			if (storedData) {
+				try {
+					const parsedData = JSON.parse(storedData)
+					console.log(
+						'🏠 [HomePage] Данные копирования из sessionStorage:',
+						parsedData
+					)
+
+					// Устанавливаем данные как для нового создания (без submissionId)
+					setEditData({
+						formId: parsedData.formId,
+						formData: parsedData.formData,
+						isCopy: true,
+						originalTitle: parsedData.originalTitle,
+						originalSubmissionNumber: parsedData.originalSubmissionNumber,
+						// НЕ указываем submissionId - это новая заявка
+					})
+
+					// Очищаем sessionStorage после загрузки
+					sessionStorage.removeItem('copyFormData')
+				} catch (err) {
+					console.error('Ошибка парсинга данных копирования:', err)
 				}
 			}
 		}

@@ -5,6 +5,7 @@ import connectDB from './config/database'
 import config from './config/config'
 import { authMiddleware } from './middleware/authMiddleware'
 import { validateAndFixDatabase } from './utils/databaseValidation'
+import dotenv from 'dotenv'
 
 // Импорт маршрутизаторов
 import formFieldRoutes from './routes/formFieldRoutes'
@@ -13,6 +14,9 @@ import submissionRoutes from './routes/submissionRoutes'
 import authRoutes from './routes/authRoutes'
 import userRoutes from './routes/userRoutes'
 import diagnosticRoutes from './routes/diagnosticRoutes'
+import backupRoutes from './routes/backupRoutes'
+import settingsRoutes from './routes/settingsRoutes'
+import { initializeDefaultSettings } from './controllers/settingsController'
 
 // Инициализация Express приложения
 const app = express()
@@ -23,6 +27,9 @@ const initializeServer = async () => {
 
 	// Проверяем целостность базы данных при запуске
 	await validateAndFixDatabase(true) // autoFix = true для автоматического исправления
+
+	// Инициализируем настройки по умолчанию
+	await initializeDefaultSettings()
 }
 initializeServer()
 
@@ -50,6 +57,8 @@ app.use('/api/forms', formRoutes)
 app.use('/api/submissions', submissionRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/diagnostic', diagnosticRoutes)
+app.use('/api/backups', backupRoutes)
+app.use('/api/settings', settingsRoutes)
 
 // Базовый маршрут для проверки работоспособности API
 app.get('/', (req, res) => {

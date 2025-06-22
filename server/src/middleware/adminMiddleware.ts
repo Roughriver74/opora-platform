@@ -1,17 +1,24 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express'
+import User from '../models/User'
 
-export const adminMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  const user = req.user;
-  
-  if (!user) {
-    res.status(401).json({ message: 'Не авторизован' });
-    return;
-  }
-  
-  if (user.role !== 'admin') {
-    res.status(403).json({ message: 'Доступ запрещен. Требуются права администратора' });
-    return;
-  }
-  
-  next();
-}; 
+export const adminMiddleware = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): Promise<void> => {
+	if (!req.user) {
+		res.status(401).json({ message: 'Not authenticated' })
+		return
+	}
+
+	try {
+		const user = await User.findById(req.user.id)
+		if (!user || user.role !== 'admin') {
+			res.status(403).json({ message: 'Access denied. Admin role required.' })
+			return
+		}
+		next()
+	} catch (error) {
+		res.status(500).json({ message: 'Server error' })
+	}
+}

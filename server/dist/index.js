@@ -25,6 +25,7 @@ const submissionRoutes_1 = __importDefault(require("./routes/submissionRoutes"))
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 const diagnosticRoutes_1 = __importDefault(require("./routes/diagnosticRoutes"));
+const backupRoutes_1 = __importDefault(require("./routes/backupRoutes"));
 // Инициализация Express приложения
 const app = (0, express_1.default)();
 // Подключение к MongoDB и валидация данных
@@ -53,6 +54,7 @@ app.use('/api/forms', formRoutes_1.default);
 app.use('/api/submissions', submissionRoutes_1.default);
 app.use('/api/users', userRoutes_1.default);
 app.use('/api/diagnostic', diagnosticRoutes_1.default);
+app.use('/api/backups', backupRoutes_1.default);
 // Базовый маршрут для проверки работоспособности API
 app.get('/', (req, res) => {
     res.json({ message: 'Beton CRM API работает' });
