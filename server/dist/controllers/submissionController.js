@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkBitrixField = exports.updateStatusByBitrixId = exports.getBitrixStages = exports.deleteSubmission = exports.updateSubmission = exports.getSubmissionWithBitrixData = exports.updateSubmissionStatus = exports.getSubmissionById = exports.getMySubmissions = exports.getAllSubmissions = exports.submitForm = void 0;
+exports.copySubmission = exports.checkBitrixField = exports.updateStatusByBitrixId = exports.getBitrixStages = exports.deleteSubmission = exports.updateSubmission = exports.getSubmissionWithBitrixData = exports.updateSubmissionStatus = exports.getSubmissionById = exports.getMySubmissions = exports.getAllSubmissions = exports.submitForm = void 0;
 const Form_1 = __importDefault(require("../models/Form"));
 const Submission_1 = __importDefault(require("../models/Submission"));
 const SubmissionHistory_1 = __importDefault(require("../models/SubmissionHistory"));
@@ -831,3 +831,88 @@ const checkBitrixField = (req, res) => __awaiter(void 0, void 0, void 0, functio
     }
 });
 exports.checkBitrixField = checkBitrixField;
+// Копирование заявки
+const copySubmission = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    try {
+        const { id } = req.params;
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        console.log(`[COPY] Копирование заявки ${id} пользователем ${userId}`);
+        // Проверяем валидность ObjectId
+        const mongoose = require('mongoose');
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Некорректный ID заявки',
+            });
+        }
+        // Получаем оригинальную заявку
+        const originalSubmission = yield Submission_1.default.findById(id)
+            .populate('formId')
+            .populate('userId');
+        if (!originalSubmission) {
+            return res.status(404).json({
+                success: false,
+                message: 'Заявка не найдена',
+            });
+        }
+        // Проверяем права доступа - пользователь может копировать только свои заявки или админ может копировать любые
+        const user = yield User_1.default.findById(userId);
+        const isAdmin = user && user.role === 'admin';
+        if (!isAdmin && ((_b = originalSubmission.userId) === null || _b === void 0 ? void 0 : _b.toString()) !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Нет прав для копирования этой заявки',
+            });
+        }
+        console.log(`[COPY] Найдена заявка: ${originalSubmission.title}`);
+        // Получаем данные формы с полями
+        const form = yield Form_1.default.findById(originalSubmission.formId).populate('fields');
+        if (!form) {
+            return res.status(404).json({
+                success: false,
+                message: 'Форма не найдена',
+            });
+        }
+        // Получаем данные из Битрикс24 сделки для восстановления значений полей
+        let formData = {};
+        if (originalSubmission.bitrixDealId) {
+            try {
+                console.log(`[COPY] Получение данных из Битрикс24 сделки ${originalSubmission.bitrixDealId}`);
+                const dealData = yield bitrix24Service_1.default.getDeal(originalSubmission.bitrixDealId);
+                // Мапим данные обратно в формат формы
+                for (const field of form.fields) {
+                    if (field.bitrixFieldId &&
+                        dealData[field.bitrixFieldId] !== undefined) {
+                        formData[field.name] = dealData[field.bitrixFieldId];
+                    }
+                }
+                console.log(`[COPY] Восстановлено ${Object.keys(formData).length} полей из Битрикс24`);
+            }
+            catch (bitrixError) {
+                console.error('[COPY] Ошибка получения данных из Битрикс24:', bitrixError);
+                // Продолжаем с пустыми данными
+            }
+        }
+        // Возвращаем данные для формы (без создания новой заявки)
+        res.json({
+            success: true,
+            message: 'Данные заявки получены для копирования',
+            data: {
+                formId: originalSubmission.formId._id,
+                formData: formData,
+                originalTitle: originalSubmission.title,
+                originalSubmissionNumber: originalSubmission.submissionNumber,
+            },
+        });
+    }
+    catch (error) {
+        console.error('[COPY] Ошибка копирования заявки:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Ошибка копирования заявки',
+            error: error.message,
+        });
+    }
+});
+exports.copySubmission = copySubmission;

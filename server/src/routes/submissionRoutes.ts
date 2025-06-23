@@ -51,8 +51,8 @@ router.get('/:id/edit', requireAuth, (req: Request, res: Response) => {
 })
 
 // Копирование заявки
-router.get('/:id/copy', requireAuth, (req: Request, res: Response) => {
-	console.log(`[ROUTE COPY] GET /:id/copy вызван для заявки ${req.params.id}`)
+router.post('/:id/copy', requireAuth, (req: Request, res: Response) => {
+	console.log(`[ROUTE COPY] POST /:id/copy вызван для заявки ${req.params.id}`)
 	console.log(`[ROUTE COPY] Пользователь: ${req.user?.id}`)
 	submissionController.copySubmission(req, res)
 })

@@ -7,7 +7,7 @@ export interface ISettings extends Document {
 	category: string
 	type: 'boolean' | 'string' | 'number' | 'object'
 	updatedAt: Date
-	updatedBy?: string
+	updatedBy?: mongoose.Types.ObjectId
 }
 
 const SettingsSchema = new Schema<ISettings>(

@@ -74,6 +74,13 @@ router.get('/:id/edit', authMiddleware_1.requireAuth, (req, res) => {
     console.log(`[ROUTE EDIT] Пользователь: ${(_a = req.user) === null || _a === void 0 ? void 0 : _a.id}`);
     submissionController.getSubmissionWithBitrixData(req, res);
 });
+// Копирование заявки
+router.post('/:id/copy', authMiddleware_1.requireAuth, (req, res) => {
+    var _a;
+    console.log(`[ROUTE COPY] POST /:id/copy вызван для заявки ${req.params.id}`);
+    console.log(`[ROUTE COPY] Пользователь: ${(_a = req.user) === null || _a === void 0 ? void 0 : _a.id}`);
+    submissionController.copySubmission(req, res);
+});
 // Обновление статуса заявки
 router.patch('/:id/status', authMiddleware_1.requireAuth, (req, res) => {
     submissionController.updateSubmissionStatus(req, res);

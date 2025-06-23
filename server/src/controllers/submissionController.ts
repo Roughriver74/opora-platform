@@ -1078,8 +1078,7 @@ export const copySubmission = async (req: Request, res: Response) => {
 
 		// Проверяем права доступа - пользователь может копировать только свои заявки или админ может копировать любые
 		const user = await User.findById(userId)
-		const isAdmin =
-			user && (user.role === 'admin' || user.role === 'super_admin')
+		const isAdmin = user && user.role === 'admin'
 
 		if (!isAdmin && originalSubmission.userId?.toString() !== userId) {
 			return res.status(403).json({

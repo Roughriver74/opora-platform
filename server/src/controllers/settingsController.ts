@@ -2,7 +2,10 @@ import { Request, Response } from 'express'
 import Settings from '../models/Settings'
 
 // Получение всех настроек
-export const getAllSettings = async (req: Request, res: Response) => {
+export const getAllSettings = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
 	try {
 		const settings = await Settings.find().sort({ category: 1, key: 1 })
 		res.json({
@@ -19,7 +22,10 @@ export const getAllSettings = async (req: Request, res: Response) => {
 }
 
 // Получение настроек по категории
-export const getSettingsByCategory = async (req: Request, res: Response) => {
+export const getSettingsByCategory = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
 	try {
 		const { category } = req.params
 		const settings = await Settings.find({ category }).sort({ key: 1 })
@@ -37,16 +43,20 @@ export const getSettingsByCategory = async (req: Request, res: Response) => {
 }
 
 // Получение конкретной настройки
-export const getSetting = async (req: Request, res: Response) => {
+export const getSetting = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
 	try {
 		const { key } = req.params
 		const setting = await Settings.findOne({ key })
 
 		if (!setting) {
-			return res.status(404).json({
+			res.status(404).json({
 				success: false,
 				message: 'Настройка не найдена',
 			})
+			return
 		}
 
 		res.json({
@@ -63,7 +73,10 @@ export const getSetting = async (req: Request, res: Response) => {
 }
 
 // Создание или обновление настройки
-export const updateSetting = async (req: Request, res: Response) => {
+export const updateSetting = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
 	try {
 		const { key } = req.params
 		const { value, description, category, type } = req.body
@@ -101,16 +114,20 @@ export const updateSetting = async (req: Request, res: Response) => {
 }
 
 // Удаление настройки
-export const deleteSetting = async (req: Request, res: Response) => {
+export const deleteSetting = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
 	try {
 		const { key } = req.params
 		const setting = await Settings.findOneAndDelete({ key })
 
 		if (!setting) {
-			return res.status(404).json({
+			res.status(404).json({
 				success: false,
 				message: 'Настройка не найдена',
 			})
+			return
 		}
 
 		res.json({
@@ -145,6 +162,20 @@ export const initializeDefaultSettings = async () => {
 				type: 'string',
 			},
 			{
+				key: 'submissions.allow_user_status_change',
+				value: true,
+				description: 'Разрешить пользователям изменять статус своих заявок',
+				category: 'submissions',
+				type: 'boolean',
+			},
+			{
+				key: 'submissions.allow_user_edit',
+				value: true,
+				description: 'Разрешить пользователям редактировать свои заявки',
+				category: 'submissions',
+				type: 'boolean',
+			},
+			{
 				key: 'forms.auto_save_interval',
 				value: 30000,
 				description: 'Интервал автосохранения форм в миллисекундах',
@@ -157,6 +188,13 @@ export const initializeDefaultSettings = async () => {
 				description: 'Режим темы интерфейса (light/dark/auto)',
 				category: 'ui',
 				type: 'string',
+			},
+			{
+				key: 'system.debug_mode',
+				value: false,
+				description: 'Режим отладки для разработчиков',
+				category: 'system',
+				type: 'boolean',
 			},
 		]
 
