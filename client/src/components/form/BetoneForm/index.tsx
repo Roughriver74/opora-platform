@@ -22,6 +22,7 @@ import { FormSection } from './components/FormSection'
 import { SubmitButton } from './components/SubmitButton'
 import { ScrollToTopButton } from './components/ScrollToTopButton'
 import { FormResult } from './components/FormResult'
+
 import { LinkedFields } from '../LinkedFields'
 import { FormFieldService } from '../../../services/formFieldService'
 
@@ -290,8 +291,27 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 														variant='body2'
 														sx={{ ml: 2, color: 'text.secondary' }}
 													>
-														({section.fields.length}{' '}
-														{section.fields.length === 1 ? 'поле' : 'полей'})
+														(
+														{(() => {
+															// Считаем только поля для ввода (исключаем header, divider)
+															const inputFields = section.fields.filter(
+																field =>
+																	field.type !== 'header' &&
+																	field.type !== 'divider'
+															)
+															// Считаем заполненные поля
+															const filledFields = inputFields.filter(field => {
+																const value = formik.values[field.name]
+																return (
+																	value !== undefined &&
+																	value !== null &&
+																	value !== ''
+																)
+															})
+
+															return `${filledFields.length}/${inputFields.length} заполнено`
+														})()}
+														)
 													</Typography>
 													{isAdminMode && section.id && (
 														<Tooltip title='Редактировать название раздела'>

@@ -1,25 +1,47 @@
-import api from './api';
+import api from './api'
 
 export interface User {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: 'admin' | 'user';
-  createdAt: string;
-  updatedAt: string;
+	_id: string
+	firstName: string
+	lastName: string
+	email: string
+	role: 'admin' | 'user'
+	createdAt: string
+	updatedAt: string
 }
 
 export interface GetUsersResponse {
-  success: boolean;
-  data: User[];
+	success: boolean
+	data: User[]
 }
 
-class UserService {
-  async getUsers(): Promise<GetUsersResponse> {
-    const response = await api.get('/users');
-    return response.data;
-  }
+class UserServiceClass {
+	async getUsers(): Promise<GetUsersResponse> {
+		const response = await api.get('/users')
+		return response.data
+	}
+
+	async getAllUsers(): Promise<User[]> {
+		const response = await api.get('/users')
+		return response.data.data || response.data
+	}
+
+	async updateUser(id: string, updates: Partial<User>): Promise<User> {
+		const response = await api.put(`/users/${id}`, updates)
+		return response.data
+	}
+
+	async deleteUser(id: string): Promise<void> {
+		await api.delete(`/users/${id}`)
+	}
+
+	async createUser(
+		userData: Omit<User, '_id' | 'createdAt' | 'updatedAt'>
+	): Promise<User> {
+		const response = await api.post('/users', userData)
+		return response.data
+	}
 }
 
-export default new UserService(); 
+export const UserService = new UserServiceClass()
+export default UserService

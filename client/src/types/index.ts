@@ -60,6 +60,7 @@ export interface FormField {
 	bitrixFieldId: string
 	bitrixFieldType: string
 	formId?: string
+	sectionId?: string // ID раздела к которому принадлежит поле
 	options?: FormFieldOption[]
 	dynamicSource?: DynamicSource
 	linkedFields?: LinkedFields

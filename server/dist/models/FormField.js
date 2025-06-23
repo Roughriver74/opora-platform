@@ -75,5 +75,6 @@ const FormFieldSchema = new mongoose_1.Schema({
     },
     order: { type: Number, default: 0 },
     formId: { type: String },
+    sectionId: { type: String }, // ID раздела
 }, { timestamps: true });
 exports.default = mongoose_1.default.model('FormField', FormFieldSchema);

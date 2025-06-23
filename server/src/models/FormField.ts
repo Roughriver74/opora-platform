@@ -10,6 +10,7 @@ export interface IFormField extends Document {
 	bitrixFieldType: string
 	bitrixEntity?: string // Тип сущности Битрикс24: product, contact, company
 	formId?: string
+	sectionId?: string // ID раздела к которому принадлежит поле
 	options?: Array<{
 		value: string
 		label: string
@@ -77,6 +78,7 @@ const FormFieldSchema: Schema = new Schema(
 		},
 		order: { type: Number, default: 0 },
 		formId: { type: String },
+		sectionId: { type: String }, // ID раздела
 	},
 	{ timestamps: true }
 )

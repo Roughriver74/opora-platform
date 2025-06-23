@@ -14,6 +14,7 @@ import FormEditor from '../../components/admin/FormEditor'
 import BitrixIntegration from '../../components/admin/BitrixIntegration'
 import BackupManagement from '../../components/admin/BackupManagement'
 import Settings from '../../components/admin/Settings'
+import { SimpleDatabase } from '../../components/admin/SimpleDatabase'
 import { Form } from '../../types'
 import { FormService } from '../../services/formService'
 import { useAuth } from '../../contexts/auth'
@@ -159,9 +160,10 @@ const AdminPage: React.FC = () => {
 						label={currentForm ? 'Редактирование формы' : 'Новая форма'}
 						{...a11yProps(1)}
 					/>
-					<Tab label='Битрикс24' {...a11yProps(2)} />
-					<Tab label='Резервные копии' {...a11yProps(3)} />
-					<Tab label='Настройки' {...a11yProps(4)} />
+					<Tab label='База данных' {...a11yProps(2)} />
+					<Tab label='Битрикс24' {...a11yProps(3)} />
+					<Tab label='Резервные копии' {...a11yProps(4)} />
+					<Tab label='Настройки' {...a11yProps(5)} />
 				</Tabs>
 			</Box>
 
@@ -194,14 +196,18 @@ const AdminPage: React.FC = () => {
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={2}>
-				<BitrixIntegration />
+				<SimpleDatabase />
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={3}>
-				<BackupManagement />
+				<BitrixIntegration />
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={4}>
+				<BackupManagement />
+			</TabPanel>
+
+			<TabPanel value={tabValue} index={5}>
 				<Settings />
 			</TabPanel>
 		</Container>
