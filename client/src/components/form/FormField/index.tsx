@@ -213,16 +213,47 @@ const FormField: React.FC<FormFieldProps> = ({
 
 	const styles = getFieldStyles(compact)
 
+	// Определяем правильные отступы в зависимости от типа поля и режима
+	const getFieldMargin = () => {
+		// Для divider и header полей используем минимальные отступы
+		if (
+			field.type === FIELD_TYPES.DIVIDER ||
+			field.type === FIELD_TYPES.HEADER
+		) {
+			return compact
+				? FIELD_CONSTANTS.COMPACT_FIELD_MARGIN
+				: FIELD_CONSTANTS.FORM_FIELD_MARGIN
+		}
+
+		// Для числовых полей используем специальные отступы
+		if (field.type === FIELD_TYPES.NUMBER) {
+			return compact
+				? FIELD_CONSTANTS.COMPACT_FIELD_MARGIN
+				: FIELD_CONSTANTS.NUMBER_FIELD_MARGIN
+		}
+
+		// Для остальных полей
+		return compact
+			? FIELD_CONSTANTS.COMPACT_FIELD_MARGIN
+			: FIELD_CONSTANTS.FORM_FIELD_MARGIN
+	}
+
 	// For divider and header fields, use minimal styling
 	if (field.type === FIELD_TYPES.DIVIDER || field.type === FIELD_TYPES.HEADER) {
-		return <div style={styles.container}>{renderField()}</div>
+		return (
+			<div
+				style={{
+					...styles.container,
+					marginBottom: getFieldMargin(),
+				}}
+			>
+				{renderField()}
+			</div>
+		)
 	}
 
 	return (
-		<div
-			className='form-field'
-			style={{ marginBottom: FIELD_CONSTANTS.FORM_FIELD_MARGIN }}
-		>
+		<div className='form-field' style={{ marginBottom: getFieldMargin() }}>
 			{renderField()}
 		</div>
 	)

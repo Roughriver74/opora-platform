@@ -163,8 +163,10 @@ export const SubmissionService = {
 		data: {
 			formId: string
 			formData: Record<string, any>
+			preloadedOptions?: Record<string, any[]>
 			originalTitle: string
 			originalSubmissionNumber: string
+			isCopy?: boolean
 		}
 	}> => {
 		const response = await api.post(`/submissions/${id}/copy`)

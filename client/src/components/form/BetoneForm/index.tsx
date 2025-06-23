@@ -325,28 +325,11 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 														sections={fieldSections}
 														values={formik.values}
 														onValuesChange={newValues => {
-															console.log(
-																'🔄 LinkedFields onValuesChange получены новые значения:',
-																newValues
-															)
-															console.log(
-																'🔄 Текущие значения formik:',
-																formik.values
-															)
-
 															// Используем setValues для массового обновления
 															const updatedValues = {
 																...formik.values,
 																...newValues,
 															}
-
-															Object.keys(newValues).forEach(key => {
-																const newValue = newValues[key]
-																const currentValue = formik.values[key]
-																console.log(
-																	`🔄 Обновление поля ${key}: ${currentValue} -> ${newValue}`
-																)
-															})
 
 															formik.setValues(updatedValues)
 
@@ -363,10 +346,6 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 																})
 
 																if (autocompleteFields.length > 0) {
-																	console.log(
-																		'🔄 Принудительное обновление автозаполнения:',
-																		autocompleteFields
-																	)
 																	// Принудительно перерендериваем форму
 																	setSnackbar({
 																		open: false,
@@ -375,11 +354,6 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 																	})
 																}
 															}, 200)
-
-															console.log(
-																'🔄 Значения formik после обновления:',
-																updatedValues
-															)
 														}}
 														sourceSection={section.title}
 														showInline={true}

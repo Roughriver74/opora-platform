@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useFormik } from 'formik'
 import { FormField as FormFieldType } from '../../../../types'
 import { SubmitResult } from '../types'
@@ -21,9 +21,12 @@ export const useBetoneForm = (
 	formId: string,
 	fields: FormFieldType[],
 	editData?: {
-		submissionId: string
+		submissionId?: string
 		formId: string
 		formData: Record<string, any>
+		isCopy?: boolean
+		originalTitle?: string
+		originalSubmissionNumber?: string
 	},
 	preloadedOptions?: Record<string, any[]>
 ) => {

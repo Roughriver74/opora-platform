@@ -4,6 +4,8 @@ export const FIELD_CONSTANTS = {
 	DEFAULT_TEXTAREA_ROWS: 4,
 	COMPACT_TEXTAREA_ROWS: 3,
 	FORM_FIELD_MARGIN: '15px',
+	COMPACT_FIELD_MARGIN: '8px', // Уменьшенный отступ для compact режима
+	NUMBER_FIELD_MARGIN: '10px', // Специальный отступ для числовых полей
 }
 
 export const FIELD_TEXTS = {

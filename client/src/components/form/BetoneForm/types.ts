@@ -4,7 +4,7 @@ export interface BetoneFormProps {
 	form: Form
 	fields: FormFieldType[]
 	editData?: {
-		submissionId: string
+		submissionId?: string
 		formId: string
 		formData: Record<string, any>
 		isCopy?: boolean

@@ -42,6 +42,7 @@ const FormFieldSchema = new mongoose_1.Schema({
     placeholder: { type: String },
     bitrixFieldId: { type: String, required: false },
     bitrixFieldType: { type: String, required: false },
+    bitrixEntity: { type: String, required: false }, // product, contact, company
     options: [
         {
             value: { type: String, required: true },

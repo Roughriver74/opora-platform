@@ -301,33 +301,49 @@ const MySubmissions: React.FC = () => {
 		}
 	}
 
-	// Копирование заявки
+	// Копирование заявки - точно как редактирование
 	const handleCopySubmission = async (submission: Submission) => {
 		try {
 			console.log('🔥 [CLIENT COPY] КНОПКА КОПИРОВАТЬ НАЖАТА!')
 			console.log('[CLIENT COPY] Копирование заявки:', submission._id)
 
-			// Получаем данные заявки для копирования
+			// Получаем данные заявки для копирования (теперь с preloadedOptions)
 			const response = await SubmissionService.copySubmission(submission._id)
 
-			if (response.success) {
-				console.log('[CLIENT COPY] Данные получены:', response.data)
+			console.log('[CLIENT COPY] Ответ от сервера:', response)
+			console.log('[CLIENT COPY] response.data:', response.data)
+			console.log(
+				'[CLIENT COPY] response.data.preloadedOptions:',
+				response.data.preloadedOptions
+			)
 
-				// Перенаправляем на форму с предзаполненными данными
-				// Сохраняем данные в sessionStorage для передачи в форму
-				sessionStorage.setItem(
-					'copyFormData',
-					JSON.stringify({
-						formId: response.data.formId,
-						formData: response.data.formData,
-						isCopy: true,
-						originalTitle: response.data.originalTitle,
-						originalSubmissionNumber: response.data.originalSubmissionNumber,
-					})
+			if (response.success) {
+				console.log('[CLIENT COPY] Успешно получены данные для копирования')
+				console.log('[CLIENT COPY] FormData:', response.data.formData)
+				console.log(
+					'[CLIENT COPY] Предзагруженные опции:',
+					response.data.preloadedOptions
 				)
 
-				// Перенаправляем на главную страницу с параметром копирования
+				// Сохраняем данные точно как для редактирования, но без submissionId
+				const copyData = {
+					// НЕ передаем submissionId - это новая заявка
+					formId: response.data.formId,
+					formData: response.data.formData,
+					preloadedOptions: response.data.preloadedOptions || {},
+					isCopy: true,
+					originalTitle: response.data.originalTitle,
+					originalSubmissionNumber: response.data.originalSubmissionNumber,
+				}
+
+				console.log('[CLIENT COPY] Сохраняем в sessionStorage:', copyData)
+				sessionStorage.setItem('copyFormData', JSON.stringify(copyData))
+
+				console.log('[CLIENT COPY] Переход к форме копирования...')
 				navigate(`/?copy=${submission._id}`)
+			} else {
+				console.warn('[CLIENT COPY] Не удалось получить данные для копирования')
+				setError('Не удалось получить данные для копирования')
 			}
 		} catch (err: any) {
 			console.error('[CLIENT COPY] Ошибка копирования:', err)

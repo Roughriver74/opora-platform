@@ -157,23 +157,116 @@ export const FormSection: React.FC<FormSectionProps> = ({
 				</>
 			)}
 
-			{section.fields
-				.sort((a, b) => (a.order || 0) - (b.order || 0))
-				.map((field: FormFieldType) => (
-					<Box
-						key={field._id || field.name}
-						sx={{ mb: FORM_CONSTANTS.FIELD_SPACING }}
-					>
-						<FormField
-							field={field}
-							value={values[field.name]}
-							onChange={onFieldChange}
-							error={getFieldError(field.name)}
-							compact={compact}
-							preloadedOptions={preloadedOptions?.[field.name]}
-						/>
-					</Box>
-				))}
+			{/* Рендеринг полей с группировкой числовых */}
+			{(() => {
+				const sortedFields = section.fields.sort((a, b) => (a.order || 0) - (b.order || 0))
+				const groupedElements: React.ReactNode[] = []
+				let i = 0
+
+				while (i < sortedFields.length) {
+					const currentField = sortedFields[i]
+					
+					// Если текущее поле числовое, собираем все подряд идущие числовые поля
+					if (currentField.type === 'number') {
+						const consecutiveNumberFields: FormFieldType[] = []
+						let j = i
+						
+						// Собираем все подряд идущие числовые поля
+						while (j < sortedFields.length && sortedFields[j].type === 'number') {
+							consecutiveNumberFields.push(sortedFields[j])
+							j++
+						}
+						
+						// Группируем числовые поля по 2 в ряд
+						for (let k = 0; k < consecutiveNumberFields.length; k += 2) {
+							const field1 = consecutiveNumberFields[k]
+							const field2 = consecutiveNumberFields[k + 1]
+							
+							if (field2) {
+								// Пара числовых полей
+								groupedElements.push(
+									<Box
+										key={`number-group-${k}`}
+										sx={{
+											mb: FORM_CONSTANTS.FIELD_SPACING,
+											display: 'flex',
+											gap: 1.5,
+											'& > div': {
+												flex: '0 1 calc(50% - 6px)',
+												minWidth: 0,
+											},
+										}}
+									>
+										<Box>
+											<FormField
+												field={field1}
+												value={values[field1.name]}
+												onChange={onFieldChange}
+												error={getFieldError(field1.name)}
+												compact={true}
+												preloadedOptions={preloadedOptions?.[field1.name]}
+											/>
+										</Box>
+										<Box>
+											<FormField
+												field={field2}
+												value={values[field2.name]}
+												onChange={onFieldChange}
+												error={getFieldError(field2.name)}
+												compact={true}
+												preloadedOptions={preloadedOptions?.[field2.name]}
+											/>
+										</Box>
+									</Box>
+								)
+							} else {
+								// Одиночное числовое поле (нечетное)
+								groupedElements.push(
+									<Box
+										key={field1._id || field1.name}
+										sx={{
+											mb: FORM_CONSTANTS.FIELD_SPACING,
+											maxWidth: '300px',
+										}}
+									>
+										<FormField
+											field={field1}
+											value={values[field1.name]}
+											onChange={onFieldChange}
+											error={getFieldError(field1.name)}
+											compact={true}
+											preloadedOptions={preloadedOptions?.[field1.name]}
+										/>
+									</Box>
+								)
+							}
+						}
+						
+						// Переходим к следующему не-числовому полю
+						i = j
+					} else {
+						// Обычное не-числовое поле
+						groupedElements.push(
+							<Box
+								key={currentField._id || currentField.name}
+								sx={{ mb: FORM_CONSTANTS.FIELD_SPACING }}
+							>
+								<FormField
+									field={currentField}
+									value={values[currentField.name]}
+									onChange={onFieldChange}
+									error={getFieldError(currentField.name)}
+									compact={compact}
+									preloadedOptions={preloadedOptions?.[currentField.name]}
+								/>
+							</Box>
+						)
+						i += 1
+					}
+				}
+
+				return groupedElements
+			})()}
 		</Box>
 	)
 }

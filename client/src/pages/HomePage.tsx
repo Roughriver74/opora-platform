@@ -43,11 +43,7 @@ const HomePage: React.FC = () => {
 			if (storedData) {
 				try {
 					const parsedData = JSON.parse(storedData)
-					console.log('🏠 [HomePage] Данные из localStorage:', parsedData)
-					console.log(
-						'🏠 [HomePage] preloadedOptions:',
-						parsedData.preloadedOptions
-					)
+
 					setEditData(parsedData)
 					// Очищаем localStorage после загрузки
 					localStorage.removeItem('editSubmissionData')
@@ -60,15 +56,12 @@ const HomePage: React.FC = () => {
 			if (storedData) {
 				try {
 					const parsedData = JSON.parse(storedData)
-					console.log(
-						'🏠 [HomePage] Данные копирования из sessionStorage:',
-						parsedData
-					)
 
 					// Устанавливаем данные как для нового создания (без submissionId)
 					setEditData({
 						formId: parsedData.formId,
 						formData: parsedData.formData,
+						preloadedOptions: parsedData.preloadedOptions || {},
 						isCopy: true,
 						originalTitle: parsedData.originalTitle,
 						originalSubmissionNumber: parsedData.originalSubmissionNumber,

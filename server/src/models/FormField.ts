@@ -8,6 +8,7 @@ export interface IFormField extends Document {
 	placeholder?: string
 	bitrixFieldId: string
 	bitrixFieldType: string
+	bitrixEntity?: string // Тип сущности Битрикс24: product, contact, company
 	formId?: string
 	options?: Array<{
 		value: string
@@ -43,6 +44,7 @@ const FormFieldSchema: Schema = new Schema(
 		placeholder: { type: String },
 		bitrixFieldId: { type: String, required: false },
 		bitrixFieldType: { type: String, required: false },
+		bitrixEntity: { type: String, required: false }, // product, contact, company
 		options: [
 			{
 				value: { type: String, required: true },

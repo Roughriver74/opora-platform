@@ -1047,7 +1047,7 @@ export const checkBitrixField = async (req: Request, res: Response) => {
 	}
 }
 
-// Копирование заявки
+// Копирование заявки - точно как редактирование, но без submissionId
 export const copySubmission = async (req: Request, res: Response) => {
 	try {
 		const { id } = req.params
@@ -1104,33 +1104,133 @@ export const copySubmission = async (req: Request, res: Response) => {
 			})
 		}
 
-		// Получаем данные из Битрикс24 сделки для восстановления значений полей
-		let formData: Record<string, any> = {}
+		// ИСПОЛЬЗУЕМ ТУ ЖЕ ЛОГИКУ ЧТО И В getSubmissionWithBitrixData
+		let formDataFromBitrix: Record<string, any> = {}
+		let preloadedOptions: Record<string, any[]> = {}
 
 		if (originalSubmission.bitrixDealId) {
 			try {
 				console.log(
 					`[COPY] Получение данных из Битрикс24 сделки ${originalSubmission.bitrixDealId}`
 				)
-				const dealData = await bitrix24Service.getDeal(
+				const dealResponse = await bitrix24Service.getDeal(
 					originalSubmission.bitrixDealId
 				)
 
-				// Мапим данные обратно в формат формы
-				for (const field of form.fields as unknown as IFormField[]) {
-					if (
-						field.bitrixFieldId &&
-						dealData[field.bitrixFieldId] !== undefined
-					) {
-						formData[field.name] = dealData[field.bitrixFieldId]
-					}
-				}
+				if (dealResponse?.result) {
+					const dealData = dealResponse.result
+					console.log(`[COPY] Данные из Битрикс24:`, Object.keys(dealData))
 
-				console.log(
-					`[COPY] Восстановлено ${
-						Object.keys(formData).length
-					} полей из Битрикс24`
-				)
+					// Мапим данные обратно в формат формы
+					for (const field of form.fields as unknown as IFormField[]) {
+						if (
+							field.bitrixFieldId &&
+							dealData[field.bitrixFieldId] !== undefined
+						) {
+							const bitrixValue = dealData[field.bitrixFieldId]
+
+							// Для автокомплита полей загружаем названия
+							if (field.type === 'autocomplete' && bitrixValue) {
+								try {
+									if (
+										field.bitrixEntity === 'product' ||
+										field.bitrixFieldId === 'UF_CRM_1726227410' ||
+										field.bitrixFieldId === 'UF_CRM_1726645231'
+									) {
+										console.log(
+											`[COPY] 🔍 Загрузка названия продукта для ID: ${bitrixValue}`
+										)
+										const productResponse = await bitrix24Service.getProduct(
+											bitrixValue
+										)
+										if (productResponse?.result) {
+											const productName = productResponse.result.NAME
+											console.log(
+												`[COPY] 📦 Продукт ${bitrixValue}: "${productName}"`
+											)
+
+											// Добавляем в предзагруженные опции
+											preloadedOptions[field.name] = [
+												{
+													value: bitrixValue,
+													label: productName,
+												},
+											]
+										}
+									} else if (field.bitrixEntity === 'contact') {
+										console.log(
+											`[COPY] 🔍 Загрузка названия контакта для ID: ${bitrixValue}`
+										)
+										const contactResponse = await bitrix24Service.getContacts(
+											bitrixValue,
+											1
+										)
+										if (contactResponse?.result) {
+											const contactName =
+												`${contactResponse.result.NAME} ${contactResponse.result.LAST_NAME}`.trim()
+											console.log(
+												`[COPY] 👤 Контакт ${bitrixValue}: "${contactName}"`
+											)
+
+											// Добавляем в предзагруженные опции
+											preloadedOptions[field.name] = [
+												{
+													value: bitrixValue,
+													label: contactName,
+												},
+											]
+										}
+									} else if (field.bitrixEntity === 'company') {
+										console.log(
+											`[COPY] 🔍 Загрузка названия компании для ID: ${bitrixValue}`
+										)
+										const companyResponse = await bitrix24Service.getCompany(
+											bitrixValue
+										)
+										if (companyResponse?.result) {
+											const companyName = companyResponse.result.TITLE
+											console.log(
+												`[COPY] 🏢 Компания ${bitrixValue}: "${companyName}"`
+											)
+
+											// Добавляем в предзагруженные опции
+											preloadedOptions[field.name] = [
+												{
+													value: bitrixValue,
+													label: companyName,
+												},
+											]
+										}
+									}
+								} catch (entityError) {
+									console.error(
+										`[COPY] ❌ Ошибка загрузки сущности ${field.bitrixEntity} ${bitrixValue}:`,
+										entityError
+									)
+									// Оставляем ID если не удалось загрузить название
+								}
+							}
+
+							formDataFromBitrix[field.name] = bitrixValue
+
+							console.log(
+								`[COPY] ✅ Маппинг ${field.bitrixFieldId} -> ${field.name}:`,
+								bitrixValue
+							)
+						}
+					}
+
+					console.log(
+						'[COPY] FormData восстановлен из Битрикс24:',
+						Object.keys(formDataFromBitrix)
+					)
+					console.log(
+						'[COPY] Предзагруженные опции:',
+						JSON.stringify(preloadedOptions, null, 2)
+					)
+				} else {
+					console.log('[COPY] Пустой ответ от Битрикс24')
+				}
 			} catch (bitrixError) {
 				console.error(
 					'[COPY] Ошибка получения данных из Битрикс24:',
@@ -1140,15 +1240,18 @@ export const copySubmission = async (req: Request, res: Response) => {
 			}
 		}
 
-		// Возвращаем данные для формы (без создания новой заявки)
+		// Возвращаем данные в том же формате что и getSubmissionWithBitrixData
 		res.json({
 			success: true,
 			message: 'Данные заявки получены для копирования',
 			data: {
 				formId: originalSubmission.formId._id,
-				formData: formData,
+				formData: formDataFromBitrix, // Данные из Битрикс24
+				preloadedOptions: preloadedOptions, // Предзагруженные опции для автокомплита
 				originalTitle: originalSubmission.title,
 				originalSubmissionNumber: originalSubmission.submissionNumber,
+				// НЕ передаем submissionId - это новая заявка
+				isCopy: true,
 			},
 		})
 	} catch (error: any) {
