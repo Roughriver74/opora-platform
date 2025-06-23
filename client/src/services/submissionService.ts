@@ -167,7 +167,7 @@ export const SubmissionService = {
 			originalSubmissionNumber: string
 		}
 	}> => {
-		const response = await api.get(`/submissions/${id}/copy`)
+		const response = await api.post(`/submissions/${id}/copy`)
 		return response.data
 	},
 

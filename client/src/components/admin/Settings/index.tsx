@@ -3,7 +3,6 @@ import {
 	Box,
 	Typography,
 	Paper,
-	Grid,
 	Switch,
 	TextField,
 	FormControlLabel,
@@ -40,6 +39,7 @@ const categoryNames: { [key: string]: string } = {
 	forms: 'Формы',
 	integrations: 'Интеграции',
 	ui: 'Интерфейс',
+	system: 'Система',
 }
 
 const Settings: React.FC = () => {

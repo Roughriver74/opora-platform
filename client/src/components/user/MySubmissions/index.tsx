@@ -61,15 +61,22 @@ import {
 	Info as InfoIcon,
 	Description as DescriptionIcon,
 	FileCopy as FileCopyIcon,
+	Close as CloseIcon,
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import submissionService, {
+import SubmissionService from '../../../services/submissionService'
+import { settingsService } from '../../../services/settingsService'
+import { FormFieldService } from '../../../services/formFieldService'
+import userService from '../../../services/userService'
+import {
 	Submission,
 	SubmissionHistory,
 	SubmissionFilters,
+	BitrixStage,
 } from '../../../services/submissionService'
+import { FormField } from '../../../types'
 import { useAuth } from '../../../contexts/auth'
 import api from '../../../services/api'
 
@@ -80,37 +87,76 @@ const MySubmissions: React.FC = () => {
 	const { user } = useAuth()
 	const theme = useTheme()
 	const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-	const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'))
+	const isSmallMobile = useMediaQuery('(max-width:480px)')
 
+	// Состояния
 	const [submissions, setSubmissions] = useState<Submission[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
-	const [page, setPage] = useState(0)
-	const [rowsPerPage, setRowsPerPage] = useState(isMobile ? 5 : 10)
-	const [total, setTotal] = useState(0)
 	const [selectedSubmission, setSelectedSubmission] =
 		useState<Submission | null>(null)
 	const [submissionHistory, setSubmissionHistory] = useState<
 		SubmissionHistory[]
 	>([])
 	const [detailsOpen, setDetailsOpen] = useState(false)
-	const [formFields] = useState<any[]>([])
-
+	const [bitrixStages, setBitrixStages] = useState<BitrixStage[]>([])
 	const [filters, setFilters] = useState<SubmissionFilters>({})
-	const [bitrixStages, setBitrixStages] = useState<any[]>([])
+	const [page, setPage] = useState(0)
+	const [rowsPerPage, setRowsPerPage] = useState(10)
+	const [total, setTotal] = useState(0)
+	const [formFields, setFormFields] = useState<FormField[]>([])
 	const [users, setUsers] = useState<any[]>([])
+
+	// Настройки системы
+	const [settings, setSettings] = useState({
+		enableCopying: true,
+		allowUserStatusChange: true,
+		allowUserEdit: true,
+		copyButtonText: 'Копировать заявку',
+	})
 	const [filtersExpanded, setFiltersExpanded] = useState(false)
 
 	// Проверяем, является ли пользователь администратором
 	const isAdmin = user?.role === 'admin'
 
-	// Отладочная информация удалена
+	// Загрузка настроек системы
+	const loadSettings = async () => {
+		try {
+			const [
+				enableCopying,
+				allowUserStatusChange,
+				allowUserEdit,
+				copyButtonText,
+			] = await Promise.all([
+				settingsService.getSettingValue('submissions.enable_copying', true),
+				settingsService.getSettingValue(
+					'submissions.allow_user_status_change',
+					true
+				),
+				settingsService.getSettingValue('submissions.allow_user_edit', true),
+				settingsService.getSettingValue(
+					'submissions.copy_button_text',
+					'Копировать заявку'
+				),
+			])
+
+			setSettings({
+				enableCopying,
+				allowUserStatusChange,
+				allowUserEdit,
+				copyButtonText,
+			})
+		} catch (error) {
+			console.error('Ошибка загрузки настроек:', error)
+			// Используем значения по умолчанию при ошибке
+		}
+	}
 
 	// Загрузка статусов из Битрикс24
 	const loadBitrixStages = async () => {
 		try {
 			console.log('Загрузка статусов из Битрикс24...')
-			const response = await submissionService.getBitrixDealStages('1') // Используем категорию 1
+			const response = await SubmissionService.getBitrixDealStages('1') // Используем категорию 1
 			console.log('Ответ от сервера:', response)
 
 			if (response.success && response.data && response.data.length > 0) {
@@ -147,14 +193,14 @@ const MySubmissions: React.FC = () => {
 
 			if (isAdmin) {
 				// Администратор видит все заявки
-				response = await submissionService.getSubmissions({
+				response = await SubmissionService.getSubmissions({
 					...filters,
 					page: page + 1,
 					limit: rowsPerPage,
 				})
 			} else {
 				// Обычный пользователь видит только свои заявки
-				response = await submissionService.getMySubmissions({
+				response = await SubmissionService.getMySubmissions({
 					page: page + 1,
 					limit: rowsPerPage,
 				})
@@ -170,6 +216,7 @@ const MySubmissions: React.FC = () => {
 	}
 
 	useEffect(() => {
+		loadSettings()
 		loadBitrixStages()
 		loadUsers()
 		loadSubmissions()
@@ -189,7 +236,7 @@ const MySubmissions: React.FC = () => {
 			console.log(
 				'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
 			)
-			const response = await submissionService.getSubmissionForEdit(
+			const response = await SubmissionService.getSubmissionForEdit(
 				submission._id
 			)
 
@@ -261,7 +308,7 @@ const MySubmissions: React.FC = () => {
 			console.log('[CLIENT COPY] Копирование заявки:', submission._id)
 
 			// Получаем данные заявки для копирования
-			const response = await submissionService.copySubmission(submission._id)
+			const response = await SubmissionService.copySubmission(submission._id)
 
 			if (response.success) {
 				console.log('[CLIENT COPY] Данные получены:', response.data)
@@ -294,7 +341,7 @@ const MySubmissions: React.FC = () => {
 		newStatus: string
 	) => {
 		try {
-			await submissionService.updateStatus(
+			await SubmissionService.updateStatus(
 				submissionId,
 				newStatus,
 				'' // Пустой комментарий
@@ -303,7 +350,7 @@ const MySubmissions: React.FC = () => {
 
 			// Если детали открыты, обновляем их тоже
 			if (selectedSubmission && selectedSubmission._id === submissionId) {
-				const response = await submissionService.getSubmissionById(submissionId)
+				const response = await SubmissionService.getSubmissionById(submissionId)
 				setSelectedSubmission(response.data.submission)
 				setSubmissionHistory(response.data.history)
 			}
@@ -384,7 +431,7 @@ const MySubmissions: React.FC = () => {
 	// Отображение подробностей заявки
 	const handleShowDetails = async (submission: Submission) => {
 		try {
-			const response = await submissionService.getSubmissionById(submission._id)
+			const response = await SubmissionService.getSubmissionById(submission._id)
 			setSelectedSubmission(response.data.submission)
 			setSubmissionHistory(response.data.history)
 			setDetailsOpen(true)
@@ -528,7 +575,7 @@ const MySubmissions: React.FC = () => {
 							>
 								{isSmallMobile ? '' : 'Подробнее'}
 							</Button>
-							{!isShipped && (
+							{!isShipped && settings.allowUserEdit && (
 								<Button
 									startIcon={<EditIcon />}
 									onClick={() => handleEditSubmission(submission)}
@@ -537,35 +584,39 @@ const MySubmissions: React.FC = () => {
 									{isSmallMobile ? '' : 'Редактировать'}
 								</Button>
 							)}
-							<Button
-								startIcon={<FileCopyIcon />}
-								onClick={() => handleCopySubmission(submission)}
-								color='secondary'
-							>
-								{isSmallMobile ? '' : 'Копировать'}
-							</Button>
+							{settings.enableCopying && (
+								<Button
+									startIcon={<FileCopyIcon />}
+									onClick={() => handleCopySubmission(submission)}
+									color='secondary'
+								>
+									{isSmallMobile ? '' : settings.copyButtonText}
+								</Button>
+							)}
 						</ButtonGroup>
 
 						{/* Смена статуса для всех пользователей */}
-						<FormControl size='small' sx={{ minWidth: 120 }}>
-							<Select
-								value={getCleanStatus(submission.status)}
-								onChange={e =>
-									handleStatusChange(submission._id, e.target.value)
-								}
-								displayEmpty
-								renderValue={value => {
-									const statusName = getStatusName(submission.status)
-									return statusName || 'Не указан'
-								}}
-							>
-								{bitrixStages.map(stage => (
-									<MenuItem key={stage.id} value={stage.id}>
-										{stage.name}
-									</MenuItem>
-								))}
-							</Select>
-						</FormControl>
+						{settings.allowUserStatusChange && (
+							<FormControl size='small' sx={{ minWidth: 120 }}>
+								<Select
+									value={getCleanStatus(submission.status)}
+									onChange={e =>
+										handleStatusChange(submission._id, e.target.value)
+									}
+									displayEmpty
+									renderValue={value => {
+										const statusName = getStatusName(submission.status)
+										return statusName || 'Не указан'
+									}}
+								>
+									{bitrixStages.map(stage => (
+										<MenuItem key={stage.id} value={stage.id}>
+											{stage.name}
+										</MenuItem>
+									))}
+								</Select>
+							</FormControl>
+						)}
 					</Box>
 				</CardContent>
 			</Card>
@@ -883,7 +934,7 @@ const MySubmissions: React.FC = () => {
 														>
 															<VisibilityIcon />
 														</IconButton>
-														{!isShipped && (
+														{!isShipped && settings.allowUserEdit && (
 															<IconButton
 																onClick={() => handleEditSubmission(submission)}
 																color='primary'
@@ -892,13 +943,15 @@ const MySubmissions: React.FC = () => {
 																<EditIcon />
 															</IconButton>
 														)}
-														<IconButton
-															onClick={() => handleCopySubmission(submission)}
-															color='secondary'
-															title='Копировать заявку'
-														>
-															<FileCopyIcon />
-														</IconButton>
+														{settings.enableCopying && (
+															<IconButton
+																onClick={() => handleCopySubmission(submission)}
+																color='secondary'
+																title='Копировать заявку'
+															>
+																<FileCopyIcon />
+															</IconButton>
+														)}
 													</ButtonGroup>
 												</TableCell>
 											</TableRow>
@@ -1074,7 +1127,7 @@ const MySubmissions: React.FC = () => {
 				</DialogContent>
 				<DialogActions sx={{ p: { xs: 2, sm: 3 } }}>
 					<Button onClick={() => setDetailsOpen(false)}>Закрыть</Button>
-					{selectedSubmission && (
+					{selectedSubmission && settings.allowUserEdit && (
 						<Button
 							variant='contained'
 							onClick={() => {

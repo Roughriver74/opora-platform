@@ -1076,18 +1076,22 @@ export const copySubmission = async (req: Request, res: Response) => {
 			})
 		}
 
-		// Проверяем права доступа - пользователь может копировать только свои заявки или админ может копировать любые
-		const user = await User.findById(userId)
-		const isAdmin = user && user.role === 'admin'
+		// Проверяем права доступа - любой авторизованный пользователь может копировать заявки
+		let user = null
+		let isAdmin = false
 
-		if (!isAdmin && originalSubmission.userId?.toString() !== userId) {
-			return res.status(403).json({
+		// Обычный пользователь
+		user = await User.findById(userId)
+		isAdmin = user && user.role === 'admin'
+
+		if (!user) {
+			return res.status(404).json({
 				success: false,
-				message: 'Нет прав для копирования этой заявки',
+				message: 'Пользователь не найден',
 			})
 		}
 
-		console.log(`[COPY] Найдена заявка: ${originalSubmission.title}`)
+		console.log(`[COPY] Пользователь ${user.email} копирует заявку ${id}`)
 
 		// Получаем данные формы с полями
 		const form = await Form.findById(originalSubmission.formId).populate(

@@ -833,7 +833,7 @@ const checkBitrixField = (req, res) => __awaiter(void 0, void 0, void 0, functio
 exports.checkBitrixField = checkBitrixField;
 // Копирование заявки
 const copySubmission = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _a;
     try {
         const { id } = req.params;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
@@ -856,16 +856,19 @@ const copySubmission = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 message: 'Заявка не найдена',
             });
         }
-        // Проверяем права доступа - пользователь может копировать только свои заявки или админ может копировать любые
-        const user = yield User_1.default.findById(userId);
-        const isAdmin = user && user.role === 'admin';
-        if (!isAdmin && ((_b = originalSubmission.userId) === null || _b === void 0 ? void 0 : _b.toString()) !== userId) {
-            return res.status(403).json({
+        // Проверяем права доступа - любой авторизованный пользователь может копировать заявки
+        let user = null;
+        let isAdmin = false;
+        // Обычный пользователь
+        user = yield User_1.default.findById(userId);
+        isAdmin = user && user.role === 'admin';
+        if (!user) {
+            return res.status(404).json({
                 success: false,
-                message: 'Нет прав для копирования этой заявки',
+                message: 'Пользователь не найден',
             });
         }
-        console.log(`[COPY] Найдена заявка: ${originalSubmission.title}`);
+        console.log(`[COPY] Пользователь ${user.email} копирует заявку ${id}`);
         // Получаем данные формы с полями
         const form = yield Form_1.default.findById(originalSubmission.formId).populate('fields');
         if (!form) {
