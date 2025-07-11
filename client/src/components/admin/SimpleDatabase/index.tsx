@@ -11,6 +11,7 @@ import {
 import { Refresh } from '@mui/icons-material'
 import { FieldsTable } from './components/FieldsTable'
 import { useSimpleFields } from './hooks/useSimpleFields'
+import { FormField } from '../../../types'
 
 export const SimpleDatabase: React.FC = () => {
 	const {
@@ -87,7 +88,7 @@ export const SimpleDatabase: React.FC = () => {
 							<strong>
 								{
 									fields.filter(
-										f => f.type !== 'header' && f.type !== 'divider'
+										(f: FormField) => f.type !== 'header' && f.type !== 'divider'
 									).length
 								}
 							</strong>
