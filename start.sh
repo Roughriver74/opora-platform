@@ -26,6 +26,44 @@ print_error() {
     echo -e "${RED}[ОШИБКА]${NC} $1"
 }
 
+# Проверка и остановка уже запущенных серверов
+print_status "Проверка запущенных серверов на портах 5001 (сервер) и 3000 (клиент)..."
+
+# Функция для завершения процесса по PID
+kill_process() {
+    local PID=$1
+    if [ -n "$PID" ]; then
+        kill $PID 2>/dev/null
+        if [ $? -eq 0 ]; then
+            print_success "Процесс с PID $PID успешно остановлен."
+        else
+            print_warning "Не удалось остановить процесс с PID $PID. Возможно, он уже завершён."
+        fi
+    fi
+}
+
+# Проверка и остановка процесса на порту 5001 (сервер)
+SERVER_PORT=5001
+SERVER_PID=$(lsof -ti tcp:$SERVER_PORT)
+if [ -n "$SERVER_PID" ]; then
+    print_warning "Обнаружен запущенный сервер на порту $SERVER_PORT (PID: $SERVER_PID). Останавливаю..."
+    kill_process $SERVER_PID
+    sleep 1
+else
+    print_success "Порт $SERVER_PORT свободен."
+fi
+
+# Проверка и остановка процесса на порту 3000 (клиент)
+CLIENT_PORT=3000
+CLIENT_PID=$(lsof -ti tcp:$CLIENT_PORT)
+if [ -n "$CLIENT_PID" ]; then
+    print_warning "Обнаружен запущенный клиент на порту $CLIENT_PORT (PID: $CLIENT_PID). Останавливаю..."
+    kill_process $CLIENT_PID
+    sleep 1
+else
+    print_success "Порт $CLIENT_PORT свободен."
+fi
+
 # Проверка наличия Node.js
 if ! command -v node &> /dev/null; then
     print_error "Node.js не установлен. Установите Node.js версии 16 или выше."

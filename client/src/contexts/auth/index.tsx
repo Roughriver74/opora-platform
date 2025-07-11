@@ -161,9 +161,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		dispatch({ type: 'AUTH_START' })
 
 		try {
-			// Если указан email, пробуем авторизацию как обычный пользователь
-			if (credentials.email) {
-				try {
 					console.log('Попытка входа пользователя:', credentials.email)
 					const response = await api.post('/auth/user-login', {
 						email: credentials.email,
@@ -192,6 +189,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 						})
 						return true
 					}
+
+			// Если ответ не успешный
+			dispatch({
+				type: 'AUTH_FAILURE',
+				payload: {
+					error: data.message || 'Неверный email или пароль',
+				},
+			})
+			return false
+
 				} catch (userError: any) {
 					console.error('Ошибка при входе пользователя:', userError)
 
@@ -208,86 +215,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 						return false
 					}
 
-					// Если email указан, но произошла ошибка сети, не пробуем admin
+			// Если произошла ошибка сети
 					dispatch({
 						type: 'AUTH_FAILURE',
 						payload: { error: 'Ошибка подключения к серверу' },
-					})
-					return false
-				}
-			}
-
-			// Пробуем авторизацию как админ (только если не указан email)
-			if (!credentials.email) {
-				try {
-					console.log('Попытка входа администратора')
-					const response = await api.post('/auth/admin-login', {
-						password: credentials.password,
-					})
-
-					const data = response.data
-
-					if (response.status === 200 && data.success) {
-						console.log('Администратор успешно авторизован')
-						const tokens: AuthTokens = {
-							accessToken: data.token,
-							refreshToken: data.token, // Используем тот же токен
-							expiresIn: data.expiresIn,
-						}
-
-						setTokens(tokens)
-						dispatch({
-							type: 'AUTH_SUCCESS',
-							payload: {
-								user: {
-									role: 'admin',
-									email: credentials.email,
-									fullName: 'Администратор',
-								},
-							},
-						})
-						return true
-					} else {
-						dispatch({
-							type: 'AUTH_FAILURE',
-							payload: {
-								error: data.message || 'Неверный пароль администратора',
-							},
-						})
-						return false
-					}
-				} catch (adminError: any) {
-					console.error('Ошибка при входе администратора:', adminError)
-					if (adminError.response && adminError.response.data) {
-						dispatch({
-							type: 'AUTH_FAILURE',
-							payload: {
-								error:
-									adminError.response.data.message ||
-									'Неверный пароль администратора',
-							},
-						})
-					} else {
-						dispatch({
-							type: 'AUTH_FAILURE',
-							payload: { error: 'Ошибка подключения к серверу' },
-						})
-					}
-					return false
-				}
-			}
-
-			// Если ни один метод не сработал
-			dispatch({
-				type: 'AUTH_FAILURE',
-				payload: { error: 'Неверные данные для входа' },
-			})
-			return false
-		} catch (error: any) {
-			console.error('Общая ошибка входа:', error)
-			dispatch({
-				type: 'AUTH_FAILURE',
-				payload: { error: 'Неожиданная ошибка при входе' },
 			})
 			return false
 		}

@@ -47,6 +47,7 @@ export const UserForm: React.FC<UserFormProps> = ({
     handleInputChange,
     handleSelectChange,
     handleSwitchChange,
+    handleSettingsChange,
     handleSubmit,
     isValid,
     generatePassword
@@ -221,6 +222,32 @@ export const UserForm: React.FC<UserFormProps> = ({
                           ? 'Пользователь может войти в систему' 
                           : 'Пользователь не может войти в систему'
                         }
+                      </Typography>
+                    </Box>
+                  }
+                />
+
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  Настройки
+                </Typography>
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.settings?.onlyMyCompanies || false}
+                      onChange={(e) => handleSettingsChange('onlyMyCompanies', e.target.checked)}
+                      name="onlyMyCompanies"
+                      disabled={loading}
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography variant="body1">
+                        Только мои компании
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Показывать в автокомплите только компании, где пользователь является ответственным
                       </Typography>
                     </Box>
                   }

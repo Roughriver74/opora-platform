@@ -65,6 +65,8 @@ const authMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
                                 isAdmin: user.role === 'admin',
                                 isUser: user.role === 'user',
                                 tokenType: 'access',
+                                bitrix_id: user.bitrix_id,
+                                settings: user.settings,
                             };
                             req.isAdmin = user.role === 'admin';
                             console.log('[AUTH DEBUG] Пользователь успешно авторизован:', user.email);
@@ -100,6 +102,8 @@ const authMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
                                 isAdmin: user.role === 'admin',
                                 isUser: user.role === 'user',
                                 tokenType: 'access',
+                                bitrix_id: user.bitrix_id,
+                                settings: user.settings,
                             };
                             req.isAdmin = user.role === 'admin';
                             console.log('[AUTH DEBUG] Пользователь успешно авторизован (альт. ID):', user.email);

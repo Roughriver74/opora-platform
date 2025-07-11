@@ -7,6 +7,9 @@ export interface User {
   phone?: string;
   bitrix_id?: string;
   status: 'active' | 'inactive';
+  settings?: {
+    onlyMyCompanies: boolean;
+  };
   fullName?: string;
   createdAt: string;
   updatedAt: string;

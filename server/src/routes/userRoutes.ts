@@ -28,4 +28,7 @@ router.patch('/:id/status', requireAdmin, userController.updateUserStatus);
 // Синхронизация с Битрикс24 (только для админов)
 router.post('/sync/bitrix', requireAdmin, userController.syncWithBitrix);
 
+// Обновление настроек пользователя (пользователь может изменять только свои настройки)
+router.put('/:userId/settings', requireAuth, userController.updateUserSettings);
+
 export default router; 

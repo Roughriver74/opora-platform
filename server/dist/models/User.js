@@ -89,6 +89,12 @@ const UserSchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    settings: {
+        onlyMyCompanies: {
+            type: Boolean,
+            default: false,
+        },
+    },
 }, {
     timestamps: true,
 });

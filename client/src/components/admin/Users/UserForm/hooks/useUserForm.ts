@@ -1,39 +1,43 @@
-import { useState, useEffect, useCallback } from 'react';
-import { SelectChangeEvent } from '@mui/material';
-import { apiService } from '../../../../../services/apiService';
-import { User, CreateUserData, UpdateUserData } from '../../../../../types/user';
+import { useState, useEffect, useCallback } from 'react'
+import { SelectChangeEvent } from '@mui/material'
+import { apiService } from '../../../../../services/apiService'
+import { User, CreateUserData, UpdateUserData } from '../../../../../types/user'
 
 interface FormData {
-  email: string;
-  password: string;
-  role: 'admin' | 'user';
-  firstName: string;
-  lastName: string;
-  phone: string;
-  bitrix_id: string;
-  status: 'active' | 'inactive';
+	email: string
+	password: string
+	role: 'admin' | 'user'
+	firstName: string
+	lastName: string
+	phone: string
+	bitrix_id: string
+	status: 'active' | 'inactive'
+	settings: {
+		onlyMyCompanies: boolean
+	}
 }
 
 interface FormErrors {
-  email?: string;
-  password?: string;
-  role?: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  bitrix_id?: string;
+	email?: string
+	password?: string
+	role?: string
+	firstName?: string
+	lastName?: string
+	phone?: string
+	bitrix_id?: string
 }
 
 export interface UseUserFormReturn {
-  formData: FormData;
-  errors: FormErrors;
-  loading: boolean;
-  isValid: boolean;
-  handleInputChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSelectChange: (event: SelectChangeEvent) => void;
-  handleSwitchChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSubmit: (event: React.FormEvent) => void;
-  generatePassword: () => void;
+	formData: FormData
+	errors: FormErrors
+	loading: boolean
+	isValid: boolean
+	handleInputChange: (event: React.ChangeEvent<HTMLInputElement>) => void
+	handleSelectChange: (event: SelectChangeEvent) => void
+	handleSwitchChange: (event: React.ChangeEvent<HTMLInputElement>) => void
+	handleSettingsChange: (settingName: string, value: boolean) => void
+	handleSubmit: (event: React.FormEvent) => void
+	generatePassword: () => void
 }
 
 export const useUserForm = (
@@ -41,7 +45,7 @@ export const useUserForm = (
   onSave: (user: User) => void,
   onClose: () => void
 ): UseUserFormReturn => {
-  const isEditing = Boolean(user);
+	const isEditing = Boolean(user)
 
   const [formData, setFormData] = useState<FormData>({
     email: '',
@@ -51,11 +55,14 @@ export const useUserForm = (
     lastName: '',
     phone: '',
     bitrix_id: '',
-    status: 'active'
-  });
+		status: 'active',
+		settings: {
+			onlyMyCompanies: false,
+		},
+	})
 
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [loading, setLoading] = useState(false);
+	const [errors, setErrors] = useState<FormErrors>({})
+	const [loading, setLoading] = useState(false)
 
   // Заполнение формы при редактировании
   useEffect(() => {
@@ -68,8 +75,11 @@ export const useUserForm = (
         lastName: user.lastName || '',
         phone: user.phone || '',
         bitrix_id: user.bitrix_id || '',
-        status: user.status || 'active'
-      });
+				status: user.status || 'active',
+				settings: {
+					onlyMyCompanies: user.settings?.onlyMyCompanies || false,
+				},
+			})
     } else {
       // Сброс формы для нового пользователя
       setFormData({
@@ -80,123 +90,153 @@ export const useUserForm = (
         lastName: '',
         phone: '',
         bitrix_id: '',
-        status: 'active'
-      });
+				status: 'active',
+				settings: {
+					onlyMyCompanies: false,
+				},
+			})
     }
-    setErrors({});
-  }, [user]);
+		setErrors({})
+	}, [user])
 
   // Валидация формы
   const validateForm = useCallback((): boolean => {
-    const newErrors: FormErrors = {};
+		const newErrors: FormErrors = {}
 
     // Email
     if (!formData.email) {
-      newErrors.email = 'Email обязателен';
+			newErrors.email = 'Email обязателен'
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Неверный формат email';
+			newErrors.email = 'Неверный формат email'
     }
 
     // Пароль (обязателен только при создании)
     if (!isEditing && !formData.password) {
-      newErrors.password = 'Пароль обязателен';
+			newErrors.password = 'Пароль обязателен'
     } else if (formData.password && formData.password.length < 6) {
-      newErrors.password = 'Пароль должен содержать минимум 6 символов';
-    } else if (formData.password && !/(?=.*[a-zA-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Пароль должен содержать буквы и цифры';
+			newErrors.password = 'Пароль должен содержать минимум 6 символов'
+		} else if (
+			formData.password &&
+			!/(?=.*[a-zA-Z])(?=.*\d)/.test(formData.password)
+		) {
+			newErrors.password = 'Пароль должен содержать буквы и цифры'
     }
 
     // Телефон (опциональная валидация)
     if (formData.phone && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone)) {
-      newErrors.phone = 'Неверный формат телефона';
+			newErrors.phone = 'Неверный формат телефона'
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [formData, isEditing]);
+		setErrors(newErrors)
+		return Object.keys(newErrors).length === 0
+	}, [formData, isEditing])
 
   // Обработчики изменения полей
-  const handleInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
+	const handleInputChange = useCallback(
+		(event: React.ChangeEvent<HTMLInputElement>) => {
+			const { name, value } = event.target
     setFormData(prev => ({
       ...prev,
-      [name]: value
-    }));
+				[name]: value,
+			}))
 
     // Очищаем ошибку для изменившегося поля
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({
         ...prev,
-        [name]: undefined
-      }));
+					[name]: undefined,
+				}))
     }
-  }, [errors]);
+		},
+		[errors]
+	)
 
-  const handleSelectChange = useCallback((event: SelectChangeEvent) => {
-    const { name, value } = event.target;
+	const handleSelectChange = useCallback(
+		(event: SelectChangeEvent) => {
+			const { name, value } = event.target
     setFormData(prev => ({
       ...prev,
-      [name]: value
-    }));
+				[name]: value,
+			}))
 
     // Очищаем ошибку для изменившегося поля
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({
         ...prev,
-        [name]: undefined
-      }));
+					[name]: undefined,
+				}))
     }
-  }, [errors]);
+		},
+		[errors]
+	)
 
-  const handleSwitchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const { checked } = event.target;
+	const handleSwitchChange = useCallback(
+		(event: React.ChangeEvent<HTMLInputElement>) => {
+			const { checked } = event.target
+			setFormData(prev => ({
+				...prev,
+				status: checked ? 'active' : 'inactive',
+			}))
+		},
+		[]
+	)
+
+	const handleSettingsChange = useCallback((settingName: string, value: boolean) => {
     setFormData(prev => ({
       ...prev,
-      status: checked ? 'active' : 'inactive'
-    }));
-  }, []);
+			settings: {
+				...prev.settings,
+				[settingName]: value,
+			},
+		}))
+	}, [])
 
   // Генерация пароля
   const generatePassword = useCallback(() => {
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let password = '';
+		const charset =
+			'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+		let password = ''
     
     // Добавляем хотя бы одну букву и одну цифру
-    password += charset.charAt(Math.floor(Math.random() * 26)); // строчная буква
-    password += charset.charAt(Math.floor(Math.random() * 26) + 26); // заглавная буква
-    password += charset.charAt(Math.floor(Math.random() * 10) + 52); // цифра
+		password += charset.charAt(Math.floor(Math.random() * 26)) // строчная буква
+		password += charset.charAt(Math.floor(Math.random() * 26) + 26) // заглавная буква
+		password += charset.charAt(Math.floor(Math.random() * 10) + 52) // цифра
     
     // Добавляем остальные символы
     for (let i = password.length; i < 12; i++) {
-      password += charset.charAt(Math.floor(Math.random() * charset.length));
+			password += charset.charAt(Math.floor(Math.random() * charset.length))
     }
     
     // Перемешиваем пароль
-    password = password.split('').sort(() => Math.random() - 0.5).join('');
+		password = password
+			.split('')
+			.sort(() => Math.random() - 0.5)
+			.join('')
     
     setFormData(prev => ({
       ...prev,
-      password
-    }));
+			password,
+		}))
 
     // Очищаем ошибку пароля
     if (errors.password) {
       setErrors(prev => ({
         ...prev,
-        password: undefined
-      }));
+				password: undefined,
+			}))
     }
-  }, [errors.password]);
+	}, [errors.password])
 
   // Отправка формы
-  const handleSubmit = useCallback(async (event: React.FormEvent) => {
-    event.preventDefault();
+	const handleSubmit = useCallback(
+		async (event: React.FormEvent) => {
+			event.preventDefault()
 
     if (!validateForm()) {
-      return;
+				return
     }
 
-    setLoading(true);
+			setLoading(true)
 
     try {
       if (isEditing && user) {
@@ -208,21 +248,36 @@ export const useUserForm = (
           lastName: formData.lastName || undefined,
           phone: formData.phone || undefined,
           bitrix_id: formData.bitrix_id || undefined,
-          status: formData.status
-        };
+						status: formData.status,
+					}
 
         // Добавляем пароль только если он указан
         if (formData.password) {
-          updateData.password = formData.password;
+						updateData.password = formData.password
         }
 
-        const response = await apiService.put(`/users/${user._id}`, updateData);
+					const response = await apiService.put(
+						`/users/${user._id}`,
+						updateData
+					)
         
         if (response.data.success) {
-          onSave(response.data.data);
-          onClose();
+						// Сохраняем настройки пользователя
+						try {
+							await apiService.put(
+								`/users/${user._id}/settings`,
+								{ settings: formData.settings }
+							)
+						} catch (settingsError) {
+							console.error('Ошибка сохранения настроек:', settingsError)
+						}
+
+						onSave(response.data.data)
+						onClose()
         } else {
-          setErrors({ email: response.data.message || 'Ошибка обновления пользователя' });
+						setErrors({
+							email: response.data.message || 'Ошибка обновления пользователя',
+						})
         }
       } else {
         // Создание нового пользователя
@@ -233,32 +288,38 @@ export const useUserForm = (
           firstName: formData.firstName || undefined,
           lastName: formData.lastName || undefined,
           phone: formData.phone || undefined,
-          bitrix_id: formData.bitrix_id || undefined
-        };
+						bitrix_id: formData.bitrix_id || undefined,
+					}
 
-        const response = await apiService.post('/users', createData);
+					const response = await apiService.post('/users', createData)
         
         if (response.data.success) {
-          onSave(response.data.data);
-          onClose();
+						onSave(response.data.data)
+						onClose()
         } else {
-          setErrors({ email: response.data.message || 'Ошибка создания пользователя' });
+						setErrors({
+							email: response.data.message || 'Ошибка создания пользователя',
+						})
         }
       }
     } catch (error: any) {
-      console.error('Ошибка сохранения пользователя:', error);
+				console.error('Ошибка сохранения пользователя:', error)
       setErrors({ 
-        email: error.response?.data?.message || 'Ошибка сохранения пользователя' 
-      });
+					email:
+						error.response?.data?.message || 'Ошибка сохранения пользователя',
+				})
     } finally {
-      setLoading(false);
+				setLoading(false)
     }
-  }, [formData, validateForm, isEditing, user, onSave, onClose]);
+		},
+		[formData, validateForm, isEditing, user, onSave, onClose]
+	)
 
   // Проверка валидности формы
-  const isValid = Boolean(formData.email) && 
+	const isValid =
+		Boolean(formData.email) &&
     (!isEditing ? Boolean(formData.password) : true) &&
-    Object.keys(errors).length === 0;
+		Object.keys(errors).length === 0
 
   return {
     formData,
@@ -268,7 +329,8 @@ export const useUserForm = (
     handleInputChange,
     handleSelectChange,
     handleSwitchChange,
+		handleSettingsChange,
     handleSubmit,
-    generatePassword
-  };
-}; 
+		generatePassword,
+	}
+}

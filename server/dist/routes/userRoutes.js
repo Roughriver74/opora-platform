@@ -53,4 +53,6 @@ router.delete('/:id', authMiddleware_1.requireAdmin, userController.deleteUser);
 router.patch('/:id/status', authMiddleware_1.requireAdmin, userController.updateUserStatus);
 // Синхронизация с Битрикс24 (только для админов)
 router.post('/sync/bitrix', authMiddleware_1.requireAdmin, userController.syncWithBitrix);
+// Обновление настроек пользователя (пользователь может изменять только свои настройки)
+router.put('/:userId/settings', authMiddleware_1.requireAuth, userController.updateUserSettings);
 exports.default = router;

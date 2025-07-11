@@ -415,11 +415,18 @@ class Bitrix24Service {
 	/**
 	 * Получение списка компаний из Битрикс24
 	 */
-	async getCompanies(query = '', limit = 50) {
+	async getCompanies(query = '', limit = 50, assignedToUserId = null) {
 		try {
 			console.log(`Поиск компаний в Битрикс24 по запросу: '${query}'`)
+			console.log(`Фильтр по ответственному: ${assignedToUserId}`)
 
-			let filter = {}
+			let filter: any = {}
+
+			// Добавляем фильтр по ответственному если указан
+			if (assignedToUserId) {
+				filter.ASSIGNED_BY_ID = assignedToUserId
+				console.log(`Фильтрация по ответственному: ${assignedToUserId}`)
+			}
 
 			if (query) {
 				// Проверяем, является ли запрос числом (ID)
@@ -427,11 +434,11 @@ class Bitrix24Service {
 
 				if (isNumericId) {
 					// Если запрос - это число, ищем по ID
-					filter = { ID: query.trim() }
+					filter.ID = query.trim()
 					console.log(`Поиск по ID компании: ${query}`)
 				} else {
 					// Иначе ищем по названию
-					filter = { '?TITLE': query }
+					filter['?TITLE'] = query
 					console.log(`Поиск по названию компании: ${query}`)
 				}
 			}

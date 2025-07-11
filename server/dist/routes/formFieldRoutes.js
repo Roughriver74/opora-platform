@@ -45,8 +45,8 @@ router.post('/', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin,
 router.get('/bitrix/fields', formFieldController.getBitrixFields);
 // Получение продуктов из каталога Битрикс24
 router.get('/bitrix/products', formFieldController.getProductsList);
-// Получение списка компаний из Битрикс24
-router.get('/bitrix/companies', formFieldController.getCompaniesList);
+// Получение списка компаний из Битрикс24 (требует аутентификации для фильтрации)
+router.get('/bitrix/companies', authMiddleware_1.authMiddleware, formFieldController.getCompaniesList);
 // Получение списка контактов из Битрикс24
 router.get('/bitrix/contacts', formFieldController.getContactsList);
 // Получение пользовательских полей из Битрикс24

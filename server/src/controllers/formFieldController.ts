@@ -238,7 +238,27 @@ export const getCompaniesList = async (
 ): Promise<void> => {
 	try {
 		const { query } = req.query
-		const companies = await bitrix24Service.getCompanies(query as string)
+		const user = req.user // Получаем пользователя из middleware
+
+		// Определяем параметры фильтрации
+		let assignedFilter = null
+		if (user && user.settings?.onlyMyCompanies && user.bitrix_id) {
+			assignedFilter = user.bitrix_id
+		}
+
+		console.log('🔍 Запрос компаний:', {
+			query: query as string,
+			userId: user?.id,
+			bitrixId: user?.bitrix_id,
+			onlyMyCompanies: user?.settings?.onlyMyCompanies,
+			assignedFilter,
+		})
+
+		const companies = await bitrix24Service.getCompanies(
+			query as string,
+			50,
+			assignedFilter
+		)
 		res.status(200).json(companies)
 	} catch (error: any) {
 		res.status(500).json({ message: error.message })

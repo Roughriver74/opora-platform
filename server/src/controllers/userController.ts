@@ -374,6 +374,58 @@ export const updateUserStatus = async (
 /**
  * Синхронизация пользователей с Битрикс24
  */
+/**
+ * Обновление настроек пользователя
+ */
+export const updateUserSettings = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
+	try {
+		const { userId } = req.params
+		const { settings } = req.body
+
+		// Проверяем, что пользователь может изменять только свои настройки или он админ
+		const currentUser = req.user
+		if (!currentUser || (currentUser.id !== userId && !currentUser.isAdmin)) {
+			res.status(403).json({
+				success: false,
+				message: 'Недостаточно прав для изменения настроек',
+			})
+			return
+		}
+
+		const user = await User.findById(userId)
+		if (!user) {
+			res.status(404).json({
+				success: false,
+				message: 'Пользователь не найден',
+			})
+			return
+		}
+
+		// Обновляем настройки пользователя
+		user.settings = {
+			...user.settings,
+			...settings,
+		}
+
+		await user.save()
+
+		res.json({
+			success: true,
+			data: user.settings,
+			message: 'Настройки пользователя обновлены',
+		})
+	} catch (error) {
+		console.error('Ошибка обновления настроек пользователя:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка обновления настроек пользователя',
+		})
+	}
+}
+
 export const syncWithBitrix = async (
 	req: Request,
 	res: Response

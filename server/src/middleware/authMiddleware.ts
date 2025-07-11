@@ -10,6 +10,10 @@ interface AuthUser {
 	isAdmin: boolean
 	isUser: boolean
 	tokenType: 'access'
+	bitrix_id?: string
+	settings?: {
+		onlyMyCompanies: boolean
+	}
 }
 
 // Расширяем интерфейс Request для добавления пользовательских свойств
@@ -86,6 +90,8 @@ export const authMiddleware = async (
 								isAdmin: user.role === 'admin',
 								isUser: user.role === 'user',
 								tokenType: 'access',
+								bitrix_id: user.bitrix_id,
+								settings: user.settings,
 							}
 							req.isAdmin = user.role === 'admin'
 							console.log(
@@ -134,6 +140,8 @@ export const authMiddleware = async (
 								isAdmin: user.role === 'admin',
 								isUser: user.role === 'user',
 								tokenType: 'access',
+								bitrix_id: user.bitrix_id,
+								settings: user.settings,
 							}
 							req.isAdmin = user.role === 'admin'
 							console.log(

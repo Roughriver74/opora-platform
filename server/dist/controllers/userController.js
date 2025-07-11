@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncWithBitrix = exports.updateUserStatus = exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllUsers = void 0;
+exports.syncWithBitrix = exports.updateUserSettings = exports.updateUserStatus = exports.deleteUser = exports.updateUser = exports.createUser = exports.getUserById = exports.getAllUsers = void 0;
 const User_1 = __importDefault(require("../models/User"));
 const passwordHash_1 = require("../utils/passwordHash");
 const bitrix24Service_1 = __importDefault(require("../services/bitrix24Service"));
@@ -328,6 +328,48 @@ exports.updateUserStatus = updateUserStatus;
 /**
  * Синхронизация пользователей с Битрикс24
  */
+/**
+ * Обновление настроек пользователя
+ */
+const updateUserSettings = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { userId } = req.params;
+        const { settings } = req.body;
+        // Проверяем, что пользователь может изменять только свои настройки или он админ
+        const currentUser = req.user;
+        if (!currentUser || (currentUser.id !== userId && !currentUser.isAdmin)) {
+            res.status(403).json({
+                success: false,
+                message: 'Недостаточно прав для изменения настроек',
+            });
+            return;
+        }
+        const user = yield User_1.default.findById(userId);
+        if (!user) {
+            res.status(404).json({
+                success: false,
+                message: 'Пользователь не найден',
+            });
+            return;
+        }
+        // Обновляем настройки пользователя
+        user.settings = Object.assign(Object.assign({}, user.settings), settings);
+        yield user.save();
+        res.json({
+            success: true,
+            data: user.settings,
+            message: 'Настройки пользователя обновлены',
+        });
+    }
+    catch (error) {
+        console.error('Ошибка обновления настроек пользователя:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Ошибка обновления настроек пользователя',
+        });
+    }
+});
+exports.updateUserSettings = updateUserSettings;
 const syncWithBitrix = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { forceSync = false } = req.body;

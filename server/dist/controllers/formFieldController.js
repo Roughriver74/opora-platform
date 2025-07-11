@@ -204,9 +204,23 @@ const getProductsList = (req, res) => __awaiter(void 0, void 0, void 0, function
 exports.getProductsList = getProductsList;
 // Получение списка компаний из Битрикс24
 const getCompaniesList = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     try {
         const { query } = req.query;
-        const companies = yield bitrix24Service_1.default.getCompanies(query);
+        const user = req.user; // Получаем пользователя из middleware
+        // Определяем параметры фильтрации
+        let assignedFilter = null;
+        if (user && ((_a = user.settings) === null || _a === void 0 ? void 0 : _a.onlyMyCompanies) && user.bitrix_id) {
+            assignedFilter = user.bitrix_id;
+        }
+        console.log('🔍 Запрос компаний:', {
+            query: query,
+            userId: user === null || user === void 0 ? void 0 : user.id,
+            bitrixId: user === null || user === void 0 ? void 0 : user.bitrix_id,
+            onlyMyCompanies: (_b = user === null || user === void 0 ? void 0 : user.settings) === null || _b === void 0 ? void 0 : _b.onlyMyCompanies,
+            assignedFilter,
+        });
+        const companies = yield bitrix24Service_1.default.getCompanies(query, 50, assignedFilter);
         res.status(200).json(companies);
     }
     catch (error) {

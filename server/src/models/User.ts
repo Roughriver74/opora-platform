@@ -11,6 +11,9 @@ export interface IUser extends Document {
 	status?: 'active' | 'inactive'
 	role: 'user' | 'admin'
 	isActive: boolean
+	settings: {
+		onlyMyCompanies: boolean
+	}
 	createdAt: Date
 	updatedAt: Date
 	fullName: string // виртуальное поле
@@ -59,6 +62,12 @@ const UserSchema: Schema = new Schema(
 		isActive: {
 			type: Boolean,
 			default: true,
+		},
+		settings: {
+			onlyMyCompanies: {
+				type: Boolean,
+				default: false,
+			},
 		},
 	},
 	{

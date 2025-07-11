@@ -66,13 +66,36 @@ export const useDynamicOptions = (
 					case 'companies':
 						response = await FormFieldService.getCompanies(query)
 						if (response?.result) {
-							dataOptions = response.result.map((company: any) => ({
+							// Сначала создаем базовые опции
+							const baseOptions = response.result.map((company: any) => ({
 								value: company.ID,
-								label: company.TITLE,
+								title: company.TITLE,
 								metadata: {
 									phone: company.PHONE,
 									email: company.EMAIL,
 									type: company.COMPANY_TYPE,
+								},
+							}))
+
+							// Находим дублирующиеся названия
+							const titleCounts = baseOptions.reduce(
+								(acc: Record<string, number>, option: any) => {
+									acc[option.title] = (acc[option.title] || 0) + 1
+									return acc
+								},
+								{} as Record<string, number>
+							)
+
+							// Создаем финальные опции с умными label
+							dataOptions = baseOptions.map((option: any) => ({
+								value: option.value,
+								label:
+									titleCounts[option.title] > 1
+										? `${option.title} (ID: ${option.value})`
+										: option.title,
+								metadata: {
+									...option.metadata,
+									originalTitle: option.title,
 								},
 							}))
 						}
@@ -103,15 +126,23 @@ export const useDynamicOptions = (
 						break
 				}
 
-				// Сохраняем выбранную опцию в новом списке, если она есть
+				// Удаляем дубликаты из результатов сервера
+				const uniqueOptions = dataOptions.filter(
+					(option, index, self) =>
+						index === self.findIndex(opt => opt.value === option.value)
+				)
+
+				// Сохраняем выбранную опцию в новом списке, если её нет
 				if (
 					selectedOption &&
-					!dataOptions.some(
+					!uniqueOptions.some(
 						(opt: FormFieldOption) => opt.value === selectedOption.value
 					)
 				) {
-					dataOptions.unshift(selectedOption)
+					uniqueOptions.unshift(selectedOption)
 				}
+
+				dataOptions = uniqueOptions
 
 				console.log(
 					`🔍 useDynamicOptions: Загружены опции для "${query}":`,
