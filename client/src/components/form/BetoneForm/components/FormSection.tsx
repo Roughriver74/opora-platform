@@ -6,6 +6,8 @@ import {
 	IconButton,
 	TextField,
 	Tooltip,
+	useTheme,
+	useMediaQuery,
 } from '@mui/material'
 import { Edit, Save, Cancel } from '@mui/icons-material'
 import FormField from '../../FormField'
@@ -36,6 +38,9 @@ export const FormSection: React.FC<FormSectionProps> = ({
 	isAdminMode = false,
 	onSectionTitleChange,
 }) => {
+	const theme = useTheme()
+	const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+
 	const [isEditingTitle, setIsEditingTitle] = useState(false)
 	const [tempTitle, setTempTitle] = useState(section.title)
 
@@ -48,9 +53,9 @@ export const FormSection: React.FC<FormSectionProps> = ({
 		if (
 			onSectionTitleChange &&
 			tempTitle.trim() &&
-			tempTitle !== section.title
+			tempTitle.trim() !== section.title
 		) {
-			onSectionTitleChange(section.id || '', tempTitle.trim())
+			onSectionTitleChange(section.id, tempTitle.trim())
 		}
 		setIsEditingTitle(false)
 	}
@@ -68,180 +73,209 @@ export const FormSection: React.FC<FormSectionProps> = ({
 		}
 	}
 
-	if (!section || !section.fields || section.fields.length === 0) {
-		return null
+	// Определяем отступы для полей
+	const getFieldSpacing = () => {
+		if (isMobile) {
+			return FORM_CONSTANTS.MOBILE_FIELD_SPACING.xs
+		}
+		return compact
+			? FORM_CONSTANTS.FIELD_SPACING.xs
+			: FORM_CONSTANTS.FIELD_SPACING.sm
 	}
 
 	return (
-		<Box sx={{ mb: FORM_CONSTANTS.SECTION_SPACING }}>
+		<Box>
+			{/* Заголовок секции */}
 			{showTitle && (
-				<>
-					<Box
-						sx={{
-							display: 'flex',
-							alignItems: 'center',
-							mb: 2,
-							gap: 1,
-						}}
-					>
-						{isEditingTitle && isAdminMode ? (
-							<Box
-								sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}
-							>
-								<TextField
-									value={tempTitle}
-									onChange={e => setTempTitle(e.target.value)}
-									onKeyDown={handleKeyPress}
-									variant='outlined'
+				<Box sx={{ mb: isMobile ? 1 : 2 }}>
+					{isEditingTitle ? (
+						<Box
+							sx={{
+								display: 'flex',
+								alignItems: 'center',
+								gap: 1,
+								mb: 1,
+							}}
+						>
+							<TextField
+								value={tempTitle}
+								onChange={e => setTempTitle(e.target.value)}
+								onKeyDown={handleKeyPress}
+								size='small'
+								fullWidth
+								autoFocus
+								variant='outlined'
+								sx={{
+									'& .MuiOutlinedInput-root': {
+										fontSize: isMobile ? '0.95rem' : '1.1rem',
+									},
+								}}
+							/>
+							<Tooltip title='Сохранить'>
+								<IconButton
+									onClick={handleSaveTitle}
 									size='small'
-									autoFocus
-									fullWidth
-									sx={{
-										'& .MuiOutlinedInput-root': {
-											fontSize: '1.25rem',
-											fontWeight: 600,
-											color: 'primary.main',
-										},
-									}}
-								/>
-								<Tooltip title='Сохранить'>
-									<IconButton
-										onClick={handleSaveTitle}
-										color='primary'
-										size='small'
-									>
-										<Save />
-									</IconButton>
-								</Tooltip>
-								<Tooltip title='Отменить'>
-									<IconButton
-										onClick={handleCancelEditing}
-										color='secondary'
-										size='small'
-									>
-										<Cancel />
-									</IconButton>
-								</Tooltip>
-							</Box>
-						) : (
-							<>
-								<Typography
-									variant='h6'
-									component='h3'
-									sx={{
-										color: 'primary.main',
-										fontWeight: 600,
-										flex: 1,
-									}}
+									color='primary'
 								>
-									{section.title}
-								</Typography>
-								{isAdminMode && (
-									<Tooltip title='Редактировать название раздела'>
-										<IconButton
-											onClick={handleStartEditing}
-											size='small'
-											sx={{
-												opacity: 0.7,
-												'&:hover': { opacity: 1 },
-											}}
-										>
-											<Edit fontSize='small' />
-										</IconButton>
-									</Tooltip>
-								)}
-							</>
-						)}
-					</Box>
-					<Divider sx={{ mb: 3 }} />
-				</>
+									<Save />
+								</IconButton>
+							</Tooltip>
+							<Tooltip title='Отменить'>
+								<IconButton
+									onClick={handleCancelEditing}
+									size='small'
+									color='secondary'
+								>
+									<Cancel />
+								</IconButton>
+							</Tooltip>
+						</Box>
+					) : (
+						<Box
+							sx={{
+								display: 'flex',
+								alignItems: 'center',
+								gap: 1,
+								mb: isMobile ? 1 : 2,
+							}}
+						>
+							<Typography
+								variant={isMobile ? 'h6' : 'h5'}
+								component='h2'
+								sx={{
+									fontWeight: 600,
+									color: 'text.primary',
+									flex: 1,
+									fontSize: isMobile ? '1rem' : '1.25rem',
+								}}
+							>
+								{section.title}
+							</Typography>
+							{isAdminMode && (
+								<Tooltip title='Редактировать название секции'>
+									<IconButton
+										onClick={handleStartEditing}
+										size='small'
+										color='primary'
+									>
+										<Edit />
+									</IconButton>
+								</Tooltip>
+							)}
+						</Box>
+					)}
+					<Divider sx={{ mb: isMobile ? 1.5 : 2 }} />
+				</Box>
 			)}
 
-			{/* Рендеринг полей с группировкой числовых */}
+			{/* Поля секции */}
 			{(() => {
-				const sortedFields = section.fields.sort((a, b) => (a.order || 0) - (b.order || 0))
 				const groupedElements: React.ReactNode[] = []
+				const fields = section.fields || []
 				let i = 0
 
-				while (i < sortedFields.length) {
-					const currentField = sortedFields[i]
-					
-					// Если текущее поле числовое, собираем все подряд идущие числовые поля
+				while (i < fields.length) {
+					const currentField = fields[i]
+
+					// Проверяем, является ли поле числовым
 					if (currentField.type === 'number') {
-						const consecutiveNumberFields: FormFieldType[] = []
-						let j = i
-						
 						// Собираем все подряд идущие числовые поля
-						while (j < sortedFields.length && sortedFields[j].type === 'number') {
-							consecutiveNumberFields.push(sortedFields[j])
+						const numberFields = []
+						let j = i
+						while (j < fields.length && fields[j].type === 'number') {
+							numberFields.push(fields[j])
 							j++
 						}
-						
-						// Группируем числовые поля по 2 в ряд
-						for (let k = 0; k < consecutiveNumberFields.length; k += 2) {
-							const field1 = consecutiveNumberFields[k]
-							const field2 = consecutiveNumberFields[k + 1]
-							
-							if (field2) {
-								// Пара числовых полей
-								groupedElements.push(
-									<Box
-										key={`number-group-${k}`}
-										sx={{
-											mb: FORM_CONSTANTS.FIELD_SPACING,
-											display: 'flex',
-											gap: 1.5,
-											'& > div': {
-												flex: '0 1 calc(50% - 6px)',
-												minWidth: 0,
-											},
-										}}
-									>
-										<Box>
+
+						// Группируем числовые поля по 2 в ряд только на десктопе
+						if (!isMobile && numberFields.length > 1) {
+							for (let k = 0; k < numberFields.length; k += 2) {
+								const field1 = numberFields[k]
+								const field2 = numberFields[k + 1]
+
+								if (field2) {
+									// Пара числовых полей
+									groupedElements.push(
+										<Box
+											key={`${field1._id}-${field2._id}`}
+											sx={{
+												display: 'flex',
+												gap: 2,
+												mb: getFieldSpacing(),
+											}}
+										>
+											<Box sx={{ flex: 1 }}>
+												<FormField
+													field={field1}
+													value={values[field1.name]}
+													onChange={onFieldChange}
+													error={getFieldError(field1.name)}
+													compact={true}
+													isMobile={isMobile}
+													preloadedOptions={preloadedOptions?.[field1.name]}
+												/>
+											</Box>
+											<Box sx={{ flex: 1 }}>
+												<FormField
+													field={field2}
+													value={values[field2.name]}
+													onChange={onFieldChange}
+													error={getFieldError(field2.name)}
+													compact={true}
+													isMobile={isMobile}
+													preloadedOptions={preloadedOptions?.[field2.name]}
+												/>
+											</Box>
+										</Box>
+									)
+								} else {
+									// Одиночное числовое поле
+									groupedElements.push(
+										<Box
+											key={field1._id || field1.name}
+											sx={{
+												mb: getFieldSpacing(),
+												maxWidth: isMobile ? '100%' : '300px',
+											}}
+										>
 											<FormField
 												field={field1}
 												value={values[field1.name]}
 												onChange={onFieldChange}
 												error={getFieldError(field1.name)}
 												compact={true}
+												isMobile={isMobile}
 												preloadedOptions={preloadedOptions?.[field1.name]}
 											/>
 										</Box>
-										<Box>
-											<FormField
-												field={field2}
-												value={values[field2.name]}
-												onChange={onFieldChange}
-												error={getFieldError(field2.name)}
-												compact={true}
-												preloadedOptions={preloadedOptions?.[field2.name]}
-											/>
-										</Box>
-									</Box>
-								)
-							} else {
-								// Одиночное числовое поле (нечетное)
+									)
+								}
+							}
+						} else {
+							// На мобильных все поля в одну колонку
+							numberFields.forEach(field => {
 								groupedElements.push(
 									<Box
-										key={field1._id || field1.name}
+										key={field._id || field.name}
 										sx={{
-											mb: FORM_CONSTANTS.FIELD_SPACING,
-											maxWidth: '300px',
+											mb: getFieldSpacing(),
+											maxWidth: isMobile ? '100%' : '300px',
 										}}
 									>
 										<FormField
-											field={field1}
-											value={values[field1.name]}
+											field={field}
+											value={values[field.name]}
 											onChange={onFieldChange}
-											error={getFieldError(field1.name)}
+											error={getFieldError(field.name)}
 											compact={true}
-											preloadedOptions={preloadedOptions?.[field1.name]}
+											isMobile={isMobile}
+											preloadedOptions={preloadedOptions?.[field.name]}
 										/>
 									</Box>
 								)
-							}
+							})
 						}
-						
+
 						// Переходим к следующему не-числовому полю
 						i = j
 					} else {
@@ -249,7 +283,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
 						groupedElements.push(
 							<Box
 								key={currentField._id || currentField.name}
-								sx={{ mb: FORM_CONSTANTS.FIELD_SPACING }}
+								sx={{ mb: getFieldSpacing() }}
 							>
 								<FormField
 									field={currentField}
@@ -257,6 +291,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
 									onChange={onFieldChange}
 									error={getFieldError(currentField.name)}
 									compact={compact}
+									isMobile={isMobile}
 									preloadedOptions={preloadedOptions?.[currentField.name]}
 								/>
 							</Box>

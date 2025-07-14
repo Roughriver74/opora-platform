@@ -11,8 +11,9 @@ export const TextInput: React.FC<FieldInputProps> = ({
 	onChange,
 	error,
 	compact = false,
+	isMobile = false,
 }) => {
-	const styles = getFieldStyles(compact)
+	const styles = getFieldStyles(compact, isMobile)
 
 	// Локальное состояние для мгновенного отображения ввода
 	const [localValue, setLocalValue] = useState(value || '')
@@ -43,17 +44,16 @@ export const TextInput: React.FC<FieldInputProps> = ({
 			name={field.name}
 			label={field.label}
 			type={field.type === 'number' ? 'number' : 'text'}
-			margin={compact ? 'dense' : 'normal'}
+			margin={compact || isMobile ? 'dense' : 'normal'}
+			size={isMobile ? 'small' : compact ? 'small' : 'medium'}
 			value={localValue}
 			onChange={e => {
 				setLocalValue(e.target.value)
 				setIsTyping(true)
 			}}
-			required={field.required}
 			error={!!error}
 			helperText={error}
-			placeholder={field.placeholder || ''}
-			size={compact ? 'small' : 'medium'}
+			required={field.required}
 			sx={styles.textField}
 		/>
 	)

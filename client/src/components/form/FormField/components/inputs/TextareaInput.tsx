@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { TextField } from '@mui/material'
 import { FieldInputProps } from '../../types'
-import { FIELD_CONSTANTS } from '../../constants'
 import { getFieldStyles } from '../../utils/fieldStyles'
 import { useDebounce } from '../../hooks/useDebounce'
+import { FIELD_CONSTANTS } from '../../constants'
 
 export const TextareaInput: React.FC<FieldInputProps> = ({
 	field,
@@ -11,8 +11,9 @@ export const TextareaInput: React.FC<FieldInputProps> = ({
 	onChange,
 	error,
 	compact = false,
+	isMobile = false,
 }) => {
-	const styles = getFieldStyles(compact)
+	const styles = getFieldStyles(compact, isMobile)
 
 	// Локальное состояние для мгновенного отображения ввода
 	const [localValue, setLocalValue] = useState(value || '')
@@ -36,29 +37,34 @@ export const TextareaInput: React.FC<FieldInputProps> = ({
 		}
 	}, [debouncedValue, value, field.name, onChange, isTyping])
 
+	// Определяем количество строк в зависимости от режима
+	const getRows = () => {
+		if (isMobile) {
+			return FIELD_CONSTANTS.MOBILE_TEXTAREA_ROWS
+		}
+		return compact
+			? FIELD_CONSTANTS.COMPACT_TEXTAREA_ROWS
+			: FIELD_CONSTANTS.DEFAULT_TEXTAREA_ROWS
+	}
+
 	return (
 		<TextField
 			fullWidth
 			id={field.name}
 			name={field.name}
 			label={field.label}
-			margin={compact ? 'dense' : 'normal'}
+			multiline
+			rows={getRows()}
+			margin={compact || isMobile ? 'dense' : 'normal'}
+			size={isMobile ? 'small' : compact ? 'small' : 'medium'}
 			value={localValue}
 			onChange={e => {
 				setLocalValue(e.target.value)
 				setIsTyping(true)
 			}}
-			required={field.required}
 			error={!!error}
 			helperText={error}
-			placeholder={field.placeholder || ''}
-			multiline
-			rows={
-				compact
-					? FIELD_CONSTANTS.COMPACT_TEXTAREA_ROWS
-					: FIELD_CONSTANTS.DEFAULT_TEXTAREA_ROWS
-			}
-			size={compact ? 'small' : 'medium'}
+			required={field.required}
 			sx={styles.textField}
 		/>
 	)

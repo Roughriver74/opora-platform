@@ -12,6 +12,8 @@ import {
 	TextField,
 	IconButton,
 	Tooltip,
+	useTheme,
+	useMediaQuery,
 } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { Edit, Save, Cancel } from '@mui/icons-material'
@@ -22,6 +24,7 @@ import { FormSection } from './components/FormSection'
 import { SubmitButton } from './components/SubmitButton'
 import { ScrollToTopButton } from './components/ScrollToTopButton'
 import { FormResult } from './components/FormResult'
+import SimpleMobileBetoneForm from './components/SimpleMobileBetoneForm'
 
 import { LinkedFields } from '../LinkedFields'
 import { FormFieldService } from '../../../services/formFieldService'
@@ -34,6 +37,10 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 	isAdminMode = false,
 	onFieldUpdate,
 }) => {
+	const theme = useTheme()
+	const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+	const isTablet = useMediaQuery(theme.breakpoints.down('md'))
+
 	const formRef = useRef<HTMLDivElement>(null)
 	const [snackbar, setSnackbar] = useState<{
 		open: boolean
@@ -65,6 +72,20 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 		handleFieldChange,
 		getFieldError,
 	} = useBetoneForm(form._id ?? '', fields, editData, preloadedOptions)
+
+	// Автоматическое переключение на мобильную версию для небольших экранов
+	if (isMobile || isTablet) {
+		return (
+			<SimpleMobileBetoneForm
+				form={form}
+				fields={fields}
+				editData={editData}
+				preloadedOptions={preloadedOptions}
+				isAdminMode={isAdminMode}
+				onFieldUpdate={onFieldUpdate}
+			/>
+		)
+	}
 
 	// Обработчик изменения названия раздела
 	const handleSectionTitleChange = async (

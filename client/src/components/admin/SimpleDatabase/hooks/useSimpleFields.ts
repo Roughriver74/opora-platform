@@ -1,115 +1,62 @@
 import { useState, useEffect, useCallback } from 'react'
-import { FormField } from '../../../../types'
 import { FormFieldService } from '../../../../services/formFieldService'
+import { FormField } from '../../../../types'
 
-interface UseSimpleFieldsReturn {
-	fields: FormField[]
-	loading: boolean
-	error: string | null
-	updateField: (
-		fieldId: string,
-		updates: Partial<FormField>
-	) => Promise<boolean>
-	getSections: () => FormField[]
-	getSectionName: (field: FormField) => string
-	reload: () => Promise<void>
-}
-
-export const useSimpleFields = (): UseSimpleFieldsReturn => {
+export const useSimpleFields = (formId: string) => {
 	const [fields, setFields] = useState<FormField[]>([])
-	const [loading, setLoading] = useState(true)
+	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
-	// Загрузка всех полей
 	const loadFields = useCallback(async () => {
+		if (!formId) return
+
+		setLoading(true)
+		setError(null)
+
 		try {
-			setLoading(true)
-			setError(null)
-
-			const response = await FormFieldService.getAllFields()
-
-			// Сортируем поля по порядку
-			const sortedFields = response.sort(
-				(a: FormField, b: FormField) => (a.order || 0) - (b.order || 0)
-			)
-
-			setFields(sortedFields)
-		} catch (err: any) {
-			console.error('Ошибка загрузки полей:', err)
-			setError(err.message || 'Ошибка загрузки полей')
+			const fieldsData = await FormFieldService.getFormFields(formId)
+			setFields(fieldsData)
+		} catch (error: any) {
+			setError(error.message || 'Ошибка загрузки полей')
 		} finally {
 			setLoading(false)
 		}
-	}, [])
+	}, [formId])
 
-	// Обновление поля
-	const updateField = useCallback(
-		async (fieldId: string, updates: Partial<FormField>) => {
-			try {
-				await FormFieldService.updateField(fieldId, updates)
-
-				// Обновляем локальное состояние
-				setFields(prevFields =>
-					prevFields.map(field =>
-						field._id === fieldId ? { ...field, ...updates } : field
-					)
+	const updateField = async (id: string, updates: Partial<FormField>) => {
+		try {
+			const updatedField = await FormFieldService.updateField(id, updates)
+			setFields(prev =>
+				prev.map(field =>
+					field._id === id ? { ...field, ...updatedField } : field
 				)
+			)
+		} catch (error: any) {
+			setError(error.message || 'Ошибка обновления поля')
+		}
+	}
 
-				return true
-			} catch (err: any) {
-				console.error('Ошибка обновления поля:', err)
-				setError(err.message || 'Ошибка обновления поля')
-				return false
-			}
-		},
-		[]
-	)
+	const deleteField = async (id: string) => {
+		try {
+			await FormFieldService.deleteFormField(id)
+			setFields(prev => prev.filter(field => field._id !== id))
+		} catch (error: any) {
+			setError(error.message || 'Ошибка удаления поля')
+		}
+	}
 
-	// Получение секций (полей типа header)
-	const getSections = useCallback(() => {
-		return fields.filter(field => field.type === 'header')
-	}, [fields])
-
-	// Получение названия секции для поля
-	const getSectionName = useCallback(
-		(field: FormField) => {
-			if (field.type === 'header') {
-				return field.label || 'Без названия'
-			}
-
-			if (field.type === 'divider') {
-				return 'Разделитель'
-			}
-
-			if (field.sectionId) {
-				const section = fields.find(
-					f => f._id === field.sectionId && f.type === 'header'
-				)
-				return section?.label || 'Неизвестная секция'
-			}
-
-			return 'Без секции'
-		},
-		[fields]
-	)
-
-	// Перезагрузка данных
-	const reload = useCallback(async () => {
-		await loadFields()
-	}, [loadFields])
-
-	// Первоначальная загрузка
 	useEffect(() => {
-		loadFields()
-	}, [loadFields])
+		if (formId) {
+			loadFields()
+		}
+	}, [formId, loadFields])
 
 	return {
 		fields,
 		loading,
 		error,
+		loadFields,
 		updateField,
-		getSections,
-		getSectionName,
-		reload,
+		deleteField,
 	}
 }

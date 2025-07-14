@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useCallback } from 'react'
 import {
 	Box,
 	Alert,
@@ -7,19 +7,25 @@ import {
 	LinearProgress,
 	Snackbar,
 	Typography,
+	Switch,
+	FormControlLabel,
+	Divider,
 } from '@mui/material'
 import AutoSaveIcon from '@mui/icons-material/CloudDone'
 import { FormEditorProps } from './types'
 import { useFormEditor } from './hooks/useFormEditor'
-import { useDragAndDrop } from './hooks/useDragAndDrop'
-
 import { useFieldManagement } from './hooks/useFieldManagement'
 import { FormHeader } from './components/FormHeader'
 import { FormSettings } from './components/FormSettings'
 import { FieldsList } from './components/FieldsList'
+import { ImprovedFieldsList } from './components/ImprovedFieldsList'
+import { AdvancedFieldsList } from './components/AdvancedFieldsList'
 import { FormFieldService } from '../../../services/formFieldService'
 
 const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
+	const [useImprovedUI, setUseImprovedUI] = useState(true)
+	const [useAdvancedDragDrop, setUseAdvancedDragDrop] = useState(false)
+
 	const {
 		state,
 		setState,
@@ -29,8 +35,6 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 		clearError,
 		reloadFields,
 	} = useFormEditor(form, onSave)
-
-	const dragHandlers = useDragAndDrop(state, setState)
 
 	const {
 		addNewField,
@@ -94,20 +98,76 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 			{/* Поля формы */}
 			<Card elevation={1} sx={{ borderRadius: 1 }}>
 				<CardContent sx={{ p: 2 }}>
-					<FieldsList
-						fields={state.fields}
-						loading={state.loading}
-						bitrixFields={state.bitrixFields}
-						dragOverIndex={state.dragOverIndex}
-						onAddField={addNewField}
-						onAddSection={addNewSection}
-						onAddFieldToSection={addFieldToSection}
-						onFieldSave={handleFieldSave}
-						onFieldDelete={handleFieldDelete}
-						onMoveFieldToSection={moveFieldToSection}
-						onNormalizeOrders={normalizeOrders}
-						dragHandlers={dragHandlers}
-					/>
+					{/* Переключатели UI */}
+					<Box sx={{ mb: 2 }}>
+						<FormControlLabel
+							control={
+								<Switch
+									checked={useImprovedUI}
+									onChange={e => setUseImprovedUI(e.target.checked)}
+									color='primary'
+								/>
+							}
+							label='Использовать улучшенный интерфейс'
+						/>
+						{useImprovedUI && (
+							<FormControlLabel
+								control={
+									<Switch
+										checked={useAdvancedDragDrop}
+										onChange={e => setUseAdvancedDragDrop(e.target.checked)}
+										color='secondary'
+									/>
+								}
+								label='Продвинутый drag & drop'
+								sx={{ ml: 2 }}
+							/>
+						)}
+					</Box>
+					<Divider sx={{ mb: 2 }} />
+
+					{useImprovedUI ? (
+						useAdvancedDragDrop ? (
+							<AdvancedFieldsList
+								state={state}
+								setState={setState}
+								onAddField={addNewField}
+								onAddSection={addNewSection}
+								onFieldSave={handleFieldSave}
+								onFieldDelete={handleFieldDelete}
+							/>
+						) : (
+							<ImprovedFieldsList
+								state={state}
+								setState={setState}
+								onAddField={addNewField}
+								onAddSection={addNewSection}
+								onFieldSave={handleFieldSave}
+								onFieldDelete={handleFieldDelete}
+							/>
+						)
+					) : (
+						<FieldsList
+							fields={state.fields}
+							loading={state.loading}
+							bitrixFields={state.bitrixFields}
+							dragOverIndex={state.dragOverIndex}
+							onAddField={addNewField}
+							onAddSection={addNewSection}
+							onAddFieldToSection={addFieldToSection}
+							onFieldSave={handleFieldSave}
+							onFieldDelete={handleFieldDelete}
+							onMoveFieldToSection={moveFieldToSection}
+							onNormalizeOrders={normalizeOrders}
+							dragHandlers={{
+								handleDragStart: () => {},
+								handleDragOver: () => {},
+								handleDragLeave: () => {},
+								handleDrop: async () => {},
+								handleDragEnd: () => {},
+							}}
+						/>
+					)}
 				</CardContent>
 			</Card>
 

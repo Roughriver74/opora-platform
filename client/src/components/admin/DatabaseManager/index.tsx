@@ -1,535 +1,229 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
 	Box,
-	Tabs,
-	Tab,
 	Typography,
-	Paper,
+	Card,
+	CardContent,
+	Alert,
 	Button,
 	Stack,
-	Alert,
-	Dialog,
-	DialogTitle,
-	DialogContent,
-	DialogActions,
-	CircularProgress,
-	FormControl,
-	InputLabel,
-	Select,
-	MenuItem,
 	Chip,
+	Tab,
+	Tabs,
+	CircularProgress,
+	Paper,
+	Divider,
 } from '@mui/material'
-import { Build as NormalizeIcon } from '@mui/icons-material'
-import { DatabaseTable } from './components/DatabaseTable'
+import { Refresh, Download, Upload, Settings } from '@mui/icons-material'
+import { FormField } from '../../../types'
 import { useFormFields } from './hooks/useFormFields'
 import { useUsers } from './hooks/useUsers'
-// import { getFieldSectionName } from './utils/sectionUtils' // Больше не нужно
-import {
-	calculateNormalizedOrder,
-	generateNormalizationReport,
-	NormalizationResult,
-} from './utils/orderNormalizer'
+import { FieldsTable } from './components/FieldsTable'
+import { DatabaseTable } from './components/DatabaseTable'
+import { SectionSelector } from './components/SectionSelector'
 
-interface TabPanelProps {
-	children?: React.ReactNode
-	index: number
-	value: number
+interface DatabaseManagerProps {
+	formId: string
 }
 
-const TabPanel = (props: TabPanelProps) => {
-	const { children, value, index, ...other } = props
-
-	return (
-		<div
-			role='tabpanel'
-			hidden={value !== index}
-			id={`database-tabpanel-${index}`}
-			aria-labelledby={`database-tab-${index}`}
-			{...other}
-		>
-			{value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
-		</div>
-	)
-}
-
-const a11yProps = (index: number) => {
-	return {
-		id: `database-tab-${index}`,
-		'aria-controls': `database-tabpanel-${index}`,
-	}
-}
-
-// Конфигурация колонок для таблицы пользователей
-const usersColumns = [
-	{
-		accessorKey: 'firstName',
-		header: 'Имя',
-		size: 150,
-	},
-	{
-		accessorKey: 'lastName',
-		header: 'Фамилия',
-		size: 150,
-	},
-	{
-		accessorKey: 'email',
-		header: 'Email',
-		size: 250,
-	},
-	{
-		accessorKey: 'role',
-		header: 'Роль',
-		size: 120,
-	},
-	{
-		accessorKey: 'bitrix_id',
-		header: 'Битрикс ID',
-		size: 120,
-	},
-]
-
-const DatabaseManager: React.FC = () => {
-	const [tabValue, setTabValue] = useState(0)
-	const [normalizeDialogOpen, setNormalizeDialogOpen] = useState(false)
-	const [normalizationResult, setNormalizationResult] =
-		useState<NormalizationResult | null>(null)
-	const [isNormalizing, setIsNormalizing] = useState(false)
-	const [successMessage, setSuccessMessage] = useState<string | null>(null)
-	const [selectedFormId, setSelectedFormId] = useState<string>('all')
+const DatabaseManager: React.FC<DatabaseManagerProps> = ({ formId }) => {
+	const [activeTab, setActiveTab] = useState(0)
+	const [selectedSection, setSelectedSection] = useState<string>('')
 
 	// Хуки для загрузки данных
 	const {
-		data: formFieldsData,
-		isLoading: formFieldsLoading,
+		fields: formFieldsData,
+		loading: formFieldsLoading,
 		updateField,
 		error: formFieldsError,
-	} = useFormFields()
+		loadFields: reloadFields,
+	} = useFormFields(formId)
 
 	const {
-		data: usersData,
-		isLoading: usersLoading,
-		updateUser,
+		users,
+		loading: usersLoading,
 		error: usersError,
+		updateUser,
+		loadUsers: reloadUsers,
 	} = useUsers()
 
-	// Получаем уникальные формы для фильтра
-	const uniqueForms = useMemo(() => {
-		if (!formFieldsData) return []
+	// Группировка полей по секциям
+	const fieldsBySection = useMemo(() => {
+		if (!formFieldsData || formFieldsData.length === 0) return {}
 
-		const formIds = formFieldsData
-			.map(field => field.formId)
-			.filter(Boolean)
-			.filter((formId, index, array) => array.indexOf(formId) === index) // уникальные значения
+		const sections: Record<string, FormField[]> = {}
 
-		return formIds.map(formId => ({
-			id: formId!,
-			name: `Форма ${formId}`,
-		}))
+		// Сначала получаем все секции (поля типа header)
+		const headerFields = formFieldsData.filter(field => field.type === 'header')
+
+		// Создаем секции по заголовкам
+		headerFields.forEach(header => {
+			if (header._id) {
+				sections[header.label || header.name || 'Без названия'] = []
+			}
+		})
+
+		// Добавляем секцию для полей без секции
+		sections['Без секции'] = []
+
+		// Распределяем поля по секциям
+		formFieldsData.forEach(field => {
+			if (field.type === 'header') return // Пропускаем сами заголовки
+
+			if (field.sectionId) {
+				const headerField = headerFields.find(h => h._id === field.sectionId)
+				const sectionName = headerField
+					? headerField.label || headerField.name || 'Без названия'
+					: 'Без секции'
+				if (sections[sectionName]) {
+					sections[sectionName].push(field)
+				} else {
+					sections['Без секции'].push(field)
+				}
+			} else {
+				sections['Без секции'].push(field)
+			}
+		})
+
+		return sections
 	}, [formFieldsData])
 
-	// Фильтрованные данные полей формы
-	const filteredFormFields = useMemo(() => {
-		if (!formFieldsData) return []
-		if (selectedFormId === 'all') return formFieldsData
+	// Фильтрация полей по выбранной секции
+	const filteredFields = useMemo(() => {
+		if (!selectedSection || !formFieldsData) return formFieldsData || []
 
-		return formFieldsData.filter(field => field.formId === selectedFormId)
-	}, [formFieldsData, selectedFormId])
-
-	// Динамическая конфигурация колонок для таблицы полей формы
-	const formFieldsColumns = useMemo(
-		() => [
-			{
-				accessorKey: 'name',
-				header: 'Название поля',
-				size: 180,
-			},
-			{
-				accessorKey: 'label',
-				header: 'Отображаемое название',
-				size: 180,
-			},
-			{
-				accessorKey: 'type',
-				header: 'Тип',
-				size: 100,
-			},
-			{
-				accessorKey: 'order',
-				header: 'Порядок',
-				size: 80,
-			},
-			{
-				accessorKey: 'formId',
-				header: 'ID Формы',
-				size: 120,
-				cell: (props: any) => {
-					const formId = props.getValue?.()
-					return formId ? (
-						<Chip label={formId} variant='outlined' size='small' />
-					) : (
-						<Chip
-							label='Не указана'
-							variant='outlined'
-							size='small'
-							color='error'
-						/>
-					)
-				},
-			},
-			{
-				accessorKey: 'section',
-				header: 'Раздел',
-				size: 200,
-				enableSorting: false,
-				cell: (props: any) => {
-					const field = props.row?.original
-
-					if (!field) {
-						return 'Ошибка'
-					}
-
-					// Если это сам раздел (header), показываем специальное обозначение
-					if (field.type === 'header') {
-						return (
-							<Box sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-								🏷️ РАЗДЕЛ: {field.label || 'Без названия'}
-							</Box>
-						)
-					}
-
-					// Если это разделитель
-					if (field.type === 'divider') {
-						return (
-							<Box sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-								➖ РАЗДЕЛИТЕЛЬ
-							</Box>
-						)
-					}
-
-					// Получаем все разделы для выпадающего списка
-					const sections = (formFieldsData || [])
-						.filter(f => f.type === 'header')
-						.sort((a, b) => (a.order || 0) - (b.order || 0))
-
-					// Определяем текущий раздел
-					let currentSectionText = 'Без раздела'
-					if (field.sectionId) {
-						const currentSection = sections.find(s => s._id === field.sectionId)
-						if (currentSection) {
-							currentSectionText = currentSection.label || 'Без названия'
-						}
-					}
-
-					// Для обычных полей показываем выпадающий список
-					return (
-						<FormControl size='small' fullWidth>
-							<Select
-								value={field.sectionId || ''}
-								onChange={e => {
-									const newSectionId = e.target.value || null
-									if (updateField) {
-										updateField(field._id, { sectionId: newSectionId })
-									}
-								}}
-								displayEmpty
-								variant='standard'
-								sx={{
-									minWidth: 150,
-									'& .MuiSelect-select': {
-										fontSize: '0.875rem',
-									},
-								}}
-							>
-								<MenuItem value=''>
-									<em style={{ color: '#666' }}>Без раздела</em>
-								</MenuItem>
-								{sections.map(section => (
-									<MenuItem key={section._id} value={section._id}>
-										🏷️ {section.label || 'Без названия'}
-									</MenuItem>
-								))}
-							</Select>
-						</FormControl>
-					)
-				},
-			},
-			{
-				accessorKey: 'required',
-				header: 'Обязательное',
-				size: 100,
-				cell: (props: any) => {
-					const value = props.getValue?.()
-					return value ? 'Да' : 'Нет'
-				},
-			},
-			{
-				accessorKey: 'sectionId',
-				header: 'ID Раздела',
-				size: 140,
-				cell: (props: any) => {
-					const sectionId = props.getValue?.()
-					return sectionId ? (
-						<Chip label={sectionId} variant='outlined' size='small' />
-					) : (
-						<Chip label='Авто' variant='outlined' size='small' color='info' />
-					)
-				},
-			},
-			{
-				accessorKey: 'bitrixFieldId',
-				header: 'Битрикс ID',
-				size: 140,
-			},
-		],
-		[formFieldsData]
-	)
-
-	const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-		setTabValue(newValue)
-		setSuccessMessage(null) // Сбрасываем сообщение при смене вкладки
-	}
-
-	// Обработчик предварительного просмотра нормализации
-	const handleNormalizePreview = () => {
-		if (!filteredFormFields) return
-
-		const result = calculateNormalizedOrder(filteredFormFields)
-		setNormalizationResult(result)
-		setNormalizeDialogOpen(true)
-	}
-
-	// Обработчик применения нормализации
-	const handleApplyNormalization = async () => {
-		if (!normalizationResult || !updateField) return
-
-		setIsNormalizing(true)
-		try {
-			// Применяем все обновления по очереди
-			for (const update of normalizationResult.updates) {
-				await updateField(update.id, { order: update.newOrder })
-			}
-
-			setSuccessMessage(
-				`✅ Нормализация завершена! Обновлено ${normalizationResult.summary.totalChanges} полей.`
+		if (selectedSection === 'Без секции') {
+			return formFieldsData.filter(
+				field => field.type !== 'header' && !field.sectionId
 			)
-			setNormalizeDialogOpen(false)
-			setNormalizationResult(null)
-		} catch (error: any) {
-			console.error('Ошибка при нормализации:', error)
-			alert(`Ошибка при нормализации: ${error.message}`)
-		} finally {
-			setIsNormalizing(false)
+		}
+
+		// Найдем ID секции по названию
+		const headerFields = formFieldsData.filter(field => field.type === 'header')
+		const sectionHeader = headerFields.find(
+			h => (h.label || h.name || 'Без названия') === selectedSection
+		)
+
+		if (sectionHeader) {
+			return formFieldsData.filter(
+				field =>
+					field.type !== 'header' && field.sectionId === sectionHeader._id
+			)
+		}
+
+		return []
+	}, [formFieldsData, selectedSection])
+
+	const handleRefresh = async () => {
+		await Promise.all([reloadFields(), reloadUsers()])
+	}
+
+	const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
+		setActiveTab(newValue)
+	}
+
+	const handleSectionChange = (section: string) => {
+		setSelectedSection(section)
+	}
+
+	const renderContent = () => {
+		switch (activeTab) {
+			case 0:
+				return (
+					<Box>
+						<SectionSelector
+							sections={Object.keys(fieldsBySection)}
+							selectedSection={selectedSection}
+							onSectionChange={handleSectionChange}
+						/>
+						<FieldsTable
+							fields={filteredFields}
+							onUpdateField={updateField}
+							loading={formFieldsLoading}
+						/>
+					</Box>
+				)
+			case 1:
+				return (
+					<DatabaseTable
+						users={users}
+						onUpdateUser={updateUser}
+						loading={usersLoading}
+					/>
+				)
+			default:
+				return null
 		}
 	}
 
-	// Закрытие диалога нормализации
-	const handleCloseNormalizeDialog = () => {
-		setNormalizeDialogOpen(false)
-		setNormalizationResult(null)
-	}
-
 	return (
-		<Box>
-			<Typography variant='h5' component='h2' gutterBottom>
-				Управление базой данных
-			</Typography>
-			<Typography variant='body2' color='text.secondary' sx={{ mb: 3 }}>
-				Редактируйте данные напрямую в таблицах с автоматическим сохранением
-			</Typography>
-
-			<Alert severity='info' sx={{ mb: 3 }}>
-				💡 Дважды кликните на ячейку для редактирования. Изменения сохраняются
-				автоматически при нажатии Enter или потере фокуса.
-			</Alert>
-
-			<Paper elevation={1}>
-				<Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-					<Tabs
-						value={tabValue}
-						onChange={handleTabChange}
-						aria-label='database tables tabs'
-						variant='scrollable'
-						scrollButtons='auto'
+		<Box sx={{ p: 3 }}>
+			<Paper elevation={1} sx={{ borderRadius: 2 }}>
+				<Box sx={{ p: 3 }}>
+					<Stack
+						direction='row'
+						justifyContent='space-between'
+						alignItems='center'
+						sx={{ mb: 3 }}
 					>
-						<Tab label='Поля форм' {...a11yProps(0)} />
-						<Tab label='Пользователи' {...a11yProps(1)} />
-						<Tab label='Формы' {...a11yProps(2)} />
-						<Tab label='Заявки' {...a11yProps(3)} />
-						<Tab label='Настройки' {...a11yProps(4)} />
-					</Tabs>
-				</Box>
-
-				<TabPanel value={tabValue} index={0}>
-					<Stack spacing={2}>
-						{/* Сообщение об успехе */}
-						{successMessage && (
-							<Alert severity='success' onClose={() => setSuccessMessage(null)}>
-								{successMessage}
-							</Alert>
-						)}
-
-						{/* Ошибки */}
-						{formFieldsError && (
-							<Alert severity='error'>
-								Ошибка загрузки полей: {formFieldsError}
-							</Alert>
-						)}
-
-						{/* Панель управления */}
-						<Stack
-							direction='row'
-							spacing={2}
-							alignItems='center'
-							flexWrap='wrap'
+						<Typography variant='h4' component='h1'>
+							База данных
+						</Typography>
+						<Button
+							variant='outlined'
+							startIcon={<Refresh />}
+							onClick={handleRefresh}
+							disabled={formFieldsLoading || usersLoading}
 						>
-							<Typography variant='h6' component='h3'>
-								Поля формы
-							</Typography>
+							Обновить
+						</Button>
+					</Stack>
 
-							{/* Фильтр по формам */}
-							<FormControl size='small' sx={{ minWidth: 200 }}>
-								<InputLabel>Фильтр по форме</InputLabel>
-								<Select
-									value={selectedFormId}
-									onChange={e => setSelectedFormId(e.target.value)}
-									label='Фильтр по форме'
-								>
-									<MenuItem value='all'>
-										<em>Все формы ({formFieldsData?.length || 0} полей)</em>
-									</MenuItem>
-									{uniqueForms.map(form => {
-										const fieldsCount =
-											formFieldsData?.filter(f => f.formId === form.id)
-												.length || 0
-										return (
-											<MenuItem key={form.id} value={form.id}>
-												{form.name} ({fieldsCount} полей)
-											</MenuItem>
-										)
-									})}
-								</Select>
-							</FormControl>
+					{/* Ошибки */}
+					{(formFieldsError || usersError) && (
+						<Alert severity='error' sx={{ mb: 3 }}>
+							{formFieldsError || usersError}
+						</Alert>
+					)}
 
-							<Button
-								variant='outlined'
-								size='small'
-								startIcon={<NormalizeIcon />}
-								onClick={handleNormalizePreview}
-								disabled={formFieldsLoading || !filteredFormFields.length}
-							>
-								Нормализовать порядок
-							</Button>
-						</Stack>
-
-						{/* Информационная панель */}
-						<Paper
-							sx={{ p: 2, bgcolor: 'info.light', color: 'info.contrastText' }}
-						>
-							<Typography variant='body2'>
-								<strong>📋 Правила нумерации:</strong>
-								<br />
-								• Разделы (заголовки): 100, 200, 300...
-								<br />
-								• Поля в разделах: 101, 102, 103... (для раздела 100)
-								<br />
-								• Поля без раздела: 1, 2, 3...
-								<br />• Используйте кнопку "Нормализовать порядок" для
-								автоматического исправления
-							</Typography>
-						</Paper>
-
-						{/* Таблица */}
-						<DatabaseTable
-							data={filteredFormFields}
-							columns={formFieldsColumns}
-							isLoading={formFieldsLoading}
-							onUpdateRow={updateField}
-							tableName={`Поля форм${
-								selectedFormId !== 'all' ? ` (форма ${selectedFormId})` : ''
-							}`}
+					{/* Статистика */}
+					<Stack direction='row' spacing={2} sx={{ mb: 3 }}>
+						<Chip
+							label={`Полей: ${formFieldsData?.length || 0}`}
+							color='primary'
+							variant='outlined'
+						/>
+						<Chip
+							label={`Пользователей: ${users?.length || 0}`}
+							color='secondary'
+							variant='outlined'
+						/>
+						<Chip
+							label={`Секций: ${Object.keys(fieldsBySection).length}`}
+							color='info'
+							variant='outlined'
 						/>
 					</Stack>
-				</TabPanel>
 
-				<TabPanel value={tabValue} index={1}>
-					{usersError && (
-						<Typography color='error' sx={{ mb: 2 }}>
-							Ошибка загрузки пользователей: {usersError}
-						</Typography>
-					)}
-					<DatabaseTable
-						data={usersData || []}
-						columns={usersColumns}
-						isLoading={usersLoading}
-						onUpdateRow={updateUser}
-						tableName='Пользователи'
-					/>
-				</TabPanel>
+					{/* Вкладки */}
+					<Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 3 }}>
+						<Tab label='Поля формы' />
+						<Tab label='Пользователи' />
+					</Tabs>
 
-				<TabPanel value={tabValue} index={2}>
-					<Box sx={{ p: 3, textAlign: 'center' }}>
-						<Typography color='text.secondary'>
-							Таблица форм - в разработке
-						</Typography>
-					</Box>
-				</TabPanel>
+					<Divider sx={{ mb: 3 }} />
 
-				<TabPanel value={tabValue} index={3}>
-					<Box sx={{ p: 3, textAlign: 'center' }}>
-						<Typography color='text.secondary'>
-							Таблица заявок - в разработке
-						</Typography>
-					</Box>
-				</TabPanel>
-
-				<TabPanel value={tabValue} index={4}>
-					<Box sx={{ p: 3, textAlign: 'center' }}>
-						<Typography color='text.secondary'>
-							Таблица настроек - в разработке
-						</Typography>
-					</Box>
-				</TabPanel>
-			</Paper>
-
-			{/* Диалог нормализации порядка */}
-			<Dialog
-				open={normalizeDialogOpen}
-				onClose={handleCloseNormalizeDialog}
-				maxWidth='md'
-				fullWidth
-			>
-				<DialogTitle>🔧 Нормализация порядка полей</DialogTitle>
-				<DialogContent>
-					{normalizationResult && (
-						<Box
-							sx={{
-								whiteSpace: 'pre-line',
-								fontFamily: 'monospace',
-								fontSize: '0.9rem',
-							}}
-						>
-							{generateNormalizationReport(normalizationResult)}
+					{/* Загрузка */}
+					{(formFieldsLoading || usersLoading) && (
+						<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+							<CircularProgress />
 						</Box>
 					)}
-				</DialogContent>
-				<DialogActions>
-					<Button onClick={handleCloseNormalizeDialog}>Отмена</Button>
-					<Button
-						onClick={handleApplyNormalization}
-						variant='contained'
-						disabled={
-							isNormalizing ||
-							!normalizationResult ||
-							normalizationResult.summary.totalChanges === 0
-						}
-						startIcon={
-							isNormalizing ? <CircularProgress size={16} /> : undefined
-						}
-					>
-						{isNormalizing ? 'Применяется...' : 'Применить изменения'}
-					</Button>
-				</DialogActions>
-			</Dialog>
+
+					{/* Содержимое */}
+					{!formFieldsLoading && !usersLoading && renderContent()}
+				</Box>
+			</Paper>
 		</Box>
 	)
 }

@@ -7,6 +7,7 @@ import {
 	FormHelperText,
 } from '@mui/material'
 import { FieldInputProps } from '../../types'
+import { getFieldStyles } from '../../utils/fieldStyles'
 
 export const SelectInput: React.FC<FieldInputProps> = ({
 	field,
@@ -14,14 +15,18 @@ export const SelectInput: React.FC<FieldInputProps> = ({
 	onChange,
 	error,
 	compact = false,
+	isMobile = false,
 	options = [],
 }) => {
+	const styles = getFieldStyles(compact, isMobile)
+
 	return (
 		<FormControl
 			fullWidth
-			margin={compact ? 'dense' : 'normal'}
+			margin={compact || isMobile ? 'dense' : 'normal'}
+			size={isMobile ? 'small' : compact ? 'small' : 'medium'}
 			error={!!error}
-			size={compact ? 'small' : 'medium'}
+			sx={styles.textField}
 		>
 			<InputLabel id={`${field.name}-label`}>{field.label}</InputLabel>
 			<Select

@@ -1,69 +1,66 @@
 import axios from 'axios'
 
-// Базовый URL для API
-// В development используем полный URL к серверу, в production - относительный путь
-const API_URL =
-	process.env.NODE_ENV === 'development'
-		? process.env.REACT_APP_API_URL || 'http://localhost:5001/api'
-		: process.env.REACT_APP_API_URL || '/api'
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001'
 
-console.log('Using API URL:', API_URL) // Для отладки
-
-// Создание экземпляра axios с базовым URL
 const api = axios.create({
 	baseURL: API_URL,
+	timeout: 10000,
 	headers: {
 		'Content-Type': 'application/json',
 	},
 })
 
-// Интерцептор для добавления токена авторизации к запросам
+// Интерцептор для добавления токена авторизации
 api.interceptors.request.use(
 	config => {
-		// Получаем токены из правильного места в localStorage
-		try {
-			const tokens = localStorage.getItem('auth_tokens')
-			if (tokens) {
-				const parsedTokens = JSON.parse(tokens)
-				if (parsedTokens.accessToken) {
-					config.headers['Authorization'] = `Bearer ${parsedTokens.accessToken}`
-				}
-			}
-		} catch (error) {
-			console.error('Ошибка при получении токена:', error)
+		const token = localStorage.getItem('token')
+		if (token) {
+			config.headers.Authorization = `Bearer ${token}`
 		}
 		return config
 	},
-	error => {
-		return Promise.reject(error)
-	}
+	error => Promise.reject(error)
 )
 
-// Интерцептор для обработки ошибок аутентификации
+// Интерцептор для обработки ответов
 api.interceptors.response.use(
 	response => response,
-	error => {
-		// Если сервер вернул 401 Unauthorized, проверяем причину
-		if (error.response && error.response.status === 401) {
-			const errorMessage = error.response.data?.message || ''
+	async error => {
+		const originalRequest = error.config
 
-			// Разлогиниваем только если токен недействителен или истек
+		if (error.response?.status === 401 && !originalRequest._retry) {
+			originalRequest._retry = true
+
+			// Очищаем токены
+			localStorage.removeItem('token')
+			localStorage.removeItem('refreshToken')
+			localStorage.removeItem('user')
+
+			// Перенаправляем на страницу входа
+			window.location.href = '/login'
+
+			return Promise.reject(error)
+		}
+
+		// Обработка других ошибок
+		if (error.response?.status === 403) {
+			const errorMessage = error.response.data?.error || 'Доступ запрещен'
+
+			// Проверяем, истек ли токен
 			if (
-				errorMessage.includes('недействителен') ||
-				errorMessage.includes('истек') ||
-				errorMessage.includes('отсутствует') ||
-				errorMessage.includes('invalid token') ||
-				errorMessage.includes('expired')
+				errorMessage.includes('Token expired') ||
+				errorMessage.includes('invalid')
 			) {
-				console.log('Token expired or invalid, clearing tokens')
-				localStorage.removeItem('auth_tokens')
-				// Перезагружаем страницу для принудительного выхода
-				window.location.reload()
-			} else {
-				// Для других ошибок 401 (например, недостаток прав) - просто логируем
-				console.log('Access denied, but token is valid:', errorMessage)
+				// Очищаем все токены
+				localStorage.removeItem('token')
+				localStorage.removeItem('refreshToken')
+				localStorage.removeItem('user')
+
+				// Перенаправляем на страницу входа
+				window.location.href = '/login'
 			}
 		}
+
 		return Promise.reject(error)
 	}
 )

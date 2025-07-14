@@ -26,6 +26,7 @@ const FormField: React.FC<FormFieldProps> = ({
 	error,
 	compact = false,
 	preloadedOptions,
+	isMobile = false,
 }) => {
 	const [searchQuery, setSearchQuery] = useState('')
 	const [isValueSelected, setIsValueSelected] = useState(false)
@@ -48,174 +49,131 @@ const FormField: React.FC<FormFieldProps> = ({
 
 	// Initialize static options
 	useEffect(() => {
-		if (field.options && !field.dynamicSource?.enabled) {
-			setOptions(field.options)
+		if (field.options && field.options.length > 0) {
+			setOptions(
+				field.options.map(option => ({
+					value: option.value,
+					label: option.label,
+				}))
+			)
 		}
-	}, [field.options, field.dynamicSource?.enabled, setOptions])
+	}, [field.options, setOptions])
 
-	// Load initial dynamic options for select fields
+	// Initialize selected option
 	useEffect(() => {
-		if (field.dynamicSource?.enabled && field.type === FIELD_TYPES.SELECT) {
-			// Для select полей загружаем данные с пустым запросом (получаем первые записи)
-			loadDynamicOptions('')
+		if (value && !isValueSelected) {
+			syncWithOptions(value)
+			setIsValueSelected(true)
 		}
-	}, [field.dynamicSource?.enabled, field.type, loadDynamicOptions])
+	}, [value, syncWithOptions, isValueSelected])
 
-	// Load dynamic options on search (только для autocomplete)
+	// Load dynamic options when needed
 	useEffect(() => {
-		if (
-			field.dynamicSource?.enabled &&
-			field.type === FIELD_TYPES.AUTOCOMPLETE &&
-			debouncedSearchQuery &&
-			!isValueSelected
-		) {
+		if (field.dynamicSource && debouncedSearchQuery) {
 			loadDynamicOptions(debouncedSearchQuery)
 		}
-	}, [
-		debouncedSearchQuery,
-		field.dynamicSource?.enabled,
-		field.type,
-		loadDynamicOptions,
-		isValueSelected,
-	])
+	}, [debouncedSearchQuery, field.dynamicSource, loadDynamicOptions])
 
-	// Handle search change for autocomplete
+	// Force update when value changes externally
+	useEffect(() => {
+		if (value !== lastValue) {
+			setForceUpdateKey(prev => prev + 1)
+			setLastValue(value)
+			if (value) {
+				setIsValueSelected(true)
+			}
+		}
+	}, [value, lastValue])
+
+	const handleChange = (name: string, newValue: any) => {
+		onChange(name, newValue)
+		setIsValueSelected(!!newValue)
+	}
+
 	const handleSearchChange = (query: string) => {
 		setSearchQuery(query)
-		// Сбрасываем флаг выбора при новом поиске
-		if (query && query.length > 0) {
+		if (!query) {
 			setIsValueSelected(false)
 		}
 	}
 
-	// Обнаружение изменения value извне (например, при копировании)
-	useEffect(() => {
-		if (value !== lastValue) {
-			setLastValue(value)
-
-			// Если значение изменилось извне и это автокомплит с динамической загрузкой
-			if (
-				field.type === FIELD_TYPES.AUTOCOMPLETE &&
-				field.dynamicSource?.enabled &&
-				value &&
-				value !== ''
-			) {
-				console.log(
-					`🔍 FormField: Значение изменилось извне для ${field.name}, инициируем автоматический поиск: "${value}"`
-				)
-
-				// Принудительно загружаем опции для нового значения
-				setIsValueSelected(false)
-				setSearchQuery(String(value))
-				loadDynamicOptions(String(value))
-			}
-		}
-	}, [
-		value,
-		lastValue,
-		field.type,
-		field.dynamicSource?.enabled,
-		field.name,
-		loadDynamicOptions,
-	])
-
-	// Update selected option when value changes
-	useEffect(() => {
-		if (value && options.length > 0) {
-			const synced = syncWithOptions(value)
-			if (synced) {
-				setIsValueSelected(true)
-				setSearchQuery('') // Очищаем поиск после выбора
-				console.log(
-					`✅ FormField: Автоматически выбрана опция для ${field.name}:`,
-					synced
-				)
-			} else if (field.type === FIELD_TYPES.AUTOCOMPLETE) {
-				// Для автозаполнения, если опция не найдена, инициируем поиск
-				console.log(
-					`🔍 FormField: Опция не найдена для ${field.name}, инициируем поиск для: ${value}`
-				)
-				setIsValueSelected(false)
-				handleSearchChange(String(value))
-			}
-		} else if (!value) {
-			setSelectedOption(null)
-			setIsValueSelected(false)
-		}
-	}, [value, options, syncWithOptions, field.name, field.type])
-
-	// Принудительное обновление для автозаполнения
-	useEffect(() => {
-		if (field.type === FIELD_TYPES.AUTOCOMPLETE && value) {
-			// Небольшая задержка для принудительного обновления
-			const timer = setTimeout(() => {
-				console.log(
-					`🔄 FormField: Принудительное обновление автозаполнения ${field.name}`
-				)
-				setForceUpdateKey(prev => prev + 1)
-			}, 300)
-			return () => clearTimeout(timer)
-		}
-	}, [value, field.type, field.name])
-
 	const renderField = () => {
-		const commonProps = {
+		const baseProps = {
 			field,
 			value,
-			onChange,
+			onChange: handleChange,
 			error,
-			compact,
-			options,
-			loading,
-			onSearchChange: handleSearchChange,
+			compact: compact || isMobile,
+			isMobile,
 		}
 
 		switch (field.type) {
 			case FIELD_TYPES.TEXT:
-				return <TextInput {...commonProps} />
-
-			case FIELD_TYPES.NUMBER:
-				return <NumberInput {...commonProps} />
-
-			case FIELD_TYPES.DATE:
-				return <DateInput {...commonProps} />
+				return <TextInput {...baseProps} />
 
 			case FIELD_TYPES.SELECT:
-				return <SelectInput {...commonProps} />
+				return <SelectInput {...baseProps} options={options} />
 
 			case FIELD_TYPES.AUTOCOMPLETE:
 				return (
 					<AutocompleteInput
-						key={`${field.name}-${forceUpdateKey}`}
-						{...commonProps}
+						{...baseProps}
+						options={options}
+						loading={loading}
+						onSearchChange={handleSearchChange}
+						selectedOption={selectedOption}
+						setSelectedOption={setSelectedOption}
+						forceUpdateKey={forceUpdateKey}
 					/>
 				)
 
 			case FIELD_TYPES.CHECKBOX:
-				return <CheckboxInput {...commonProps} />
+				return <CheckboxInput {...baseProps} />
 
 			case FIELD_TYPES.RADIO:
-				return <RadioInput {...commonProps} />
+				return <RadioInput {...baseProps} options={options} />
 
 			case FIELD_TYPES.TEXTAREA:
-				return <TextareaInput {...commonProps} />
+				return <TextareaInput {...baseProps} />
+
+			case FIELD_TYPES.NUMBER:
+				return <NumberInput {...baseProps} />
+
+			case FIELD_TYPES.DATE:
+				return <DateInput {...baseProps} />
 
 			case FIELD_TYPES.DIVIDER:
-				return <DividerField {...commonProps} />
+				return <DividerField field={field} />
 
 			case FIELD_TYPES.HEADER:
-				return <HeaderField {...commonProps} />
+				return <HeaderField field={field} />
 
 			default:
-				return <TextInput {...commonProps} />
+				return <TextInput {...baseProps} />
 		}
 	}
 
-	const styles = getFieldStyles(compact)
+	const styles = getFieldStyles(compact, isMobile)
 
 	// Определяем правильные отступы в зависимости от типа поля и режима
 	const getFieldMargin = () => {
-		// Для divider и header полей используем минимальные отступы
+		// Для мобильных устройств используем пиксельные значения
+		if (isMobile) {
+			if (
+				field.type === FIELD_TYPES.DIVIDER ||
+				field.type === FIELD_TYPES.HEADER
+			) {
+				return compact ? '4px' : '6px' // Еще меньше для мобильных
+			}
+
+			if (field.type === FIELD_TYPES.NUMBER) {
+				return compact ? '4px' : '6px'
+			}
+
+			return compact ? '4px' : '6px'
+		}
+
+		// Для десктопа используем исходные значения
 		if (
 			field.type === FIELD_TYPES.DIVIDER ||
 			field.type === FIELD_TYPES.HEADER
