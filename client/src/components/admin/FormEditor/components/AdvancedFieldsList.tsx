@@ -826,12 +826,7 @@ export const AdvancedFieldsList: React.FC<AdvancedFieldsListProps> = ({
 					field={state.fields[editingFieldIndex]}
 					onSave={field => handleFieldSaveLocal(editingFieldIndex, field)}
 					onClose={() => setEditingFieldIndex(null)}
-					onDelete={() => {
-						onFieldDelete(editingFieldIndex)
-						setEditingFieldIndex(null)
-					}}
-					availableBitrixFields={state.bitrixFields}
-					allFields={state.fields}
+					formId={state.formData._id || ''}
 				/>
 			)}
 

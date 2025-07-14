@@ -23,6 +23,7 @@ import {
 	TextField,
 	Collapse,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import {
 	DragIndicator,
 	Edit,
@@ -538,12 +539,7 @@ export const ImprovedFieldsList: React.FC<ImprovedFieldsListProps> = ({
 					field={state.fields[editingFieldIndex]}
 					onSave={field => handleFieldSaveLocal(editingFieldIndex, field)}
 					onClose={() => setEditingFieldIndex(null)}
-					onDelete={() => {
-						onFieldDelete(editingFieldIndex)
-						setEditingFieldIndex(null)
-					}}
-					availableBitrixFields={state.bitrixFields}
-					allFields={state.fields}
+					formId={state.formData._id || ''}
 				/>
 			)}
 		</Box>

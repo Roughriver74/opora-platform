@@ -52,6 +52,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
 	const handleSaveTitle = () => {
 		if (
 			onSectionTitleChange &&
+			section.id &&
 			tempTitle.trim() &&
 			tempTitle.trim() !== section.title
 		) {

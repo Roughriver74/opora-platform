@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
 	BrowserRouter as Router,
 	Routes,
@@ -15,63 +15,48 @@ import MySubmissions from '../../user/MySubmissions'
 import AnimatedLogo from '../../common/AnimatedLogo'
 
 export const PrivateApp: React.FC = () => {
-	const { isAuthenticated, isLoading, user } = useAuth()
+	const { isAuthenticated, isLoading, user, checkAuth } = useAuth()
 
-	// Логирование состояния для отладки
-	console.log('PrivateApp render:', {
-		isAuthenticated,
-		isLoading,
-		userRole: user?.role,
-	})
+	// Проверяем авторизацию при загрузке приложения
+	useEffect(() => {
+		// Инициализация авторизации только при первом запуске
+		const initAuth = async () => {
+			try {
+				await checkAuth()
+			} catch (error) {
+				console.error('Ошибка инициализации авторизации:', error)
+			}
+		}
 
-	// Показываем загрузку пока проверяем авторизацию
+		// Проверяем только если нет активного пользователя и нет загрузки
+		if (!isAuthenticated && !isLoading) {
+			initAuth()
+		}
+	}, []) // Пустой массив зависимостей - выполняется только при монтировании
+
+	// Показываем загрузку только при первичной инициализации
 	if (isLoading) {
-		console.log('PrivateApp: показываем загрузку')
 		return (
 			<Box
-				sx={{
-					display: 'flex',
-					flexDirection: 'column',
-					justifyContent: 'center',
-					alignItems: 'center',
-					minHeight: '100vh',
-					background: 'linear-gradient(135deg, #54C3C3 0%, #4A5FCC 100%)',
-				}}
+				display='flex'
+				justifyContent='center'
+				alignItems='center'
+				minHeight='100vh'
+				flexDirection='column'
+				gap={2}
 			>
-				<Box sx={{ mb: 3 }}>
-					<AnimatedLogo size={80} variant='white' />
-				</Box>
-				<CircularProgress
-					size={40}
-					sx={{
-						color: '#FFFFFF',
-						'& .MuiCircularProgress-circle': {
-							strokeLinecap: 'round',
-						},
-					}}
-				/>
-				<Box
-					sx={{
-						mt: 2,
-						color: '#FFFFFF',
-						fontSize: '16px',
-						fontFamily: 'Arial, sans-serif',
-					}}
-				>
-					Загрузка...
-				</Box>
+				<AnimatedLogo size={80} />
+				<CircularProgress size={40} />
 			</Box>
 		)
 	}
 
 	// Если пользователь не авторизован, показываем форму входа
 	if (!isAuthenticated) {
-		console.log('PrivateApp: пользователь не авторизован, показываем LoginForm')
 		return <LoginForm />
 	}
 
-	console.log('PrivateApp: пользователь авторизован, показываем приложение')
-
+	// Пользователь авторизован - показываем основное приложение
 	return (
 		<Router>
 			<Layout>
@@ -79,9 +64,8 @@ export const PrivateApp: React.FC = () => {
 					<Route path='/' element={<HomePage />} />
 					<Route path='/my-submissions' element={<MySubmissions />} />
 					{user?.role === 'admin' && (
-						<Route path='/admin/*' element={<AdminPage />} />
+						<Route path='/admin' element={<AdminPage />} />
 					)}
-					{/* Redirect для неавторизованных маршрутов */}
 					<Route path='*' element={<Navigate to='/' replace />} />
 				</Routes>
 			</Layout>

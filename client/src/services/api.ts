@@ -1,6 +1,11 @@
 import axios from 'axios'
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001'
+// В режиме разработки используем прокси (относительные пути)
+// В продакшене используем полный URL
+const API_URL =
+	process.env.NODE_ENV === 'production'
+		? process.env.REACT_APP_API_URL || 'http://localhost:5001'
+		: '' // Пустая строка для использования прокси в разработке
 
 const api = axios.create({
 	baseURL: API_URL,

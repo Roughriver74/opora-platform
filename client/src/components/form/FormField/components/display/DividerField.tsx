@@ -1,9 +1,11 @@
 import React from 'react'
 import { Divider, Typography, Box, IconButton } from '@mui/material'
 import { ExpandMore, ExpandLess } from '@mui/icons-material'
-import { FieldInputProps } from '../../types'
+import { FormField as FormFieldType } from '../../../../../types'
 
-interface DividerFieldProps extends FieldInputProps {
+interface DividerFieldProps {
+	field: FormFieldType
+	compact?: boolean
 	isCollapsible?: boolean
 	isExpanded?: boolean
 	onToggleExpanded?: () => void

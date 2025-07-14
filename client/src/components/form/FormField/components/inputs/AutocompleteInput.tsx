@@ -12,7 +12,12 @@ import {
 	CircularProgress,
 } from '@mui/material'
 import { FieldInputProps } from '../../types'
-import { FIELD_TEXTS } from '../../constants'
+
+// Константы для текстов
+const FIELD_TEXTS = {
+	NO_OPTIONS: 'Нет вариантов',
+	LOADING: 'Загрузка...',
+}
 
 // Добавляем интерфейс для ref методов
 export interface AutocompleteInputRef {

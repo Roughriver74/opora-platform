@@ -16,7 +16,7 @@ import {
 	Typography,
 	IconButton,
 	Alert,
-	Grid,
+	Stack,
 	Divider,
 	Autocomplete,
 	Chip,
@@ -142,31 +142,27 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 					</Alert>
 				)}
 
-				<Grid container spacing={2}>
-					<Grid item xs={12} sm={6}>
+				<Stack spacing={2}>
+					<Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
 						<TextField
 							fullWidth
 							label='Название поля'
 							value={formData.name || ''}
 							onChange={e => handleChange('name', e.target.value)}
 							required
-							margin='normal'
 						/>
-					</Grid>
 
-					<Grid item xs={12} sm={6}>
 						<TextField
 							fullWidth
 							label='Подпись поля'
 							value={formData.label || ''}
 							onChange={e => handleChange('label', e.target.value)}
 							required
-							margin='normal'
 						/>
-					</Grid>
+					</Stack>
 
-					<Grid item xs={12} sm={6}>
-						<FormControl fullWidth margin='normal'>
+					<Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+						<FormControl fullWidth>
 							<InputLabel>Тип поля</InputLabel>
 							<Select
 								value={formData.type || 'text'}
@@ -184,41 +180,36 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 								<MenuItem value='header'>Заголовок</MenuItem>
 							</Select>
 						</FormControl>
-					</Grid>
 
-					<Grid item xs={12} sm={6}>
 						<TextField
 							fullWidth
 							label='Порядок'
 							type='number'
 							value={formData.order || 0}
 							onChange={e => handleChange('order', parseInt(e.target.value))}
-							margin='normal'
 						/>
-					</Grid>
+					</Stack>
 
-					<Grid item xs={12}>
-						<FormControlLabel
-							control={
-								<Checkbox
-									checked={formData.required || false}
-									onChange={e => handleChange('required', e.target.checked)}
-								/>
-							}
-							label='Обязательное поле'
-						/>
-					</Grid>
+					<FormControlLabel
+						control={
+							<Checkbox
+								checked={formData.required || false}
+								onChange={e => handleChange('required', e.target.checked)}
+							/>
+						}
+						label='Обязательное поле'
+					/>
 
 					{/* Опции для select и radio полей */}
 					{(formData.type === 'select' || formData.type === 'radio') && (
-						<Grid item xs={12}>
+						<Box>
 							<Typography variant='subtitle1' gutterBottom>
 								Опции
 							</Typography>
 							{/* Здесь можно добавить управление опциями */}
-						</Grid>
+						</Box>
 					)}
-				</Grid>
+				</Stack>
 			</DialogContent>
 
 			<DialogActions>

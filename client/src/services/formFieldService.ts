@@ -5,8 +5,10 @@ import { FormField } from '../types'
 export const FormFieldService = {
 	async getFormFields(formId: string) {
 		try {
-			const response = await api.get(`/api/form-fields/${formId}`)
-			return response.data
+			// Получаем форму с полями вместо неправильного запроса к отдельному полю
+			const response = await api.get(`/api/forms/${formId}`)
+			// Возвращаем только поля из формы
+			return response.data.fields || []
 		} catch (error) {
 			throw error
 		}
@@ -14,7 +16,9 @@ export const FormFieldService = {
 
 	async createFormField(formId: string, fieldData: any) {
 		try {
-			const response = await api.post(`/api/form-fields/${formId}`, fieldData)
+			// Добавляем formId в данные поля и делаем POST к /api/form-fields
+			const fieldWithFormId = { ...fieldData, formId }
+			const response = await api.post('/api/form-fields', fieldWithFormId)
 			return response.data
 		} catch (error) {
 			throw error
@@ -51,6 +55,44 @@ export const FormFieldService = {
 	async getBitrixOptions(sourceConfig: any) {
 		try {
 			const response = await api.post('/api/bitrix/options', sourceConfig)
+			return response.data
+		} catch (error) {
+			throw error
+		}
+	},
+
+	async updateSectionTitle(sectionId: string, newTitle: string) {
+		try {
+			const response = await api.put(`/api/form-fields/section/${sectionId}`, {
+				label: newTitle,
+			})
+			return response.data
+		} catch (error) {
+			throw error
+		}
+	},
+
+	async getProducts(query: string) {
+		try {
+			const response = await api.post('/api/bitrix/search/products', { query })
+			return response.data
+		} catch (error) {
+			throw error
+		}
+	},
+
+	async getCompanies(query: string) {
+		try {
+			const response = await api.post('/api/bitrix/search/companies', { query })
+			return response.data
+		} catch (error) {
+			throw error
+		}
+	},
+
+	async getContacts(query: string) {
+		try {
+			const response = await api.post('/api/bitrix/search/contacts', { query })
 			return response.data
 		} catch (error) {
 			throw error

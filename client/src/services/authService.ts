@@ -7,8 +7,11 @@ interface LoginCredentials {
 }
 
 interface LoginResponse {
+	success: boolean
+	accessToken: string
+	refreshToken: string
+	expiresIn: string
 	user: User
-	token: string
 }
 
 export const authService = {

@@ -13,7 +13,7 @@ import {
 export const useFieldManagement = (
 	state: FormEditorState,
 	setState: React.Dispatch<React.SetStateAction<FormEditorState>>,
-	reloadFields?: () => Promise<void>,
+	loadFields?: () => Promise<void>,
 	formId?: string
 ) => {
 	// Сохранение поля
@@ -60,7 +60,10 @@ export const useFieldManagement = (
 						formId: formId,
 					} as Omit<FormField, '_id'>
 
-					savedField = await FormFieldService.createField(fieldToCreate)
+					savedField = await FormFieldService.createFormField(
+						formId || '',
+						fieldToCreate
+					)
 					console.log('Поле создано:', savedField)
 				}
 
@@ -128,7 +131,7 @@ export const useFieldManagement = (
 				}))
 			}
 		},
-		[state.fields, setState, reloadFields, formId]
+		[state.fields, setState, loadFields, formId]
 	)
 
 	// Добавление нового поля
@@ -222,7 +225,7 @@ export const useFieldManagement = (
 
 			if (field._id) {
 				try {
-					await FormFieldService.deleteField(field._id)
+					await FormFieldService.deleteFormField(field._id)
 				} catch (err: any) {
 					setState(prev => ({
 						...prev,

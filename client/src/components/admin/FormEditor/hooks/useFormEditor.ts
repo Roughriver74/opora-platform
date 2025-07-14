@@ -24,7 +24,7 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 	})
 
 	// Используем выделенные хуки
-	const { reloadFields } = useFormData(form, setState)
+	const { loadFields } = useFormData(form?._id || '')
 	useAutoSave(state, setState)
 
 	// Обновление данных формы
@@ -43,13 +43,13 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 		try {
 			// Для создания новой формы используем только основные поля
 			// Поля добавляются потом через отдельный API
-			const formToSave: Partial<Form> = {
-				name: state.formData.name,
-				title: state.formData.title,
-				description: state.formData.description,
-				isActive: state.formData.isActive,
+			const formToSave = {
+				name: state.formData.name || '',
+				title: state.formData.title || '',
+				description: state.formData.description || '',
+				isActive: state.formData.isActive || false,
 				bitrixDealCategory: state.formData.bitrixDealCategory,
-				successMessage: state.formData.successMessage,
+				successMessage: state.formData.successMessage || '',
 			}
 
 			let savedForm: Form
@@ -60,7 +60,10 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 					;(formToSave as any).fields = fieldIds
 				}
 
-				savedForm = await FormService.updateForm(state.formData._id, formToSave)
+				savedForm = await FormService.updateForm(
+					state.formData._id,
+					formToSave as any
+				)
 			} else {
 				savedForm = await FormService.createForm(
 					formToSave as Omit<Form, '_id'>
@@ -140,6 +143,6 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 		handleFormSave,
 		getSaveStatus,
 		clearError,
-		reloadFields,
+		loadFields,
 	}
 }

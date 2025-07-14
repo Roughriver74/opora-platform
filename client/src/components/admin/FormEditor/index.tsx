@@ -33,7 +33,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 		handleFormSave,
 		getSaveStatus,
 		clearError,
-		reloadFields,
+		loadFields,
 	} = useFormEditor(form, onSave)
 
 	const {
@@ -44,7 +44,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 		handleFieldDelete,
 		moveFieldToSection,
 		normalizeOrders,
-	} = useFieldManagement(state, setState, reloadFields, form?._id)
+	} = useFieldManagement(state, setState, loadFields, form?._id)
 
 	const saveStatus = getSaveStatus()
 

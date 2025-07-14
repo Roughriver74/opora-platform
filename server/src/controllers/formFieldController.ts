@@ -339,3 +339,72 @@ export const debugFieldStructure = async (
 		res.status(500).json({ message: error.message })
 	}
 }
+
+// POST методы для поиска битрикс данных (новые)
+
+// Поиск продуктов (POST)
+export const searchProducts = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
+	try {
+		const { query } = req.body
+		console.log('🔍 POST Поиск продуктов:', query)
+		const products = await bitrix24Service.getProducts(query as string)
+		res.status(200).json(products)
+	} catch (error: any) {
+		console.error('Ошибка при поиске продуктов:', error)
+		res.status(500).json({ message: error.message })
+	}
+}
+
+// Поиск компаний (POST)
+export const searchCompanies = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
+	try {
+		const { query } = req.body
+		const user = req.user // Получаем пользователя из middleware
+
+		// Определяем параметры фильтрации
+		let assignedFilter = null
+		if (user && user.settings?.onlyMyCompanies && user.bitrix_id) {
+			assignedFilter = user.bitrix_id
+		}
+
+		console.log('🔍 POST Поиск компаний:', {
+			query: query as string,
+			userId: user?.id,
+			bitrixId: user?.bitrix_id,
+			onlyMyCompanies: user?.settings?.onlyMyCompanies,
+			assignedFilter,
+		})
+
+		const companies = await bitrix24Service.getCompanies(
+			query as string,
+			50,
+			assignedFilter
+		)
+		res.status(200).json(companies)
+	} catch (error: any) {
+		console.error('Ошибка при поиске компаний:', error)
+		res.status(500).json({ message: error.message })
+	}
+}
+
+// Поиск контактов (POST)
+export const searchContacts = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
+	try {
+		const { query } = req.body
+		console.log('🔍 POST Поиск контактов:', query)
+		const contacts = await bitrix24Service.getContacts(query as string)
+		res.status(200).json(contacts)
+	} catch (error: any) {
+		console.error('Ошибка при поиске контактов:', error)
+		res.status(500).json({ message: error.message })
+	}
+}

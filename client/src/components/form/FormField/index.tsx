@@ -121,9 +121,6 @@ const FormField: React.FC<FormFieldProps> = ({
 						options={options}
 						loading={loading}
 						onSearchChange={handleSearchChange}
-						selectedOption={selectedOption}
-						setSelectedOption={setSelectedOption}
-						forceUpdateKey={forceUpdateKey}
 					/>
 				)
 
@@ -143,10 +140,10 @@ const FormField: React.FC<FormFieldProps> = ({
 				return <DateInput {...baseProps} />
 
 			case FIELD_TYPES.DIVIDER:
-				return <DividerField field={field} />
+				return <DividerField field={field} compact={compact || isMobile} />
 
 			case FIELD_TYPES.HEADER:
-				return <HeaderField field={field} />
+				return <HeaderField field={field} compact={compact || isMobile} />
 
 			default:
 				return <TextInput {...baseProps} />

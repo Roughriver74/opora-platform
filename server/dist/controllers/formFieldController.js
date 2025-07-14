@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.debugFieldStructure = exports.getAllEnumFieldsWithValues = exports.getEnumFieldValues = exports.getUserFields = exports.getContactsList = exports.getCompaniesList = exports.getProductsList = exports.getBitrixFields = exports.deleteField = exports.updateField = exports.createField = exports.getFieldById = exports.getAllFields = void 0;
+exports.searchContacts = exports.searchCompanies = exports.searchProducts = exports.debugFieldStructure = exports.getAllEnumFieldsWithValues = exports.getEnumFieldValues = exports.getUserFields = exports.getContactsList = exports.getCompaniesList = exports.getProductsList = exports.getBitrixFields = exports.deleteField = exports.updateField = exports.createField = exports.getFieldById = exports.getAllFields = void 0;
 const FormField_1 = __importDefault(require("../models/FormField"));
 const Form_1 = __importDefault(require("../models/Form"));
 const bitrix24Service_1 = __importDefault(require("../services/bitrix24Service"));
@@ -289,3 +289,59 @@ const debugFieldStructure = (req, res) => __awaiter(void 0, void 0, void 0, func
     }
 });
 exports.debugFieldStructure = debugFieldStructure;
+// POST методы для поиска битрикс данных (новые)
+// Поиск продуктов (POST)
+const searchProducts = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { query } = req.body;
+        console.log('🔍 POST Поиск продуктов:', query);
+        const products = yield bitrix24Service_1.default.getProducts(query);
+        res.status(200).json(products);
+    }
+    catch (error) {
+        console.error('Ошибка при поиске продуктов:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+exports.searchProducts = searchProducts;
+// Поиск компаний (POST)
+const searchCompanies = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    try {
+        const { query } = req.body;
+        const user = req.user; // Получаем пользователя из middleware
+        // Определяем параметры фильтрации
+        let assignedFilter = null;
+        if (user && ((_a = user.settings) === null || _a === void 0 ? void 0 : _a.onlyMyCompanies) && user.bitrix_id) {
+            assignedFilter = user.bitrix_id;
+        }
+        console.log('🔍 POST Поиск компаний:', {
+            query: query,
+            userId: user === null || user === void 0 ? void 0 : user.id,
+            bitrixId: user === null || user === void 0 ? void 0 : user.bitrix_id,
+            onlyMyCompanies: (_b = user === null || user === void 0 ? void 0 : user.settings) === null || _b === void 0 ? void 0 : _b.onlyMyCompanies,
+            assignedFilter,
+        });
+        const companies = yield bitrix24Service_1.default.getCompanies(query, 50, assignedFilter);
+        res.status(200).json(companies);
+    }
+    catch (error) {
+        console.error('Ошибка при поиске компаний:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+exports.searchCompanies = searchCompanies;
+// Поиск контактов (POST)
+const searchContacts = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { query } = req.body;
+        console.log('🔍 POST Поиск контактов:', query);
+        const contacts = yield bitrix24Service_1.default.getContacts(query);
+        res.status(200).json(contacts);
+    }
+    catch (error) {
+        console.error('Ошибка при поиске контактов:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+exports.searchContacts = searchContacts;

@@ -58,145 +58,66 @@ export const authMiddleware = async (
 			}
 
 			try {
-				console.log('[AUTH DEBUG] Декодированный токен:', {
-					userId: decoded.userId,
-					id: decoded.id,
-					sub: decoded.sub,
-					iat: decoded.iat,
-					exp: decoded.exp,
-				})
-
 				// Проверяем, есть ли пользователь в базе данных
 				if (decoded.userId) {
 					// Новая система авторизации - токен содержит userId
-					console.log(
-						'[AUTH DEBUG] Поиск пользователя по userId:',
-						decoded.userId
-					)
 					const user = await User.findById(decoded.userId)
 
-					if (user) {
-						console.log('[AUTH DEBUG] Пользователь найден:', {
-							id: user._id,
-							email: user.email,
+					if (user && user.status === 'active') {
+						req.user = {
+							id: user._id.toString(),
 							role: user.role,
-							status: user.status,
-						})
-
-						if (user.status === 'active') {
-							req.user = {
-								id: user._id.toString(),
-								role: user.role,
-								isAdmin: user.role === 'admin',
-								isUser: user.role === 'user',
-								tokenType: 'access',
-								bitrix_id: user.bitrix_id,
-								settings: user.settings,
-							}
-							req.isAdmin = user.role === 'admin'
-							console.log(
-								'[AUTH DEBUG] Пользователь успешно авторизован:',
-								user.email
-							)
-						} else {
-							console.log(
-								'[AUTH DEBUG] Пользователь неактивен:',
-								user.email,
-								'статус:',
-								user.status
-							)
-							req.isAdmin = false
-							req.user = undefined
+							isAdmin: user.role === 'admin',
+							isUser: user.role === 'user',
+							tokenType: 'access',
+							bitrix_id: user.bitrix_id,
+							settings: user.settings,
 						}
+						req.isAdmin = user.role === 'admin'
 					} else {
-						console.log(
-							'[AUTH DEBUG] Пользователь не найден по userId:',
-							decoded.userId
-						)
-						req.isAdmin = false
-						req.user = undefined
-					}
-				} else if (decoded.id || decoded.sub) {
-					// Проверяем альтернативные поля для ID пользователя
-					const userId = decoded.id || decoded.sub
-					console.log(
-						'[AUTH DEBUG] Поиск пользователя по альтернативному ID:',
-						userId
-					)
-					const user = await User.findById(userId)
-
-					if (user) {
-						console.log('[AUTH DEBUG] Пользователь найден (альт. ID):', {
-							id: user._id,
-							email: user.email,
-							role: user.role,
-							status: user.status,
-						})
-
-						if (user.status === 'active') {
-							req.user = {
-								id: user._id.toString(),
-								role: user.role,
-								isAdmin: user.role === 'admin',
-								isUser: user.role === 'user',
-								tokenType: 'access',
-								bitrix_id: user.bitrix_id,
-								settings: user.settings,
-							}
-							req.isAdmin = user.role === 'admin'
-							console.log(
-								'[AUTH DEBUG] Пользователь успешно авторизован (альт. ID):',
-								user.email
-							)
-						} else {
-							console.log(
-								'[AUTH DEBUG] Пользователь неактивен (альт. ID):',
-								user.email
-							)
-							req.isAdmin = false
-							req.user = undefined
-						}
-					} else {
-						console.log(
-							'[AUTH DEBUG] Пользователь не найден по альтернативному ID:',
-							userId
-						)
 						req.isAdmin = false
 						req.user = undefined
 					}
 				} else {
-					// Старая система авторизации - проверяем AdminToken
-					console.log('[AUTH DEBUG] Проверка AdminToken для старой системы')
-					const tokenDoc = await AdminToken.findOne({ token })
-					if (tokenDoc) {
-						console.log('[AUTH DEBUG] AdminToken найден, авторизация как админ')
-						req.isAdmin = true
-						// Создаем минимальный объект пользователя для админа
+					// Проверяем альтернативные поля для ID пользователя
+					const userId = decoded.id || decoded.sub
+					const user = await User.findById(userId)
+
+					if (user && user.status === 'active') {
 						req.user = {
-							id: 'admin',
-							role: 'admin',
-							isAdmin: true,
-							isUser: false,
+							id: user._id.toString(),
+							role: user.role,
+							isAdmin: user.role === 'admin',
+							isUser: user.role === 'user',
 							tokenType: 'access',
+							bitrix_id: user.bitrix_id,
+							settings: user.settings,
 						}
+						req.isAdmin = user.role === 'admin'
 					} else {
-						console.log('[AUTH DEBUG] AdminToken не найден')
-						req.isAdmin = false
-						req.user = undefined
+						// Старая система авторизации - проверяем AdminToken
+						const tokenDoc = await AdminToken.findOne({ token })
+						if (tokenDoc) {
+							req.isAdmin = true
+							// Создаем минимальный объект пользователя для админа
+							req.user = {
+								id: 'admin',
+								role: 'admin',
+								isAdmin: true,
+								isUser: false,
+								tokenType: 'access',
+							}
+						} else {
+							req.isAdmin = false
+							req.user = undefined
+						}
 					}
 				}
 			} catch (userError) {
-				console.error('[AUTH DEBUG] Ошибка получения пользователя:', userError)
+				console.error('Ошибка получения пользователя:', userError)
 				req.isAdmin = false
 				req.user = undefined
 			}
-
-			console.log('[AUTH DEBUG] Финальное состояние:', {
-				'req.user': req.user
-					? `${req.user.id} (${req.user.role})`
-					: 'undefined',
-				'req.isAdmin': req.isAdmin,
-			})
 
 			next()
 		})

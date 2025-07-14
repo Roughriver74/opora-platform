@@ -73,10 +73,13 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 	}
 }
 
-// Интерфейс для контекста
+// Интерфейс для контекста - изменяю чтобы свойства были доступны напрямую
 interface AuthContextType {
-	state: AuthState
-	login: (credentials: { email: string; password: string }) => Promise<void>
+	user: User | null
+	isLoading: boolean
+	error: string | null
+	isAuthenticated: boolean
+	login: (credentials: { email: string; password: string }) => Promise<boolean>
 	logout: () => void
 	clearError: () => void
 	checkAuth: () => Promise<boolean>
@@ -102,26 +105,34 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 	const [state, dispatch] = useReducer(authReducer, initialState)
 
-	// Функция для входа в систему
-	const login = async (credentials: { email: string; password: string }) => {
+	// Функция для входа в систему - возвращаю boolean
+	const login = async (credentials: {
+		email: string
+		password: string
+	}): Promise<boolean> => {
 		try {
 			dispatch({ type: 'AUTH_START' })
 
 			const data = await authService.login(credentials)
 
-			// Сохраняем данные пользователя и токен
+			// Сохраняем данные пользователя и токены
+			// Сервер возвращает accessToken и refreshToken
 			localStorage.setItem('user', JSON.stringify(data.user))
-			localStorage.setItem('token', data.token)
+			localStorage.setItem('token', data.accessToken)
+			localStorage.setItem('refreshToken', data.refreshToken)
 
 			dispatch({
 				type: 'AUTH_SUCCESS',
-				payload: { user: data.user, token: data.token },
+				payload: { user: data.user, token: data.accessToken },
 			})
+
+			return true
 		} catch (error: any) {
 			dispatch({
 				type: 'AUTH_FAILURE',
 				payload: { error: error.message || 'Ошибка входа в систему' },
 			})
+			return false
 		}
 	}
 
@@ -129,6 +140,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 	const logout = () => {
 		localStorage.removeItem('user')
 		localStorage.removeItem('token')
+		localStorage.removeItem('refreshToken')
 		dispatch({ type: 'AUTH_LOGOUT' })
 	}
 
@@ -140,10 +152,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 	// Функция для проверки аутентификации
 	const checkAuth = async (): Promise<boolean> => {
 		try {
+			dispatch({ type: 'SET_LOADING', payload: true })
+
 			const token = localStorage.getItem('token')
 			const userStr = localStorage.getItem('user')
 
 			if (!token || !userStr) {
+				dispatch({ type: 'SET_LOADING', payload: false })
 				return false
 			}
 
@@ -161,13 +176,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 				return false
 			}
 		} catch (error) {
+			console.error('Ошибка проверки авторизации:', error)
 			logout()
 			return false
+		} finally {
+			dispatch({ type: 'SET_LOADING', payload: false })
 		}
 	}
 
+	// Предоставляю свойства напрямую вместо объекта state
 	const contextValue: AuthContextType = {
-		state,
+		user: state.user,
+		isLoading: state.isLoading,
+		error: state.error,
+		isAuthenticated: state.isAuthenticated,
 		login,
 		logout,
 		clearError,

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { FormFieldService } from '../../../../services/formFieldService'
 import { FormField } from '../../../../types'
+import { getSections as getFieldSections } from '../../FormEditor/utils/orderUtils'
 
-export const useSimpleFields = (formId: string) => {
+export const useSimpleFields = (formId?: string) => {
 	const [fields, setFields] = useState<FormField[]>([])
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
@@ -23,7 +24,10 @@ export const useSimpleFields = (formId: string) => {
 		}
 	}, [formId])
 
-	const updateField = async (id: string, updates: Partial<FormField>) => {
+	const updateField = async (
+		id: string,
+		updates: Partial<FormField>
+	): Promise<boolean> => {
 		try {
 			const updatedField = await FormFieldService.updateField(id, updates)
 			setFields(prev =>
@@ -31,8 +35,10 @@ export const useSimpleFields = (formId: string) => {
 					field._id === id ? { ...field, ...updatedField } : field
 				)
 			)
+			return true
 		} catch (error: any) {
 			setError(error.message || 'Ошибка обновления поля')
+			return false
 		}
 	}
 
@@ -51,6 +57,25 @@ export const useSimpleFields = (formId: string) => {
 		}
 	}, [formId, loadFields])
 
+	const getSections = useCallback(() => {
+		return getFieldSections(fields)
+	}, [fields])
+
+	const getSectionName = useCallback(
+		(field: FormField) => {
+			if (field.type === 'header') {
+				return field.label || `Раздел ${field.order}`
+			}
+			// Для обычных полей находим их секцию
+			const sectionOrder = Math.floor((field.order || 0) / 100) * 100
+			const section = fields.find(
+				f => f.order === sectionOrder && f.type === 'header'
+			)
+			return section?.label || `Раздел ${sectionOrder}`
+		},
+		[fields]
+	)
+
 	return {
 		fields,
 		loading,
@@ -58,5 +83,8 @@ export const useSimpleFields = (formId: string) => {
 		loadFields,
 		updateField,
 		deleteField,
+		getSections,
+		getSectionName,
+		reload: loadFields,
 	}
 }

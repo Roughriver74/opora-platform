@@ -36,16 +36,43 @@ const DatabaseManager: React.FC<DatabaseManagerProps> = ({ formId }) => {
 		loading: formFieldsLoading,
 		updateField,
 		error: formFieldsError,
-		loadFields: reloadFields,
+		loadFields: loadFields,
 	} = useFormFields(formId)
 
 	const {
-		users,
-		loading: usersLoading,
+		data: users,
+		isLoading: usersLoading,
 		error: usersError,
 		updateUser,
-		loadUsers: reloadUsers,
+		reloadData: reloadUsers,
 	} = useUsers()
+
+	// Колонки для таблицы пользователей
+	const usersColumns = useMemo(
+		() => [
+			{
+				accessorKey: 'firstName',
+				header: 'Имя',
+			},
+			{
+				accessorKey: 'lastName',
+				header: 'Фамилия',
+			},
+			{
+				accessorKey: 'email',
+				header: 'Email',
+			},
+			{
+				accessorKey: 'role',
+				header: 'Роль',
+			},
+			{
+				accessorKey: 'bitrix_id',
+				header: 'Bitrix ID',
+			},
+		],
+		[]
+	)
 
 	// Группировка полей по секциям
 	const fieldsBySection = useMemo(() => {
@@ -115,7 +142,7 @@ const DatabaseManager: React.FC<DatabaseManagerProps> = ({ formId }) => {
 	}, [formFieldsData, selectedSection])
 
 	const handleRefresh = async () => {
-		await Promise.all([reloadFields(), reloadUsers()])
+		await Promise.all([loadFields(), reloadUsers()])
 	}
 
 	const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
@@ -146,9 +173,11 @@ const DatabaseManager: React.FC<DatabaseManagerProps> = ({ formId }) => {
 			case 1:
 				return (
 					<DatabaseTable
-						users={users}
-						onUpdateUser={updateUser}
-						loading={usersLoading}
+						data={users || []}
+						columns={usersColumns}
+						isLoading={usersLoading}
+						onUpdateRow={updateUser}
+						tableName='Пользователи'
 					/>
 				)
 			default:

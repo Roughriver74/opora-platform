@@ -187,35 +187,13 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 		setEnumError(null)
 
 		try {
-			// Сначала получаем информацию о пользовательских полях
-			const userFieldsResponse = await FormFieldService.getUserFields()
+			// TODO: Реализовать загрузку enum значений из Битрикс
+			console.log('Загрузка enum значений для поля:', fieldCode)
 
-			if (userFieldsResponse?.result) {
-				// Находим поле по коду
-				const targetField = userFieldsResponse.result.find(
-					(field: any) => field.FIELD_NAME === fieldCode
-				)
-
-				if (targetField && targetField.USER_TYPE_ID === 'enumeration') {
-					// Загружаем значения для этого поля, используя FIELD_NAME для лучшей совместимости
-					const enumValuesResponse = await FormFieldService.getEnumFieldValues(
-						targetField.FIELD_NAME
-					)
-
-					if (enumValuesResponse?.result) {
-						const enumOptions = enumValuesResponse.result.map((value: any) => ({
-							value: value.ID,
-							label: value.VALUE,
-						}))
-
-						console.log(
-							`Загружены значения для поля ${fieldCode}:`,
-							enumOptions
-						)
-						handleBitrixOptionsLoaded(enumOptions)
-					}
-				}
-			}
+			// Временная заглушка
+			setEnumError(
+				'Функциональность загрузки enum значений временно недоступна'
+			)
 		} catch (error: any) {
 			console.error('Ошибка при загрузке enum значений:', error)
 			setEnumError(`Ошибка загрузки значений: ${error.message}`)

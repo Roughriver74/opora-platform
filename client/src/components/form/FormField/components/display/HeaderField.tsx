@@ -1,8 +1,13 @@
 import React from 'react'
 import { Typography } from '@mui/material'
-import { FieldInputProps } from '../../types'
+import { FormField as FormFieldType } from '../../../../../types'
 
-export const HeaderField: React.FC<FieldInputProps> = ({
+interface HeaderFieldProps {
+	field: FormFieldType
+	compact?: boolean
+}
+
+export const HeaderField: React.FC<HeaderFieldProps> = ({
 	field,
 	compact = false,
 }) => {
@@ -14,8 +19,7 @@ export const HeaderField: React.FC<FieldInputProps> = ({
 			style={{
 				marginTop: compact ? '12px' : '16px',
 				marginBottom: compact ? '8px' : '12px',
-				fontWeight: 'bold'
-				
+				fontWeight: 'bold',
 			}}
 		>
 			{field.label}

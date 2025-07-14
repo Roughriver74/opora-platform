@@ -46,13 +46,10 @@ export const useImprovedAutoSave = (
 
 		try {
 			// Создаем копию данных формы без полей для автосохранения
-			const formToSave: Partial<Form> = {
-				name: state.formData.name,
-				title: state.formData.title,
-				description: state.formData.description,
-				isActive: state.formData.isActive,
-				bitrixDealCategory: state.formData.bitrixDealCategory,
-				successMessage: state.formData.successMessage,
+			const formToSave = {
+				title: state.formData.title || '',
+				description: state.formData.description || '',
+				fields: state.fields || [],
 			}
 
 			// Выполняем автосохранение
