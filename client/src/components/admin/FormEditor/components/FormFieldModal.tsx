@@ -31,6 +31,7 @@ interface FormFieldModalProps {
 	field?: FormField
 	onSave: (field: FormField) => void
 	formId: string
+	availableBitrixFields?: Record<string, any>
 }
 
 export const FormFieldModal: React.FC<FormFieldModalProps> = ({
@@ -39,6 +40,7 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 	field,
 	onSave,
 	formId,
+	availableBitrixFields = {},
 }) => {
 	const [formData, setFormData] = useState<Partial<FormField>>({
 		name: '',
@@ -48,9 +50,10 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 		order: 0,
 		options: [],
 		formId: formId,
+		bitrixFieldId: '',
+		bitrixFieldType: '',
 	})
 
-	const [bitrixFields, setBitrixFields] = useState<any[]>([])
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
@@ -70,6 +73,8 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 				order: 0,
 				options: [],
 				formId: formId,
+				bitrixFieldId: '',
+				bitrixFieldType: '',
 			})
 		}
 	}, [field, open, formId])
@@ -81,6 +86,33 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 			[name]: value,
 		}))
 	}
+
+	// Обработка выбора поля Битрикс
+	const handleBitrixFieldChange = (selectedField: any) => {
+		if (selectedField) {
+			setFormData(prev => ({
+				...prev,
+				bitrixFieldId: selectedField.id,
+				bitrixFieldType: selectedField.field?.type || '',
+				label: selectedField.name, // Автозаполнение названия
+			}))
+		} else {
+			setFormData(prev => ({
+				...prev,
+				bitrixFieldId: '',
+				bitrixFieldType: '',
+			}))
+		}
+	}
+
+	// Преобразование объекта полей Битрикс в массив для Autocomplete
+	const bitrixFieldsArray = Object.entries(availableBitrixFields).map(
+		([fieldId, field]: [string, any]) => ({
+			id: fieldId,
+			name: field.name || field.title || fieldId,
+			field,
+		})
+	)
 
 	// Сохранение поля
 	const handleSave = async () => {
@@ -117,6 +149,8 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 			order: 0,
 			options: [],
 			formId: formId,
+			bitrixFieldId: '',
+			bitrixFieldType: '',
 		})
 		setError(null)
 		onClose()
@@ -199,6 +233,68 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 						}
 						label='Обязательное поле'
 					/>
+
+					{/* Поля Битрикс24 */}
+					{Object.keys(availableBitrixFields).length > 0 && (
+						<>
+							<Divider sx={{ my: 1 }} />
+							<Typography variant='subtitle1' gutterBottom>
+								Связь с Битрикс24
+							</Typography>
+
+							<FormControl fullWidth>
+								<Autocomplete
+									options={bitrixFieldsArray}
+									getOptionLabel={option => option.name}
+									value={
+										formData.bitrixFieldId
+											? bitrixFieldsArray.find(
+													item => item.id === formData.bitrixFieldId
+											  ) || null
+											: null
+									}
+									onChange={(event, newValue) =>
+										handleBitrixFieldChange(newValue)
+									}
+									renderInput={params => (
+										<TextField
+											{...params}
+											label='Поле Битрикс24'
+											placeholder='Начните вводить для поиска...'
+										/>
+									)}
+									renderOption={(props, option) => (
+										<li {...props}>
+											<Box sx={{ display: 'flex', flexDirection: 'column' }}>
+												<Typography variant='body1'>{option.name}</Typography>
+												<Typography variant='caption' color='text.secondary'>
+													ID: {option.id}
+												</Typography>
+											</Box>
+										</li>
+									)}
+									filterOptions={(options, state) => {
+										const inputValue = state.inputValue.toLowerCase().trim()
+										if (!inputValue) return options
+
+										return options.filter(
+											option =>
+												option.name.toLowerCase().includes(inputValue) ||
+												option.id.toLowerCase().includes(inputValue)
+										)
+									}}
+									fullWidth
+								/>
+							</FormControl>
+
+							{formData.bitrixFieldId && (
+								<Alert severity='info' sx={{ mt: 1 }}>
+									Выбрано поле: {formData.bitrixFieldId} (
+									{formData.bitrixFieldType})
+								</Alert>
+							)}
+						</>
+					)}
 
 					{/* Опции для select и radio полей */}
 					{(formData.type === 'select' || formData.type === 'radio') && (

@@ -17,28 +17,28 @@ export interface GetUsersResponse {
 
 class UserServiceClass {
 	async getUsers(): Promise<GetUsersResponse> {
-		const response = await api.get('/users')
+		const response = await api.get('/api/users')
 		return response.data
 	}
 
 	async getAllUsers(): Promise<User[]> {
-		const response = await api.get('/users')
+		const response = await api.get('/api/users')
 		return response.data.data || response.data
 	}
 
 	async updateUser(id: string, updates: Partial<User>): Promise<User> {
-		const response = await api.put(`/users/${id}`, updates)
+		const response = await api.put(`/api/users/${id}`, updates)
 		return response.data
 	}
 
 	async deleteUser(id: string): Promise<void> {
-		await api.delete(`/users/${id}`)
+		await api.delete(`/api/users/${id}`)
 	}
 
 	async createUser(
 		userData: Omit<User, '_id' | 'createdAt' | 'updatedAt'>
 	): Promise<User> {
-		const response = await api.post('/users', userData)
+		const response = await api.post('/api/users', userData)
 		return response.data
 	}
 }

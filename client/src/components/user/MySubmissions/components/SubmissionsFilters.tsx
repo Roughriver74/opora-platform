@@ -34,14 +34,15 @@ export const SubmissionsFilters: React.FC<SubmissionsFiltersProps> = ({
 				alignItems='center'
 			>
 				<TextField
-					label='Поиск'
+					label='Поиск по названию и компании'
+					placeholder='Введите название заявки или компанию...'
 					value={filters.search || ''}
 					onChange={e => onFilterChange({ search: e.target.value })}
 					InputProps={{
 						startAdornment: <SearchIcon sx={{ mr: 1 }} />,
 					}}
 					size='small'
-					sx={{ minWidth: 200 }}
+					sx={{ minWidth: 250 }}
 				/>
 
 				<FormControl size='small' sx={{ minWidth: 150 }}>

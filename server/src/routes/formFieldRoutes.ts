@@ -44,13 +44,15 @@ router.put('/section/:id', authMiddleware, requireAdmin, async (req, res) => {
 		)
 
 		if (!field) {
-			return res.status(404).json({ message: 'Поле не найдено' })
+			res.status(404).json({ message: 'Поле не найдено' })
+			return
 		}
 
 		if (field.type !== 'header') {
-			return res
+			res
 				.status(400)
 				.json({ message: 'Можно обновлять только заголовки разделов' })
+			return
 		}
 
 		field.label = label

@@ -5,10 +5,13 @@ export const STATUS_COLORS = {
 } as const
 
 export const DEFAULT_STATUS_LABELS = {
-	'С1:NEW': 'Новая',
+	'C1:NEW': 'Новая',
 	'C1:UC_GJLIZP': 'Отправлено',
 	'C1:WON': 'Отгружено',
 }
 
 export const ITEMS_PER_PAGE_OPTIONS = [5, 10, 25]
 export const DEFAULT_ROWS_PER_PAGE = 10
+
+// Дефолтный статус фильтра - показываем только новые заявки
+export const DEFAULT_STATUS_FILTER = 'C1:NEW'

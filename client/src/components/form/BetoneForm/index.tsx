@@ -10,7 +10,6 @@ import {
 	Alert,
 	Snackbar,
 	TextField,
-	IconButton,
 	Tooltip,
 	useTheme,
 	useMediaQuery,
@@ -273,24 +272,48 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 														}}
 													/>
 													<Tooltip title='Сохранить'>
-														<IconButton
+														<Box
 															onClick={e =>
 																handleSaveAccordionTitle(section, index, e)
 															}
-															color='primary'
-															size='small'
+															sx={{
+																display: 'flex',
+																alignItems: 'center',
+																justifyContent: 'center',
+																width: 32,
+																height: 32,
+																borderRadius: 1,
+																cursor: 'pointer',
+																color: 'primary.main',
+																'&:hover': {
+																	backgroundColor: 'primary.main',
+																	color: 'white',
+																},
+															}}
 														>
-															<Save />
-														</IconButton>
+															<Save fontSize='small' />
+														</Box>
 													</Tooltip>
 													<Tooltip title='Отменить'>
-														<IconButton
+														<Box
 															onClick={handleCancelEditingAccordion}
-															color='secondary'
-															size='small'
+															sx={{
+																display: 'flex',
+																alignItems: 'center',
+																justifyContent: 'center',
+																width: 32,
+																height: 32,
+																borderRadius: 1,
+																cursor: 'pointer',
+																color: 'secondary.main',
+																'&:hover': {
+																	backgroundColor: 'secondary.main',
+																	color: 'white',
+																},
+															}}
 														>
-															<Cancel />
-														</IconButton>
+															<Cancel fontSize='small' />
+														</Box>
 													</Tooltip>
 												</Box>
 											) : (
@@ -336,7 +359,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 													</Typography>
 													{isAdminMode && section.id && (
 														<Tooltip title='Редактировать название раздела'>
-															<IconButton
+															<Box
 																onClick={e =>
 																	handleStartEditingAccordion(
 																		index,
@@ -344,15 +367,24 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 																		e
 																	)
 																}
-																size='small'
 																sx={{
+																	display: 'flex',
+																	alignItems: 'center',
+																	justifyContent: 'center',
+																	width: 32,
+																	height: 32,
+																	borderRadius: 1,
+																	cursor: 'pointer',
 																	ml: 1,
 																	opacity: 0.7,
-																	'&:hover': { opacity: 1 },
+																	'&:hover': { 
+																		opacity: 1,
+																		backgroundColor: 'rgba(0, 0, 0, 0.04)',
+																	},
 																}}
 															>
 																<Edit fontSize='small' />
-															</IconButton>
+															</Box>
 														</Tooltip>
 													)}
 												</Box>

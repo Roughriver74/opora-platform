@@ -1,11 +1,9 @@
-import React, { useRef, useState, useMemo, useCallback } from 'react'
+import React, { useRef, useMemo, useCallback } from 'react'
 import {
 	Box,
 	Paper,
 	Typography,
 	Button,
-	Alert,
-	Snackbar,
 	Stack,
 	Collapse,
 	useTheme,
@@ -79,15 +77,6 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = ({
 	const theme = useTheme()
 	const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 	const formRef = useRef<HTMLDivElement>(null)
-
-	const [snackbar, setSnackbar] = useState<{
-		open: boolean
-		message: string
-		severity?: 'success' | 'error'
-	}>({
-		open: false,
-		message: '',
-	})
 
 	// Хук основной логики формы
 	const {
@@ -466,95 +455,75 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = ({
 			)}
 
 			{/* Основная форма */}
-			<Paper
-				elevation={isMobile ? 0 : 1}
-				sx={{
-					mx: isMobile ? 0 : 'auto',
-					maxWidth: isMobile ? '100%' : 800,
-					borderRadius: isMobile ? 0 : 2,
-					minHeight: isMobile ? '100vh' : 'auto',
-				}}
-			>
-				{/* Заголовок формы - более компактный */}
-				<Box
+			<Box component='form' onSubmit={formik.handleSubmit}>
+				<Paper
+					elevation={isMobile ? 0 : 1}
 					sx={{
-						p: mobileStyles.headerPadding,
-						borderBottom: '1px solid',
-						borderColor: 'divider',
-						bgcolor: 'background.paper',
-						position: isMobile ? 'sticky' : 'static',
-						top: 0,
-						zIndex: 10,
+						mx: isMobile ? 0 : 'auto',
+						maxWidth: isMobile ? '100%' : 800,
+						borderRadius: isMobile ? 0 : 2,
+						minHeight: isMobile ? '100vh' : 'auto',
 					}}
 				>
-					<Stack direction='row' alignItems='center' spacing={1.5}>
-						<Box sx={{ flex: 1 }}>
-							<Typography
-								variant={isMobile ? 'subtitle1' : 'h5'}
-								component='h1'
-								sx={{
-									fontWeight: 600,
-									mb: 0.5,
-									fontSize: isMobile ? '1.1rem' : '1.5rem',
-									lineHeight: 1.3,
-								}}
-							>
-								{form.title}
-							</Typography>
-							{form.description && (
+					{/* Заголовок формы - более компактный */}
+					<Box
+						sx={{
+							p: mobileStyles.headerPadding,
+							borderBottom: '1px solid',
+							borderColor: 'divider',
+							bgcolor: 'background.paper',
+							position: isMobile ? 'sticky' : 'static',
+							top: 0,
+							zIndex: 10,
+						}}
+					>
+						<Stack direction='row' alignItems='center' spacing={1.5}>
+							<Box sx={{ flex: 1 }}>
 								<Typography
-									variant='body2'
-									color='text.secondary'
+									variant={isMobile ? 'subtitle1' : 'h5'}
+									component='h1'
 									sx={{
-										lineHeight: 1.4,
-										fontSize: isMobile ? '0.8rem' : '0.875rem',
+										fontWeight: 600,
+										mb: 0.5,
+										fontSize: isMobile ? '1.1rem' : '1.5rem',
+										lineHeight: 1.3,
 									}}
 								>
-									{form.description}
+									{form.title}
 								</Typography>
+								{form.description && (
+									<Typography
+										variant='body2'
+										color='text.secondary'
+										sx={{
+											lineHeight: 1.4,
+											fontSize: isMobile ? '0.8rem' : '0.875rem',
+										}}
+									>
+										{form.description}
+									</Typography>
+								)}
+							</Box>
+
+							{/* Компактные индикаторы для мобильных */}
+							{isMobile && (
+								<Stack direction='row' spacing={0.5}>
+									<TouchIcon sx={{ fontSize: 20 }} color='primary' />
+									<SpeedIcon sx={{ fontSize: 20 }} color='success' />
+								</Stack>
 							)}
-						</Box>
+						</Stack>
+					</Box>
 
-						{/* Компактные индикаторы для мобильных */}
-						{isMobile && (
-							<Stack direction='row' spacing={0.5}>
-								<TouchIcon sx={{ fontSize: 20 }} color='primary' />
-								<SpeedIcon sx={{ fontSize: 20 }} color='success' />
-							</Stack>
-						)}
-					</Stack>
-				</Box>
-
-				{/* Содержимое формы */}
-				<Box ref={formRef}>
-					{useSectionMode ? renderMobileSections() : renderSimpleForm()}
-				</Box>
-			</Paper>
+					{/* Содержимое формы */}
+					<Box ref={formRef}>
+						{useSectionMode ? renderMobileSections() : renderSimpleForm()}
+					</Box>
+				</Paper>
+			</Box>
 
 			{/* Кнопка "наверх" для мобильных */}
 			<ScrollToTopButton show={showScrollTop} onClick={scrollToTop} />
-
-			{/* Snackbar для уведомлений */}
-			<Snackbar
-				open={snackbar.open}
-				autoHideDuration={6000}
-				onClose={() => setSnackbar({ ...snackbar, open: false })}
-				anchorOrigin={{
-					vertical: isMobile ? 'top' : 'bottom',
-					horizontal: 'center',
-				}}
-			>
-				<Alert
-					onClose={() => setSnackbar({ ...snackbar, open: false })}
-					severity={snackbar.severity}
-					sx={{
-						width: '100%',
-						fontSize: mobileStyles.fontSize,
-					}}
-				>
-					{snackbar.message}
-				</Alert>
-			</Snackbar>
 		</Box>
 	)
 }

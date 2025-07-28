@@ -1,4 +1,4 @@
-import { apiService } from './apiService'
+import api from './api'
 
 export interface Setting {
 	_id: string
@@ -23,13 +23,13 @@ class SettingsService {
 
 	// Получить все настройки
 	async getAllSettings(): Promise<Setting[]> {
-		const response = await apiService.get(this.baseUrl)
+		const response = await api.get(this.baseUrl)
 		return response.data.data
 	}
 
 	// Получить настройки по категории
 	async getSettingsByCategory(category: string): Promise<Setting[]> {
-		const response = await apiService.get(
+		const response = await api.get(
 			`${this.baseUrl}/category/${category}`
 		)
 		return response.data.data
@@ -37,19 +37,19 @@ class SettingsService {
 
 	// Получить конкретную настройку
 	async getSetting(key: string): Promise<Setting> {
-		const response = await apiService.get(`${this.baseUrl}/${key}`)
+		const response = await api.get(`${this.baseUrl}/${key}`)
 		return response.data.data
 	}
 
 	// Обновить настройку
 	async updateSetting(key: string, data: SettingUpdate): Promise<Setting> {
-		const response = await apiService.put(`${this.baseUrl}/${key}`, data)
+		const response = await api.put(`${this.baseUrl}/${key}`, data)
 		return response.data.data
 	}
 
 	// Удалить настройку
 	async deleteSetting(key: string): Promise<void> {
-		await apiService.delete(`${this.baseUrl}/${key}`)
+		await api.delete(`${this.baseUrl}/${key}`)
 	}
 
 	// Получить значение настройки (упрощенный метод)

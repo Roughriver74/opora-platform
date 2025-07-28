@@ -68,12 +68,14 @@ router.put('/section/:id', authMiddleware_1.authMiddleware, authMiddleware_1.req
         const { label } = req.body;
         const field = yield require('../models/FormField').default.findById(req.params.id);
         if (!field) {
-            return res.status(404).json({ message: 'Поле не найдено' });
+            res.status(404).json({ message: 'Поле не найдено' });
+            return;
         }
         if (field.type !== 'header') {
-            return res
+            res
                 .status(400)
                 .json({ message: 'Можно обновлять только заголовки разделов' });
+            return;
         }
         field.label = label;
         yield field.save();

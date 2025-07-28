@@ -5,7 +5,11 @@ import submissionService from '../../../../services/submissionService'
 import api from '../../../../services/api'
 import { useAuth } from '../../../../contexts/auth'
 import { MySubmissionsState, BitrixStage, User } from '../types'
-import { DEFAULT_ROWS_PER_PAGE, DEFAULT_STATUS_LABELS } from '../constants'
+import {
+	DEFAULT_ROWS_PER_PAGE,
+	DEFAULT_STATUS_LABELS,
+	DEFAULT_STATUS_FILTER,
+} from '../constants'
 
 export const useMySubmissions = () => {
 	const navigate = useNavigate()
@@ -18,7 +22,9 @@ export const useMySubmissions = () => {
 		page: 0,
 		rowsPerPage: DEFAULT_ROWS_PER_PAGE,
 		total: 0,
-		filters: {},
+		filters: {
+			status: DEFAULT_STATUS_FILTER, // По умолчанию показываем только новые заявки
+		},
 	})
 
 	const [bitrixStages, setBitrixStages] = useState<BitrixStage[]>([])
@@ -67,6 +73,7 @@ export const useMySubmissions = () => {
 						limit: state.rowsPerPage,
 				  })
 				: await submissionService.getMySubmissions({
+						...state.filters,
 						page: state.page + 1,
 						limit: state.rowsPerPage,
 				  })
@@ -220,7 +227,9 @@ export const useMySubmissions = () => {
 	const resetFilters = () => {
 		setState(prev => ({
 			...prev,
-			filters: {},
+			filters: {
+				status: DEFAULT_STATUS_FILTER, // Возвращаем к дефолтному фильтру "Новые"
+			},
 			page: 0,
 		}))
 	}

@@ -236,25 +236,123 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			if (dateTo) filter.createdAt.$lte = new Date(dateTo as string)
 		}
 
-		// Поиск по номеру заявки или названию
-		if (search) {
-			filter.$or = [
-				{ submissionNumber: { $regex: search, $options: 'i' } },
-				{ title: { $regex: search, $options: 'i' } },
-			]
-		}
-
 		const skip = (Number(page) - 1) * Number(limit)
 
-		const submissions = await Submission.find(filter)
-			.populate('formId', 'name title')
-			.populate('userId', 'firstName lastName email')
-			.populate('assignedTo', 'firstName lastName email')
-			.sort({ createdAt: -1 })
-			.skip(skip)
-			.limit(Number(limit))
+		// Если есть поиск, используем aggregate для поиска по форме
+		let submissions
+		let total
 
-		const total = await Submission.countDocuments(filter)
+		if (search) {
+			const pipeline = [
+				// Подключаем данные формы
+				{
+					$lookup: {
+						from: 'forms',
+						localField: 'formId',
+						foreignField: '_id',
+						as: 'formData',
+					},
+				},
+				// Раскрываем массив formData
+				{ $unwind: '$formData' },
+				// Применяем фильтры и поиск
+				{
+					$match: {
+						...filter,
+						$or: [
+							{ submissionNumber: { $regex: search, $options: 'i' } },
+							{ title: { $regex: search, $options: 'i' } },
+							{ 'formData.title': { $regex: search, $options: 'i' } },
+							{ 'formData.name': { $regex: search, $options: 'i' } },
+						],
+					},
+				},
+				// Сортировка
+				{ $sort: { createdAt: -1 } },
+				// Пагинация
+				{ $skip: skip },
+				{ $limit: Number(limit) },
+				// Подключаем userId
+				{
+					$lookup: {
+						from: 'users',
+						localField: 'userId',
+						foreignField: '_id',
+						as: 'userInfo',
+					},
+				},
+				// Подключаем assignedTo
+				{
+					$lookup: {
+						from: 'users',
+						localField: 'assignedTo',
+						foreignField: '_id',
+						as: 'assignedToInfo',
+					},
+				},
+				// Преобразуем массивы в объекты
+				{
+					$addFields: {
+						userId: { $arrayElemAt: ['$userInfo', 0] },
+						assignedTo: { $arrayElemAt: ['$assignedToInfo', 0] },
+					},
+				},
+				// Формируем финальную структуру
+				{
+					$project: {
+						_id: 1,
+						submissionNumber: 1,
+						title: 1,
+						status: 1,
+						priority: 1,
+						bitrixDealId: 1,
+						bitrixSyncStatus: 1,
+						createdAt: 1,
+						updatedAt: 1,
+						tags: 1,
+						notes: 1,
+						formId: {
+							_id: '$formData._id',
+							name: '$formData.name',
+							title: '$formData.title',
+						},
+						userId: {
+							_id: '$userId._id',
+							firstName: '$userId.firstName',
+							lastName: '$userId.lastName',
+							email: '$userId.email',
+						},
+						assignedTo: {
+							_id: '$assignedTo._id',
+							firstName: '$assignedTo.firstName',
+							lastName: '$assignedTo.lastName',
+							email: '$assignedTo.email',
+						},
+					},
+				},
+			]
+
+			submissions = await Submission.aggregate(pipeline)
+
+			// Для подсчета общего количества используем тот же pipeline но без пагинации
+			const countPipeline = pipeline.slice(0, -6) // Убираем skip, limit, lookup'ы и project
+			const countResult = await Submission.aggregate([
+				...countPipeline,
+				{ $count: 'total' },
+			])
+			total = countResult.length > 0 ? countResult[0].total : 0
+		} else {
+			// Обычный поиск без текстового поиска
+			submissions = await Submission.find(filter)
+				.populate('formId', 'name title')
+				.populate('userId', 'firstName lastName email')
+				.populate('assignedTo', 'firstName lastName email')
+				.sort({ createdAt: -1 })
+				.skip(skip)
+				.limit(Number(limit))
+
+			total = await Submission.countDocuments(filter)
+		}
 
 		res.json({
 			success: true,
@@ -278,7 +376,17 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 // Получение заявок текущего пользователя
 export const getMySubmissions = async (req: Request, res: Response) => {
 	try {
-		const { page = 1, limit = 20 } = req.query
+		const {
+			page = 1,
+			limit = 20,
+			status,
+			priority,
+			assignedTo,
+			dateFrom,
+			dateTo,
+			search,
+			tags,
+		} = req.query
 		const userId = req.user?.id
 
 		if (!userId) {
@@ -288,16 +396,125 @@ export const getMySubmissions = async (req: Request, res: Response) => {
 			})
 		}
 
+		// Строим фильтр для пользователя
+		const filter: any = { userId }
+
+		if (status) filter.status = status
+		if (priority) filter.priority = priority
+		if (assignedTo) filter.assignedTo = assignedTo
+		if (tags && Array.isArray(tags)) filter.tags = { $in: tags }
+
+		// Фильтр по дате
+		if (dateFrom || dateTo) {
+			filter.createdAt = {}
+			if (dateFrom) filter.createdAt.$gte = new Date(dateFrom as string)
+			if (dateTo) filter.createdAt.$lte = new Date(dateTo as string)
+		}
+
 		const skip = (Number(page) - 1) * Number(limit)
 
-		const submissions = await Submission.find({ userId })
-			.populate('formId', 'name title')
-			.populate('assignedTo', 'firstName lastName email')
-			.sort({ createdAt: -1 })
-			.skip(skip)
-			.limit(Number(limit))
+		// Если есть поиск, используем aggregate для поиска по форме
+		let submissions
+		let total
 
-		const total = await Submission.countDocuments({ userId })
+		if (search) {
+			const pipeline = [
+				// Сначала матчим пользователя
+				{
+					$match: { userId: new (require('mongoose').Types.ObjectId)(userId) },
+				},
+				// Подключаем данные формы
+				{
+					$lookup: {
+						from: 'forms',
+						localField: 'formId',
+						foreignField: '_id',
+						as: 'formData',
+					},
+				},
+				// Раскрываем массив formData
+				{ $unwind: '$formData' },
+				// Применяем остальные фильтры и поиск
+				{
+					$match: {
+						...filter,
+						$or: [
+							{ submissionNumber: { $regex: search, $options: 'i' } },
+							{ title: { $regex: search, $options: 'i' } },
+							{ 'formData.title': { $regex: search, $options: 'i' } },
+							{ 'formData.name': { $regex: search, $options: 'i' } },
+						],
+					},
+				},
+				// Сортировка
+				{ $sort: { createdAt: -1 } },
+				// Пагинация
+				{ $skip: skip },
+				{ $limit: Number(limit) },
+				// Подключаем assignedTo
+				{
+					$lookup: {
+						from: 'users',
+						localField: 'assignedTo',
+						foreignField: '_id',
+						as: 'assignedTo',
+					},
+				},
+				// Преобразуем assignedTo из массива в объект
+				{
+					$addFields: {
+						assignedTo: { $arrayElemAt: ['$assignedTo', 0] },
+					},
+				},
+				// Формируем финальную структуру
+				{
+					$project: {
+						_id: 1,
+						submissionNumber: 1,
+						title: 1,
+						status: 1,
+						priority: 1,
+						bitrixDealId: 1,
+						bitrixSyncStatus: 1,
+						createdAt: 1,
+						updatedAt: 1,
+						tags: 1,
+						notes: 1,
+						formId: {
+							_id: '$formData._id',
+							name: '$formData.name',
+							title: '$formData.title',
+						},
+						assignedTo: {
+							_id: '$assignedTo._id',
+							firstName: '$assignedTo.firstName',
+							lastName: '$assignedTo.lastName',
+							email: '$assignedTo.email',
+						},
+					},
+				},
+			]
+
+			submissions = await Submission.aggregate(pipeline)
+
+			// Для подсчета общего количества используем тот же pipeline но без пагинации
+			const countPipeline = pipeline.slice(0, -3) // Убираем skip, limit и project
+			const countResult = await Submission.aggregate([
+				...countPipeline,
+				{ $count: 'total' },
+			])
+			total = countResult.length > 0 ? countResult[0].total : 0
+		} else {
+			// Обычный поиск без текстового поиска
+			submissions = await Submission.find(filter)
+				.populate('formId', 'name title')
+				.populate('assignedTo', 'firstName lastName email')
+				.sort({ createdAt: -1 })
+				.skip(skip)
+				.limit(Number(limit))
+
+			total = await Submission.countDocuments(filter)
+		}
 
 		res.json({
 			success: true,

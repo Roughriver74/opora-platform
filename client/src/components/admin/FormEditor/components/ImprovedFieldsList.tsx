@@ -540,6 +540,7 @@ export const ImprovedFieldsList: React.FC<ImprovedFieldsListProps> = ({
 					onSave={field => handleFieldSaveLocal(editingFieldIndex, field)}
 					onClose={() => setEditingFieldIndex(null)}
 					formId={state.formData._id || ''}
+					availableBitrixFields={state.bitrixFields}
 				/>
 			)}
 		</Box>

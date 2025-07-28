@@ -111,7 +111,7 @@ export const SubmissionService = {
 		values: Record<string, any>,
 		submission: FormSubmission
 	): Promise<FormSubmissionResponse> => {
-		const response = await api.post('/submissions/submit', submission)
+		const response = await api.post('/api/submissions/submit', submission)
 		return response.data
 	},
 
@@ -119,22 +119,21 @@ export const SubmissionService = {
 	getSubmissions: async (
 		filters: SubmissionFilters & { page?: number; limit?: number }
 	): Promise<SubmissionResponse> => {
-		const response = await api.get('/submissions', { params: filters })
+		const response = await api.get('/api/submissions', { params: filters })
 		return response.data
 	},
 
 	// Получение заявок текущего пользователя
-	getMySubmissions: async (params: {
-		page?: number
-		limit?: number
-	}): Promise<SubmissionResponse> => {
-		const response = await api.get('/submissions/my', { params })
+	getMySubmissions: async (
+		filters: SubmissionFilters & { page?: number; limit?: number }
+	): Promise<SubmissionResponse> => {
+		const response = await api.get('/api/submissions/my', { params: filters })
 		return response.data
 	},
 
 	// Получение заявки по ID
 	getSubmissionById: async (id: string): Promise<SubmissionDetailsResponse> => {
-		const response = await api.get(`/submissions/${id}`)
+		const response = await api.get(`/api/submissions/${id}`)
 		return response.data
 	},
 
@@ -150,7 +149,7 @@ export const SubmissionService = {
 			preloadedOptions?: Record<string, any[]>
 		}
 	}> => {
-		const response = await api.get(`/submissions/${id}/edit`)
+		const response = await api.get(`/api/submissions/${id}/edit`)
 		return response.data
 	},
 
@@ -169,7 +168,7 @@ export const SubmissionService = {
 			isCopy?: boolean
 		}
 	}> => {
-		const response = await api.post(`/submissions/${id}/copy`)
+		const response = await api.post(`/api/submissions/${id}/copy`)
 		return response.data
 	},
 
@@ -179,7 +178,7 @@ export const SubmissionService = {
 		status: string,
 		comment?: string
 	): Promise<{ success: boolean }> => {
-		const response = await api.patch(`/submissions/${id}/status`, {
+		const response = await api.patch(`/api/submissions/${id}/status`, {
 			status,
 			comment,
 		})
@@ -190,7 +189,9 @@ export const SubmissionService = {
 	getBitrixDealStages: async (
 		categoryId: string
 	): Promise<BitrixStagesResponse> => {
-		const response = await api.get(`/submissions/bitrix/stages/${categoryId}`)
+		const response = await api.get(
+			`/api/submissions/bitrix/stages/${categoryId}`
+		)
 		return response.data
 	},
 
@@ -199,13 +200,13 @@ export const SubmissionService = {
 		id: string,
 		data: Partial<Submission>
 	): Promise<{ success: boolean; data: Submission }> => {
-		const response = await api.put(`/submissions/${id}`, data)
+		const response = await api.put(`/api/submissions/${id}`, data)
 		return response.data
 	},
 
 	// Удаление заявки
 	deleteSubmission: async (id: string): Promise<{ success: boolean }> => {
-		const response = await api.delete(`/submissions/${id}`)
+		const response = await api.delete(`/api/submissions/${id}`)
 		return response.data
 	},
 }

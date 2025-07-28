@@ -3,6 +3,58 @@ import { FormField } from '../types'
 
 // Сервис для работы с полями формы
 export const FormFieldService = {
+	// Получение всех полей
+	async getAllFields() {
+		const response = await api.get('/api/form-fields')
+		return response.data
+	},
+
+	// Получение поля по ID
+	async getFieldById(id: string) {
+		const response = await api.get(`/api/form-fields/${id}`)
+		return response.data
+	},
+
+	// Создание нового поля
+	async createField(fieldData: Omit<FormField, '_id'>) {
+		try {
+			console.log(
+				'Отправка данных на сервер:',
+				JSON.stringify(fieldData, null, 2)
+			)
+			const response = await api.post('/api/form-fields', fieldData)
+			console.log('Успешный ответ сервера:', response.data)
+			return response.data
+		} catch (error: any) {
+			console.error('Ошибка при создании поля:', error)
+			if (error.response) {
+				// Сервер ответил с ошибкой
+				console.error('Данные ответа:', error.response.data)
+				console.error('Статус ответа:', error.response.status)
+				console.error('Заголовки ответа:', error.response.headers)
+			}
+			throw error
+		}
+	},
+
+	// Удаление поля
+	async deleteField(id: string) {
+		try {
+			console.log('🗑️ Удаление поля с ID:', id)
+			const response = await api.delete(`/api/form-fields/${id}`)
+			console.log('✅ Поле успешно удалено:', response.data)
+			return response.data
+		} catch (error: any) {
+			console.error('❌ Ошибка при удалении поля:', error)
+			if (error.response) {
+				console.error('Статус ответа:', error.response.status)
+				console.error('Данные ответа:', error.response.data)
+				console.error('URL запроса:', error.config?.url)
+			}
+			throw error
+		}
+	},
+
 	async getFormFields(formId: string) {
 		try {
 			// Получаем форму с полями вместо неправильного запроса к отдельному полю
@@ -25,11 +77,21 @@ export const FormFieldService = {
 		}
 	},
 
-	async updateField(id: string, fieldData: any) {
+	// Обновление существующего поля
+	async updateField(id: string, fieldData: Partial<FormField>) {
 		try {
+			console.log('🔄 FormFieldService.updateField:', { id, fieldData })
 			const response = await api.put(`/api/form-fields/${id}`, fieldData)
+			console.log('✅ Поле успешно обновлено:', response.data)
 			return response.data
-		} catch (error) {
+		} catch (error: any) {
+			console.error('❌ Ошибка при обновлении поля:', error)
+			if (error.response) {
+				console.error('Статус ответа:', error.response.status)
+				console.error('Данные ответа:', error.response.data)
+				console.error('URL запроса:', error.config?.url)
+				console.error('Отправленные данные:', fieldData)
+			}
 			throw error
 		}
 	},
@@ -72,30 +134,68 @@ export const FormFieldService = {
 		}
 	},
 
-	async getProducts(query: string) {
-		try {
-			const response = await api.post('/api/bitrix/search/products', { query })
-			return response.data
-		} catch (error) {
-			throw error
-		}
+	async getProducts(query: string = '') {
+		const response = await api.get('/api/form-fields/bitrix/products', {
+			params: { query },
+		})
+		return response.data
 	},
 
-	async getCompanies(query: string) {
-		try {
-			const response = await api.post('/api/bitrix/search/companies', { query })
-			return response.data
-		} catch (error) {
-			throw error
-		}
+	async getCompanies(query: string = '') {
+		const response = await api.get('/api/form-fields/bitrix/companies', {
+			params: { query },
+		})
+		return response.data
 	},
 
-	async getContacts(query: string) {
-		try {
-			const response = await api.post('/api/bitrix/search/contacts', { query })
-			return response.data
-		} catch (error) {
-			throw error
-		}
+	async getContacts(query: string = '') {
+		const response = await api.get('/api/form-fields/bitrix/contacts', {
+			params: { query },
+		})
+		return response.data
+	},
+
+	// Получение полей из Битрикс24
+	async getBitrixFields() {
+		const response = await api.get('/api/form-fields/bitrix/fields')
+		return response.data
+	},
+
+	// Получение продукта по ID из Битрикс24
+	async getProductById(id: string) {
+		const response = await api.get(`/api/form-fields/bitrix/product/${id}`)
+		return response.data
+	},
+
+	// Получение компании по ID из Битрикс24
+	async getCompanyById(id: string) {
+		const response = await api.get(`/api/form-fields/bitrix/company/${id}`)
+		return response.data
+	},
+
+	// Получение контакта по ID из Битрикс24
+	async getContactById(id: string) {
+		const response = await api.get(`/api/form-fields/bitrix/contact/${id}`)
+		return response.data
+	},
+
+	// Получение пользовательских полей из Битрикс24
+	async getUserFields() {
+		const response = await api.get('/api/form-fields/bitrix/userfields')
+		return response.data
+	},
+
+	// Получение значений для конкретного поля типа enumeration
+	async getEnumFieldValues(fieldId: string) {
+		const response = await api.get(`/api/form-fields/bitrix/enumvalues/${fieldId}`)
+		return response.data
+	},
+
+	// Получение всех полей типа enumeration с их значениями
+	async getAllEnumFieldsWithValues() {
+		const response = await api.get(
+			'/api/form-fields/bitrix/enum-fields-with-values'
+		)
+		return response.data
 	},
 }

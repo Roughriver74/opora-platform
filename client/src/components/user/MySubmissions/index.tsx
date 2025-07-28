@@ -78,13 +78,16 @@ import {
 } from '../../../services/submissionService'
 import { FormField } from '../../../types'
 import { useAuth } from '../../../contexts/auth'
+import { useNotification } from '../../../contexts/notification'
 import api from '../../../services/api'
+import { DEFAULT_STATUS_FILTER } from './constants'
 
 // Константы перенесены в отдельный файл
 
 const MySubmissions: React.FC = () => {
 	const navigate = useNavigate()
 	const { user } = useAuth()
+	const { showError, showSuccess, showInfo } = useNotification()
 	const theme = useTheme()
 	const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 	const isSmallMobile = useMediaQuery('(max-width:480px)')
@@ -92,7 +95,6 @@ const MySubmissions: React.FC = () => {
 	// Состояния
 	const [submissions, setSubmissions] = useState<Submission[]>([])
 	const [loading, setLoading] = useState(true)
-	const [error, setError] = useState<string | null>(null)
 	const [selectedSubmission, setSelectedSubmission] =
 		useState<Submission | null>(null)
 	const [submissionHistory, setSubmissionHistory] = useState<
@@ -100,7 +102,9 @@ const MySubmissions: React.FC = () => {
 	>([])
 	const [detailsOpen, setDetailsOpen] = useState(false)
 	const [bitrixStages, setBitrixStages] = useState<BitrixStage[]>([])
-	const [filters, setFilters] = useState<SubmissionFilters>({})
+	const [filters, setFilters] = useState<SubmissionFilters>({
+		status: DEFAULT_STATUS_FILTER,
+	})
 	const [page, setPage] = useState(0)
 	const [rowsPerPage, setRowsPerPage] = useState(10)
 	const [total, setTotal] = useState(0)
@@ -176,7 +180,7 @@ const MySubmissions: React.FC = () => {
 		if (!isAdmin) return
 
 		try {
-			const response = await api.get('/users')
+			const response = await api.get('/api/users')
 			if (response.data.success) {
 				setUsers(response.data.data)
 			}
@@ -201,6 +205,7 @@ const MySubmissions: React.FC = () => {
 			} else {
 				// Обычный пользователь видит только свои заявки
 				response = await SubmissionService.getMySubmissions({
+					...filters,
 					page: page + 1,
 					limit: rowsPerPage,
 				})
@@ -209,7 +214,7 @@ const MySubmissions: React.FC = () => {
 			setSubmissions(response.data)
 			setTotal(response.pagination.total)
 		} catch (err: any) {
-			setError(err.message || 'Ошибка загрузки заявок')
+			showError(err.message || 'Ошибка загрузки заявок')
 		} finally {
 			setLoading(false)
 		}
@@ -343,11 +348,11 @@ const MySubmissions: React.FC = () => {
 				navigate(`/?copy=${submission._id}`)
 			} else {
 				console.warn('[CLIENT COPY] Не удалось получить данные для копирования')
-				setError('Не удалось получить данные для копирования')
+				showError('Не удалось получить данные для копирования')
 			}
 		} catch (err: any) {
 			console.error('[CLIENT COPY] Ошибка копирования:', err)
-			setError(err.message || 'Ошибка копирования заявки')
+			showError(err.message || 'Ошибка копирования заявки')
 		}
 	}
 
@@ -370,8 +375,10 @@ const MySubmissions: React.FC = () => {
 				setSelectedSubmission(response.data.submission)
 				setSubmissionHistory(response.data.history)
 			}
+
+			showSuccess('Статус заявки успешно изменен')
 		} catch (err: any) {
-			setError(err.message || 'Ошибка изменения статуса')
+			showError(err.message || 'Ошибка изменения статуса')
 		}
 	}
 
@@ -452,7 +459,7 @@ const MySubmissions: React.FC = () => {
 			setSubmissionHistory(response.data.history)
 			setDetailsOpen(true)
 		} catch (err: any) {
-			setError(err.message || 'Ошибка загрузки деталей заявки')
+			showError(err.message || 'Ошибка загрузки деталей заявки')
 		}
 	}
 
@@ -615,7 +622,7 @@ const MySubmissions: React.FC = () => {
 						{settings.allowUserStatusChange && (
 							<FormControl size='small' sx={{ minWidth: 120 }}>
 								<Select
-									value={getCleanStatus(submission.status)}
+									value={submission.status}
 									onChange={e =>
 										handleStatusChange(submission._id, e.target.value)
 									}
@@ -761,7 +768,9 @@ const MySubmissions: React.FC = () => {
 							<Button
 								variant='outlined'
 								onClick={() => {
-									setFilters({})
+									setFilters({
+										status: DEFAULT_STATUS_FILTER,
+									})
 									setPage(0)
 								}}
 								sx={{ minWidth: { xs: '100%', sm: 'auto' } }}

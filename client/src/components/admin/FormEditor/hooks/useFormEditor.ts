@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Form } from '../../../../types'
 import { FormService } from '../../../../services/formService'
-import { FormEditorState, SaveStatus } from '../types'
+import { FormEditorState, SaveStatus, DealCategory } from '../types'
 import { DEFAULT_FORM_DATA, NOTIFICATION_DURATION } from '../constants'
 import { useFormData } from './useFormData'
 import { useAutoSave } from './useAutoSave'
+import api from '../../../../services/api'
 
 export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 	const [state, setState] = useState<FormEditorState>({
@@ -24,8 +25,64 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 	})
 
 	// Используем выделенные хуки
-	const { loadFields } = useFormData(form?._id || '')
+	const { fields: loadedFields, loadFields } = useFormData(form?._id || '')
 	useAutoSave(state, setState)
+
+	// Синхронизация загруженных полей с состоянием
+	useEffect(() => {
+		if (loadedFields && loadedFields.length > 0) {
+			setState(prev => ({
+				...prev,
+				fields: loadedFields,
+			}))
+		}
+	}, [loadedFields])
+
+	// Загрузка полей Битрикс и категорий сделок
+	const loadBitrixData = useCallback(async () => {
+		setState(prev => ({ ...prev, loading: true }))
+
+		try {
+			const [bitrixFieldsResponse, dealCategoriesResponse] = await Promise.all([
+				api.get('/api/form-fields/bitrix/fields'),
+				api.get('/api/forms/bitrix/deal-categories'),
+			])
+
+			// Безопасное извлечение данных категорий
+			let dealCategoriesData: DealCategory[] = []
+			try {
+				const rawData = dealCategoriesResponse.data
+				if (rawData && rawData.data && Array.isArray(rawData.data)) {
+					dealCategoriesData = rawData.data
+				} else if (Array.isArray(rawData)) {
+					dealCategoriesData = rawData
+				}
+			} catch (categoryError) {
+				console.error('Ошибка обработки категорий сделок:', categoryError)
+			}
+
+			setState(prev => ({
+				...prev,
+				bitrixFields: bitrixFieldsResponse.data.result || {},
+				dealCategories: dealCategoriesData,
+				loading: false,
+			}))
+		} catch (error: any) {
+			console.error('Ошибка загрузки данных Битрикс24:', error)
+			setState(prev => ({
+				...prev,
+				error:
+					'Ошибка загрузки данных Битрикс24: ' +
+					(error.message || 'Неизвестная ошибка'),
+				loading: false,
+			}))
+		}
+	}, [])
+
+	// Загружаем данные Битрикс при монтировании компонента
+	useEffect(() => {
+		loadBitrixData()
+	}, [loadBitrixData])
 
 	// Обновление данных формы
 	const handleFormChange = useCallback((name: string, value: any) => {

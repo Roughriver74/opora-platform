@@ -2,6 +2,7 @@ import React from 'react'
 import { ThemeProvider, createTheme } from '@mui/material'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './contexts/auth'
+import { NotificationProvider } from './contexts/notification'
 import { PrivateApp } from './components/auth/PrivateApp'
 import './App.css'
 
@@ -27,9 +28,11 @@ function App() {
 	return (
 		<QueryClientProvider client={queryClient}>
 			<ThemeProvider theme={theme}>
-				<AuthProvider>
-					<PrivateApp />
-				</AuthProvider>
+				<NotificationProvider>
+					<AuthProvider>
+						<PrivateApp />
+					</AuthProvider>
+				</NotificationProvider>
 			</ThemeProvider>
 		</QueryClientProvider>
 	)

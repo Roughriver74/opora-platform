@@ -114,7 +114,7 @@ const BitrixIntegration: React.FC = () => {
 			setLoading(true)
 			setError(null)
 
-			const response = await api.get('/forms/bitrix/deal-categories')
+			const response = await api.get('/api/forms/bitrix/deal-categories')
 			if (response.data.success) {
 				setCategories(response.data.data)
 			} else {
@@ -133,7 +133,7 @@ const BitrixIntegration: React.FC = () => {
 			setLoading(true)
 			setError(null)
 
-			const response = await api.get('/forms/bitrix/deal-stages', {
+			const response = await api.get('/api/forms/bitrix/deal-stages', {
 				params: { categoryId },
 			})
 
@@ -155,7 +155,7 @@ const BitrixIntegration: React.FC = () => {
 			setLoading(true)
 			setError(null)
 
-			const response = await api.get('/forms/bitrix/test-connection')
+			const response = await api.get('/api/forms/bitrix/test-connection')
 
 			if (response.data.success) {
 				setError(null)
@@ -179,7 +179,7 @@ const BitrixIntegration: React.FC = () => {
 			setLoading(true)
 			setError(null)
 
-			const response = await api.post('/forms/bitrix/test-sync', {
+			const response = await api.post('/api/forms/bitrix/test-sync', {
 				submissionId: testSubmissionId,
 				newStatus: testStatus,
 			})

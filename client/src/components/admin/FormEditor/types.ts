@@ -1,5 +1,11 @@
 import { Form, FormField } from '../../../types'
 
+export interface DealCategory {
+	ID: string
+	NAME: string
+	[key: string]: any
+}
+
 export interface FormEditorProps {
 	form?: Form
 	onSave: (form: Form) => void
@@ -15,7 +21,7 @@ export interface FormEditorState {
 	formData: Partial<Form>
 	fields: FormField[]
 	bitrixFields: Record<string, any>
-	dealCategories: any[]
+	dealCategories: DealCategory[]
 	loading: boolean
 	error: string | null
 	hasChanges: boolean
