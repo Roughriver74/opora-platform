@@ -53,6 +53,7 @@ const AdminPage: React.FC = () => {
 	const [forms, setForms] = useState<Form[]>([])
 	const [currentForm, setCurrentForm] = useState<Form | undefined>(undefined)
 	const [loading, setLoading] = useState(true)
+	const [loadingForm, setLoadingForm] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const { user, logout } = useAuth()
 
@@ -77,6 +78,10 @@ const AdminPage: React.FC = () => {
 	// Обработчик изменения вкладки
 	const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
 		setTabValue(newValue)
+		// Сбрасываем текущую форму при уходе с вкладки редактирования
+		if (newValue !== 1) {
+			setCurrentForm(undefined)
+		}
 	}
 
 	// Обработчик добавления новой формы
@@ -86,10 +91,18 @@ const AdminPage: React.FC = () => {
 	}
 
 	// Обработчик редактирования формы
-	const handleEditForm = (id: string) => {
-		const form = forms.find(f => f._id === id)
-		setCurrentForm(form)
-		setTabValue(1) // Переключаемся на вкладку редактирования
+	const handleEditForm = async (id: string) => {
+		setLoadingForm(true)
+		try {
+			// Загружаем полную информацию о форме, включая поля
+			const fullForm = await FormService.getFormById(id)
+			setCurrentForm(fullForm)
+			setTabValue(1) // Переключаемся на вкладку редактирования
+		} catch (err: any) {
+			setError(`Ошибка при загрузке формы: ${err.message}`)
+		} finally {
+			setLoadingForm(false)
+		}
 	}
 
 	// Обработчик удаления формы
@@ -188,11 +201,17 @@ const AdminPage: React.FC = () => {
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={1}>
-				<FormEditor
-					form={currentForm}
-					onSave={handleSaveForm}
-					onBack={() => setTabValue(0)}
-				/>
+				{loadingForm ? (
+					<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+						<CircularProgress />
+					</Box>
+				) : (
+					<FormEditor
+						form={currentForm}
+						onSave={handleSaveForm}
+						onBack={() => setTabValue(0)}
+					/>
+				)}
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={2}>

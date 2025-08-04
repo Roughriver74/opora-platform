@@ -10,7 +10,12 @@ export const useFormData = (formId: string) => {
 	const [error, setError] = useState<string | null>(null)
 
 	const reloadFormData = useCallback(async () => {
-		if (!formId) return
+		if (!formId) {
+			// Если нет formId, сбрасываем состояние
+			setForm(null)
+			setFields([])
+			return
+		}
 
 		setIsLoading(true)
 		setError(null)
@@ -47,9 +52,9 @@ export const useFormData = (formId: string) => {
 	}, [formId])
 
 	useEffect(() => {
-		if (formId) {
-			reloadFormData()
-		}
+		// Всегда вызываем reloadFormData, даже если formId пустой
+		// чтобы корректно сбросить состояние
+		reloadFormData()
 	}, [formId, reloadFormData])
 
 	return {

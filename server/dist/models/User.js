@@ -75,6 +75,13 @@ const UserSchema = new mongoose_1.Schema({
         type: String,
         trim: true,
     },
+    bitrixUserId: {
+        type: String,
+        trim: true,
+    },
+    lastLogin: {
+        type: Date,
+    },
     status: {
         type: String,
         enum: ['active', 'inactive'],

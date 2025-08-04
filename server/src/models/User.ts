@@ -8,12 +8,14 @@ export interface IUser extends Document {
 	lastName?: string
 	phone?: string
 	bitrix_id?: string
+	bitrixUserId?: string
 	status?: 'active' | 'inactive'
 	role: 'user' | 'admin'
 	isActive: boolean
 	settings: {
 		onlyMyCompanies: boolean
 	}
+	lastLogin?: Date
 	createdAt: Date
 	updatedAt: Date
 	fullName: string // виртуальное поле
@@ -48,6 +50,13 @@ const UserSchema: Schema = new Schema(
 		bitrix_id: {
 			type: String,
 			trim: true,
+		},
+		bitrixUserId: {
+			type: String,
+			trim: true,
+		},
+		lastLogin: {
+			type: Date,
 		},
 		status: {
 			type: String,

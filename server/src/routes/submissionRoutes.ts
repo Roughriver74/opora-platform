@@ -1,5 +1,6 @@
 import express from 'express'
 import * as submissionController from '../controllers/submissionController'
+import { getOptimizedUserSubmissions } from '../controllers/optimizedSubmissionController'
 import {
 	authMiddleware,
 	requireAuth,
@@ -33,10 +34,8 @@ router.get('/', requireAdmin, (req: Request, res: Response) => {
 	submissionController.getAllSubmissions(req, res)
 })
 
-// Получение заявок текущего пользователя
-router.get('/my', requireAuth, (req: Request, res: Response) => {
-	submissionController.getMySubmissions(req, res)
-})
+// Получение заявок текущего пользователя (оптимизированная версия)
+router.get('/my', requireAuth, getOptimizedUserSubmissions)
 
 // Получение заявки по ID
 router.get('/:id', requireAuth, (req: Request, res: Response) => {

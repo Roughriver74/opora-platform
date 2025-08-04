@@ -39,8 +39,13 @@ export const authMiddleware = async (
 		const authHeader = req.headers.authorization
 		const token = authHeader && authHeader.split(' ')[1]
 
+		console.log(`🔍 AuthMiddleware: ${req.method} ${req.path}`)
+		console.log(`🔍 Authorization header: ${authHeader ? 'present' : 'missing'}`)
+		console.log(`🔍 Token: ${token ? 'present' : 'missing'}`)
+
 		// Если токен не предоставлен, пропускаем запрос для публичных маршрутов
 		if (!token) {
+			console.log('❌ No token provided')
 			req.isAdmin = false
 			return next()
 		}
@@ -51,30 +56,46 @@ export const authMiddleware = async (
 
 		jwt.verify(token, secret, async (err, decoded: any) => {
 			if (err) {
-				console.error('Ошибка верификации JWT токена:', err.message)
+				console.error('❌ Ошибка верификации JWT токена:', err.message)
 				req.isAdmin = false
 				req.user = undefined
 				return next()
 			}
 
+			console.log('✅ Token verified, decoded:', decoded)
+
 			try {
 				// Проверяем, есть ли пользователь в базе данных
 				if (decoded.userId) {
+					console.log(`🔍 Looking for user with userId: ${decoded.userId}`)
 					// Новая система авторизации - токен содержит userId
+					// Try with both import styles to debug
 					const user = await User.findById(decoded.userId)
+					const UserDynamic = require('../models/User').default
+					const user2 = await UserDynamic.findById(decoded.userId)
 
-					if (user && user.status === 'active') {
+					console.log(`🔍 Static import result: ${user ? 'found' : 'not found'}`)
+					console.log(`🔍 Dynamic import result: ${user2 ? 'found' : 'not found'}`)
+					
+					const finalUser = user || user2
+					if (finalUser) {
+						console.log(`🔍 User status: ${finalUser.status}, isActive: ${finalUser.isActive}`)
+					}
+
+					if (finalUser && finalUser.status === 'active') {
+						console.log(`✅ User found: ${finalUser.email}, role: ${finalUser.role}`)
 						req.user = {
-							id: user._id.toString(),
-							role: user.role,
-							isAdmin: user.role === 'admin',
-							isUser: user.role === 'user',
+							id: finalUser._id.toString(),
+							role: finalUser.role,
+							isAdmin: finalUser.role === 'admin',
+							isUser: finalUser.role === 'user',
 							tokenType: 'access',
-							bitrix_id: user.bitrix_id,
-							settings: user.settings,
+							bitrix_id: finalUser.bitrix_id,
+							settings: finalUser.settings,
 						}
-						req.isAdmin = user.role === 'admin'
+						req.isAdmin = finalUser.role === 'admin'
 					} else {
+						console.log(`❌ User not found or inactive for userId: ${decoded.userId}`)
 						req.isAdmin = false
 						req.user = undefined
 					}
@@ -114,11 +135,13 @@ export const authMiddleware = async (
 					}
 				}
 			} catch (userError) {
-				console.error('Ошибка получения пользователя:', userError)
+				console.error('❌ Ошибка получения пользователя:', userError)
 				req.isAdmin = false
 				req.user = undefined
 			}
 
+			console.log(`🔍 Final req.user: ${req.user ? 'set' : 'undefined'}`)
+			console.log(`🔍 Final req.isAdmin: ${req.isAdmin}`)
 			next()
 		})
 	} catch (error) {

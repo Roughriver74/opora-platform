@@ -1,44 +1,23 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import {
 	Box,
-	List,
-	ListItem,
-	ListItemText,
 	Typography,
 	IconButton,
 	Chip,
-	Menu,
-	MenuItem,
 	Tooltip,
 	Alert,
 	Stack,
 	Button,
 	Divider,
-	Card,
-	CardContent,
-	Badge,
-	useTheme,
-	useMediaQuery,
 	Paper,
 	TextField,
 	Collapse,
+	useTheme,
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import {
-	DragIndicator,
 	Edit,
 	Delete,
-	MoreVert,
-	Add,
-	Visibility,
-	VisibilityOff,
-	ContentCopy,
-	ArrowUpward as ArrowUpIcon,
-	ArrowDownward as ArrowDownIcon,
-	FilterList,
-	Search,
-	ContentCopy as CopyIcon,
-	Delete as DeleteIcon,
 	DragIndicator as DragIcon,
 	Add as AddIcon,
 	ViewHeadline as SectionIcon,
@@ -90,23 +69,23 @@ interface FieldItemProps {
 	onDragEnd: (e: React.DragEvent<HTMLDivElement>) => void
 }
 
-interface DragEventHandlers {
-	handleDragStart: (
-		e: React.DragEvent<HTMLDivElement>,
-		elementId: string,
-		index: number
-	) => void
-	handleDragOver: (
-		e: React.DragEvent<HTMLDivElement>,
-		targetIndex: number
-	) => void
-	handleDragLeave: (e: React.DragEvent<HTMLDivElement>) => void
-	handleDrop: (
-		e: React.DragEvent<HTMLDivElement>,
-		targetIndex: number
-	) => Promise<void>
-	handleDragEnd: (e: React.DragEvent<HTMLDivElement>) => void
-}
+// interface DragEventHandlers {
+// 	handleDragStart: (
+// 		e: React.DragEvent<HTMLDivElement>,
+// 		elementId: string,
+// 		index: number
+// 	) => void
+// 	handleDragOver: (
+// 		e: React.DragEvent<HTMLDivElement>,
+// 		targetIndex: number
+// 	) => void
+// 	handleDragLeave: (e: React.DragEvent<HTMLDivElement>) => void
+// 	handleDrop: (
+// 		e: React.DragEvent<HTMLDivElement>,
+// 		targetIndex: number
+// 	) => Promise<void>
+// 	handleDragEnd: (e: React.DragEvent<HTMLDivElement>) => void
+// }
 
 const FieldItem: React.FC<FieldItemProps> = ({
 	element,
@@ -315,7 +294,7 @@ export const ImprovedFieldsList: React.FC<ImprovedFieldsListProps> = ({
 	onFieldSave,
 	onFieldDelete,
 }) => {
-	const theme = useTheme()
+	// const theme = useTheme()
 	const [selectedElements, setSelectedElements] = useState<Set<string>>(
 		new Set()
 	)

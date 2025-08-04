@@ -18,6 +18,7 @@ const Submission_1 = __importDefault(require("../models/Submission"));
 const SubmissionHistory_1 = __importDefault(require("../models/SubmissionHistory"));
 const User_1 = __importDefault(require("../models/User"));
 const bitrix24Service_1 = __importDefault(require("../services/bitrix24Service"));
+const optimizedSubmissionService_1 = require("../services/optimizedSubmissionService");
 // Обработка отправки формы заявки - НОВАЯ ЛОГИКА
 const submitForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c;
@@ -168,20 +169,66 @@ const submitForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.submitForm = submitForm;
-// Получение всех заявок (для админов)
+// Получение всех заявок (для админов) - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
 const getAllSubmissions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { page = 1, limit = 20, status, priority, assignedTo, userId, dateFrom, dateTo, search, tags, } = req.query;
-        // Строим фильтр
-        const filter = {};
+        const { page = 1, limit = 20, status, priority, assignedTo, userId, dateFrom, dateTo, search, tags, formId, bitrixSyncStatus, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+        // Подготовка фильтров
+        const filters = {
+            status: status,
+            priority: priority,
+            assignedTo: assignedTo,
+            userId: userId,
+            dateFrom: dateFrom,
+            dateTo: dateTo,
+            search: search,
+            tags: Array.isArray(tags) ? tags : tags ? [tags] : undefined,
+            formId: formId,
+            bitrixSyncStatus: bitrixSyncStatus
+        };
+        // Подготовка пагинации
+        const pagination = {
+            page: Number(page),
+            limit: Number(limit),
+            sortBy: sortBy,
+            sortOrder: sortOrder
+        };
+        console.log(`🔍 Оптимизированный запрос заявок: страница ${page}, лимит ${limit}`);
+        // Используем оптимизированный сервис (БЕЗ populate!)
+        const result = yield optimizedSubmissionService_1.optimizedSubmissionService.getSubmissions(filters, pagination);
+        console.log(`✅ Получено ${result.data.length} заявок из ${result.pagination.total}`);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        console.error('Ошибка при получении заявок:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Ошибка при получении заявок',
+            error: error.message,
+        });
+    }
+});
+exports.getAllSubmissions = getAllSubmissions;
+// Получение заявок текущего пользователя
+const getMySubmissions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const { page = 1, limit = 20, status, priority, assignedTo, dateFrom, dateTo, search, tags, } = req.query;
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Пользователь не авторизован',
+            });
+        }
+        // Строим фильтр для пользователя
+        const filter = { userId };
         if (status)
             filter.status = status;
         if (priority)
             filter.priority = priority;
         if (assignedTo)
             filter.assignedTo = assignedTo;
-        if (userId)
-            filter.userId = userId;
         if (tags && Array.isArray(tags))
             filter.tags = { $in: tags };
         // Фильтр по дате
@@ -192,22 +239,116 @@ const getAllSubmissions = (req, res) => __awaiter(void 0, void 0, void 0, functi
             if (dateTo)
                 filter.createdAt.$lte = new Date(dateTo);
         }
-        // Поиск по номеру заявки или названию
-        if (search) {
-            filter.$or = [
-                { submissionNumber: { $regex: search, $options: 'i' } },
-                { title: { $regex: search, $options: 'i' } },
-            ];
-        }
         const skip = (Number(page) - 1) * Number(limit);
-        const submissions = yield Submission_1.default.find(filter)
-            .populate('formId', 'name title')
-            .populate('userId', 'firstName lastName email')
-            .populate('assignedTo', 'firstName lastName email')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(Number(limit));
-        const total = yield Submission_1.default.countDocuments(filter);
+        // Если есть поиск, используем aggregate для поиска по форме
+        let submissions;
+        let total;
+        if (search) {
+            const pipeline = [
+                // Подключаем данные формы
+                {
+                    $lookup: {
+                        from: 'forms',
+                        localField: 'formId',
+                        foreignField: '_id',
+                        as: 'formData',
+                    },
+                },
+                // Раскрываем массив formData
+                { $unwind: '$formData' },
+                // Применяем фильтры и поиск
+                {
+                    $match: Object.assign(Object.assign({}, filter), { $or: [
+                            { submissionNumber: { $regex: search, $options: 'i' } },
+                            { title: { $regex: search, $options: 'i' } },
+                            { 'formData.title': { $regex: search, $options: 'i' } },
+                            { 'formData.name': { $regex: search, $options: 'i' } },
+                        ] }),
+                },
+                // Сортировка
+                { $sort: { createdAt: -1 } },
+                // Пагинация
+                { $skip: skip },
+                { $limit: Number(limit) },
+                // Подключаем userId
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'userId',
+                        foreignField: '_id',
+                        as: 'userInfo',
+                    },
+                },
+                // Подключаем assignedTo
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'assignedTo',
+                        foreignField: '_id',
+                        as: 'assignedToInfo',
+                    },
+                },
+                // Преобразуем массивы в объекты
+                {
+                    $addFields: {
+                        userId: { $arrayElemAt: ['$userInfo', 0] },
+                        assignedTo: { $arrayElemAt: ['$assignedToInfo', 0] },
+                    },
+                },
+                // Формируем финальную структуру
+                {
+                    $project: {
+                        _id: 1,
+                        submissionNumber: 1,
+                        title: 1,
+                        status: 1,
+                        priority: 1,
+                        bitrixDealId: 1,
+                        bitrixSyncStatus: 1,
+                        createdAt: 1,
+                        updatedAt: 1,
+                        tags: 1,
+                        notes: 1,
+                        formId: {
+                            _id: '$formData._id',
+                            name: '$formData.name',
+                            title: '$formData.title',
+                        },
+                        userId: {
+                            _id: '$userId._id',
+                            firstName: '$userId.firstName',
+                            lastName: '$userId.lastName',
+                            email: '$userId.email',
+                        },
+                        assignedTo: {
+                            _id: '$assignedTo._id',
+                            firstName: '$assignedTo.firstName',
+                            lastName: '$assignedTo.lastName',
+                            email: '$assignedTo.email',
+                        },
+                    },
+                },
+            ];
+            submissions = yield Submission_1.default.aggregate(pipeline);
+            // Для подсчета общего количества используем тот же pipeline но без пагинации
+            const countPipeline = pipeline.slice(0, -6); // Убираем skip, limit, lookup'ы и project
+            const countResult = yield Submission_1.default.aggregate([
+                ...countPipeline,
+                { $count: 'total' },
+            ]);
+            total = countResult.length > 0 ? countResult[0].total : 0;
+        }
+        else {
+            // Обычный поиск без текстового поиска
+            submissions = yield Submission_1.default.find(filter)
+                .populate('formId', 'name title')
+                .populate('userId', 'firstName lastName email')
+                .populate('assignedTo', 'firstName lastName email')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(Number(limit));
+            total = yield Submission_1.default.countDocuments(filter);
+        }
         res.json({
             success: true,
             data: submissions,
@@ -221,46 +362,6 @@ const getAllSubmissions = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
     catch (error) {
         console.error('Ошибка получения заявок:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Ошибка получения заявок',
-        });
-    }
-});
-exports.getAllSubmissions = getAllSubmissions;
-// Получение заявок текущего пользователя
-const getMySubmissions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    try {
-        const { page = 1, limit = 20 } = req.query;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: 'Пользователь не авторизован',
-            });
-        }
-        const skip = (Number(page) - 1) * Number(limit);
-        const submissions = yield Submission_1.default.find({ userId })
-            .populate('formId', 'name title')
-            .populate('assignedTo', 'firstName lastName email')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(Number(limit));
-        const total = yield Submission_1.default.countDocuments({ userId });
-        res.json({
-            success: true,
-            data: submissions,
-            pagination: {
-                page: Number(page),
-                limit: Number(limit),
-                total,
-                pages: Math.ceil(total / Number(limit)),
-            },
-        });
-    }
-    catch (error) {
-        console.error('Ошибка получения заявок пользователя:', error);
         res.status(500).json({
             success: false,
             message: 'Ошибка получения заявок',
@@ -361,10 +462,10 @@ const updateSubmissionStatus = (req, res) => __awaiter(void 0, void 0, void 0, f
         });
     }
     catch (error) {
-        console.error('Ошибка обновления статуса:', error);
+        console.error('Ошибка получения заявки:', error);
         res.status(500).json({
             success: false,
-            message: 'Ошибка обновления статуса',
+            message: 'Ошибка получения заявки',
         });
     }
 });

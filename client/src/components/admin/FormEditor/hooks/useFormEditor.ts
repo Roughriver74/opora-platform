@@ -24,9 +24,23 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 		dragOverIndex: null,
 	})
 
-	// Используем выделенные хуки
-	const { fields: loadedFields, loadFields } = useFormData(form?._id || '')
+	// Используем выделенные хуки - передаем ID только если форма существует
+	const { fields: loadedFields, loadFields, reloadFormData } = useFormData(form?._id || '')
 	useAutoSave(state, setState)
+
+	// Обновляем formData при изменении form prop
+	useEffect(() => {
+		if (form) {
+			setState(prev => ({
+				...prev,
+				formData: form,
+			}))
+			// Перезагружаем данные формы если ID изменился
+			if (form._id) {
+				reloadFormData()
+			}
+		}
+	}, [form, reloadFormData])
 
 	// Синхронизация загруженных полей с состоянием
 	useEffect(() => {

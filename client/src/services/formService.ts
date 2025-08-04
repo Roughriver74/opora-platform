@@ -1,4 +1,5 @@
 import api from './api'
+import { Form } from '../types'
 
 interface FormData {
 	title: string
@@ -7,7 +8,7 @@ interface FormData {
 }
 
 export const FormService = {
-	async getAllForms() {
+	async getAllForms(): Promise<Form[]> {
 		try {
 			const response = await api.get('/api/forms')
 			return response.data
@@ -16,7 +17,7 @@ export const FormService = {
 		}
 	},
 
-	async getFormById(id: string) {
+	async getFormById(id: string): Promise<Form> {
 		try {
 			const response = await api.get(`/api/forms/${id}`)
 			return response.data
@@ -25,7 +26,7 @@ export const FormService = {
 		}
 	},
 
-	async updateForm(id: string, formData: FormData) {
+	async updateForm(id: string, formData: Partial<Form>): Promise<Form> {
 		try {
 			const response = await api.put(`/api/forms/${id}`, formData)
 			return response.data
@@ -34,7 +35,7 @@ export const FormService = {
 		}
 	},
 
-	async createForm(formData: FormData) {
+	async createForm(formData: Omit<Form, '_id'>): Promise<Form> {
 		try {
 			const response = await api.post('/api/forms', formData)
 			return response.data

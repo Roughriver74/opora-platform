@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const axios_1 = __importDefault(require("axios"));
 const config_1 = __importDefault(require("../config/config"));
+const cacheService_1 = require("./cacheService");
 class Bitrix24Service {
     constructor() {
         this.webhookUrl = config_1.default.bitrix24WebhookUrl;
@@ -34,13 +35,20 @@ class Bitrix24Service {
         });
     }
     /**
-     * Получение номенклатуры из каталога товаров
+     * Получение номенклатуры из каталога товаров с кэшированием
      */
     getProducts() {
         return __awaiter(this, arguments, void 0, function* (query = '', limit = 50) {
+            var _a, _b, _c;
             try {
-                console.log(`Поиск продуктов в Битрикс24 по запросу: '${query}'`);
-                console.log('Вебхук URL:', this.webhookUrl);
+                // Создаем ключ кэша на основе параметров запроса
+                const filterStr = query || 'all';
+                const cached = yield cacheService_1.bitrixCache.getDynamicOptions('products', filterStr);
+                if (cached) {
+                    console.log(`📦 Использован кэш для товаров: ${filterStr}`);
+                    return { result: cached, total: cached.length };
+                }
+                console.log(`🔄 Загрузка товаров из Битрикс24 по запросу: '${query}'`);
                 let filter = {};
                 if (query) {
                     // Проверяем, является ли запрос числом (ID)
@@ -56,12 +64,6 @@ class Bitrix24Service {
                         console.log(`Поиск по имени продукта: ${query}`);
                     }
                 }
-                console.log('Данные запроса:', {
-                    filter,
-                    select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
-                    start: 0,
-                    order: { NAME: 'ASC' },
-                });
                 const response = yield axios_1.default.post(`${this.webhookUrl}crm.product.list`, {
                     filter,
                     select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
@@ -69,7 +71,11 @@ class Bitrix24Service {
                     limit: parseInt(limit.toString()),
                     order: { NAME: 'ASC' },
                 });
-                console.log('Ответ от Bitrix24:', response.data);
+                // Кэшируем результат
+                if ((_a = response.data) === null || _a === void 0 ? void 0 : _a.result) {
+                    yield cacheService_1.bitrixCache.setDynamicOptions('products', response.data.result, filterStr);
+                }
+                console.log(`✅ Получено ${((_c = (_b = response.data) === null || _b === void 0 ? void 0 : _b.result) === null || _c === void 0 ? void 0 : _c.length) || 0} товаров`);
                 return response.data;
             }
             catch (error) {
@@ -317,17 +323,28 @@ class Bitrix24Service {
         });
     }
     /**
-     * Получение доступных категорий сделок
+     * Получение доступных категорий сделок с кэшированием
      */
     getDealCategories() {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c;
             try {
-                console.log('Запрос категорий сделок из Битрикс24 по адресу:', `${this.webhookUrl}crm.category.list`);
+                // Проверяем кэш сначала
+                const cached = yield cacheService_1.bitrixCache.getDealCategories();
+                if (cached) {
+                    console.log('📦 Использован кэш для категорий сделок');
+                    return { result: cached, total: cached.length };
+                }
+                console.log('🔄 Загрузка категорий сделок из Битрикс24');
                 // Исправленный метод для получения категорий сделок
                 const response = yield axios_1.default.post(`${this.webhookUrl}crm.category.list`, {
                     entityTypeId: 2, // 2 - тип сущности для сделок в Bitrix24
                 });
-                console.log('Получен ответ от Bitrix24:', response.data);
+                // Кэшируем результат
+                if ((_a = response.data) === null || _a === void 0 ? void 0 : _a.result) {
+                    yield cacheService_1.bitrixCache.setDealCategories(response.data.result);
+                }
+                console.log(`✅ Получено ${((_c = (_b = response.data) === null || _b === void 0 ? void 0 : _b.result) === null || _c === void 0 ? void 0 : _c.length) || 0} категорий сделок`);
                 return response.data;
             }
             catch (error) {
@@ -348,12 +365,20 @@ class Bitrix24Service {
         });
     }
     /**
-     * Получение списка компаний из Битрикс24
+     * Получение списка компаний из Битрикс24 с кэшированием
      */
     getCompanies() {
         return __awaiter(this, arguments, void 0, function* (query = '', limit = 50, assignedToUserId = null) {
+            var _a;
             try {
-                console.log(`Поиск компаний в Битрикс24 по запросу: '${query}'`);
+                // Создаем ключ кэша на основе параметров запроса
+                const filterKey = `${query || 'all'}_${assignedToUserId || 'nouser'}_${limit}`;
+                const cached = yield cacheService_1.bitrixCache.getDynamicOptions('companies', filterKey);
+                if (cached) {
+                    console.log(`📦 Использован кэш для компаний: ${filterKey}`);
+                    return { result: cached, total: cached.length };
+                }
+                console.log(`🔄 Загрузка компаний из Битрикс24 по запросу: '${query}'`);
                 console.log(`Фильтр по ответственному: ${assignedToUserId}`);
                 let filter = {};
                 // Добавляем фильтр по ответственному если указан
@@ -434,7 +459,11 @@ class Bitrix24Service {
                         results = Object.assign(Object.assign({}, allCompaniesResponse.data), { result: filteredCompanies, total: filteredCompanies.length });
                     }
                 }
-                console.log('Ответ от Bitrix24 (компании):', results);
+                // Кэшируем результат
+                if (results === null || results === void 0 ? void 0 : results.result) {
+                    yield cacheService_1.bitrixCache.setDynamicOptions('companies', results.result, filterKey);
+                }
+                console.log(`✅ Получено ${((_a = results === null || results === void 0 ? void 0 : results.result) === null || _a === void 0 ? void 0 : _a.length) || 0} компаний`);
                 return results;
             }
             catch (error) {
@@ -541,13 +570,19 @@ class Bitrix24Service {
         });
     }
     /**
-     * Получение статусов сделок для определенной категории
+     * Получение статусов сделок для определенной категории с кэшированием
      */
     getDealStages() {
         return __awaiter(this, arguments, void 0, function* (categoryId = '0') {
             var _a, _b;
             try {
-                console.log(`Запрос статусов сделок для категории ${categoryId} из Битрикс24`);
+                // Проверяем кэш сначала
+                const cached = yield cacheService_1.bitrixCache.getDealStages(categoryId);
+                if (cached) {
+                    console.log(`📦 Использован кэш для статусов категории ${categoryId}`);
+                    return cached;
+                }
+                console.log(`🔄 Загрузка статусов сделок для категории ${categoryId} из Битрикс24`);
                 const response = yield axios_1.default.post(`${this.webhookUrl}crm.status.list`, {
                     filter: {
                         ENTITY_ID: 'DEAL_STAGE',
@@ -555,7 +590,6 @@ class Bitrix24Service {
                     },
                     order: { SORT: 'ASC' },
                 });
-                console.log('Ответ от Bitrix24 (статусы сделок):', response.data);
                 // Преобразуем результат в нужный формат
                 const stages = ((_b = (_a = response.data) === null || _a === void 0 ? void 0 : _a.result) === null || _b === void 0 ? void 0 : _b.map((stage) => ({
                     id: stage.STATUS_ID,
@@ -564,6 +598,11 @@ class Bitrix24Service {
                     color: stage.COLOR,
                     semantic: stage.SYSTEM === 'Y' ? stage.SYSTEM : 'P', // P - процесс, S - успех, F - провал
                 }))) || [];
+                // Кэшируем результат
+                if (stages.length > 0) {
+                    yield cacheService_1.bitrixCache.setDealStages(categoryId, stages);
+                }
+                console.log(`✅ Получено ${stages.length} статусов для категории ${categoryId}`);
                 return stages;
             }
             catch (error) {

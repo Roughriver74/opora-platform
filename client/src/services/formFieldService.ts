@@ -56,6 +56,10 @@ export const FormFieldService = {
 	},
 
 	async getFormFields(formId: string) {
+		if (!formId) {
+			// Если нет ID формы, возвращаем пустой массив
+			return []
+		}
 		try {
 			// Получаем форму с полями вместо неправильного запроса к отдельному полю
 			const response = await api.get(`/api/forms/${formId}`)

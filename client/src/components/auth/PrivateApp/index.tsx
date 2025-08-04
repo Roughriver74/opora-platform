@@ -32,7 +32,8 @@ export const PrivateApp: React.FC = () => {
 		if (!isAuthenticated && !isLoading) {
 			initAuth()
 		}
-	}, []) // Пустой массив зависимостей - выполняется только при монтировании
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []) // Намеренно исключаем зависимости для выполнения только при монтировании
 
 	// Показываем загрузку только при первичной инициализации
 	if (isLoading) {

@@ -93,6 +93,8 @@ router.get('/bitrix/enumvalues/:fieldId', formFieldController.getEnumFieldValues
 router.get('/bitrix/enum-fields-with-values', formFieldController.getAllEnumFieldsWithValues);
 // Отладочный метод для исследования структуры полей (только для разработки)
 router.get('/bitrix/debug-fields', formFieldController.debugFieldStructure);
+// Обновление порядка полей
+router.put('/order', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin, formFieldController.updateFieldsOrder);
 // Маршруты с параметрами должны идти последними
 router.get('/:id', formFieldController.getFieldById);
 router.put('/:id', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin, formFieldController.updateField);

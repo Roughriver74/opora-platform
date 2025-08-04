@@ -83,4 +83,12 @@ const FormFieldSchema: Schema = new Schema(
 	{ timestamps: true }
 )
 
+// Оптимизированные индексы для FormField
+FormFieldSchema.index({ formId: 1, order: 1 }) // Основной запрос - поля формы по порядку
+FormFieldSchema.index({ formId: 1, sectionId: 1, order: 1 }) // Поля формы по секциям
+FormFieldSchema.index({ name: 1, formId: 1 }) // Поиск поля по имени в форме
+FormFieldSchema.index({ type: 1 }) // Группировка по типу поля
+FormFieldSchema.index({ 'dynamicSource.enabled': 1, 'dynamicSource.source': 1 }) // Динамические поля
+FormFieldSchema.index({ 'linkedFields.enabled': 1 }) // Связанные поля
+
 export default mongoose.model<IFormField>('FormField', FormFieldSchema)

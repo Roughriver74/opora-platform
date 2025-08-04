@@ -82,6 +82,9 @@ router.get(
 // Отладочный метод для исследования структуры полей (только для разработки)
 router.get('/bitrix/debug-fields', formFieldController.debugFieldStructure)
 
+// Обновление порядка полей
+router.put('/order', authMiddleware, requireAdmin, formFieldController.updateFieldsOrder)
+
 // Маршруты с параметрами должны идти последними
 router.get('/:id', formFieldController.getFieldById)
 

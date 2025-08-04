@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
 	Dialog,
 	DialogTitle,
@@ -19,11 +19,9 @@ import {
 	Stack,
 	Divider,
 	Autocomplete,
-	Chip,
 } from '@mui/material'
 import { Close as CloseIcon } from '@mui/icons-material'
 import { FormField } from '../../../../types'
-import { FormFieldService } from '../../../../services/formFieldService'
 
 interface FormFieldModalProps {
 	open: boolean

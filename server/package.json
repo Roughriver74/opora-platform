@@ -6,7 +6,15 @@
 		"start": "node dist/index.js",
 		"dev": "nodemon --exec ts-node --transpile-only src/index.ts",
 		"build": "tsc",
-		"create-test-user": "ts-node --transpile-only src/scripts/createTestUser.ts"
+		"create-test-user": "ts-node --transpile-only src/scripts/createTestUser.ts",
+		"typeorm": "typeorm-ts-node-commonjs",
+		"migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/database/config/database.config.ts",
+		"migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/config/database.config.ts",
+		"migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/config/database.config.ts",
+		"migrate:export": "ts-node --transpile-only src/database/migrations/scripts/export-from-mongodb.ts",
+		"migrate:transform": "ts-node --transpile-only src/database/migrations/scripts/transform-data.ts",
+		"migrate:import": "ts-node --transpile-only src/database/migrations/scripts/import-to-postgresql.ts",
+		"migrate:all": "ts-node --transpile-only src/database/migrations/scripts/migrate-all.ts"
 	},
 	"keywords": [],
 	"author": "",
@@ -14,20 +22,30 @@
 	"description": "",
 	"dependencies": {
 		"@types/bcrypt": "^5.0.2",
+		"@types/bcryptjs": "^2.4.6",
 		"axios": "^1.9.0",
 		"bcrypt": "^6.0.0",
+		"bcryptjs": "^3.0.2",
 		"body-parser": "^2.2.0",
+		"class-transformer": "^0.5.1",
+		"class-validator": "^0.14.2",
 		"cors": "^2.8.5",
 		"dotenv": "^16.5.0",
 		"express": "^5.1.0",
 		"jsonwebtoken": "^9.0.2",
-		"mongoose": "^8.15.1"
+		"mongoose": "^8.15.1",
+		"pg": "^8.16.3",
+		"redis": "^4.7.1",
+		"reflect-metadata": "^0.2.2",
+		"typeorm": "^0.3.25"
 	},
 	"devDependencies": {
 		"@types/cors": "^2.8.18",
 		"@types/express": "^5.0.2",
 		"@types/jsonwebtoken": "^9.0.9",
 		"@types/node": "^22.15.30",
+		"@types/pg": "^8.15.5",
+		"@types/redis": "^4.0.11",
 		"nodemon": "^3.1.10",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.8.3"

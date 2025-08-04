@@ -1,5 +1,6 @@
 import axios from 'axios'
 import config from '../config/config'
+import { bitrixCache } from './cacheService'
 
 class Bitrix24Service {
 	private webhookUrl: string
@@ -22,12 +23,20 @@ class Bitrix24Service {
 	}
 
 	/**
-	 * Получение номенклатуры из каталога товаров
+	 * Получение номенклатуры из каталога товаров с кэшированием
 	 */
 	async getProducts(query = '', limit = 50) {
 		try {
-			console.log(`Поиск продуктов в Битрикс24 по запросу: '${query}'`)
-			console.log('Вебхук URL:', this.webhookUrl)
+			// Создаем ключ кэша на основе параметров запроса
+			const filterStr = query || 'all'
+			const cached = await bitrixCache.getDynamicOptions('products', filterStr)
+			
+			if (cached) {
+				console.log(`📦 Использован кэш для товаров: ${filterStr}`)
+				return { result: cached, total: cached.length }
+			}
+
+			console.log(`🔄 Загрузка товаров из Битрикс24 по запросу: '${query}'`)
 
 			let filter = {}
 
@@ -46,13 +55,6 @@ class Bitrix24Service {
 				}
 			}
 
-			console.log('Данные запроса:', {
-				filter,
-				select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
-				start: 0,
-				order: { NAME: 'ASC' },
-			})
-
 			const response = await axios.post(`${this.webhookUrl}crm.product.list`, {
 				filter,
 				select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
@@ -61,7 +63,12 @@ class Bitrix24Service {
 				order: { NAME: 'ASC' },
 			})
 
-			console.log('Ответ от Bitrix24:', response.data)
+			// Кэшируем результат
+			if (response.data?.result) {
+				await bitrixCache.setDynamicOptions('products', response.data.result, filterStr)
+			}
+
+			console.log(`✅ Получено ${response.data?.result?.length || 0} товаров`)
 			return response.data
 		} catch (error: any) {
 			console.error('Ошибка при получении товаров из Битрикс24:', error.message)
@@ -364,21 +371,30 @@ class Bitrix24Service {
 	}
 
 	/**
-	 * Получение доступных категорий сделок
+	 * Получение доступных категорий сделок с кэшированием
 	 */
 	async getDealCategories() {
 		try {
-			console.log(
-				'Запрос категорий сделок из Битрикс24 по адресу:',
-				`${this.webhookUrl}crm.category.list`
-			)
+			// Проверяем кэш сначала
+			const cached = await bitrixCache.getDealCategories()
+			if (cached) {
+				console.log('📦 Использован кэш для категорий сделок')
+				return { result: cached, total: cached.length }
+			}
+
+			console.log('🔄 Загрузка категорий сделок из Битрикс24')
 
 			// Исправленный метод для получения категорий сделок
 			const response = await axios.post(`${this.webhookUrl}crm.category.list`, {
 				entityTypeId: 2, // 2 - тип сущности для сделок в Bitrix24
 			})
 
-			console.log('Получен ответ от Bitrix24:', response.data)
+			// Кэшируем результат
+			if (response.data?.result) {
+				await bitrixCache.setDealCategories(response.data.result)
+			}
+
+			console.log(`✅ Получено ${response.data?.result?.length || 0} категорий сделок`)
 			return response.data
 		} catch (error) {
 			console.error(
@@ -413,11 +429,20 @@ class Bitrix24Service {
 	}
 
 	/**
-	 * Получение списка компаний из Битрикс24
+	 * Получение списка компаний из Битрикс24 с кэшированием
 	 */
 	async getCompanies(query = '', limit = 50, assignedToUserId = null) {
 		try {
-			console.log(`Поиск компаний в Битрикс24 по запросу: '${query}'`)
+			// Создаем ключ кэша на основе параметров запроса
+			const filterKey = `${query || 'all'}_${assignedToUserId || 'nouser'}_${limit}`
+			const cached = await bitrixCache.getDynamicOptions('companies', filterKey)
+			
+			if (cached) {
+				console.log(`📦 Использован кэш для компаний: ${filterKey}`)
+				return { result: cached, total: cached.length }
+			}
+
+			console.log(`🔄 Загрузка компаний из Битрикс24 по запросу: '${query}'`)
 			console.log(`Фильтр по ответственному: ${assignedToUserId}`)
 
 			let filter: any = {}
@@ -523,7 +548,12 @@ class Bitrix24Service {
 				}
 			}
 
-			console.log('Ответ от Bitrix24 (компании):', results)
+			// Кэшируем результат
+			if (results?.result) {
+				await bitrixCache.setDynamicOptions('companies', results.result, filterKey)
+			}
+
+			console.log(`✅ Получено ${results?.result?.length || 0} компаний`)
 			return results
 		} catch (error) {
 			console.error('Ошибка при получении компаний из Битрикс24:', error)
@@ -634,13 +664,18 @@ class Bitrix24Service {
 	}
 
 	/**
-	 * Получение статусов сделок для определенной категории
+	 * Получение статусов сделок для определенной категории с кэшированием
 	 */
 	async getDealStages(categoryId: string = '0') {
 		try {
-			console.log(
-				`Запрос статусов сделок для категории ${categoryId} из Битрикс24`
-			)
+			// Проверяем кэш сначала
+			const cached = await bitrixCache.getDealStages(categoryId)
+			if (cached) {
+				console.log(`📦 Использован кэш для статусов категории ${categoryId}`)
+				return cached
+			}
+
+			console.log(`🔄 Загрузка статусов сделок для категории ${categoryId} из Битрикс24`)
 
 			const response = await axios.post(`${this.webhookUrl}crm.status.list`, {
 				filter: {
@@ -649,8 +684,6 @@ class Bitrix24Service {
 				},
 				order: { SORT: 'ASC' },
 			})
-
-			console.log('Ответ от Bitrix24 (статусы сделок):', response.data)
 
 			// Преобразуем результат в нужный формат
 			const stages =
@@ -662,6 +695,12 @@ class Bitrix24Service {
 					semantic: stage.SYSTEM === 'Y' ? stage.SYSTEM : 'P', // P - процесс, S - успех, F - провал
 				})) || []
 
+			// Кэшируем результат
+			if (stages.length > 0) {
+				await bitrixCache.setDealStages(categoryId, stages)
+			}
+
+			console.log(`✅ Получено ${stages.length} статусов для категории ${categoryId}`)
 			return stages
 		} catch (error) {
 			console.error('Ошибка при получении статусов сделок из Битрикс24:', error)

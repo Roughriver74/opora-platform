@@ -38,6 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const submissionController = __importStar(require("../controllers/submissionController"));
+const optimizedSubmissionController_1 = require("../controllers/optimizedSubmissionController");
 const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = express_1.default.Router();
 // Публичный роут для обновления статуса по Битрикс ID (без авторизации)
@@ -59,10 +60,8 @@ router.post('/submit', (req, res) => {
 router.get('/', authMiddleware_1.requireAdmin, (req, res) => {
     submissionController.getAllSubmissions(req, res);
 });
-// Получение заявок текущего пользователя
-router.get('/my', authMiddleware_1.requireAuth, (req, res) => {
-    submissionController.getMySubmissions(req, res);
-});
+// Получение заявок текущего пользователя (оптимизированная версия)
+router.get('/my', authMiddleware_1.requireAuth, optimizedSubmissionController_1.getOptimizedUserSubmissions);
 // Получение заявки по ID
 router.get('/:id', authMiddleware_1.requireAuth, (req, res) => {
     submissionController.getSubmissionById(req, res);

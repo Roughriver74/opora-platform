@@ -43,6 +43,8 @@ router.post('/admin-login', authController.adminLogin);
 router.post('/user-login', authController.userLogin);
 // Проверка текущего состояния авторизации
 router.get('/check', authMiddleware_1.authMiddleware, authController.verifyToken);
+// Обновление токена
+router.post('/refresh', authController.refreshToken);
 // Выход
 router.post('/logout', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin, authController.logout);
 exports.default = router;

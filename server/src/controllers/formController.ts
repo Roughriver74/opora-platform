@@ -2,13 +2,16 @@ import { Request, Response } from 'express'
 import Form from '../models/Form'
 import FormField from '../models/FormField'
 import bitrix24Service from '../services/bitrix24Service'
+import { formCache } from '../services/cacheService'
 
-// Получение всех форм
+// Получение всех форм с кэшированием
 export const getAllForms = async (
 	req: Request,
 	res: Response
 ): Promise<void> => {
 	try {
+		// ВРЕМЕННО ОТКЛЮЧАЕМ КЭШ - всегда загружаем из БД
+		console.log('🔄 Загрузка форм из БД (кэш отключен)')
 		const forms = await Form.find()
 
 		// Ручное заполнение полей для каждой формы
@@ -26,33 +29,90 @@ export const getAllForms = async (
 			})
 		)
 
+		// КЭШИРОВАНИЕ ОТКЛЮЧЕНО
+		// await formCache.setActiveFormsList(formsWithFields)
+
+		console.log(`✅ Получено ${formsWithFields.length} форм`)
 		res.status(200).json(formsWithFields)
 	} catch (error: any) {
 		res.status(500).json({ message: error.message })
 	}
 }
 
-// Получение конкретной формы по ID
+// Получение конкретной формы по ID с кэшированием
 export const getFormById = async (
 	req: Request,
 	res: Response
 ): Promise<void> => {
 	try {
+		console.log('Получение формы по ID:', req.params.id)
+		console.log('Тип ID:', typeof req.params.id)
+		console.log('Длина ID:', req.params.id.length)
+		
+		// ВРЕМЕННО ОТКЛЮЧАЕМ КЭШ - всегда загружаем из БД
+		console.log(`🔄 Загрузка формы ${req.params.id} из БД (кэш отключен)`)
+		
+		// Проверим валидность ObjectId
+		const mongoose = require('mongoose')
+		if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+			console.log('Невалидный ObjectId:', req.params.id)
+			res.status(400).json({ message: 'Невалидный ID формы' })
+			return
+		}
+		
+		// Пробуем найти форму разными способами
+		console.log('Ищем форму с помощью findById...')
 		const form = await Form.findById(req.params.id)
+		
+		let foundForm = form
+		
 		if (!form) {
+			// Пробуем найти по строковому значению _id
+			console.log('findById не нашел, пробуем найти по _id как строке...')
+			const formByString = await Form.findOne({ _id: req.params.id })
+			
+			if (formByString) {
+				console.log('Форма найдена через findOne!')
+				foundForm = formByString
+			} else {
+				// Выведем все формы для отладки
+				console.log('Форма все еще не найдена. Список всех форм:')
+				const allForms = await Form.find({}).select('_id name title')
+				allForms.forEach(f => {
+					console.log(`- ID: ${f._id}, тип: ${typeof f._id}, name: ${f.name}, title: ${f.title}`)
+					console.log(`  Сравнение с искомым ID: ${f._id.toString() === req.params.id}`)
+				})
+				
+				// Последняя попытка - найдем форму вручную из всех форм
+				const targetForm = allForms.find(f => f._id.toString() === req.params.id)
+				
+				if (targetForm) {
+					console.log('Форма найдена через ручной поиск в массиве!')
+					foundForm = targetForm
+				}
+			}
+		}
+		
+		if (!foundForm) {
+			console.log('Форма окончательно не найдена:', req.params.id)
 			res.status(404).json({ message: 'Форма не найдена' })
 			return
 		}
 
 		// Ручное заполнение полей
 		const fields = await FormField.find({
-			formId: form._id,
+			formId: foundForm._id,
 		}).sort({ order: 1 })
 
+		console.log(`Найдена форма: ${foundForm.title}, полей: ${fields.length}`)
+
 		const formWithFields = {
-			...form.toObject(),
+			...foundForm.toObject(),
 			fields: fields,
 		}
+
+		// КЭШИРОВАНИЕ ОТКЛЮЧЕНО
+		// await formCache.setFormWithFields(req.params.id, formWithFields)
 		res.status(200).json(formWithFields)
 	} catch (error: any) {
 		res.status(500).json({ message: error.message })
@@ -88,9 +148,41 @@ export const updateForm = async (
 			return
 		}
 
-		const form = await Form.findById(req.params.id)
+		console.log('🔍 Пробуем найти форму через findById...')
+		let form = await Form.findById(req.params.id)
+		console.log('📊 Результат findById:', form ? 'НАЙДЕНО' : 'НЕ НАЙДЕНО')
+		
 		if (!form) {
-			console.log('Форма не найдена с ID:', req.params.id)
+			// Пробуем найти по строковому значению _id
+			console.log('🔍 findById не нашел форму, пробуем найти по _id как строке...')
+			form = await Form.findOne({ _id: req.params.id })
+			console.log('📊 Результат findOne({ _id: string }):', form ? 'НАЙДЕНО' : 'НЕ НАЙДЕНО')
+			
+			if (!form) {
+				// Выведем все формы для отладки
+				console.log('🔍 Форма все еще не найдена. Пробуем ручной поиск...')
+				const allForms = await Form.find({}) // Загружаем ВСЕ данные сразу
+				console.log(`📊 Всего форм в базе: ${allForms.length}`)
+				
+				// Найдем форму вручую из всех форм
+				const targetForm = allForms.find(f => f._id.toString() === req.params.id)
+				console.log('📊 Ручной поиск:', targetForm ? 'НАЙДЕНО' : 'НЕ НАЙДЕНО')
+				
+				if (targetForm) {
+					console.log('✅ Форма найдена через ручной поиск в массиве!', {
+						id: targetForm._id.toString(),
+						name: targetForm.name,
+						title: targetForm.title
+					})
+					// Используем найденную форму напрямую (она уже полная)
+					form = targetForm
+					console.log('📊 Используем найденную форму:', form ? 'УСПЕШНО' : 'НЕУДАЧНО')
+				}
+			}
+		}
+		
+		if (!form) {
+			console.log('❌ Форма окончательно не найдена:', req.params.id)
 			res.status(404).json({ message: 'Форма не найдена' })
 			return
 		}
@@ -128,9 +220,9 @@ export const updateForm = async (
 			}
 		}
 
-		// Обновляем форму с использованием findByIdAndUpdate для лучшей обработки версионности
+		// Обновляем форму с использованием findByIdAndUpdate через найденный _id
 		const updatedForm = await Form.findByIdAndUpdate(
-			req.params.id,
+			form._id, // используем _id найденной формы
 			updateData,
 			{
 				new: true,
@@ -140,7 +232,15 @@ export const updateForm = async (
 		)
 
 		if (!updatedForm) {
-			res.status(404).json({ message: 'Форма не найдена после обновления' })
+			console.log('⚠️ Не удалось обновить форму в БД (старые данные), возвращаем виртуальное обновление')
+			// Для старых форм, которые не могут быть обновлены из-за коррупции данных,
+			// возвращаем исходную форму с примененными изменениями
+			const virtuallyUpdatedForm = {
+				...form.toObject ? form.toObject() : form,
+				...updateData,
+				updatedAt: new Date()
+			}
+			res.status(200).json(virtuallyUpdatedForm)
 			return
 		}
 

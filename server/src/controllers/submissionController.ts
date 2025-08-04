@@ -5,6 +5,7 @@ import Submission from '../models/Submission'
 import SubmissionHistory from '../models/SubmissionHistory'
 import User from '../models/User'
 import bitrix24Service from '../services/bitrix24Service'
+import { optimizedSubmissionService } from '../services/optimizedSubmissionService'
 
 // Обработка отправки формы заявки - НОВАЯ ЛОГИКА
 export const submitForm = async (req: Request, res: Response) => {
@@ -204,7 +205,7 @@ export const submitForm = async (req: Request, res: Response) => {
 	}
 }
 
-// Получение всех заявок (для админов)
+// Получение всех заявок (для админов) - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
 export const getAllSubmissions = async (req: Request, res: Response) => {
 	try {
 		const {
@@ -218,15 +219,80 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			dateTo,
 			search,
 			tags,
+			formId,
+			bitrixSyncStatus,
+			sortBy = 'createdAt',
+			sortOrder = 'desc'
 		} = req.query
 
-		// Строим фильтр
-		const filter: any = {}
+		// Подготовка фильтров
+		const filters = {
+			status: status as string,
+			priority: priority as string,
+			assignedTo: assignedTo as string,
+			userId: userId as string,
+			dateFrom: dateFrom as string,
+			dateTo: dateTo as string,
+			search: search as string,
+			tags: Array.isArray(tags) ? tags as string[] : tags ? [tags as string] : undefined,
+			formId: formId as string,
+			bitrixSyncStatus: bitrixSyncStatus as string
+		}
+
+		// Подготовка пагинации
+		const pagination = {
+			page: Number(page),
+			limit: Number(limit),
+			sortBy: sortBy as string,
+			sortOrder: sortOrder as 'asc' | 'desc'
+		}
+
+		console.log(`🔍 Оптимизированный запрос заявок: страница ${page}, лимит ${limit}`)
+		
+		// Используем оптимизированный сервис (БЕЗ populate!)
+		const result = await optimizedSubmissionService.getSubmissions(filters, pagination)
+		
+		console.log(`✅ Получено ${result.data.length} заявок из ${result.pagination.total}`)
+		res.status(200).json(result)
+	} catch (error: any) {
+		console.error('Ошибка при получении заявок:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка при получении заявок',
+			error: error.message,
+		})
+	}
+}
+
+// Получение заявок текущего пользователя
+export const getMySubmissions = async (req: Request, res: Response) => {
+	try {
+		const {
+			page = 1,
+			limit = 20,
+			status,
+			priority,
+			assignedTo,
+			dateFrom,
+			dateTo,
+			search,
+			tags,
+		} = req.query
+		const userId = req.user?.id
+
+		if (!userId) {
+			return res.status(401).json({
+				success: false,
+				message: 'Пользователь не авторизован',
+			})
+		}
+
+		// Строим фильтр для пользователя
+		const filter: any = { userId }
 
 		if (status) filter.status = status
 		if (priority) filter.priority = priority
 		if (assignedTo) filter.assignedTo = assignedTo
-		if (userId) filter.userId = userId
 		if (tags && Array.isArray(tags)) filter.tags = { $in: tags }
 
 		// Фильтр по дате
@@ -243,7 +309,7 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 		let total
 
 		if (search) {
-			const pipeline = [
+			const pipeline: any[] = [
 				// Подключаем данные формы
 				{
 					$lookup: {
@@ -339,7 +405,7 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			const countResult = await Submission.aggregate([
 				...countPipeline,
 				{ $count: 'total' },
-			])
+			] as any[])
 			total = countResult.length > 0 ? countResult[0].total : 0
 		} else {
 			// Обычный поиск без текстового поиска
@@ -366,168 +432,6 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 		})
 	} catch (error: any) {
 		console.error('Ошибка получения заявок:', error)
-		res.status(500).json({
-			success: false,
-			message: 'Ошибка получения заявок',
-		})
-	}
-}
-
-// Получение заявок текущего пользователя
-export const getMySubmissions = async (req: Request, res: Response) => {
-	try {
-		const {
-			page = 1,
-			limit = 20,
-			status,
-			priority,
-			assignedTo,
-			dateFrom,
-			dateTo,
-			search,
-			tags,
-		} = req.query
-		const userId = req.user?.id
-
-		if (!userId) {
-			return res.status(401).json({
-				success: false,
-				message: 'Пользователь не авторизован',
-			})
-		}
-
-		// Строим фильтр для пользователя
-		const filter: any = { userId }
-
-		if (status) filter.status = status
-		if (priority) filter.priority = priority
-		if (assignedTo) filter.assignedTo = assignedTo
-		if (tags && Array.isArray(tags)) filter.tags = { $in: tags }
-
-		// Фильтр по дате
-		if (dateFrom || dateTo) {
-			filter.createdAt = {}
-			if (dateFrom) filter.createdAt.$gte = new Date(dateFrom as string)
-			if (dateTo) filter.createdAt.$lte = new Date(dateTo as string)
-		}
-
-		const skip = (Number(page) - 1) * Number(limit)
-
-		// Если есть поиск, используем aggregate для поиска по форме
-		let submissions
-		let total
-
-		if (search) {
-			const pipeline = [
-				// Сначала матчим пользователя
-				{
-					$match: { userId: new (require('mongoose').Types.ObjectId)(userId) },
-				},
-				// Подключаем данные формы
-				{
-					$lookup: {
-						from: 'forms',
-						localField: 'formId',
-						foreignField: '_id',
-						as: 'formData',
-					},
-				},
-				// Раскрываем массив formData
-				{ $unwind: '$formData' },
-				// Применяем остальные фильтры и поиск
-				{
-					$match: {
-						...filter,
-						$or: [
-							{ submissionNumber: { $regex: search, $options: 'i' } },
-							{ title: { $regex: search, $options: 'i' } },
-							{ 'formData.title': { $regex: search, $options: 'i' } },
-							{ 'formData.name': { $regex: search, $options: 'i' } },
-						],
-					},
-				},
-				// Сортировка
-				{ $sort: { createdAt: -1 } },
-				// Пагинация
-				{ $skip: skip },
-				{ $limit: Number(limit) },
-				// Подключаем assignedTo
-				{
-					$lookup: {
-						from: 'users',
-						localField: 'assignedTo',
-						foreignField: '_id',
-						as: 'assignedTo',
-					},
-				},
-				// Преобразуем assignedTo из массива в объект
-				{
-					$addFields: {
-						assignedTo: { $arrayElemAt: ['$assignedTo', 0] },
-					},
-				},
-				// Формируем финальную структуру
-				{
-					$project: {
-						_id: 1,
-						submissionNumber: 1,
-						title: 1,
-						status: 1,
-						priority: 1,
-						bitrixDealId: 1,
-						bitrixSyncStatus: 1,
-						createdAt: 1,
-						updatedAt: 1,
-						tags: 1,
-						notes: 1,
-						formId: {
-							_id: '$formData._id',
-							name: '$formData.name',
-							title: '$formData.title',
-						},
-						assignedTo: {
-							_id: '$assignedTo._id',
-							firstName: '$assignedTo.firstName',
-							lastName: '$assignedTo.lastName',
-							email: '$assignedTo.email',
-						},
-					},
-				},
-			]
-
-			submissions = await Submission.aggregate(pipeline)
-
-			// Для подсчета общего количества используем тот же pipeline но без пагинации
-			const countPipeline = pipeline.slice(0, -3) // Убираем skip, limit и project
-			const countResult = await Submission.aggregate([
-				...countPipeline,
-				{ $count: 'total' },
-			])
-			total = countResult.length > 0 ? countResult[0].total : 0
-		} else {
-			// Обычный поиск без текстового поиска
-			submissions = await Submission.find(filter)
-				.populate('formId', 'name title')
-				.populate('assignedTo', 'firstName lastName email')
-				.sort({ createdAt: -1 })
-				.skip(skip)
-				.limit(Number(limit))
-
-			total = await Submission.countDocuments(filter)
-		}
-
-		res.json({
-			success: true,
-			data: submissions,
-			pagination: {
-				page: Number(page),
-				limit: Number(limit),
-				total,
-				pages: Math.ceil(total / Number(limit)),
-			},
-		})
-	} catch (error: any) {
-		console.error('Ошибка получения заявок пользователя:', error)
 		res.status(500).json({
 			success: false,
 			message: 'Ошибка получения заявок',
@@ -637,10 +541,10 @@ export const updateSubmissionStatus = async (req: Request, res: Response) => {
 			message: 'Статус заявки обновлен',
 		})
 	} catch (error: any) {
-		console.error('Ошибка обновления статуса:', error)
+		console.error('Ошибка получения заявки:', error)
 		res.status(500).json({
 			success: false,
-			message: 'Ошибка обновления статуса',
+			message: 'Ошибка получения заявки',
 		})
 	}
 }

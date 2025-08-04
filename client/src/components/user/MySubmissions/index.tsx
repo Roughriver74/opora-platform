@@ -19,19 +19,12 @@ import {
 	Button,
 	Card,
 	CardContent,
-	List,
-	ListItem,
-	ListItemText,
-	ListItemIcon,
-	Avatar,
-	Divider,
 	Stack,
 	FormControl,
 	InputLabel,
 	Select,
 	MenuItem,
 	TextField,
-	Alert,
 	Tooltip,
 	useTheme,
 	useMediaQuery,
@@ -43,9 +36,7 @@ import {
 } from '@mui/material'
 import {
 	Assignment as AssignmentIcon,
-	Person as PersonIcon,
 	Schedule as ScheduleIcon,
-	Note as NoteIcon,
 	Edit as EditIcon,
 	CheckCircle as CheckCircleIcon,
 	Error as ErrorIcon,
@@ -55,21 +46,15 @@ import {
 	ExpandMore as ExpandMoreIcon,
 	ExpandLess as ExpandLessIcon,
 	Visibility as VisibilityIcon,
-	Phone as PhoneIcon,
-	Email as EmailIcon,
 	Business as BusinessIcon,
-	Info as InfoIcon,
 	Description as DescriptionIcon,
 	FileCopy as FileCopyIcon,
-	Close as CloseIcon,
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import SubmissionService from '../../../services/submissionService'
 import { settingsService } from '../../../services/settingsService'
-import { FormFieldService } from '../../../services/formFieldService'
-import userService from '../../../services/userService'
 import {
 	Submission,
 	SubmissionHistory,
@@ -87,7 +72,7 @@ import { DEFAULT_STATUS_FILTER } from './constants'
 const MySubmissions: React.FC = () => {
 	const navigate = useNavigate()
 	const { user } = useAuth()
-	const { showError, showSuccess, showInfo } = useNotification()
+	const { showError, showSuccess } = useNotification()
 	const theme = useTheme()
 	const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 	const isSmallMobile = useMediaQuery('(max-width:480px)')
@@ -97,7 +82,7 @@ const MySubmissions: React.FC = () => {
 	const [loading, setLoading] = useState(true)
 	const [selectedSubmission, setSelectedSubmission] =
 		useState<Submission | null>(null)
-	const [submissionHistory, setSubmissionHistory] = useState<
+	const [, setSubmissionHistory] = useState<
 		SubmissionHistory[]
 	>([])
 	const [detailsOpen, setDetailsOpen] = useState(false)
@@ -108,7 +93,7 @@ const MySubmissions: React.FC = () => {
 	const [page, setPage] = useState(0)
 	const [rowsPerPage, setRowsPerPage] = useState(10)
 	const [total, setTotal] = useState(0)
-	const [formFields, setFormFields] = useState<FormField[]>([])
+	const [formFields] = useState<FormField[]>([])
 	const [users, setUsers] = useState<any[]>([])
 
 	// Настройки системы
@@ -383,10 +368,10 @@ const MySubmissions: React.FC = () => {
 	}
 
 	// Получение названия поля по его имени
-	const getFieldLabel = (fieldName: string): string => {
-		const field = formFields.find(f => f.name === fieldName)
-		return field ? field.label : fieldName
-	}
+	// const getFieldLabel = (fieldName: string): string => {
+	// 	const field = formFields.find(f => f.name === fieldName)
+	// 	return field ? field.label : fieldName
+	// }
 
 	// Извлечение чистого статуса без префикса категории
 	const getCleanStatus = (status: string): string => {
