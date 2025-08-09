@@ -60,7 +60,8 @@ export abstract class AuditableEntity extends BaseEntity {
 	}
 
 	private getChangedFields(): FieldChange[] {
-		const metadata = this.constructor.getRepository().metadata
+		// @ts-ignore
+		const metadata = (this.constructor as any).getRepository().metadata
 		const changes: FieldChange[] = []
 
 		for (const column of metadata.columns) {

@@ -1,121 +1,68 @@
 import { Request, Response } from 'express'
-import Form from '../models/Form'
-import FormField from '../models/FormField'
+import { getFormService } from '../services/FormService'
 import bitrix24Service from '../services/bitrix24Service'
-import { formCache } from '../services/cacheService'
 
-// Получение всех форм с кэшированием
+const formService = getFormService()
+
+// Получение всех форм
 export const getAllForms = async (
 	req: Request,
 	res: Response
 ): Promise<void> => {
 	try {
-		// ВРЕМЕННО ОТКЛЮЧАЕМ КЭШ - всегда загружаем из БД
-		console.log('🔄 Загрузка форм из БД (кэш отключен)')
-		const forms = await Form.find()
-
-		// Ручное заполнение полей для каждой формы
+		console.log('🔄 Загрузка форм из БД')
+		
+		// Получаем все активные формы с полями
+		const forms = await formService.findActive()
+		
+		// Загружаем поля для каждой формы
 		const formsWithFields = await Promise.all(
 			forms.map(async form => {
-				// Получаем все поля для этой формы по formId
-				const fields = await FormField.find({
-					formId: form._id,
-				}).sort({ order: 1 })
-
-				return {
-					...form.toObject(),
-					fields: fields,
-				}
+				const formWithFields = await formService.findWithFields(form.id)
+				return formWithFields || form
 			})
 		)
-
-		// КЭШИРОВАНИЕ ОТКЛЮЧЕНО
-		// await formCache.setActiveFormsList(formsWithFields)
 
 		console.log(`✅ Получено ${formsWithFields.length} форм`)
 		res.status(200).json(formsWithFields)
 	} catch (error: any) {
-		res.status(500).json({ message: error.message })
+		console.error('Ошибка при получении форм:', error)
+		res.status(500).json({ 
+			message: error.message || 'Ошибка при получении форм',
+			success: false 
+		})
 	}
 }
 
-// Получение конкретной формы по ID с кэшированием
+// Получение конкретной формы по ID
 export const getFormById = async (
 	req: Request,
 	res: Response
 ): Promise<void> => {
 	try {
-		console.log('Получение формы по ID:', req.params.id)
-		console.log('Тип ID:', typeof req.params.id)
-		console.log('Длина ID:', req.params.id.length)
+		const { id } = req.params
+		console.log('Получение формы по ID:', id)
 		
-		// ВРЕМЕННО ОТКЛЮЧАЕМ КЭШ - всегда загружаем из БД
-		console.log(`🔄 Загрузка формы ${req.params.id} из БД (кэш отключен)`)
-		
-		// Проверим валидность ObjectId
-		const mongoose = require('mongoose')
-		if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-			console.log('Невалидный ObjectId:', req.params.id)
-			res.status(400).json({ message: 'Невалидный ID формы' })
-			return
-		}
-		
-		// Пробуем найти форму разными способами
-		console.log('Ищем форму с помощью findById...')
-		const form = await Form.findById(req.params.id)
-		
-		let foundForm = form
+		// Получаем форму с полями через сервис
+		const form = await formService.findWithFields(id)
 		
 		if (!form) {
-			// Пробуем найти по строковому значению _id
-			console.log('findById не нашел, пробуем найти по _id как строке...')
-			const formByString = await Form.findOne({ _id: req.params.id })
-			
-			if (formByString) {
-				console.log('Форма найдена через findOne!')
-				foundForm = formByString
-			} else {
-				// Выведем все формы для отладки
-				console.log('Форма все еще не найдена. Список всех форм:')
-				const allForms = await Form.find({}).select('_id name title')
-				allForms.forEach(f => {
-					console.log(`- ID: ${f._id}, тип: ${typeof f._id}, name: ${f.name}, title: ${f.title}`)
-					console.log(`  Сравнение с искомым ID: ${f._id.toString() === req.params.id}`)
-				})
-				
-				// Последняя попытка - найдем форму вручную из всех форм
-				const targetForm = allForms.find(f => f._id.toString() === req.params.id)
-				
-				if (targetForm) {
-					console.log('Форма найдена через ручной поиск в массиве!')
-					foundForm = targetForm
-				}
-			}
-		}
-		
-		if (!foundForm) {
-			console.log('Форма окончательно не найдена:', req.params.id)
-			res.status(404).json({ message: 'Форма не найдена' })
+			console.log('Форма не найдена:', id)
+			res.status(404).json({ 
+				message: 'Форма не найдена',
+				success: false 
+			})
 			return
 		}
 
-		// Ручное заполнение полей
-		const fields = await FormField.find({
-			formId: foundForm._id,
-		}).sort({ order: 1 })
-
-		console.log(`Найдена форма: ${foundForm.title}, полей: ${fields.length}`)
-
-		const formWithFields = {
-			...foundForm.toObject(),
-			fields: fields,
-		}
-
-		// КЭШИРОВАНИЕ ОТКЛЮЧЕНО
-		// await formCache.setFormWithFields(req.params.id, formWithFields)
-		res.status(200).json(formWithFields)
+		console.log(`Найдена форма: ${form.title}, полей: ${form.fields.length}`)
+		res.status(200).json(form)
 	} catch (error: any) {
-		res.status(500).json({ message: error.message })
+		console.error('Ошибка при получении формы:', error)
+		res.status(500).json({ 
+			message: error.message || 'Ошибка при получении формы',
+			success: false 
+		})
 	}
 }
 
@@ -125,11 +72,29 @@ export const createForm = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		const form = new Form(req.body)
-		const savedForm = await form.save()
-		res.status(201).json(savedForm)
+		console.log('Создание новой формы:', req.body)
+		
+		const form = await formService.createForm(req.body)
+		
+		res.status(201).json({
+			success: true,
+			data: form,
+			message: 'Форма успешно создана'
+		})
 	} catch (error: any) {
-		res.status(400).json({ message: error.message })
+		console.error('Ошибка при создании формы:', error)
+		
+		if (error.message?.includes('уже существует')) {
+			res.status(400).json({ 
+				message: error.message,
+				success: false 
+			})
+		} else {
+			res.status(500).json({ 
+				message: error.message || 'Ошибка при создании формы',
+				success: false 
+			})
+		}
 	}
 }
 
@@ -139,135 +104,43 @@ export const updateForm = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		console.log('updateForm вызван с ID:', req.params.id)
-		console.log('updateForm данные:', JSON.stringify(req.body, null, 2))
+		const { id } = req.params
+		console.log('Обновление формы с ID:', id)
+		console.log('Данные для обновления:', JSON.stringify(req.body, null, 2))
 
-		// Проверяем валидность ObjectId
-		if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
-			res.status(400).json({ message: 'Некорректный ID формы' })
-			return
-		}
-
-		console.log('🔍 Пробуем найти форму через findById...')
-		let form = await Form.findById(req.params.id)
-		console.log('📊 Результат findById:', form ? 'НАЙДЕНО' : 'НЕ НАЙДЕНО')
+		const updatedForm = await formService.updateForm(id, req.body)
 		
-		if (!form) {
-			// Пробуем найти по строковому значению _id
-			console.log('🔍 findById не нашел форму, пробуем найти по _id как строке...')
-			form = await Form.findOne({ _id: req.params.id })
-			console.log('📊 Результат findOne({ _id: string }):', form ? 'НАЙДЕНО' : 'НЕ НАЙДЕНО')
-			
-			if (!form) {
-				// Выведем все формы для отладки
-				console.log('🔍 Форма все еще не найдена. Пробуем ручной поиск...')
-				const allForms = await Form.find({}) // Загружаем ВСЕ данные сразу
-				console.log(`📊 Всего форм в базе: ${allForms.length}`)
-				
-				// Найдем форму вручую из всех форм
-				const targetForm = allForms.find(f => f._id.toString() === req.params.id)
-				console.log('📊 Ручной поиск:', targetForm ? 'НАЙДЕНО' : 'НЕ НАЙДЕНО')
-				
-				if (targetForm) {
-					console.log('✅ Форма найдена через ручной поиск в массиве!', {
-						id: targetForm._id.toString(),
-						name: targetForm.name,
-						title: targetForm.title
-					})
-					// Используем найденную форму напрямую (она уже полная)
-					form = targetForm
-					console.log('📊 Используем найденную форму:', form ? 'УСПЕШНО' : 'НЕУДАЧНО')
-				}
-			}
-		}
-		
-		if (!form) {
-			console.log('❌ Форма окончательно не найдена:', req.params.id)
-			res.status(404).json({ message: 'Форма не найдена' })
-			return
-		}
-
-		console.log('Текущая форма:', JSON.stringify(form, null, 2))
-
-		// Проверяем уникальность имени, если оно изменяется
-		if (req.body.name && req.body.name !== form.name) {
-			const existingForm = await Form.findOne({
-				name: req.body.name,
-				_id: { $ne: req.params.id },
-			})
-			if (existingForm) {
-				console.log('Попытка использовать существующее имя:', req.body.name)
-				res.status(400).json({ message: 'Форма с таким именем уже существует' })
-				return
-			}
-		}
-
-		// Безопасное обновление только разрешенных полей
-		const allowedFields = [
-			'name',
-			'title',
-			'description',
-			'isActive',
-			'fields',
-			'bitrixDealCategory',
-			'successMessage',
-		]
-
-		const updateData: any = {}
-		for (const field of allowedFields) {
-			if (req.body[field] !== undefined) {
-				updateData[field] = req.body[field]
-			}
-		}
-
-		// Обновляем форму с использованием findByIdAndUpdate через найденный _id
-		const updatedForm = await Form.findByIdAndUpdate(
-			form._id, // используем _id найденной формы
-			updateData,
-			{
-				new: true,
-				runValidators: true,
-				lean: false,
-			}
-		)
-
 		if (!updatedForm) {
-			console.log('⚠️ Не удалось обновить форму в БД (старые данные), возвращаем виртуальное обновление')
-			// Для старых форм, которые не могут быть обновлены из-за коррупции данных,
-			// возвращаем исходную форму с примененными изменениями
-			const virtuallyUpdatedForm = {
-				...form.toObject ? form.toObject() : form,
-				...updateData,
-				updatedAt: new Date()
-			}
-			res.status(200).json(virtuallyUpdatedForm)
+			res.status(404).json({ 
+				message: 'Форма не найдена',
+				success: false 
+			})
 			return
 		}
 
-		console.log('Форма успешно сохранена:', updatedForm._id)
-
-		res.status(200).json(updatedForm)
+		console.log('Форма успешно обновлена:', updatedForm.id)
+		res.status(200).json({
+			success: true,
+			data: updatedForm,
+			message: 'Форма успешно обновлена'
+		})
 	} catch (error: any) {
-		console.error('Ошибка в updateForm:', error)
-		console.error('Stack trace:', error.stack)
-
-		// Более детальная обработка ошибок
-		if (error.name === 'ValidationError') {
-			res.status(400).json({
-				message: 'Ошибка валидации данных',
-				details: error.errors,
+		console.error('Ошибка при обновлении формы:', error)
+		
+		if (error.message?.includes('не найден')) {
+			res.status(404).json({
+				message: error.message,
+				success: false
 			})
-		} else if (
-			error.name === 'MongoError' ||
-			error.name === 'MongoServerError'
-		) {
-			res.status(500).json({
-				message: 'Ошибка базы данных',
-				details: error.code === 11000 ? 'Дублирование данных' : error.message,
+		} else if (error.message?.includes('уже существует')) {
+			res.status(400).json({
+				message: error.message,
+				success: false
 			})
 		} else {
-			res.status(400).json({
-				message: error.message || 'Неизвестная ошибка при обновлении формы',
+			res.status(500).json({
+				message: error.message || 'Ошибка при обновлении формы',
+				success: false
 			})
 		}
 	}
@@ -279,16 +152,29 @@ export const deleteForm = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		const form = await Form.findById(req.params.id)
-		if (!form) {
-			res.status(404).json({ message: 'Форма не найдена' })
+		const { id } = req.params
+		console.log('Удаление формы с ID:', id)
+		
+		const deleted = await formService.delete(id)
+		
+		if (!deleted) {
+			res.status(404).json({ 
+				message: 'Форма не найдена',
+				success: false 
+			})
 			return
 		}
 
-		await Form.findByIdAndDelete(req.params.id)
-		res.status(200).json({ message: 'Форма успешно удалена' })
+		res.status(200).json({ 
+			message: 'Форма успешно удалена',
+			success: true 
+		})
 	} catch (error: any) {
-		res.status(500).json({ message: error.message })
+		console.error('Ошибка при удалении формы:', error)
+		res.status(500).json({ 
+			message: error.message || 'Ошибка при удалении формы',
+			success: false 
+		})
 	}
 }
 

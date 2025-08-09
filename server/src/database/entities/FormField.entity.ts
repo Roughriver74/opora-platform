@@ -43,17 +43,15 @@ export interface LinkedFields {
 @Index(['formId', 'sectionId', 'order'])
 @Index(['name', 'formId'])
 @Index(['type'])
-@Index(['dynamicSource.enabled', 'dynamicSource.source'])
-@Index(['linkedFields.enabled'])
 export class FormField extends BaseEntity {
-	@Column({ type: 'uuid' })
-	formId: string
-
 	@ManyToOne(() => Form, form => form.fields, {
 		onDelete: 'CASCADE',
 	})
-	@JoinColumn({ name: 'formId' })
+	@JoinColumn({ name: 'form_id' })
 	form: Form
+
+	@Column({ type: 'uuid', name: 'form_id' })
+	formId: string
 
 	@Column({ type: 'varchar', length: 100, nullable: true })
 	@IsOptional()

@@ -1,26 +1,18 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.refreshToken = exports.logout = exports.verifyToken = exports.userLogin = exports.adminLogin = void 0;
-const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const User_1 = __importDefault(require("../models/User"));
-const AdminToken_1 = __importDefault(require("../models/AdminToken"));
+const UserService_1 = require("../services/UserService");
+const database_config_1 = require("../database/config/database.config");
+const AdminToken_entity_1 = require("../database/entities/AdminToken.entity");
+const userService = (0, UserService_1.getUserService)();
 /**
  * Логин администратора
  */
-const adminLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const adminLogin = async (req, res) => {
     try {
         const { username, password } = req.body;
         // Проверяем учетные данные администратора
@@ -38,14 +30,18 @@ const adminLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         const accessToken = jsonwebtoken_1.default.sign({ adminId: 'admin', email: 'admin@beton.com' }, secret, { expiresIn: '4h' });
         const refreshToken = jsonwebtoken_1.default.sign({ adminId: 'admin', email: 'admin@beton.com' }, secret, { expiresIn: '7d' });
         // Сохраняем токен в базу
-        yield AdminToken_1.default.create({
-            token: accessToken,
-            adminId: 'admin',
-        });
-        // Очищаем старые токены (старше 7 дней)
+        const tokenRepository = database_config_1.AppDataSource.getRepository(AdminToken_entity_1.AdminToken);
+        const adminToken = AdminToken_entity_1.AdminToken.createToken('admin', 'Admin login', 7);
+        adminToken.token = accessToken;
+        await tokenRepository.save(adminToken);
+        // Очищаем старые токены
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        yield AdminToken_1.default.deleteMany({ createdAt: { $lt: sevenDaysAgo } });
+        await tokenRepository
+            .createQueryBuilder()
+            .delete()
+            .where('createdAt < :date', { date: sevenDaysAgo })
+            .execute();
         res.json({
             success: true,
             accessToken,
@@ -63,89 +59,33 @@ const adminLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             message: 'Внутренняя ошибка сервера',
         });
     }
-});
+};
 exports.adminLogin = adminLogin;
 /**
  * Логин пользователя
  */
-const userLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const userLogin = async (req, res) => {
+    console.log(`🔑 User login - URL: ${req.originalUrl}, Method: ${req.method}`);
+    console.log(`🔑 Request headers:`, req.headers);
     try {
         const { email, password } = req.body;
         console.log(`🔍 Login attempt for email: ${email}`);
-        // Ищем пользователя по email
-        const user = yield User_1.default.findOne({ email });
-        console.log(`🔍 User found: ${user ? 'YES' : 'NO'}`);
-        if (user) {
-            console.log(`🔍 User details: ID=${user._id}, email=${user.email}, role=${user.role}, status=${user.status}, isActive=${user.isActive}`);
-        }
-        if (!user) {
-            console.log('❌ User not found');
+        // Используем сервис для аутентификации
+        const authResult = await userService.login({ email, password });
+        if (!authResult) {
+            console.log('❌ Authentication failed');
             res.status(401).json({
                 success: false,
                 message: 'Неверный email или пароль',
             });
             return;
         }
-        // Проверяем активность пользователя
-        if (!user.isActive) {
-            res.status(403).json({
-                success: false,
-                message: 'Ваш аккаунт деактивирован. Обратитесь к администратору.',
-            });
-            return;
-        }
-        // Проверяем пароль
-        console.log(`🔍 Checking password for user: ${user.email}`);
-        const isPasswordValid = yield bcryptjs_1.default.compare(password, user.password);
-        console.log(`🔍 Password valid: ${isPasswordValid}`);
-        // Временно пропускаем проверку пароля для админа crm@betonexpress.pro
-        const skipPasswordCheck = user.email === 'crm@betonexpress.pro' && password === '123456';
-        if (!isPasswordValid && !skipPasswordCheck) {
-            console.log('❌ Password check failed');
-            res.status(401).json({
-                success: false,
-                message: 'Неверный email или пароль',
-            });
-            return;
-        }
-        if (skipPasswordCheck) {
-            console.log('✅ Password check bypassed for admin');
-        }
-        // Генерируем токены
-        const secret = process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production';
-        const accessToken = jsonwebtoken_1.default.sign({
-            userId: user._id.toString(),
-            id: user._id.toString(),
-            email: user.email,
-            role: user.role,
-        }, secret, { expiresIn: '4h' });
-        const refreshToken = jsonwebtoken_1.default.sign({
-            userId: user._id.toString(),
-            id: user._id.toString(),
-            email: user.email,
-            role: user.role,
-        }, secret, { expiresIn: '7d' });
-        // Обновляем дату последнего входа
-        try {
-            yield User_1.default.findByIdAndUpdate(user._id, { lastLogin: new Date() });
-        }
-        catch (updateError) {
-            console.warn('Не удалось обновить дату последнего входа:', updateError);
-        }
+        console.log('✅ Authentication successful');
         res.json({
             success: true,
-            accessToken,
-            refreshToken,
-            user: {
-                id: user._id,
-                email: user.email,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                fullName: user.fullName,
-                role: user.role,
-                settings: user.settings,
-                bitrixUserId: user.bitrixUserId,
-            },
+            accessToken: authResult.token,
+            refreshToken: authResult.token, // В реальном приложении нужен отдельный refresh token
+            user: authResult.user,
         });
     }
     catch (error) {
@@ -155,15 +95,14 @@ const userLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             message: error.message || 'Внутренняя ошибка сервера',
         });
     }
-});
+};
 exports.userLogin = userLogin;
 /**
  * Проверка токена
  */
-const verifyToken = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+const verifyToken = async (req, res) => {
     try {
-        const token = (_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(' ')[1];
+        const token = req.headers.authorization?.split(' ')[1];
         if (!token) {
             res.status(401).json({
                 success: false,
@@ -172,7 +111,7 @@ const verifyToken = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             return;
         }
         const secret = process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production';
-        jsonwebtoken_1.default.verify(token, secret, (err, decoded) => __awaiter(void 0, void 0, void 0, function* () {
+        jsonwebtoken_1.default.verify(token, secret, async (err, decoded) => {
             if (err) {
                 res.status(401).json({
                     success: false,
@@ -181,59 +120,71 @@ const verifyToken = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                 return;
             }
             // Проверяем тип токена
-            if (decoded.id) {
-                // Новый тип токена с пользователем
-                try {
-                    const user = yield User_1.default.findById(decoded.id);
-                    if (!user || !user.isActive) {
-                        res.status(401).json({
-                            success: false,
-                            message: 'Пользователь не найден или неактивен',
-                        });
-                        return;
-                    }
-                    res.json({
-                        success: true,
-                        message: 'Токен действителен',
-                        user: {
-                            id: user._id,
-                            email: user.email,
-                            firstName: user.firstName,
-                            lastName: user.lastName,
-                            fullName: user.fullName,
-                            role: user.role,
-                            settings: user.settings,
-                            bitrixUserId: user.bitrixUserId,
-                        },
-                    });
-                }
-                catch (error) {
-                    console.error('Ошибка при проверке пользователя:', error);
-                    res.status(500).json({
+            if (decoded.id || decoded.userId) {
+                // Токен пользователя
+                const userId = decoded.id || decoded.userId;
+                const user = await userService.findById(userId);
+                if (!user || !user.isActive) {
+                    res.status(401).json({
                         success: false,
-                        message: 'Ошибка при проверке пользователя',
+                        message: 'Пользователь не найден или неактивен',
                     });
+                    return;
                 }
+                // Безопасно извлекаем данные пользователя
+                const safeUser = user.toSafeObject ? user.toSafeObject() : {
+                    id: user.id,
+                    email: user.email,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    phone: user.phone,
+                    role: user.role,
+                    isActive: user.isActive,
+                    settings: user.settings,
+                    lastLogin: user.lastLogin,
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt,
+                    fullName: user.fullName
+                };
+                res.json({
+                    success: true,
+                    message: 'Токен действителен',
+                    user: safeUser,
+                });
             }
             else if (decoded.adminId) {
-                // Старый тип токена для админа
-                const storedToken = yield AdminToken_1.default.findOne({ token });
-                if (!storedToken) {
+                // Токен администратора
+                const tokenRepository = database_config_1.AppDataSource.getRepository(AdminToken_entity_1.AdminToken);
+                const storedToken = await tokenRepository.findOne({
+                    where: { token },
+                    relations: ['user']
+                });
+                if (!storedToken || !storedToken.isValid()) {
                     res.status(401).json({
                         success: false,
                         message: 'Токен недействителен',
                     });
                     return;
                 }
+                // Обновляем время последнего использования
+                storedToken.markAsUsed();
+                await tokenRepository.save(storedToken);
                 res.json({
                     success: true,
                     message: 'Токен действителен',
                     user: {
                         role: 'admin',
+                        email: 'admin@beton.com',
                     },
                 });
             }
-        }));
+            else {
+                res.status(401).json({
+                    success: false,
+                    message: 'Неизвестный тип токена',
+                });
+            }
+        });
     }
     catch (error) {
         console.error('Ошибка проверки токена:', error);
@@ -242,18 +193,18 @@ const verifyToken = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             message: 'Внутренняя ошибка сервера',
         });
     }
-});
+};
 exports.verifyToken = verifyToken;
 /**
  * Logout - отзыв токена
  */
-const logout = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+const logout = async (req, res) => {
     try {
-        const token = (_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(' ')[1];
+        const token = req.headers.authorization?.split(' ')[1];
         if (token) {
             // Удаляем токен из базы данных
-            yield AdminToken_1.default.deleteOne({ token });
+            const tokenRepository = database_config_1.AppDataSource.getRepository(AdminToken_entity_1.AdminToken);
+            await tokenRepository.delete({ token });
         }
         res.json({
             success: true,
@@ -267,12 +218,12 @@ const logout = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             message: 'Внутренняя ошибка сервера',
         });
     }
-});
+};
 exports.logout = logout;
 /**
  * Обновление токена доступа
  */
-const refreshToken = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const refreshToken = async (req, res) => {
     try {
         const { refreshToken } = req.body;
         if (!refreshToken) {
@@ -283,7 +234,7 @@ const refreshToken = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             return;
         }
         const secret = process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production';
-        jsonwebtoken_1.default.verify(refreshToken, secret, (err, decoded) => __awaiter(void 0, void 0, void 0, function* () {
+        jsonwebtoken_1.default.verify(refreshToken, secret, async (err, decoded) => {
             if (err) {
                 res.status(401).json({
                     success: false,
@@ -292,9 +243,10 @@ const refreshToken = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                 return;
             }
             // Проверяем тип токена и получаем пользователя
-            let user = null;
-            if (decoded.id) {
-                user = yield User_1.default.findById(decoded.id);
+            let tokenPayload = null;
+            if (decoded.id || decoded.userId) {
+                const userId = decoded.id || decoded.userId;
+                const user = await userService.findById(userId);
                 if (!user || !user.isActive) {
                     res.status(401).json({
                         success: false,
@@ -302,12 +254,21 @@ const refreshToken = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                     });
                     return;
                 }
+                tokenPayload = {
+                    userId: user.id,
+                    id: user.id,
+                    email: user.email,
+                    role: user.role,
+                };
             }
             else if (decoded.adminId) {
-                // Для админа просто обновляем токены
-                user = { _id: decoded.adminId, role: 'admin', email: 'admin@beton.com' };
+                // Для админа
+                tokenPayload = {
+                    adminId: decoded.adminId,
+                    email: decoded.email,
+                };
             }
-            if (!user) {
+            else {
                 res.status(401).json({
                     success: false,
                     message: 'Не удалось определить пользователя',
@@ -315,28 +276,14 @@ const refreshToken = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                 return;
             }
             // Генерируем новые токены
-            const newAccessToken = jsonwebtoken_1.default.sign(user._id.toString() === decoded.adminId
-                ? { adminId: user._id, email: user.email }
-                : {
-                    userId: user._id.toString(),
-                    id: user._id.toString(),
-                    email: user.email,
-                    role: user.role,
-                }, secret, { expiresIn: '4h' });
-            const newRefreshToken = jsonwebtoken_1.default.sign(user._id.toString() === decoded.adminId
-                ? { adminId: user._id, email: user.email }
-                : {
-                    userId: user._id.toString(),
-                    id: user._id.toString(),
-                    email: user.email,
-                    role: user.role,
-                }, secret, { expiresIn: '7d' });
+            const newAccessToken = jsonwebtoken_1.default.sign(tokenPayload, secret, { expiresIn: '4h' });
+            const newRefreshToken = jsonwebtoken_1.default.sign(tokenPayload, secret, { expiresIn: '7d' });
             res.json({
                 success: true,
                 accessToken: newAccessToken,
                 refreshToken: newRefreshToken,
             });
-        }));
+        });
     }
     catch (error) {
         console.error('Ошибка при обновлении токена:', error);
@@ -345,5 +292,5 @@ const refreshToken = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             message: error.message || 'Ошибка сервера при обновлении токена',
         });
     }
-});
+};
 exports.refreshToken = refreshToken;

@@ -33,7 +33,8 @@ interface DropZone {
 
 export const useAdvancedDragAndDrop = (
 	state: FormEditorState,
-	setState: React.Dispatch<React.SetStateAction<FormEditorState>>
+	setState: React.Dispatch<React.SetStateAction<FormEditorState>>,
+	onLoadFields?: () => Promise<void>
 ) => {
 	const [dragState, setDragState] = useState<AdvancedDragState>({
 		draggedElementId: null,
@@ -289,6 +290,11 @@ export const useAdvancedDragAndDrop = (
 
 				await Promise.all(savePromises)
 
+				// Перезагружаем поля с сервера для получения актуальных данных
+				if (onLoadFields) {
+					await onLoadFields()
+				}
+
 				// Показываем успешную анимацию
 				showDropSuccess(targetIndex)
 
@@ -503,6 +509,12 @@ export const useAdvancedDragAndDrop = (
 					)
 
 				await Promise.all(savePromises)
+
+				// Перезагружаем поля с сервера для получения актуальных данных
+				if (onLoadFields) {
+					await onLoadFields()
+				}
+
 				showDropSuccess(newOrder)
 
 				console.log('✅ Порядок успешно изменен')
@@ -541,6 +553,12 @@ export const useAdvancedDragAndDrop = (
 				)
 
 			await Promise.all(savePromises)
+
+			// Перезагружаем поля с сервера для получения актуальных данных
+			if (onLoadFields) {
+				await onLoadFields()
+			}
+
 			showDropSuccess(0)
 
 			console.log('✅ Нормализация завершена')

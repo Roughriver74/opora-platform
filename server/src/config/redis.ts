@@ -7,7 +7,7 @@ export class RedisClient {
 
 	private constructor() {
 		this.client = createClient({
-			url: config.redisUrl || 'redis://localhost:6379',
+			url: config.redisUrl || `redis://localhost:${process.env.REDIS_PORT || 6396}`,
 			socket: {
 				connectTimeout: 5000,
 			},

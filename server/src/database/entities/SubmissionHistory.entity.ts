@@ -25,20 +25,20 @@ export enum HistoryActionType {
 @Index(['userId', 'createdAt'])
 @Index(['actionType', 'createdAt'])
 export class SubmissionHistory extends BaseEntity {
-	@Column({ type: 'uuid' })
-	submissionId: string
-
 	@ManyToOne(() => Submission, { onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'submissionId' })
+	@JoinColumn({ name: 'submission_id' })
 	submission: Submission
 
-	@Column({ type: 'uuid', nullable: true })
-	@IsOptional()
-	userId?: string
+	@Column({ type: 'uuid', name: 'submission_id' })
+	submissionId: string
 
 	@ManyToOne(() => User, { nullable: true })
-	@JoinColumn({ name: 'userId' })
+	@JoinColumn({ name: 'user_id' })
 	user?: User
+
+	@Column({ type: 'uuid', nullable: true, name: 'user_id' })
+	@IsOptional()
+	userId?: string
 
 	@Column({
 		type: 'enum',

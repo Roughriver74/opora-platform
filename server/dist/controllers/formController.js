@@ -1,268 +1,165 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.submitForm = exports.testSync = exports.testConnection = exports.getDealStages = exports.getDealCategories = exports.deleteForm = exports.updateForm = exports.createForm = exports.getFormById = exports.getAllForms = void 0;
-const Form_1 = __importDefault(require("../models/Form"));
-const FormField_1 = __importDefault(require("../models/FormField"));
+const FormService_1 = require("../services/FormService");
 const bitrix24Service_1 = __importDefault(require("../services/bitrix24Service"));
-const cacheService_1 = require("../services/cacheService");
-// Получение всех форм с кэшированием
-const getAllForms = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const formService = (0, FormService_1.getFormService)();
+// Получение всех форм
+const getAllForms = async (req, res) => {
     try {
-        // Проверяем кэш сначала
-        const cachedForms = yield cacheService_1.formCache.getActiveFormsList();
-        if (cachedForms) {
-            console.log('📦 Использован кэш для списка форм');
-            res.status(200).json(cachedForms);
-            return;
-        }
         console.log('🔄 Загрузка форм из БД');
-        const forms = yield Form_1.default.find();
-        // Ручное заполнение полей для каждой формы
-        const formsWithFields = yield Promise.all(forms.map((form) => __awaiter(void 0, void 0, void 0, function* () {
-            // Получаем все поля для этой формы по formId
-            const fields = yield FormField_1.default.find({
-                formId: form._id,
-            }).sort({ order: 1 });
-            return Object.assign(Object.assign({}, form.toObject()), { fields: fields });
-        })));
-        // Кэшируем результат
-        yield cacheService_1.formCache.setActiveFormsList(formsWithFields);
+        // Получаем все активные формы с полями
+        const forms = await formService.findActive();
+        // Загружаем поля для каждой формы
+        const formsWithFields = await Promise.all(forms.map(async (form) => {
+            const formWithFields = await formService.findWithFields(form.id);
+            return formWithFields || form;
+        }));
         console.log(`✅ Получено ${formsWithFields.length} форм`);
         res.status(200).json(formsWithFields);
     }
     catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Ошибка при получении форм:', error);
+        res.status(500).json({
+            message: error.message || 'Ошибка при получении форм',
+            success: false
+        });
     }
-});
+};
 exports.getAllForms = getAllForms;
-// Получение конкретной формы по ID с кэшированием
-const getFormById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+// Получение конкретной формы по ID
+const getFormById = async (req, res) => {
     try {
-        console.log('Получение формы по ID:', req.params.id);
-        console.log('Тип ID:', typeof req.params.id);
-        console.log('Длина ID:', req.params.id.length);
-        // Проверяем кэш сначала
-        const cachedForm = yield cacheService_1.formCache.getFormWithFields(req.params.id);
-        if (cachedForm) {
-            console.log(`📦 Использован кэш для формы ${req.params.id}`);
-            res.status(200).json(cachedForm);
-            return;
-        }
-        console.log(`🔄 Загрузка формы ${req.params.id} из БД`);
-        // Проверим валидность ObjectId
-        const mongoose = require('mongoose');
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-            console.log('Невалидный ObjectId:', req.params.id);
-            res.status(400).json({ message: 'Невалидный ID формы' });
-            return;
-        }
-        // Пробуем найти форму разными способами
-        console.log('Ищем форму с помощью findById...');
-        const form = yield Form_1.default.findById(req.params.id);
-        let foundForm = form;
+        const { id } = req.params;
+        console.log('Получение формы по ID:', id);
+        // Получаем форму с полями через сервис
+        const form = await formService.findWithFields(id);
         if (!form) {
-            // Пробуем найти по строковому значению _id
-            console.log('findById не нашел, пробуем найти по _id как строке...');
-            const formByString = yield Form_1.default.findOne({ _id: req.params.id });
-            if (formByString) {
-                console.log('Форма найдена через findOne!');
-                foundForm = formByString;
-            }
-            else {
-                // Выведем все формы для отладки
-                console.log('Форма все еще не найдена. Список всех форм:');
-                const allForms = yield Form_1.default.find({}).select('_id name title');
-                allForms.forEach(f => {
-                    console.log(`- ID: ${f._id}, тип: ${typeof f._id}, name: ${f.name}, title: ${f.title}`);
-                    console.log(`  Сравнение с искомым ID: ${f._id.toString() === req.params.id}`);
-                });
-                // Последняя попытка - найдем форму вручную из всех форм
-                const targetForm = allForms.find(f => f._id.toString() === req.params.id);
-                if (targetForm) {
-                    console.log('Форма найдена через ручной поиск в массиве!');
-                    foundForm = targetForm;
-                }
-            }
-        }
-        if (!foundForm) {
-            console.log('Форма окончательно не найдена:', req.params.id);
-            res.status(404).json({ message: 'Форма не найдена' });
+            console.log('Форма не найдена:', id);
+            res.status(404).json({
+                message: 'Форма не найдена',
+                success: false
+            });
             return;
         }
-        // Ручное заполнение полей
-        const fields = yield FormField_1.default.find({
-            formId: foundForm._id,
-        }).sort({ order: 1 });
-        console.log(`Найдена форма: ${foundForm.title}, полей: ${fields.length}`);
-        const formWithFields = Object.assign(Object.assign({}, foundForm.toObject()), { fields: fields });
-        // Кэшируем результат
-        yield cacheService_1.formCache.setFormWithFields(req.params.id, formWithFields);
-        res.status(200).json(formWithFields);
+        console.log(`Найдена форма: ${form.title}, полей: ${form.fields.length}`);
+        res.status(200).json(form);
     }
     catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Ошибка при получении формы:', error);
+        res.status(500).json({
+            message: error.message || 'Ошибка при получении формы',
+            success: false
+        });
     }
-});
+};
 exports.getFormById = getFormById;
 // Создание новой формы
-const createForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const createForm = async (req, res) => {
     try {
-        const form = new Form_1.default(req.body);
-        const savedForm = yield form.save();
-        res.status(201).json(savedForm);
-    }
-    catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-});
-exports.createForm = createForm;
-// Обновление существующей формы
-const updateForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        console.log('updateForm вызван с ID:', req.params.id);
-        console.log('updateForm данные:', JSON.stringify(req.body, null, 2));
-        // Проверяем валидность ObjectId
-        if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
-            res.status(400).json({ message: 'Некорректный ID формы' });
-            return;
-        }
-        console.log('🔍 Пробуем найти форму через findById...');
-        let form = yield Form_1.default.findById(req.params.id);
-        console.log('📊 Результат findById:', form ? 'НАЙДЕНО' : 'НЕ НАЙДЕНО');
-        if (!form) {
-            // Пробуем найти по строковому значению _id
-            console.log('🔍 findById не нашел форму, пробуем найти по _id как строке...');
-            form = yield Form_1.default.findOne({ _id: req.params.id });
-            console.log('📊 Результат findOne({ _id: string }):', form ? 'НАЙДЕНО' : 'НЕ НАЙДЕНО');
-            if (!form) {
-                // Выведем все формы для отладки
-                console.log('🔍 Форма все еще не найдена. Пробуем ручной поиск...');
-                const allForms = yield Form_1.default.find({}); // Загружаем ВСЕ данные сразу
-                console.log(`📊 Всего форм в базе: ${allForms.length}`);
-                // Найдем форму вручую из всех форм
-                const targetForm = allForms.find(f => f._id.toString() === req.params.id);
-                console.log('📊 Ручной поиск:', targetForm ? 'НАЙДЕНО' : 'НЕ НАЙДЕНО');
-                if (targetForm) {
-                    console.log('✅ Форма найдена через ручной поиск в массиве!', {
-                        id: targetForm._id.toString(),
-                        name: targetForm.name,
-                        title: targetForm.title
-                    });
-                    // Используем найденную форму напрямую (она уже полная)
-                    form = targetForm;
-                    console.log('📊 Используем найденную форму:', form ? 'УСПЕШНО' : 'НЕУДАЧНО');
-                }
-            }
-        }
-        if (!form) {
-            console.log('❌ Форма окончательно не найдена:', req.params.id);
-            res.status(404).json({ message: 'Форма не найдена' });
-            return;
-        }
-        console.log('Текущая форма:', JSON.stringify(form, null, 2));
-        // Проверяем уникальность имени, если оно изменяется
-        if (req.body.name && req.body.name !== form.name) {
-            const existingForm = yield Form_1.default.findOne({
-                name: req.body.name,
-                _id: { $ne: req.params.id },
-            });
-            if (existingForm) {
-                console.log('Попытка использовать существующее имя:', req.body.name);
-                res.status(400).json({ message: 'Форма с таким именем уже существует' });
-                return;
-            }
-        }
-        // Безопасное обновление только разрешенных полей
-        const allowedFields = [
-            'name',
-            'title',
-            'description',
-            'isActive',
-            'fields',
-            'bitrixDealCategory',
-            'successMessage',
-        ];
-        const updateData = {};
-        for (const field of allowedFields) {
-            if (req.body[field] !== undefined) {
-                updateData[field] = req.body[field];
-            }
-        }
-        // Обновляем форму с использованием findByIdAndUpdate через найденный _id
-        const updatedForm = yield Form_1.default.findByIdAndUpdate(form._id, // используем _id найденной формы
-        updateData, {
-            new: true,
-            runValidators: true,
-            lean: false,
+        console.log('Создание новой формы:', req.body);
+        const form = await formService.createForm(req.body);
+        res.status(201).json({
+            success: true,
+            data: form,
+            message: 'Форма успешно создана'
         });
-        if (!updatedForm) {
-            console.log('⚠️ Не удалось обновить форму в БД (старые данные), возвращаем виртуальное обновление');
-            // Для старых форм, которые не могут быть обновлены из-за коррупции данных,
-            // возвращаем исходную форму с примененными изменениями
-            const virtuallyUpdatedForm = Object.assign(Object.assign(Object.assign({}, form.toObject ? form.toObject() : form), updateData), { updatedAt: new Date() });
-            res.status(200).json(virtuallyUpdatedForm);
-            return;
-        }
-        console.log('Форма успешно сохранена:', updatedForm._id);
-        res.status(200).json(updatedForm);
     }
     catch (error) {
-        console.error('Ошибка в updateForm:', error);
-        console.error('Stack trace:', error.stack);
-        // Более детальная обработка ошибок
-        if (error.name === 'ValidationError') {
+        console.error('Ошибка при создании формы:', error);
+        if (error.message?.includes('уже существует')) {
             res.status(400).json({
-                message: 'Ошибка валидации данных',
-                details: error.errors,
-            });
-        }
-        else if (error.name === 'MongoError' ||
-            error.name === 'MongoServerError') {
-            res.status(500).json({
-                message: 'Ошибка базы данных',
-                details: error.code === 11000 ? 'Дублирование данных' : error.message,
+                message: error.message,
+                success: false
             });
         }
         else {
-            res.status(400).json({
-                message: error.message || 'Неизвестная ошибка при обновлении формы',
+            res.status(500).json({
+                message: error.message || 'Ошибка при создании формы',
+                success: false
             });
         }
     }
-});
-exports.updateForm = updateForm;
-// Удаление формы
-const deleteForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+};
+exports.createForm = createForm;
+// Обновление существующей формы
+const updateForm = async (req, res) => {
     try {
-        const form = yield Form_1.default.findById(req.params.id);
-        if (!form) {
-            res.status(404).json({ message: 'Форма не найдена' });
+        const { id } = req.params;
+        console.log('Обновление формы с ID:', id);
+        console.log('Данные для обновления:', JSON.stringify(req.body, null, 2));
+        const updatedForm = await formService.updateForm(id, req.body);
+        if (!updatedForm) {
+            res.status(404).json({
+                message: 'Форма не найдена',
+                success: false
+            });
             return;
         }
-        yield Form_1.default.findByIdAndDelete(req.params.id);
-        res.status(200).json({ message: 'Форма успешно удалена' });
+        console.log('Форма успешно обновлена:', updatedForm.id);
+        res.status(200).json({
+            success: true,
+            data: updatedForm,
+            message: 'Форма успешно обновлена'
+        });
     }
     catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Ошибка при обновлении формы:', error);
+        if (error.message?.includes('не найден')) {
+            res.status(404).json({
+                message: error.message,
+                success: false
+            });
+        }
+        else if (error.message?.includes('уже существует')) {
+            res.status(400).json({
+                message: error.message,
+                success: false
+            });
+        }
+        else {
+            res.status(500).json({
+                message: error.message || 'Ошибка при обновлении формы',
+                success: false
+            });
+        }
     }
-});
+};
+exports.updateForm = updateForm;
+// Удаление формы
+const deleteForm = async (req, res) => {
+    try {
+        const { id } = req.params;
+        console.log('Удаление формы с ID:', id);
+        const deleted = await formService.delete(id);
+        if (!deleted) {
+            res.status(404).json({
+                message: 'Форма не найдена',
+                success: false
+            });
+            return;
+        }
+        res.status(200).json({
+            message: 'Форма успешно удалена',
+            success: true
+        });
+    }
+    catch (error) {
+        console.error('Ошибка при удалении формы:', error);
+        res.status(500).json({
+            message: error.message || 'Ошибка при удалении формы',
+            success: false
+        });
+    }
+};
 exports.deleteForm = deleteForm;
 // Получение категорий сделок из Битрикс24
-const getDealCategories = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getDealCategories = async (req, res) => {
     try {
-        const categoriesData = yield bitrix24Service_1.default.getDealCategories();
+        const categoriesData = await bitrix24Service_1.default.getDealCategories();
         console.log('Полученные данные от Bitrix24:', JSON.stringify(categoriesData, null, 2));
         // Преобразование результата в формат, ожидаемый фронтендом (ID и NAME)
         let categories = [];
@@ -316,13 +213,13 @@ const getDealCategories = (req, res) => __awaiter(void 0, void 0, void 0, functi
             ],
         });
     }
-});
+};
 exports.getDealCategories = getDealCategories;
 // Получение статусов сделок для определенной категории
-const getDealStages = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getDealStages = async (req, res) => {
     try {
         const categoryId = req.query.categoryId || '1';
-        const stages = yield bitrix24Service_1.default.getDealStages(categoryId);
+        const stages = await bitrix24Service_1.default.getDealStages(categoryId);
         res.status(200).json({
             success: true,
             data: stages,
@@ -335,13 +232,13 @@ const getDealStages = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             message: error.message || 'Ошибка загрузки статусов',
         });
     }
-});
+};
 exports.getDealStages = getDealStages;
 // Тестирование подключения к Битрикс24
-const testConnection = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const testConnection = async (req, res) => {
     try {
         // Пытаемся получить информацию о текущем пользователе как тест подключения
-        const userInfo = yield bitrix24Service_1.default.getCurrentUser();
+        const userInfo = await bitrix24Service_1.default.getCurrentUser();
         res.status(200).json({
             success: true,
             message: 'Подключение к Битрикс24 работает успешно',
@@ -355,10 +252,10 @@ const testConnection = (req, res) => __awaiter(void 0, void 0, void 0, function*
             message: error.message || 'Ошибка подключения к Битрикс24',
         });
     }
-});
+};
 exports.testConnection = testConnection;
 // Тестирование синхронизации статуса заявки
-const testSync = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const testSync = async (req, res) => {
     try {
         const { submissionId, newStatus } = req.body;
         if (!submissionId || !newStatus) {
@@ -387,10 +284,10 @@ const testSync = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             message: error.message || 'Ошибка тестирования синхронизации',
         });
     }
-});
+};
 exports.testSync = testSync;
 // Временная заглушка для функции submitForm
-const submitForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const submitForm = async (req, res) => {
     try {
         res
             .status(200)
@@ -399,5 +296,5 @@ const submitForm = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     catch (error) {
         res.status(500).json({ message: 'Ошибка при отправке формы' });
     }
-});
+};
 exports.submitForm = submitForm;

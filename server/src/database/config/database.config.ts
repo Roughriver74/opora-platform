@@ -1,6 +1,7 @@
 import { DataSource, DataSourceOptions } from 'typeorm'
 import * as dotenv from 'dotenv'
 import { join } from 'path'
+import { SnakeNamingStrategy } from './naming.strategy'
 
 dotenv.config()
 
@@ -8,12 +9,12 @@ export const databaseConfig: DataSourceOptions = {
 	type: 'postgres',
 	host: process.env.DB_HOST || 'localhost',
 	port: parseInt(process.env.DB_PORT || '5432'),
-	username: process.env.DB_USER || 'beton_user',
+	username: process.env.DB_USERNAME || 'beton_user',
 	password: process.env.DB_PASSWORD || 'beton_password',
 	database: process.env.DB_NAME || 'beton_crm',
 	entities: [join(__dirname, '../entities/**/*.entity{.ts,.js}')],
-	migrations: [join(__dirname, '../migrations/**/*{.ts,.js}')],
-	synchronize: process.env.NODE_ENV !== 'production',
+	migrations: [],
+	synchronize: false,
 	logging: process.env.NODE_ENV === 'development',
 	ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 	poolSize: parseInt(process.env.DB_POOL_SIZE || '10'),
@@ -21,6 +22,7 @@ export const databaseConfig: DataSourceOptions = {
 		max: parseInt(process.env.DB_POOL_SIZE || '10'),
 		connectionTimeoutMillis: 5000,
 	},
+	namingStrategy: new SnakeNamingStrategy(),
 }
 
 export const AppDataSource = new DataSource(databaseConfig)

@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
-import AdminToken from '../models/AdminToken'
-import User from '../models/User'
+import { AppDataSource } from '../database/config/database.config'
+import { AdminToken } from '../database/entities/AdminToken.entity'
+import { User } from '../database/entities/User.entity'
+import { getUserService } from '../services/UserService'
+
+const userService = getUserService()
 
 // Интерфейс для пользователя в токене
 interface AuthUser {
@@ -10,10 +14,8 @@ interface AuthUser {
 	isAdmin: boolean
 	isUser: boolean
 	tokenType: 'access'
-	bitrix_id?: string
-	settings?: {
-		onlyMyCompanies: boolean
-	}
+	bitrixUserId?: string
+	settings?: Record<string, any>
 }
 
 // Расширяем интерфейс Request для добавления пользовательских свойств
@@ -39,7 +41,8 @@ export const authMiddleware = async (
 		const authHeader = req.headers.authorization
 		const token = authHeader && authHeader.split(' ')[1]
 
-		console.log(`🔍 AuthMiddleware: ${req.method} ${req.path}`)
+		console.log(`🔍 AuthMiddleware: ${req.method} ${req.originalUrl}`)
+		console.log(`🔍 Full URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`)
 		console.log(`🔍 Authorization header: ${authHeader ? 'present' : 'missing'}`)
 		console.log(`🔍 Token: ${token ? 'present' : 'missing'}`)
 
@@ -65,73 +68,57 @@ export const authMiddleware = async (
 			console.log('✅ Token verified, decoded:', decoded)
 
 			try {
-				// Проверяем, есть ли пользователь в базе данных
-				if (decoded.userId) {
-					console.log(`🔍 Looking for user with userId: ${decoded.userId}`)
-					// Новая система авторизации - токен содержит userId
-					// Try with both import styles to debug
-					const user = await User.findById(decoded.userId)
-					const UserDynamic = require('../models/User').default
-					const user2 = await UserDynamic.findById(decoded.userId)
+				// Проверяем тип токена
+				if (decoded.adminId) {
+					// Токен администратора
+					const tokenRepository = AppDataSource.getRepository(AdminToken)
+					const storedToken = await tokenRepository.findOne({ 
+						where: { token },
+						relations: ['user']
+					})
 
-					console.log(`🔍 Static import result: ${user ? 'found' : 'not found'}`)
-					console.log(`🔍 Dynamic import result: ${user2 ? 'found' : 'not found'}`)
-					
-					const finalUser = user || user2
-					if (finalUser) {
-						console.log(`🔍 User status: ${finalUser.status}, isActive: ${finalUser.isActive}`)
-					}
-
-					if (finalUser && finalUser.status === 'active') {
-						console.log(`✅ User found: ${finalUser.email}, role: ${finalUser.role}`)
+					if (storedToken && storedToken.isValid()) {
+						console.log('✅ Valid admin token found')
+						// Обновляем время последнего использования
+						storedToken.markAsUsed()
+						await tokenRepository.save(storedToken)
+						
+						req.isAdmin = true
 						req.user = {
-							id: finalUser._id.toString(),
-							role: finalUser.role,
-							isAdmin: finalUser.role === 'admin',
-							isUser: finalUser.role === 'user',
+							id: 'admin',
+							role: 'admin',
+							isAdmin: true,
+							isUser: false,
 							tokenType: 'access',
-							bitrix_id: finalUser.bitrix_id,
-							settings: finalUser.settings,
 						}
-						req.isAdmin = finalUser.role === 'admin'
 					} else {
-						console.log(`❌ User not found or inactive for userId: ${decoded.userId}`)
+						console.log(`❌ Invalid or expired admin token`)
 						req.isAdmin = false
 						req.user = undefined
 					}
 				} else {
-					// Проверяем альтернативные поля для ID пользователя
-					const userId = decoded.id || decoded.sub
-					const user = await User.findById(userId)
-
-					if (user && user.status === 'active') {
+					// Токен пользователя
+					const userId = decoded.id || decoded.userId || decoded.sub
+					console.log(`🔍 Looking for user with ID: ${userId}`)
+					
+					const user = await userService.findById(userId)
+					
+					if (user && user.isActive) {
+						console.log(`✅ User found: ${user.email}, role: ${user.role}`)
 						req.user = {
-							id: user._id.toString(),
+							id: user.id,
 							role: user.role,
 							isAdmin: user.role === 'admin',
 							isUser: user.role === 'user',
 							tokenType: 'access',
-							bitrix_id: user.bitrix_id,
+							bitrixUserId: user.bitrixUserId,
 							settings: user.settings,
 						}
 						req.isAdmin = user.role === 'admin'
 					} else {
-						// Старая система авторизации - проверяем AdminToken
-						const tokenDoc = await AdminToken.findOne({ token })
-						if (tokenDoc) {
-							req.isAdmin = true
-							// Создаем минимальный объект пользователя для админа
-							req.user = {
-								id: 'admin',
-								role: 'admin',
-								isAdmin: true,
-								isUser: false,
-								tokenType: 'access',
-							}
-						} else {
-							req.isAdmin = false
-							req.user = undefined
-						}
+						console.log(`❌ User not found or inactive for ID: ${userId}`)
+						req.isAdmin = false
+						req.user = undefined
 					}
 				}
 			} catch (userError) {

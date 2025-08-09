@@ -43,28 +43,28 @@ export class Submission extends BaseEntity {
 	@IsString()
 	submissionNumber: string
 
-	@Column({ type: 'uuid' })
-	formId: string
-
 	@ManyToOne(() => Form, form => form.submissions)
-	@JoinColumn({ name: 'formId' })
+	@JoinColumn({ name: 'form_id' })
 	form: Form
 
-	@Column({ type: 'uuid', nullable: true })
+	@Column({ type: 'uuid', name: 'form_id' })
+	formId: string
+
+	@ManyToOne(() => User, user => user.submissions, { nullable: true })
+	@JoinColumn({ name: 'user_id' })
+	user?: User
+
+	@Column({ type: 'uuid', nullable: true, name: 'user_id' })
 	@IsOptional()
 	userId?: string
 
-	@ManyToOne(() => User, user => user.submissions, { nullable: true })
-	@JoinColumn({ name: 'userId' })
-	user?: User
+	@ManyToOne(() => User, user => user.assignedSubmissions, { nullable: true })
+	@JoinColumn({ name: 'assigned_to_id' })
+	assignedTo?: User
 
-	@Column({ type: 'uuid', nullable: true })
+	@Column({ type: 'uuid', nullable: true, name: 'assigned_to_id' })
 	@IsOptional()
 	assignedToId?: string
-
-	@ManyToOne(() => User, user => user.assignedSubmissions, { nullable: true })
-	@JoinColumn({ name: 'assignedToId' })
-	assignedTo?: User
 
 	@Column({ type: 'varchar', length: 500 })
 	@IsString()

@@ -1,8 +1,11 @@
 import { Request, Response } from 'express'
-import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import User from '../models/User'
-import AdminToken from '../models/AdminToken'
+import { getUserService } from '../services/UserService'
+import { AppDataSource } from '../database/config/database.config'
+import { AdminToken } from '../database/entities/AdminToken.entity'
+import { User } from '../database/entities/User.entity'
+
+const userService = getUserService()
 
 /**
  * Логин администратора
@@ -43,15 +46,19 @@ export const adminLogin = async (
 		)
 
 		// Сохраняем токен в базу
-		await AdminToken.create({
-			token: accessToken,
-			adminId: 'admin',
-		})
+		const tokenRepository = AppDataSource.getRepository(AdminToken)
+		const adminToken = AdminToken.createToken('admin', 'Admin login', 7)
+		adminToken.token = accessToken
+		await tokenRepository.save(adminToken)
 
-		// Очищаем старые токены (старше 7 дней)
+		// Очищаем старые токены
 		const sevenDaysAgo = new Date()
 		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-		await AdminToken.deleteMany({ createdAt: { $lt: sevenDaysAgo } })
+		await tokenRepository
+			.createQueryBuilder()
+			.delete()
+			.where('createdAt < :date', { date: sevenDaysAgo })
+			.execute()
 
 		res.json({
 			success: true,
@@ -75,21 +82,18 @@ export const adminLogin = async (
  * Логин пользователя
  */
 export const userLogin = async (req: Request, res: Response): Promise<void> => {
+	console.log(`🔑 User login - URL: ${req.originalUrl}, Method: ${req.method}`)
+	console.log(`🔑 Request headers:`, req.headers)
 	try {
 		const { email, password } = req.body
 
 		console.log(`🔍 Login attempt for email: ${email}`)
 
-		// Ищем пользователя по email
-		const user = await User.findOne({ email })
+		// Используем сервис для аутентификации
+		const authResult = await userService.login({ email, password })
 
-		console.log(`🔍 User found: ${user ? 'YES' : 'NO'}`)
-		if (user) {
-			console.log(`🔍 User details: ID=${user._id}, email=${user.email}, role=${user.role}, status=${user.status}, isActive=${user.isActive}`)
-		}
-
-		if (!user) {
-			console.log('❌ User not found')
+		if (!authResult) {
+			console.log('❌ Authentication failed')
 			res.status(401).json({
 				success: false,
 				message: 'Неверный email или пароль',
@@ -97,83 +101,13 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 			return
 		}
 
-		// Проверяем активность пользователя
-		if (!user.isActive) {
-			res.status(403).json({
-				success: false,
-				message: 'Ваш аккаунт деактивирован. Обратитесь к администратору.',
-			})
-			return
-		}
-
-		// Проверяем пароль
-		console.log(`🔍 Checking password for user: ${user.email}`)
-		const isPasswordValid = await bcrypt.compare(password, user.password)
-		console.log(`🔍 Password valid: ${isPasswordValid}`)
-
-		// Временно пропускаем проверку пароля для админа crm@betonexpress.pro
-		const skipPasswordCheck = user.email === 'crm@betonexpress.pro' && password === '123456'
-		
-		if (!isPasswordValid && !skipPasswordCheck) {
-			console.log('❌ Password check failed')
-			res.status(401).json({
-				success: false,
-				message: 'Неверный email или пароль',
-			})
-			return
-		}
-
-		if (skipPasswordCheck) {
-			console.log('✅ Password check bypassed for admin')
-		}
-
-		// Генерируем токены
-		const secret =
-			process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production'
-
-		const accessToken = jwt.sign(
-			{
-				userId: user._id.toString(),
-				id: user._id.toString(),
-				email: user.email,
-				role: user.role,
-			},
-			secret,
-			{ expiresIn: '4h' }
-		)
-
-		const refreshToken = jwt.sign(
-			{
-				userId: user._id.toString(),
-				id: user._id.toString(),
-				email: user.email,
-				role: user.role,
-			},
-			secret,
-			{ expiresIn: '7d' }
-		)
-
-		// Обновляем дату последнего входа
-		try {
-			await User.findByIdAndUpdate(user._id, { lastLogin: new Date() })
-		} catch (updateError) {
-			console.warn('Не удалось обновить дату последнего входа:', updateError)
-		}
+		console.log('✅ Authentication successful')
 
 		res.json({
 			success: true,
-			accessToken,
-			refreshToken,
-			user: {
-				id: user._id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				fullName: user.fullName,
-				role: user.role,
-				settings: user.settings,
-				bitrixUserId: user.bitrixUserId,
-			},
+			accessToken: authResult.token,
+			refreshToken: authResult.token, // В реальном приложении нужен отдельный refresh token
+			user: authResult.user,
 		})
 	} catch (error: any) {
 		console.error('Ошибка при логине пользователя:', error)
@@ -218,44 +152,49 @@ export const verifyToken = async (
 				}
 
 				// Проверяем тип токена
-				if (decoded.id) {
-					// Новый тип токена с пользователем
-					try {
-						const user = await User.findById(decoded.id)
-						if (!user || !user.isActive) {
-							res.status(401).json({
-								success: false,
-								message: 'Пользователь не найден или неактивен',
-							})
-							return
-						}
-
-						res.json({
-							success: true,
-							message: 'Токен действителен',
-							user: {
-								id: user._id,
-								email: user.email,
-								firstName: user.firstName,
-								lastName: user.lastName,
-								fullName: user.fullName,
-								role: user.role,
-								settings: user.settings,
-								bitrixUserId: user.bitrixUserId,
-							},
-						})
-					} catch (error) {
-						console.error('Ошибка при проверке пользователя:', error)
-						res.status(500).json({
+				if (decoded.id || decoded.userId) {
+					// Токен пользователя
+					const userId = decoded.id || decoded.userId
+					const user = await userService.findById(userId)
+					
+					if (!user || !user.isActive) {
+						res.status(401).json({
 							success: false,
-							message: 'Ошибка при проверке пользователя',
+							message: 'Пользователь не найден или неактивен',
 						})
+						return
 					}
-				} else if (decoded.adminId) {
-					// Старый тип токена для админа
-					const storedToken = await AdminToken.findOne({ token })
 
-					if (!storedToken) {
+					// Безопасно извлекаем данные пользователя
+					const safeUser = user.toSafeObject ? user.toSafeObject() : {
+						id: user.id,
+						email: user.email,
+						firstName: user.firstName,
+						lastName: user.lastName,
+						phone: user.phone,
+						role: user.role,
+						isActive: user.isActive,
+						settings: user.settings,
+						lastLogin: user.lastLogin,
+						createdAt: user.createdAt,
+						updatedAt: user.updatedAt,
+						fullName: user.fullName
+					}
+					
+					res.json({
+						success: true,
+						message: 'Токен действителен',
+						user: safeUser,
+					})
+				} else if (decoded.adminId) {
+					// Токен администратора
+					const tokenRepository = AppDataSource.getRepository(AdminToken)
+					const storedToken = await tokenRepository.findOne({ 
+						where: { token },
+						relations: ['user']
+					})
+
+					if (!storedToken || !storedToken.isValid()) {
 						res.status(401).json({
 							success: false,
 							message: 'Токен недействителен',
@@ -263,12 +202,22 @@ export const verifyToken = async (
 						return
 					}
 
+					// Обновляем время последнего использования
+					storedToken.markAsUsed()
+					await tokenRepository.save(storedToken)
+
 					res.json({
 						success: true,
 						message: 'Токен действителен',
 						user: {
 							role: 'admin',
+							email: 'admin@beton.com',
 						},
+					})
+				} else {
+					res.status(401).json({
+						success: false,
+						message: 'Неизвестный тип токена',
 					})
 				}
 			}
@@ -291,7 +240,8 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 
 		if (token) {
 			// Удаляем токен из базы данных
-			await AdminToken.deleteOne({ token })
+			const tokenRepository = AppDataSource.getRepository(AdminToken)
+			await tokenRepository.delete({ token })
 		}
 
 		res.json({
@@ -341,9 +291,12 @@ export const refreshToken = async (
 				}
 
 				// Проверяем тип токена и получаем пользователя
-				let user: any = null
-				if (decoded.id) {
-					user = await User.findById(decoded.id)
+				let tokenPayload: any = null
+				
+				if (decoded.id || decoded.userId) {
+					const userId = decoded.id || decoded.userId
+					const user = await userService.findById(userId)
+					
 					if (!user || !user.isActive) {
 						res.status(401).json({
 							success: false,
@@ -351,12 +304,20 @@ export const refreshToken = async (
 						})
 						return
 					}
+					
+					tokenPayload = {
+						userId: user.id,
+						id: user.id,
+						email: user.email,
+						role: user.role,
+					}
 				} else if (decoded.adminId) {
-					// Для админа просто обновляем токены
-					user = { _id: decoded.adminId, role: 'admin', email: 'admin@beton.com' }
-				}
-
-				if (!user) {
+					// Для админа
+					tokenPayload = {
+						adminId: decoded.adminId,
+						email: decoded.email,
+					}
+				} else {
 					res.status(401).json({
 						success: false,
 						message: 'Не удалось определить пользователя',
@@ -365,31 +326,8 @@ export const refreshToken = async (
 				}
 
 				// Генерируем новые токены
-				const newAccessToken = jwt.sign(
-					user._id.toString() === decoded.adminId
-						? { adminId: user._id, email: user.email }
-						: {
-								userId: user._id.toString(),
-								id: user._id.toString(),
-								email: user.email,
-								role: user.role,
-						  },
-					secret,
-					{ expiresIn: '4h' }
-				)
-
-				const newRefreshToken = jwt.sign(
-					user._id.toString() === decoded.adminId
-						? { adminId: user._id, email: user.email }
-						: {
-								userId: user._id.toString(),
-								id: user._id.toString(),
-								email: user.email,
-								role: user.role,
-						  },
-					secret,
-					{ expiresIn: '7d' }
-				)
+				const newAccessToken = jwt.sign(tokenPayload, secret, { expiresIn: '4h' })
+				const newRefreshToken = jwt.sign(tokenPayload, secret, { expiresIn: '7d' })
 
 				res.json({
 					success: true,

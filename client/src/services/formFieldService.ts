@@ -61,11 +61,14 @@ export const FormFieldService = {
 			return []
 		}
 		try {
-			// Получаем форму с полями вместо неправильного запроса к отдельному полю
-			const response = await api.get(`/api/forms/${formId}`)
-			// Возвращаем только поля из формы
-			return response.data.fields || []
+			// Запрашиваем поля формы через правильный эндпоинт
+			const response = await api.get('/api/form-fields', {
+				params: { formId }
+			})
+			// Возвращаем массив полей
+			return response.data || []
 		} catch (error) {
+			console.error('Ошибка загрузки полей формы:', error)
 			throw error
 		}
 	},

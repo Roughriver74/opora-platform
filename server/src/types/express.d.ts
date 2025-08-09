@@ -12,6 +12,11 @@ interface AuthUser {
 	isAdmin: boolean
 	isUser: boolean
 	tokenType: 'access'
+	bitrix_id?: string
+	settings?: {
+		onlyMyCompanies?: boolean
+		[key: string]: any
+	}
 }
 
 declare global {

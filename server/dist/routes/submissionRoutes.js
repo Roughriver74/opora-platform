@@ -68,16 +68,14 @@ router.get('/:id', authMiddleware_1.requireAuth, (req, res) => {
 });
 // Получение заявки с актуальными данными из Битрикс24 для редактирования
 router.get('/:id/edit', authMiddleware_1.requireAuth, (req, res) => {
-    var _a;
     console.log(`[ROUTE EDIT] GET /:id/edit вызван для заявки ${req.params.id}`);
-    console.log(`[ROUTE EDIT] Пользователь: ${(_a = req.user) === null || _a === void 0 ? void 0 : _a.id}`);
+    console.log(`[ROUTE EDIT] Пользователь: ${req.user?.id}`);
     submissionController.getSubmissionWithBitrixData(req, res);
 });
 // Копирование заявки
 router.post('/:id/copy', authMiddleware_1.requireAuth, (req, res) => {
-    var _a;
     console.log(`[ROUTE COPY] POST /:id/copy вызван для заявки ${req.params.id}`);
-    console.log(`[ROUTE COPY] Пользователь: ${(_a = req.user) === null || _a === void 0 ? void 0 : _a.id}`);
+    console.log(`[ROUTE COPY] Пользователь: ${req.user?.id}`);
     submissionController.copySubmission(req, res);
 });
 // Обновление статуса заявки

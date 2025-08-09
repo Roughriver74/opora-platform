@@ -1,0 +1,68 @@
+import { 
+	Column, 
+	BeforeInsert, 
+	BeforeUpdate, 
+	CreateDateColumn, 
+	UpdateDateColumn,
+	BaseEntity as TypeOrmBaseEntity 
+} from 'typeorm'
+import { BaseEntity } from './BaseEntity'
+
+/**
+ * Базовая сущность с аудитом изменений
+ */
+export abstract class AuditableEntity extends BaseEntity {
+	@Column({ type: 'varchar', length: 100, nullable: true })
+	createdBy?: string
+
+	@Column({ type: 'varchar', length: 100, nullable: true })
+	updatedBy?: string
+
+	@CreateDateColumn({ type: 'timestamp' })
+	createdAt: Date
+
+	@UpdateDateColumn({ type: 'timestamp' })
+	updatedAt: Date
+
+	// Денормализованные поля для быстрой фильтрации
+	@Column({ type: 'int', nullable: true })
+	yearCreated?: number
+
+	@Column({ type: 'int', nullable: true })
+	monthCreated?: number
+
+	@Column({ type: 'int', nullable: true })
+	dayCreated?: number
+
+	@Column({ type: 'int', nullable: true })
+	hourCreated?: number
+
+	@Column({ type: 'varchar', length: 10, nullable: true })
+	dayOfWeek?: string
+
+	@Column({ type: 'varchar', length: 10, nullable: true })
+	monthOfYear?: string
+
+	@BeforeInsert()
+	@BeforeUpdate()
+	protected updateDateFields() {
+		const now = new Date()
+		
+		if (!this.createdAt) {
+			this.createdAt = now
+			this.yearCreated = now.getFullYear()
+			this.monthCreated = now.getMonth() + 1
+			this.dayCreated = now.getDate()
+			this.hourCreated = now.getHours()
+			
+			const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+			this.dayOfWeek = daysOfWeek[now.getDay()]
+			
+			const monthsOfYear = ['January', 'February', 'March', 'April', 'May', 'June', 
+				'July', 'August', 'September', 'October', 'November', 'December']
+			this.monthOfYear = monthsOfYear[now.getMonth()]
+		}
+		
+		this.updatedAt = now
+	}
+}

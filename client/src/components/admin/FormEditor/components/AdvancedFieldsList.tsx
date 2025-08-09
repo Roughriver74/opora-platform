@@ -49,6 +49,7 @@ interface AdvancedFieldsListProps {
 	onAddSection: () => void
 	onFieldSave: (index: number, field: Partial<FormField>) => void
 	onFieldDelete: (index: number) => void
+	onLoadFields?: () => Promise<void>
 }
 
 interface KeyboardHintsProps {
@@ -464,6 +465,7 @@ export const AdvancedFieldsList: React.FC<AdvancedFieldsListProps> = ({
 	onAddSection,
 	onFieldSave,
 	onFieldDelete,
+	onLoadFields,
 }) => {
 	const theme = useTheme()
 	const containerRef = useRef<HTMLDivElement>(null)
@@ -488,7 +490,7 @@ export const AdvancedFieldsList: React.FC<AdvancedFieldsListProps> = ({
 		normalizeOrders,
 		setContainer,
 		isAdvancedDragActive,
-	} = useAdvancedDragAndDrop(state, setState)
+	} = useAdvancedDragAndDrop(state, setState, onLoadFields)
 
 	// Установка контейнера для drag & drop
 	useEffect(() => {

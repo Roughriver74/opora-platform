@@ -22,7 +22,7 @@ type AuthAction =
 // Начальное состояние
 const initialState: AuthState = {
 	user: null,
-	isLoading: false,
+	isLoading: true, // Изначально true, чтобы показать загрузку при проверке токена
 	error: null,
 	isAuthenticated: false,
 }
@@ -152,16 +152,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 	// Функция для проверки аутентификации
 	const checkAuth = async (): Promise<boolean> => {
 		try {
-			dispatch({ type: 'SET_LOADING', payload: true })
-
 			const token = localStorage.getItem('token')
 			const userStr = localStorage.getItem('user')
 
 			if (!token || !userStr) {
+				// Если нет токена, просто устанавливаем isLoading в false
 				dispatch({ type: 'SET_LOADING', payload: false })
 				return false
 			}
 
+			// Если токен есть, начинаем проверку
 			const user = JSON.parse(userStr)
 			const isValid = await authService.validateToken(token)
 
@@ -172,12 +172,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 				})
 				return true
 			} else {
-				logout()
+				// Токен недействителен - очищаем данные
+				localStorage.removeItem('user')
+				localStorage.removeItem('token')
+				localStorage.removeItem('refreshToken')
+				dispatch({ type: 'AUTH_LOGOUT' })
 				return false
 			}
 		} catch (error) {
 			console.error('Ошибка проверки авторизации:', error)
-			logout()
+			// При ошибке очищаем данные
+			localStorage.removeItem('user')
+			localStorage.removeItem('token')
+			localStorage.removeItem('refreshToken')
+			dispatch({ type: 'AUTH_LOGOUT' })
 			return false
 		} finally {
 			dispatch({ type: 'SET_LOADING', payload: false })

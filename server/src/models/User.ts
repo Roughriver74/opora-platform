@@ -20,6 +20,7 @@ export interface IUser extends Document {
 	updatedAt: Date
 	fullName: string // виртуальное поле
 	comparePassword(password: string): Promise<boolean>
+	toSafeObject(): any
 }
 
 const UserSchema: Schema = new Schema(
@@ -106,6 +107,14 @@ UserSchema.methods.comparePassword = async function (
 	password: string
 ): Promise<boolean> {
 	return bcrypt.compare(password, this.password)
+}
+
+// Метод для получения безопасного объекта пользователя (без пароля)
+UserSchema.methods.toSafeObject = function (): any {
+	const userObject = this.toObject({ virtuals: true })
+	delete userObject.password
+	delete userObject.__v
+	return userObject
 }
 
 // Виртуальное поле для полного имени

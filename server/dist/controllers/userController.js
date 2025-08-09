@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -19,7 +10,7 @@ const bitrix24Service_1 = __importDefault(require("../services/bitrix24Service")
 /**
  * Получение всех пользователей
  */
-const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getAllUsers = async (req, res) => {
     try {
         const { page = 1, limit = 10, search = '', role = '', status = '', } = req.query;
         // Строим фильтр
@@ -38,12 +29,12 @@ const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             filter.status = status;
         }
         const skip = (Number(page) - 1) * Number(limit);
-        const users = yield User_1.default.find(filter)
+        const users = await User_1.default.find(filter)
             .select('-password')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(Number(limit));
-        const total = yield User_1.default.countDocuments(filter);
+        const total = await User_1.default.countDocuments(filter);
         res.json({
             success: true,
             data: users,
@@ -62,15 +53,15 @@ const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             message: 'Ошибка получения пользователей',
         });
     }
-});
+};
 exports.getAllUsers = getAllUsers;
 /**
  * Получение пользователя по ID
  */
-const getUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getUserById = async (req, res) => {
     try {
         const { id } = req.params;
-        const user = yield User_1.default.findById(id).select('-password');
+        const user = await User_1.default.findById(id).select('-password');
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -90,12 +81,12 @@ const getUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             message: 'Ошибка получения пользователя',
         });
     }
-});
+};
 exports.getUserById = getUserById;
 /**
  * Создание нового пользователя
  */
-const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const createUser = async (req, res) => {
     try {
         const { email, password, role, firstName, lastName, phone, bitrix_id } = req.body;
         // Валидация обязательных полей
@@ -107,7 +98,7 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             return;
         }
         // Проверяем, существует ли пользователь с таким email
-        const existingUser = yield User_1.default.findOne({ email: email.toLowerCase() });
+        const existingUser = await User_1.default.findOne({ email: email.toLowerCase() });
         if (existingUser) {
             res.status(400).json({
                 success: false,
@@ -117,7 +108,7 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         }
         // Проверяем, существует ли пользователь с таким bitrix_id (если указан)
         if (bitrix_id) {
-            const existingBitrixUser = yield User_1.default.findOne({ bitrix_id });
+            const existingBitrixUser = await User_1.default.findOne({ bitrix_id });
             if (existingBitrixUser) {
                 res.status(400).json({
                     success: false,
@@ -146,9 +137,9 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             bitrix_id,
             status: 'active',
         });
-        yield user.save();
+        await user.save();
         // Возвращаем пользователя без пароля
-        const userResponse = yield User_1.default.findById(user._id).select('-password');
+        const userResponse = await User_1.default.findById(user._id).select('-password');
         res.status(201).json({
             success: true,
             data: userResponse,
@@ -162,16 +153,16 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             message: 'Ошибка создания пользователя',
         });
     }
-});
+};
 exports.createUser = createUser;
 /**
  * Обновление пользователя
  */
-const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
         const { email, password, role, firstName, lastName, phone, bitrix_id, status, } = req.body;
-        const user = yield User_1.default.findById(id);
+        const user = await User_1.default.findById(id);
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -181,7 +172,7 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         }
         // Проверяем email на уникальность (если изменился)
         if (email && email.toLowerCase() !== user.email) {
-            const existingUser = yield User_1.default.findOne({ email: email.toLowerCase() });
+            const existingUser = await User_1.default.findOne({ email: email.toLowerCase() });
             if (existingUser) {
                 res.status(400).json({
                     success: false,
@@ -193,7 +184,7 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         }
         // Проверяем bitrix_id на уникальность (если изменился)
         if (bitrix_id && bitrix_id !== user.bitrix_id) {
-            const existingBitrixUser = yield User_1.default.findOne({ bitrix_id });
+            const existingBitrixUser = await User_1.default.findOne({ bitrix_id });
             if (existingBitrixUser) {
                 res.status(400).json({
                     success: false,
@@ -226,9 +217,9 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             }
             user.password = password; // будет хеширован в pre-save хуке
         }
-        yield user.save();
+        await user.save();
         // Возвращаем обновленного пользователя без пароля
-        const userResponse = yield User_1.default.findById(user._id).select('-password');
+        const userResponse = await User_1.default.findById(user._id).select('-password');
         res.json({
             success: true,
             data: userResponse,
@@ -242,15 +233,15 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             message: 'Ошибка обновления пользователя',
         });
     }
-});
+};
 exports.updateUser = updateUser;
 /**
  * Удаление пользователя
  */
-const deleteUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const user = yield User_1.default.findById(id);
+        const user = await User_1.default.findById(id);
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -260,7 +251,7 @@ const deleteUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         }
         // Проверяем, что не удаляем последнего админа
         if (user.role === 'admin') {
-            const adminCount = yield User_1.default.countDocuments({ role: 'admin' });
+            const adminCount = await User_1.default.countDocuments({ role: 'admin' });
             if (adminCount <= 1) {
                 res.status(400).json({
                     success: false,
@@ -269,7 +260,7 @@ const deleteUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 return;
             }
         }
-        yield User_1.default.findByIdAndDelete(id);
+        await User_1.default.findByIdAndDelete(id);
         res.json({
             success: true,
             message: 'Пользователь успешно удален',
@@ -282,12 +273,12 @@ const deleteUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             message: 'Ошибка удаления пользователя',
         });
     }
-});
+};
 exports.deleteUser = deleteUser;
 /**
  * Изменение статуса пользователя
  */
-const updateUserStatus = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateUserStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
@@ -298,7 +289,7 @@ const updateUserStatus = (req, res) => __awaiter(void 0, void 0, void 0, functio
             });
             return;
         }
-        const user = yield User_1.default.findById(id);
+        const user = await User_1.default.findById(id);
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -307,9 +298,9 @@ const updateUserStatus = (req, res) => __awaiter(void 0, void 0, void 0, functio
             return;
         }
         user.status = status;
-        yield user.save();
+        await user.save();
         // Возвращаем обновленного пользователя без пароля
-        const userResponse = yield User_1.default.findById(user._id).select('-password');
+        const userResponse = await User_1.default.findById(user._id).select('-password');
         res.json({
             success: true,
             data: userResponse,
@@ -323,7 +314,7 @@ const updateUserStatus = (req, res) => __awaiter(void 0, void 0, void 0, functio
             message: 'Ошибка изменения статуса пользователя',
         });
     }
-});
+};
 exports.updateUserStatus = updateUserStatus;
 /**
  * Синхронизация пользователей с Битрикс24
@@ -331,7 +322,7 @@ exports.updateUserStatus = updateUserStatus;
 /**
  * Обновление настроек пользователя
  */
-const updateUserSettings = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateUserSettings = async (req, res) => {
     try {
         const { userId } = req.params;
         const { settings } = req.body;
@@ -344,7 +335,7 @@ const updateUserSettings = (req, res) => __awaiter(void 0, void 0, void 0, funct
             });
             return;
         }
-        const user = yield User_1.default.findById(userId);
+        const user = await User_1.default.findById(userId);
         if (!user) {
             res.status(404).json({
                 success: false,
@@ -353,8 +344,11 @@ const updateUserSettings = (req, res) => __awaiter(void 0, void 0, void 0, funct
             return;
         }
         // Обновляем настройки пользователя
-        user.settings = Object.assign(Object.assign({}, user.settings), settings);
-        yield user.save();
+        user.settings = {
+            ...user.settings,
+            ...settings,
+        };
+        await user.save();
         res.json({
             success: true,
             data: user.settings,
@@ -368,14 +362,14 @@ const updateUserSettings = (req, res) => __awaiter(void 0, void 0, void 0, funct
             message: 'Ошибка обновления настроек пользователя',
         });
     }
-});
+};
 exports.updateUserSettings = updateUserSettings;
-const syncWithBitrix = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const syncWithBitrix = async (req, res) => {
     try {
         const { forceSync = false } = req.body;
         // Получаем всех пользователей из Битрикс24
-        const bitrixResponse = yield bitrix24Service_1.default.getUsers();
-        const bitrixUsers = (bitrixResponse === null || bitrixResponse === void 0 ? void 0 : bitrixResponse.result) || [];
+        const bitrixResponse = await bitrix24Service_1.default.getUsers();
+        const bitrixUsers = bitrixResponse?.result || [];
         if (!bitrixUsers || bitrixUsers.length === 0) {
             res.status(400).json({
                 success: false,
@@ -392,7 +386,7 @@ const syncWithBitrix = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 if (!email)
                     continue;
                 // Ищем пользователя по email или bitrix_id
-                let user = yield User_1.default.findOne({
+                let user = await User_1.default.findOne({
                     $or: [
                         { email: email.toLowerCase() },
                         { bitrix_id: bitrixUser.ID || bitrixUser.id },
@@ -407,7 +401,7 @@ const syncWithBitrix = (req, res) => __awaiter(void 0, void 0, void 0, function*
                         user.lastName =
                             bitrixUser.LAST_NAME || bitrixUser.lastName || user.lastName;
                         user.phone = bitrixUser.WORK_PHONE || bitrixUser.phone || user.phone;
-                        yield user.save();
+                        await user.save();
                         updated++;
                     }
                 }
@@ -423,7 +417,7 @@ const syncWithBitrix = (req, res) => __awaiter(void 0, void 0, void 0, function*
                         bitrix_id: bitrixUser.ID || bitrixUser.id,
                         status: 'active',
                     });
-                    yield newUser.save();
+                    await newUser.save();
                     created++;
                 }
             }
@@ -450,5 +444,5 @@ const syncWithBitrix = (req, res) => __awaiter(void 0, void 0, void 0, function*
             message: 'Ошибка синхронизации с Битрикс24',
         });
     }
-});
+};
 exports.syncWithBitrix = syncWithBitrix;

@@ -32,7 +32,7 @@ export class User extends BaseEntity {
 	@IsEmail()
 	email: string
 
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: 255, select: true })
 	@Exclude()
 	password: string
 
@@ -50,11 +50,6 @@ export class User extends BaseEntity {
 	@IsOptional()
 	@IsString()
 	phone?: string
-
-	@Column({ type: 'varchar', length: 100, nullable: true })
-	@IsOptional()
-	@IsString()
-	bitrix_id?: string
 
 	@Column({ type: 'varchar', length: 100, nullable: true })
 	@IsOptional()

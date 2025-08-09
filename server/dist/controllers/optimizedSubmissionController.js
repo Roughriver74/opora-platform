@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateDenormalizedData = exports.getSubmissionStats = exports.getOptimizedUserSubmissions = exports.getOptimizedSubmissions = void 0;
 const optimizedSubmissionService_1 = require("../services/optimizedSubmissionService");
@@ -16,7 +7,7 @@ const optimizedSubmissionService_1 = require("../services/optimizedSubmissionSer
  * Используют денормализованные данные и избегают populate операций
  */
 // Получение всех заявок (для админов) - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
-const getOptimizedSubmissions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getOptimizedSubmissions = async (req, res) => {
     try {
         const { page = 1, limit = 20, status, priority, assignedTo, userId, dateFrom, dateTo, search, tags, formId, bitrixSyncStatus, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
         // Подготовка фильтров
@@ -41,7 +32,7 @@ const getOptimizedSubmissions = (req, res) => __awaiter(void 0, void 0, void 0, 
         };
         console.log(`🚀 Оптимизированный запрос заявок: страница ${page}, лимит ${limit}`);
         // Используем оптимизированный сервис (БЕЗ populate!)
-        const result = yield optimizedSubmissionService_1.optimizedSubmissionService.getSubmissions(filters, pagination);
+        const result = await optimizedSubmissionService_1.optimizedSubmissionService.getSubmissions(filters, pagination);
         console.log(`✅ Получено ${result.data.length} заявок из ${result.pagination.total}`);
         res.status(200).json(result);
     }
@@ -53,13 +44,12 @@ const getOptimizedSubmissions = (req, res) => __awaiter(void 0, void 0, void 0, 
             error: error.message,
         });
     }
-});
+};
 exports.getOptimizedSubmissions = getOptimizedSubmissions;
 // Получение заявок пользователя - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
-const getOptimizedUserSubmissions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+const getOptimizedUserSubmissions = async (req, res) => {
     try {
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        const userId = req.user?.id;
         if (!userId) {
             res.status(401).json({
                 success: false,
@@ -83,7 +73,7 @@ const getOptimizedUserSubmissions = (req, res) => __awaiter(void 0, void 0, void
             sortOrder: sortOrder
         };
         console.log(`🚀 Оптимизированный запрос заявок пользователя ${userId}`);
-        const result = yield optimizedSubmissionService_1.optimizedSubmissionService.getUserSubmissions(userId, filters, pagination);
+        const result = await optimizedSubmissionService_1.optimizedSubmissionService.getUserSubmissions(userId, filters, pagination);
         console.log(`✅ Получено ${result.data.length} заявок пользователя`);
         res.status(200).json(result);
     }
@@ -95,10 +85,10 @@ const getOptimizedUserSubmissions = (req, res) => __awaiter(void 0, void 0, void
             error: error.message,
         });
     }
-});
+};
 exports.getOptimizedUserSubmissions = getOptimizedUserSubmissions;
 // Получение статистики по заявкам - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
-const getSubmissionStats = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getSubmissionStats = async (req, res) => {
     try {
         const { assignedTo, userId, dateFrom, dateTo, formId } = req.query;
         const filters = {
@@ -109,7 +99,7 @@ const getSubmissionStats = (req, res) => __awaiter(void 0, void 0, void 0, funct
             formId: formId
         };
         console.log('🚀 Оптимизированный запрос статистики заявок');
-        const stats = yield optimizedSubmissionService_1.optimizedSubmissionService.getSubmissionStats(filters);
+        const stats = await optimizedSubmissionService_1.optimizedSubmissionService.getSubmissionStats(filters);
         console.log('✅ Получена статистика заявок');
         res.status(200).json({
             success: true,
@@ -124,14 +114,14 @@ const getSubmissionStats = (req, res) => __awaiter(void 0, void 0, void 0, funct
             error: error.message,
         });
     }
-});
+};
 exports.getSubmissionStats = getSubmissionStats;
 // Обновление денормализованных данных
-const updateDenormalizedData = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateDenormalizedData = async (req, res) => {
     try {
         const { submissionIds } = req.body;
         console.log('🔄 Запуск обновления денормализованных данных');
-        const updatedCount = yield optimizedSubmissionService_1.optimizedSubmissionService.updateDenormalizedData(submissionIds ? submissionIds : undefined);
+        const updatedCount = await optimizedSubmissionService_1.optimizedSubmissionService.updateDenormalizedData(submissionIds ? submissionIds : undefined);
         res.status(200).json({
             success: true,
             message: `Обновлено ${updatedCount} заявок`,
@@ -146,5 +136,5 @@ const updateDenormalizedData = (req, res) => __awaiter(void 0, void 0, void 0, f
             error: error.message,
         });
     }
-});
+};
 exports.updateDenormalizedData = updateDenormalizedData;

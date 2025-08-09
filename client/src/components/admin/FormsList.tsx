@@ -72,7 +72,7 @@ const FormsList: React.FC<FormsListProps> = ({
               </TableRow>
             ) : (
               forms.map((form) => (
-                <TableRow key={form._id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                <TableRow key={form.id || form._id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                   <TableCell component="th" scope="row">
                     {form.name}
                   </TableCell>
@@ -88,7 +88,7 @@ const FormsList: React.FC<FormsListProps> = ({
                   <TableCell align="right">
                     <IconButton
                       color="info"
-                      onClick={() => onViewForm(form._id!)}
+                      onClick={() => onViewForm(form.id || form._id!)}
                       title="Просмотр формы"
                       size="small"
                     >
@@ -96,7 +96,7 @@ const FormsList: React.FC<FormsListProps> = ({
                     </IconButton>
                     <IconButton
                       color="primary"
-                      onClick={() => onEditForm(form._id!)}
+                      onClick={() => onEditForm(form.id || form._id!)}
                       title="Редактировать форму"
                       size="small"
                     >
@@ -104,7 +104,7 @@ const FormsList: React.FC<FormsListProps> = ({
                     </IconButton>
                     <IconButton
                       color="error"
-                      onClick={() => onDeleteForm(form._id!)}
+                      onClick={() => onDeleteForm(form.id || form._id!)}
                       title="Удалить форму"
                       size="small"
                     >

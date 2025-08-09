@@ -1,11 +1,11 @@
 import axios from 'axios'
 
-// В режиме разработки используем прокси (относительные пути)
-// В продакшене используем полный URL
+// В продакшене nginx проксирует запросы, поэтому используем относительные пути
+// В разработке используем прямой URL к backend
 const API_URL =
 	process.env.NODE_ENV === 'production'
-		? process.env.REACT_APP_API_URL || 'http://localhost:5001'
-		: 'http://localhost:5001' // Используем прямой URL для разработки
+		? '' // Пустой baseURL для использования относительных путей через nginx proxy
+		: 'http://localhost:5001' // Прямой URL для разработки
 
 const api = axios.create({
 	baseURL: API_URL,
@@ -52,7 +52,8 @@ const refreshAccessToken = async () => {
 		localStorage.removeItem('token')
 		localStorage.removeItem('refreshToken')
 		localStorage.removeItem('user')
-		window.location.href = '/login'
+		// Перезагружаем страницу, чтобы приложение показало форму входа
+		window.location.reload()
 		throw error
 	}
 }
@@ -96,8 +97,8 @@ api.interceptors.response.use(
 				localStorage.removeItem('refreshToken')
 				localStorage.removeItem('user')
 
-				// Перенаправляем на страницу входа
-				window.location.href = '/login'
+				// Перезагружаем страницу, чтобы приложение показало форму входа
+				window.location.reload()
 			}
 		}
 

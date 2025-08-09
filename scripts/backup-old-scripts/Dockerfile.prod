@@ -1,0 +1,78 @@
+# Multi-stage Dockerfile для production
+# Stage 1: Build backend
+FROM node:18-alpine AS backend-builder
+
+WORKDIR /app
+
+# Установка зависимостей для компиляции
+RUN apk add --no-cache python3 make g++
+
+# Копирование package.json для кеширования зависимостей
+COPY server/package*.json ./server/
+
+# Установка зависимостей backend
+WORKDIR /app/server
+RUN npm ci --only=production
+
+# Копирование исходного кода backend
+COPY server/ ./
+
+# Компиляция TypeScript
+RUN npm run build
+
+# Stage 2: Build frontend
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app
+
+# Установка зависимостей для компиляции
+RUN apk add --no-cache python3 make g++
+
+# Копирование package.json для кеширования зависимостей
+COPY client/package*.json ./client/
+
+# Установка зависимостей frontend
+WORKDIR /app/client
+RUN npm ci
+
+# Копирование исходного кода frontend
+COPY client/ ./
+
+# Сборка React приложения
+RUN npm run build
+
+# Stage 3: Production image
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Установка только runtime зависимостей
+RUN apk add --no-cache tini
+
+# Создание пользователя для безопасности
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Копирование собранного backend
+COPY --from=backend-builder --chown=nodejs:nodejs /app/server/dist ./server/dist
+COPY --from=backend-builder --chown=nodejs:nodejs /app/server/node_modules ./server/node_modules
+COPY --from=backend-builder --chown=nodejs:nodejs /app/server/package*.json ./server/
+
+# Копирование собранного frontend
+COPY --from=frontend-builder --chown=nodejs:nodejs /app/client/build ./client/build
+
+# Создание директорий для логов и загрузок
+RUN mkdir -p /app/logs /app/uploads && \
+    chown -R nodejs:nodejs /app
+
+# Переключение на непривилегированного пользователя
+USER nodejs
+
+# Порт сервера
+EXPOSE 5001
+
+# Использование tini для правильной обработки сигналов
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Запуск сервера
+CMD ["node", "server/dist/index.js"]

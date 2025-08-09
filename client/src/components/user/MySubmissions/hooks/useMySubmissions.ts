@@ -80,8 +80,8 @@ export const useMySubmissions = () => {
 
 			setState(prev => ({
 				...prev,
-				submissions: response.data,
-				total: response.pagination.total,
+				submissions: response?.data || [],
+				total: response?.pagination?.total || 0,
 				loading: false,
 				error: null,
 			}))

@@ -44,7 +44,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 		handleFieldDelete,
 		moveFieldToSection,
 		normalizeOrders,
-	} = useFieldManagement(state, setState, loadFields, form?._id)
+	} = useFieldManagement(state, setState, loadFields, form?._id || form?.id)
 
 	const saveStatus = getSaveStatus()
 
@@ -71,7 +71,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 			<Card elevation={1} sx={{ mb: 2, borderRadius: 1 }}>
 				<CardContent sx={{ p: 2 }}>
 					<FormHeader
-						isEditing={!!(form && form._id)}
+						isEditing={!!(form && (form._id || form.id))}
 						saveStatus={saveStatus}
 						hasChanges={state.hasChanges}
 						saving={state.saving}
@@ -135,6 +135,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 								onAddSection={addNewSection}
 								onFieldSave={handleFieldSave}
 								onFieldDelete={handleFieldDelete}
+								onLoadFields={loadFields}
 							/>
 						) : (
 							<ImprovedFieldsList
@@ -144,6 +145,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 								onAddSection={addNewSection}
 								onFieldSave={handleFieldSave}
 								onFieldDelete={handleFieldDelete}
+								onLoadFields={loadFields}
 							/>
 						)
 					) : (

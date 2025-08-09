@@ -87,8 +87,8 @@ class MongoDBExporter {
 			bitrixDealCategory: form.bitrixDealCategory,
 			successMessage: form.successMessage || 'Спасибо! Ваша заявка успешно отправлена.',
 			fields: form.fields?.map((f: any) => f._id.toString()) || [],
-			createdAt: form.createdAt,
-			updatedAt: form.updatedAt,
+			createdAt: (form as any).createdAt,
+			updatedAt: (form as any).updatedAt,
 		}))
 
 		this.saveToFile('forms.json', exportedForms)
@@ -116,8 +116,8 @@ class MongoDBExporter {
 			dynamicSource: field.dynamicSource,
 			linkedFields: field.linkedFields,
 			order: field.order || 0,
-			createdAt: field.createdAt,
-			updatedAt: field.updatedAt,
+			createdAt: (field as any).createdAt,
+			updatedAt: (field as any).updatedAt,
 		}))
 
 		this.saveToFile('formFields.json', exportedFields)

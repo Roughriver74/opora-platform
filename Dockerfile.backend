@@ -1,0 +1,30 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Установка зависимостей для компиляции
+RUN apk add --no-cache python3 make g++
+
+# Копирование package.json для кеширования зависимостей
+COPY server/package*.json ./
+
+# Установка зависимостей
+RUN npm ci
+
+# Копирование исходного кода
+COPY server/ ./
+
+# Создание пользователя для безопасности
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Создание директории для логов
+RUN mkdir -p /app/logs && chown -R nodejs:nodejs /app
+
+USER nodejs
+
+# Порт сервера
+EXPOSE 5001
+
+# Команда запуска (будет переопределена в docker-compose)
+CMD ["npm", "run", "dev"]

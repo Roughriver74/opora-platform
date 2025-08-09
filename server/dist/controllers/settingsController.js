@@ -1,26 +1,19 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.initializeDefaultSettings = exports.deleteSetting = exports.updateSetting = exports.getSetting = exports.getSettingsByCategory = exports.getAllSettings = void 0;
-const Settings_1 = __importDefault(require("../models/Settings"));
+const SettingsService_1 = require("../services/SettingsService");
+const Settings_entity_1 = require("../database/entities/Settings.entity");
+const settingsService = (0, SettingsService_1.getSettingsService)();
 // Получение всех настроек
-const getAllSettings = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getAllSettings = async (req, res) => {
     try {
-        const settings = yield Settings_1.default.find().sort({ category: 1, key: 1 });
+        // Get all settings - use getPublicSettings to avoid exposing sensitive settings
+        const publicSettings = await settingsService.getPublicSettings();
+        const allSettings = await settingsService.findByCategory(Settings_entity_1.SettingCategory.SYSTEM)
+            .then(system => [...publicSettings, ...system.filter(s => !s.isPublic)]);
         res.json({
             success: true,
-            data: settings,
+            data: allSettings,
         });
     }
     catch (error) {
@@ -30,13 +23,13 @@ const getAllSettings = (req, res) => __awaiter(void 0, void 0, void 0, function*
             message: 'Ошибка получения настроек',
         });
     }
-});
+};
 exports.getAllSettings = getAllSettings;
 // Получение настроек по категории
-const getSettingsByCategory = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getSettingsByCategory = async (req, res) => {
     try {
         const { category } = req.params;
-        const settings = yield Settings_1.default.find({ category }).sort({ key: 1 });
+        const settings = await settingsService.findByCategory(category);
         res.json({
             success: true,
             data: settings,
@@ -49,13 +42,13 @@ const getSettingsByCategory = (req, res) => __awaiter(void 0, void 0, void 0, fu
             message: 'Ошибка получения настроек',
         });
     }
-});
+};
 exports.getSettingsByCategory = getSettingsByCategory;
 // Получение конкретной настройки
-const getSetting = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getSetting = async (req, res) => {
     try {
         const { key } = req.params;
-        const setting = yield Settings_1.default.findOne({ key });
+        const setting = await settingsService.findByKey(key);
         if (!setting) {
             res.status(404).json({
                 success: false,
@@ -75,26 +68,17 @@ const getSetting = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             message: 'Ошибка получения настройки',
         });
     }
-});
+};
 exports.getSetting = getSetting;
 // Создание или обновление настройки
-const updateSetting = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+const updateSetting = async (req, res) => {
     try {
         const { key } = req.params;
         const { value, description, category, type } = req.body;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-        const setting = yield Settings_1.default.findOneAndUpdate({ key }, {
-            key,
-            value,
+        const setting = await settingsService.upsertSetting(key, value, {
             description,
             category,
-            type,
-            updatedBy: userId,
-        }, {
-            new: true,
-            upsert: true,
-            runValidators: true,
+            validation: type ? { type } : undefined,
         });
         res.json({
             success: true,
@@ -109,14 +93,14 @@ const updateSetting = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             message: 'Ошибка обновления настройки',
         });
     }
-});
+};
 exports.updateSetting = updateSetting;
 // Удаление настройки
-const deleteSetting = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteSetting = async (req, res) => {
     try {
         const { key } = req.params;
-        const setting = yield Settings_1.default.findOneAndDelete({ key });
-        if (!setting) {
+        const deleted = await settingsService.deleteSetting(key);
+        if (!deleted) {
             res.status(404).json({
                 success: false,
                 message: 'Настройка не найдена',
@@ -135,72 +119,16 @@ const deleteSetting = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             message: 'Ошибка удаления настройки',
         });
     }
-});
+};
 exports.deleteSetting = deleteSetting;
 // Инициализация настроек по умолчанию
-const initializeDefaultSettings = () => __awaiter(void 0, void 0, void 0, function* () {
+const initializeDefaultSettings = async () => {
     try {
-        const defaultSettings = [
-            {
-                key: 'submissions.enable_copying',
-                value: true,
-                description: 'Разрешить копирование заявок пользователями',
-                category: 'submissions',
-                type: 'boolean',
-            },
-            {
-                key: 'submissions.copy_button_text',
-                value: 'Копировать заявку',
-                description: 'Текст кнопки копирования заявки',
-                category: 'submissions',
-                type: 'string',
-            },
-            {
-                key: 'submissions.allow_user_status_change',
-                value: true,
-                description: 'Разрешить пользователям изменять статус своих заявок',
-                category: 'submissions',
-                type: 'boolean',
-            },
-            {
-                key: 'submissions.allow_user_edit',
-                value: true,
-                description: 'Разрешить пользователям редактировать свои заявки',
-                category: 'submissions',
-                type: 'boolean',
-            },
-            {
-                key: 'forms.auto_save_interval',
-                value: 30000,
-                description: 'Интервал автосохранения форм в миллисекундах',
-                category: 'forms',
-                type: 'number',
-            },
-            {
-                key: 'ui.theme_mode',
-                value: 'light',
-                description: 'Режим темы интерфейса (light/dark/auto)',
-                category: 'ui',
-                type: 'string',
-            },
-            {
-                key: 'system.debug_mode',
-                value: false,
-                description: 'Режим отладки для разработчиков',
-                category: 'system',
-                type: 'boolean',
-            },
-        ];
-        for (const settingData of defaultSettings) {
-            yield Settings_1.default.findOneAndUpdate({ key: settingData.key }, settingData, {
-                upsert: true,
-                new: true,
-            });
-        }
+        await settingsService.initializeDefaultSettings();
         console.log('✅ Настройки по умолчанию инициализированы');
     }
     catch (error) {
         console.error('❌ Ошибка инициализации настроек:', error);
     }
-});
+};
 exports.initializeDefaultSettings = initializeDefaultSettings;

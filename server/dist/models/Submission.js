@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 const SubmissionSchema = new mongoose_1.Schema({
@@ -137,81 +128,79 @@ const SubmissionSchema = new mongoose_1.Schema({
     timestamps: true, // автоматически добавляет createdAt и updatedAt
 });
 // Pre-save hooks для генерации номера и заполнения денормализованных данных
-SubmissionSchema.pre('save', function (next) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            // Генерация номера заявки
-            if (this.isNew && !this.submissionNumber) {
-                console.log('Генерация номера заявки...');
-                const today = new Date();
-                const year = today.getFullYear();
-                const month = String(today.getMonth() + 1).padStart(2, '0');
-                const day = String(today.getDate()).padStart(2, '0');
-                const randomSuffix = Math.floor(Math.random() * 9999)
-                    .toString()
-                    .padStart(4, '0');
-                this.submissionNumber = `${year}${month}${day}${randomSuffix}`;
-                console.log('Сгенерированный номер заявки:', this.submissionNumber);
-            }
-            // Заполнение предвычисленных полей при создании
-            if (this.isNew) {
-                const createdDate = this.createdAt || new Date();
-                this.dayOfWeek = createdDate.getDay();
-                this.monthOfYear = createdDate.getMonth() + 1;
-                this.yearCreated = createdDate.getFullYear();
-            }
-            // Заполнение денормализованных данных при необходимости
-            if (this.isNew || this.isModified('formId')) {
-                const Form = mongoose_1.default.model('Form');
-                const form = yield Form.findById(this.formId).select('name title');
-                if (form) {
-                    this.formName = form.name;
-                    this.formTitle = form.title;
-                }
-            }
-            if (this.isNew || this.isModified('userId')) {
-                if (this.userId) {
-                    const User = mongoose_1.default.model('User');
-                    const user = yield User.findById(this.userId).select('email firstName lastName');
-                    if (user) {
-                        this.userEmail = user.email;
-                        this.userName = user.firstName && user.lastName
-                            ? `${user.firstName} ${user.lastName}`
-                            : user.firstName || user.lastName || user.email;
-                    }
-                }
-            }
-            if (this.isNew || this.isModified('assignedTo')) {
-                if (this.assignedTo) {
-                    const User = mongoose_1.default.model('User');
-                    const assignee = yield User.findById(this.assignedTo).select('firstName lastName email');
-                    if (assignee) {
-                        this.assignedToName = assignee.firstName && assignee.lastName
-                            ? `${assignee.firstName} ${assignee.lastName}`
-                            : assignee.firstName || assignee.lastName || assignee.email;
-                    }
-                }
-                else {
-                    this.assignedToName = undefined;
-                }
-            }
-            // Вычисление времени обработки при изменении статуса на завершенный
-            if (this.isModified('status') && ['WON', 'LOSE', 'COMPLETED', 'CLOSED'].includes(this.status)) {
-                const processingTime = Date.now() - this.createdAt.getTime();
-                this.processingTimeMinutes = Math.round(processingTime / (1000 * 60));
-            }
-            next();
+SubmissionSchema.pre('save', async function (next) {
+    try {
+        // Генерация номера заявки
+        if (this.isNew && !this.submissionNumber) {
+            console.log('Генерация номера заявки...');
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const randomSuffix = Math.floor(Math.random() * 9999)
+                .toString()
+                .padStart(4, '0');
+            this.submissionNumber = `${year}${month}${day}${randomSuffix}`;
+            console.log('Сгенерированный номер заявки:', this.submissionNumber);
         }
-        catch (error) {
-            console.error('Ошибка в pre-save hook для Submission:', error);
-            // Генерируем fallback номер если что-то пошло не так
-            if (this.isNew && !this.submissionNumber) {
-                this.submissionNumber = `SUB${Date.now()}`;
-                console.log('Использован fallback номер:', this.submissionNumber);
-            }
-            next();
+        // Заполнение предвычисленных полей при создании
+        if (this.isNew) {
+            const createdDate = this.createdAt || new Date();
+            this.dayOfWeek = createdDate.getDay();
+            this.monthOfYear = createdDate.getMonth() + 1;
+            this.yearCreated = createdDate.getFullYear();
         }
-    });
+        // Заполнение денормализованных данных при необходимости
+        if (this.isNew || this.isModified('formId')) {
+            const Form = mongoose_1.default.model('Form');
+            const form = await Form.findById(this.formId).select('name title');
+            if (form) {
+                this.formName = form.name;
+                this.formTitle = form.title;
+            }
+        }
+        if (this.isNew || this.isModified('userId')) {
+            if (this.userId) {
+                const User = mongoose_1.default.model('User');
+                const user = await User.findById(this.userId).select('email firstName lastName');
+                if (user) {
+                    this.userEmail = user.email;
+                    this.userName = user.firstName && user.lastName
+                        ? `${user.firstName} ${user.lastName}`
+                        : user.firstName || user.lastName || user.email;
+                }
+            }
+        }
+        if (this.isNew || this.isModified('assignedTo')) {
+            if (this.assignedTo) {
+                const User = mongoose_1.default.model('User');
+                const assignee = await User.findById(this.assignedTo).select('firstName lastName email');
+                if (assignee) {
+                    this.assignedToName = assignee.firstName && assignee.lastName
+                        ? `${assignee.firstName} ${assignee.lastName}`
+                        : assignee.firstName || assignee.lastName || assignee.email;
+                }
+            }
+            else {
+                this.assignedToName = undefined;
+            }
+        }
+        // Вычисление времени обработки при изменении статуса на завершенный
+        if (this.isModified('status') && ['WON', 'LOSE', 'COMPLETED', 'CLOSED'].includes(this.status)) {
+            const processingTime = Date.now() - this.createdAt.getTime();
+            this.processingTimeMinutes = Math.round(processingTime / (1000 * 60));
+        }
+        next();
+    }
+    catch (error) {
+        console.error('Ошибка в pre-save hook для Submission:', error);
+        // Генерируем fallback номер если что-то пошло не так
+        if (this.isNew && !this.submissionNumber) {
+            this.submissionNumber = `SUB${Date.now()}`;
+            console.log('Использован fallback номер:', this.submissionNumber);
+        }
+        next();
+    }
 });
 // Оптимизированные индексы для лучшей производительности
 // Composite индексы для часто используемых запросов

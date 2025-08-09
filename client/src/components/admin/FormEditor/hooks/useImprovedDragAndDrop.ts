@@ -18,7 +18,8 @@ interface DragState {
 
 export const useImprovedDragAndDrop = (
 	state: FormEditorState,
-	setState: React.Dispatch<React.SetStateAction<FormEditorState>>
+	setState: React.Dispatch<React.SetStateAction<FormEditorState>>,
+	onLoadFields?: () => Promise<void>
 ) => {
 	const [dragState, setDragState] = useState<DragState>({
 		draggedElementId: null,
@@ -124,15 +125,27 @@ export const useImprovedDragAndDrop = (
 
 				// Сохраняем изменения в базу данных
 				const savePromises = updatedFields
-					.filter(field => field._id)
+					.filter(field => field._id || field.id)
 					.map(field =>
-						FormFieldService.updateField(field._id as string, {
+						FormFieldService.updateField((field._id || field.id) as string, {
 							order: field.order,
 						})
 					)
 
 				await Promise.all(savePromises)
 				console.log('✅ Порядок успешно обновлен в базе данных')
+				
+				// Перезагружаем поля с сервера для получения актуальных данных
+				if (onLoadFields) {
+					await onLoadFields()
+				}
+				
+				// Сбрасываем флаг hasChanges после успешного сохранения
+				setState(prev => ({
+					...prev,
+					hasChanges: false,
+					lastSaved: new Date(),
+				}))
 			} catch (error) {
 				console.error('❌ Ошибка при сохранении нового порядка:', error)
 
@@ -213,15 +226,27 @@ export const useImprovedDragAndDrop = (
 
 				// Сохраняем изменения в базу данных
 				const savePromises = updatedFields
-					.filter(field => field._id)
+					.filter(field => field._id || field.id)
 					.map(field =>
-						FormFieldService.updateField(field._id as string, {
+						FormFieldService.updateField((field._id || field.id) as string, {
 							order: field.order,
 						})
 					)
 
 				await Promise.all(savePromises)
 				console.log('✅ Порядок успешно изменен')
+				
+				// Перезагружаем поля с сервера для получения актуальных данных
+				if (onLoadFields) {
+					await onLoadFields()
+				}
+				
+				// Сбрасываем флаг hasChanges после успешного сохранения
+				setState(prev => ({
+					...prev,
+					hasChanges: false,
+					lastSaved: new Date(),
+				}))
 			} catch (error) {
 				console.error('❌ Ошибка при изменении порядка:', error)
 				setState(prev => ({
@@ -249,15 +274,27 @@ export const useImprovedDragAndDrop = (
 
 			// Сохраняем изменения в базу данных
 			const savePromises = normalizedFields
-				.filter(field => field._id)
+				.filter(field => field._id || field.id)
 				.map(field =>
-					FormFieldService.updateField(field._id as string, {
+					FormFieldService.updateField((field._id || field.id) as string, {
 						order: field.order,
 					})
 				)
 
 			await Promise.all(savePromises)
 			console.log('✅ Все порядки нормализованы')
+			
+			// Перезагружаем поля с сервера для получения актуальных данных
+			if (onLoadFields) {
+				await onLoadFields()
+			}
+			
+			// Сбрасываем флаг hasChanges после успешного сохранения
+			setState(prev => ({
+				...prev,
+				hasChanges: false,
+				lastSaved: new Date(),
+			}))
 		} catch (error) {
 			console.error('❌ Ошибка при нормализации порядков:', error)
 			setState(prev => ({

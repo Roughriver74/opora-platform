@@ -135,8 +135,8 @@ const SubmissionManagement: React.FC = () => {
 				page: page + 1,
 				limit: rowsPerPage,
 			})
-			setSubmissions(response.data)
-			setTotal(response.pagination.total)
+			setSubmissions(response?.data || [])
+			setTotal(response?.pagination?.total || 0)
 		} catch (err: any) {
 			setError(err.message || 'Ошибка загрузки заявок')
 		} finally {

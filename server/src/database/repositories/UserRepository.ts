@@ -8,19 +8,10 @@ export class UserRepository extends BaseRepository<User> {
 	}
 
 	async findByEmail(email: string): Promise<User | null> {
-		const cacheKey = `${this.cachePrefix}:email:${email.toLowerCase()}`
-		
-		// Проверка кеша
-		const cached = await this.cacheGet<User>(cacheKey)
-		if (cached) return cached
-
 		const user = await this.repository.findOne({
 			where: { email: email.toLowerCase() },
+			select: ['id', 'email', 'password', 'firstName', 'lastName', 'phone', 'bitrixUserId', 'status', 'role', 'isActive', 'settings', 'lastLogin', 'createdAt', 'updatedAt']
 		})
-
-		if (user) {
-			await this.cacheSet(cacheKey, user)
-		}
 
 		return user
 	}

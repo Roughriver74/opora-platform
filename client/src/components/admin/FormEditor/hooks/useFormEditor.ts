@@ -25,7 +25,7 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 	})
 
 	// Используем выделенные хуки - передаем ID только если форма существует
-	const { fields: loadedFields, loadFields, reloadFormData } = useFormData(form?._id || '')
+	const { fields: loadedFields, loadFields, reloadFormData } = useFormData(form?._id || form?.id || '')
 	useAutoSave(state, setState)
 
 	// Обновляем formData при изменении form prop
@@ -36,7 +36,7 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 				formData: form,
 			}))
 			// Перезагружаем данные формы если ID изменился
-			if (form._id) {
+			if (form._id || form.id) {
 				reloadFormData()
 			}
 		}
@@ -124,16 +124,15 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 			}
 
 			let savedForm: Form
-			if (state.formData._id) {
-				// При обновлении добавляем связанные поля только если они есть
-				const fieldIds = state.fields.map(field => field._id).filter(id => id)
-				if (fieldIds.length > 0) {
-					;(formToSave as any).fields = fieldIds
-				}
+			const formId = state.formData._id || state.formData.id
+			if (formId) {
+				// При обновлении не отправляем поля - они управляются через отдельный API
+				// Удаляем поля из объекта, чтобы не было конфликта с backend
+				const { fields, ...formDataWithoutFields } = formToSave as any
 
 				savedForm = await FormService.updateForm(
-					state.formData._id,
-					formToSave as any
+					formId,
+					formDataWithoutFields
 				)
 			} else {
 				savedForm = await FormService.createForm(
@@ -143,7 +142,7 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 				// Обновляем состояние с новым ID
 				setState(prev => ({
 					...prev,
-					formData: { ...prev.formData, _id: savedForm._id },
+					formData: { ...prev.formData, _id: savedForm._id || savedForm.id, id: savedForm.id || savedForm._id },
 				}))
 			}
 
@@ -154,6 +153,11 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 				showSuccess: true,
 				saving: false,
 			}))
+
+			// Перезагружаем поля после сохранения формы для обеспечения актуальности данных
+			if (savedForm._id || savedForm.id) {
+				await loadFields()
+			}
 
 			if (onSave) onSave(savedForm)
 
@@ -187,7 +191,7 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 				saving: false,
 			}))
 		}
-	}, [state.formData, state.fields, onSave])
+	}, [state.formData, onSave])
 
 	// Получение статуса сохранения
 	const getSaveStatus = useCallback((): SaveStatus => {

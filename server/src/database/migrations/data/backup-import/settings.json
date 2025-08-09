@@ -1,0 +1,79 @@
+[
+  {
+    "_id": "68581e6d5313429730e3d9cc",
+    "key": "submissions.enable_copying",
+    "__v": 0,
+    "category": "submissions",
+    "createdAt": "2025-06-22T15:17:01.318Z",
+    "description": "Разрешить копирование заявок пользователями",
+    "type": "boolean",
+    "updatedAt": "2025-06-23T15:53:58.647Z",
+    "value": true
+  },
+  {
+    "_id": "68581e6d5313429730e3d9cd",
+    "key": "submissions.copy_button_text",
+    "__v": 0,
+    "category": "submissions",
+    "createdAt": "2025-06-22T15:17:01.321Z",
+    "description": "Текст кнопки копирования заявки",
+    "type": "string",
+    "updatedAt": "2025-06-23T15:53:58.649Z",
+    "value": "Копировать заявку"
+  },
+  {
+    "_id": "68581e6d5313429730e3d9ce",
+    "key": "forms.auto_save_interval",
+    "__v": 0,
+    "category": "forms",
+    "createdAt": "2025-06-22T15:17:01.326Z",
+    "description": "Интервал автосохранения форм в миллисекундах",
+    "type": "number",
+    "updatedAt": "2025-06-23T15:53:58.652Z",
+    "value": 30000
+  },
+  {
+    "_id": "68581e6d5313429730e3d9cf",
+    "key": "ui.theme_mode",
+    "__v": 0,
+    "category": "ui",
+    "createdAt": "2025-06-22T15:17:01.327Z",
+    "description": "Режим темы интерфейса (light/dark/auto)",
+    "type": "string",
+    "updatedAt": "2025-06-23T15:53:58.652Z",
+    "value": "light"
+  },
+  {
+    "_id": "6859127c5313429730e3d9d0",
+    "key": "submissions.allow_user_status_change",
+    "__v": 0,
+    "category": "submissions",
+    "createdAt": "2025-06-23T08:38:20.917Z",
+    "description": "Разрешить пользователям изменять статус своих заявок",
+    "type": "boolean",
+    "updatedAt": "2025-06-23T15:53:58.650Z",
+    "value": true
+  },
+  {
+    "_id": "6859127c5313429730e3d9d1",
+    "key": "submissions.allow_user_edit",
+    "__v": 0,
+    "category": "submissions",
+    "createdAt": "2025-06-23T08:38:20.918Z",
+    "description": "Разрешить пользователям редактировать свои заявки",
+    "type": "boolean",
+    "updatedAt": "2025-06-23T15:53:58.651Z",
+    "value": true
+  },
+  {
+    "_id": "6859127c5313429730e3d9d2",
+    "key": "system.debug_mode",
+    "__v": 0,
+    "category": "system",
+    "createdAt": "2025-06-23T08:38:20.921Z",
+    "description": "Режим отладки для разработчиков",
+    "type": "boolean",
+    "updatedAt": "2025-06-23T15:53:58.653Z",
+    "value": false
+  }
+]

@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -18,7 +9,7 @@ const config_1 = __importDefault(require("./config"));
 class RedisClient {
     constructor() {
         this.client = (0, redis_1.createClient)({
-            url: config_1.default.redisUrl || 'redis://localhost:6379',
+            url: config_1.default.redisUrl || `redis://localhost:${process.env.REDIS_PORT || 6396}`,
             socket: {
                 connectTimeout: 5000,
             },
@@ -42,124 +33,107 @@ class RedisClient {
         }
         return RedisClient.instance;
     }
-    connect() {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                if (!this.client.isOpen) {
-                    yield this.client.connect();
-                }
+    async connect() {
+        try {
+            if (!this.client.isOpen) {
+                await this.client.connect();
             }
-            catch (error) {
-                console.warn('⚠️ Failed to connect to Redis - working without cache:', error);
-            }
-        });
+        }
+        catch (error) {
+            console.warn('⚠️ Failed to connect to Redis - working without cache:', error);
+        }
     }
-    disconnect() {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                if (this.client.isOpen) {
-                    yield this.client.disconnect();
-                }
+    async disconnect() {
+        try {
+            if (this.client.isOpen) {
+                await this.client.disconnect();
             }
-            catch (error) {
-                console.warn('⚠️ Error disconnecting from Redis:', error);
-            }
-        });
+        }
+        catch (error) {
+            console.warn('⚠️ Error disconnecting from Redis:', error);
+        }
     }
-    get(key) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                if (!this.client.isOpen) {
-                    return null;
-                }
-                return yield this.client.get(key);
-            }
-            catch (error) {
-                console.warn(`⚠️ Redis GET error for key ${key}:`, error);
+    async get(key) {
+        try {
+            if (!this.client.isOpen) {
                 return null;
             }
-        });
+            return await this.client.get(key);
+        }
+        catch (error) {
+            console.warn(`⚠️ Redis GET error for key ${key}:`, error);
+            return null;
+        }
     }
-    set(key, value, ttlSeconds) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                if (!this.client.isOpen) {
-                    return false;
-                }
-                if (ttlSeconds) {
-                    yield this.client.setEx(key, ttlSeconds, value);
-                }
-                else {
-                    yield this.client.set(key, value);
-                }
-                return true;
-            }
-            catch (error) {
-                console.warn(`⚠️ Redis SET error for key ${key}:`, error);
+    async set(key, value, ttlSeconds) {
+        try {
+            if (!this.client.isOpen) {
                 return false;
             }
-        });
-    }
-    del(key) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                if (!this.client.isOpen) {
-                    return false;
-                }
-                yield this.client.del(key);
-                return true;
+            if (ttlSeconds) {
+                await this.client.setEx(key, ttlSeconds, value);
             }
-            catch (error) {
-                console.warn(`⚠️ Redis DEL error for key ${key}:`, error);
+            else {
+                await this.client.set(key, value);
+            }
+            return true;
+        }
+        catch (error) {
+            console.warn(`⚠️ Redis SET error for key ${key}:`, error);
+            return false;
+        }
+    }
+    async del(key) {
+        try {
+            if (!this.client.isOpen) {
                 return false;
             }
-        });
+            await this.client.del(key);
+            return true;
+        }
+        catch (error) {
+            console.warn(`⚠️ Redis DEL error for key ${key}:`, error);
+            return false;
+        }
     }
-    exists(key) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                if (!this.client.isOpen) {
-                    return false;
-                }
-                const result = yield this.client.exists(key);
-                return result === 1;
-            }
-            catch (error) {
-                console.warn(`⚠️ Redis EXISTS error for key ${key}:`, error);
+    async exists(key) {
+        try {
+            if (!this.client.isOpen) {
                 return false;
             }
-        });
+            const result = await this.client.exists(key);
+            return result === 1;
+        }
+        catch (error) {
+            console.warn(`⚠️ Redis EXISTS error for key ${key}:`, error);
+            return false;
+        }
     }
-    keys(pattern) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                if (!this.client.isOpen) {
-                    return [];
-                }
-                return yield this.client.keys(pattern);
-            }
-            catch (error) {
-                console.warn(`⚠️ Redis KEYS error for pattern ${pattern}:`, error);
+    async keys(pattern) {
+        try {
+            if (!this.client.isOpen) {
                 return [];
             }
-        });
+            return await this.client.keys(pattern);
+        }
+        catch (error) {
+            console.warn(`⚠️ Redis KEYS error for pattern ${pattern}:`, error);
+            return [];
+        }
     }
-    flushPattern(pattern) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                const keys = yield this.keys(pattern);
-                if (keys.length > 0) {
-                    yield this.client.del(keys);
-                }
+    async flushPattern(pattern) {
+        try {
+            const keys = await this.keys(pattern);
+            if (keys.length > 0) {
+                await this.client.del(keys);
             }
-            catch (error) {
-                console.warn(`⚠️ Redis FLUSH error for pattern ${pattern}:`, error);
-            }
-        });
+        }
+        catch (error) {
+            console.warn(`⚠️ Redis FLUSH error for pattern ${pattern}:`, error);
+        }
     }
     isConnected() {
-        var _a;
-        return ((_a = this.client) === null || _a === void 0 ? void 0 : _a.isOpen) || false;
+        return this.client?.isOpen || false;
     }
 }
 exports.RedisClient = RedisClient;

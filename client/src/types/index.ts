@@ -52,6 +52,7 @@ export type FieldType =
 
 export interface FormField {
 	_id?: string
+	id?: string
 	name: string
 	label: string
 	type: FieldType
@@ -77,6 +78,7 @@ export interface FormField {
 // Типы для форм
 export interface Form {
 	_id?: string
+	id?: string
 	name: string
 	title: string
 	description: string

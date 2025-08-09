@@ -26,7 +26,6 @@ export class Settings extends BaseEntity {
 	key: string
 
 	@Column({ type: 'jsonb' })
-	@IsObject()
 	value: any
 
 	@Column({

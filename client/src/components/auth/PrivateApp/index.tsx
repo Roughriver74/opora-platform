@@ -28,10 +28,8 @@ export const PrivateApp: React.FC = () => {
 			}
 		}
 
-		// Проверяем только если нет активного пользователя и нет загрузки
-		if (!isAuthenticated && !isLoading) {
-			initAuth()
-		}
+		// Выполняем проверку авторизации при монтировании компонента
+		initAuth()
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []) // Намеренно исключаем зависимости для выполнения только при монтировании
 

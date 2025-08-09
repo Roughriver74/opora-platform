@@ -50,7 +50,7 @@ export abstract class BaseRepository<T extends BaseEntity> {
 	private async initRedis() {
 		try {
 			this.redisClient = createClient({
-				url: process.env.REDIS_URL || 'redis://localhost:6379',
+				url: process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`,
 			})
 			await this.redisClient.connect()
 		} catch (error) {
@@ -212,7 +212,7 @@ export abstract class BaseRepository<T extends BaseEntity> {
 		criteria: FindOptionsWhere<T>,
 		data: DeepPartial<T>
 	): Promise<number> {
-		const result = await this.repository.update(criteria, data)
+		const result = await this.repository.update(criteria, data as any)
 		await this.invalidateCachePattern(`${this.cachePrefix}:*`)
 		return result.affected || 0
 	}

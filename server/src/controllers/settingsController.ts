@@ -1,5 +1,8 @@
 import { Request, Response } from 'express'
-import Settings from '../models/Settings'
+import { getSettingsService } from '../services/SettingsService'
+import { SettingCategory } from '../database/entities/Settings.entity'
+
+const settingsService = getSettingsService()
 
 // Получение всех настроек
 export const getAllSettings = async (
@@ -7,10 +10,13 @@ export const getAllSettings = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		const settings = await Settings.find().sort({ category: 1, key: 1 })
+		// Get all settings - use getPublicSettings to avoid exposing sensitive settings
+		const publicSettings = await settingsService.getPublicSettings()
+		const allSettings = await settingsService.findByCategory(SettingCategory.SYSTEM)
+			.then(system => [...publicSettings, ...system.filter(s => !s.isPublic)])
 		res.json({
 			success: true,
-			data: settings,
+			data: allSettings,
 		})
 	} catch (error: any) {
 		console.error('Ошибка получения настроек:', error)
@@ -28,7 +34,7 @@ export const getSettingsByCategory = async (
 ): Promise<void> => {
 	try {
 		const { category } = req.params
-		const settings = await Settings.find({ category }).sort({ key: 1 })
+		const settings = await settingsService.findByCategory(category as SettingCategory)
 		res.json({
 			success: true,
 			data: settings,
@@ -49,7 +55,7 @@ export const getSetting = async (
 ): Promise<void> => {
 	try {
 		const { key } = req.params
-		const setting = await Settings.findOne({ key })
+		const setting = await settingsService.findByKey(key)
 
 		if (!setting) {
 			res.status(404).json({
@@ -80,24 +86,12 @@ export const updateSetting = async (
 	try {
 		const { key } = req.params
 		const { value, description, category, type } = req.body
-		const userId = req.user?.id
 
-		const setting = await Settings.findOneAndUpdate(
-			{ key },
-			{
-				key,
-				value,
-				description,
-				category,
-				type,
-				updatedBy: userId,
-			},
-			{
-				new: true,
-				upsert: true,
-				runValidators: true,
-			}
-		)
+		const setting = await settingsService.upsertSetting(key, value, {
+			description,
+			category,
+			validation: type ? { type } : undefined,
+		})
 
 		res.json({
 			success: true,
@@ -120,9 +114,9 @@ export const deleteSetting = async (
 ): Promise<void> => {
 	try {
 		const { key } = req.params
-		const setting = await Settings.findOneAndDelete({ key })
+		const deleted = await settingsService.deleteSetting(key)
 
-		if (!setting) {
+		if (!deleted) {
 			res.status(404).json({
 				success: false,
 				message: 'Настройка не найдена',
@@ -146,65 +140,7 @@ export const deleteSetting = async (
 // Инициализация настроек по умолчанию
 export const initializeDefaultSettings = async () => {
 	try {
-		const defaultSettings = [
-			{
-				key: 'submissions.enable_copying',
-				value: true,
-				description: 'Разрешить копирование заявок пользователями',
-				category: 'submissions',
-				type: 'boolean',
-			},
-			{
-				key: 'submissions.copy_button_text',
-				value: 'Копировать заявку',
-				description: 'Текст кнопки копирования заявки',
-				category: 'submissions',
-				type: 'string',
-			},
-			{
-				key: 'submissions.allow_user_status_change',
-				value: true,
-				description: 'Разрешить пользователям изменять статус своих заявок',
-				category: 'submissions',
-				type: 'boolean',
-			},
-			{
-				key: 'submissions.allow_user_edit',
-				value: true,
-				description: 'Разрешить пользователям редактировать свои заявки',
-				category: 'submissions',
-				type: 'boolean',
-			},
-			{
-				key: 'forms.auto_save_interval',
-				value: 30000,
-				description: 'Интервал автосохранения форм в миллисекундах',
-				category: 'forms',
-				type: 'number',
-			},
-			{
-				key: 'ui.theme_mode',
-				value: 'light',
-				description: 'Режим темы интерфейса (light/dark/auto)',
-				category: 'ui',
-				type: 'string',
-			},
-			{
-				key: 'system.debug_mode',
-				value: false,
-				description: 'Режим отладки для разработчиков',
-				category: 'system',
-				type: 'boolean',
-			},
-		]
-
-		for (const settingData of defaultSettings) {
-			await Settings.findOneAndUpdate({ key: settingData.key }, settingData, {
-				upsert: true,
-				new: true,
-			})
-		}
-
+		await settingsService.initializeDefaultSettings()
 		console.log('✅ Настройки по умолчанию инициализированы')
 	} catch (error) {
 		console.error('❌ Ошибка инициализации настроек:', error)

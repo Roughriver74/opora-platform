@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const formFieldController = __importStar(require("../controllers/formFieldController"));
@@ -63,10 +54,10 @@ router.post('/bitrix/search/products', formFieldController.searchProducts);
 router.post('/bitrix/search/companies', authMiddleware_1.authMiddleware, formFieldController.searchCompanies);
 router.post('/bitrix/search/contacts', formFieldController.searchContacts);
 // Обновление заголовка раздела (header поля)
-router.put('/section/:id', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.put('/section/:id', authMiddleware_1.authMiddleware, authMiddleware_1.requireAdmin, async (req, res) => {
     try {
         const { label } = req.body;
-        const field = yield require('../models/FormField').default.findById(req.params.id);
+        const field = await require('../models/FormField').default.findById(req.params.id);
         if (!field) {
             res.status(404).json({ message: 'Поле не найдено' });
             return;
@@ -78,13 +69,13 @@ router.put('/section/:id', authMiddleware_1.authMiddleware, authMiddleware_1.req
             return;
         }
         field.label = label;
-        yield field.save();
+        await field.save();
         res.json(field);
     }
     catch (error) {
         res.status(500).json({ message: error.message });
     }
-}));
+});
 // Получение пользовательских полей из Битрикс24
 router.get('/bitrix/userfields', formFieldController.getUserFields);
 // Получение значений для конкретного поля типа enumeration

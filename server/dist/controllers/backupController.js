@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -32,7 +23,7 @@ const executeNodeScript = (scriptPath, args = []) => {
         });
     });
 };
-const listBackups = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const listBackups = async (req, res) => {
     try {
         // В зависимости от окружения используем разные папки
         const backupDir = process.env.NODE_ENV === 'production' ? PROD_BACKUP_DIR : LOCAL_BACKUP_DIR;
@@ -54,9 +45,9 @@ const listBackups = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             error: error.message,
         });
     }
-});
+};
 exports.listBackups = listBackups;
-const createBackup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const createBackup = async (req, res) => {
     try {
         // Используем Node.js скрипт вместо bash
         const scriptPath = path_1.default.resolve(process.cwd(), '../scripts/backup-node.js');
@@ -66,7 +57,7 @@ const createBackup = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         if (!fs_1.default.existsSync(scriptPath)) {
             throw new Error(`Backup script not found at: ${scriptPath}`);
         }
-        const output = yield executeNodeScript(scriptPath, [environment]);
+        const output = await executeNodeScript(scriptPath, [environment]);
         res.status(201).json({ message: 'Бэкап успешно создан.', output });
     }
     catch (error) {
@@ -75,9 +66,9 @@ const createBackup = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             .status(500)
             .json({ message: 'Ошибка создания бэкапа', error: error.message });
     }
-});
+};
 exports.createBackup = createBackup;
-const restoreBackup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const restoreBackup = async (req, res) => {
     const { timestamp } = req.params;
     const backupDir = process.env.NODE_ENV === 'production' ? PROD_BACKUP_DIR : LOCAL_BACKUP_DIR;
     const backupPath = path_1.default.join(backupDir, timestamp);
@@ -119,9 +110,9 @@ const restoreBackup = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             error: error.message,
         });
     }
-});
+};
 exports.restoreBackup = restoreBackup;
-const deleteBackup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteBackup = async (req, res) => {
     const { timestamp } = req.params;
     const backupDir = process.env.NODE_ENV === 'production' ? PROD_BACKUP_DIR : LOCAL_BACKUP_DIR;
     const backupPath = path_1.default.join(backupDir, timestamp);
@@ -139,5 +130,5 @@ const deleteBackup = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             .status(500)
             .json({ message: 'Ошибка удаления бэкапа', error: error.message });
     }
-});
+};
 exports.deleteBackup = deleteBackup;

@@ -20,12 +20,12 @@ export class AdminToken extends BaseEntity {
 	@IsString()
 	token: string
 
-	@Column({ type: 'uuid' })
-	userId: string
-
 	@ManyToOne(() => User, { onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'userId' })
+	@JoinColumn({ name: 'user_id' })
 	user: User
+
+	@Column({ type: 'uuid', name: 'user_id' })
+	userId: string
 
 	@Column({ type: 'text' })
 	@IsString()

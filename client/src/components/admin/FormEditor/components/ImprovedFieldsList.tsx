@@ -37,6 +37,7 @@ interface ImprovedFieldsListProps {
 	onAddSection: () => void
 	onFieldSave: (index: number, field: Partial<FormField>) => void
 	onFieldDelete: (index: number) => void
+	onLoadFields?: () => Promise<void>
 }
 
 interface FieldItemProps {
@@ -293,6 +294,7 @@ export const ImprovedFieldsList: React.FC<ImprovedFieldsListProps> = ({
 	onAddSection,
 	onFieldSave,
 	onFieldDelete,
+	onLoadFields,
 }) => {
 	// const theme = useTheme()
 	const [selectedElements, setSelectedElements] = useState<Set<string>>(
@@ -312,7 +314,7 @@ export const ImprovedFieldsList: React.FC<ImprovedFieldsListProps> = ({
 		handleDragEnd,
 		handleOrderChange,
 		normalizeOrders,
-	} = useImprovedDragAndDrop(state, setState)
+	} = useImprovedDragAndDrop(state, setState, onLoadFields)
 
 	// Получаем упорядоченные элементы
 	const orderedElements = useMemo(() => {

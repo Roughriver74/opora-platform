@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -18,7 +9,7 @@ const database_1 = require("../types/database");
 /**
  * Middleware для валидации связей между формами и полями
  */
-const validateFormFieldRelation = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+const validateFormFieldRelation = async (req, res, next) => {
     try {
         const { formId } = req.body;
         // Если нет formId, пропускаем валидацию (поле может быть создано без связи)
@@ -36,7 +27,7 @@ const validateFormFieldRelation = (req, res, next) => __awaiter(void 0, void 0, 
             return;
         }
         // Проверяем существование формы
-        const formExists = yield Form_1.default.findById(formId);
+        const formExists = await Form_1.default.findById(formId);
         if (!formExists) {
             res.status(400).json({
                 message: 'Форма с указанным ID не существует',
@@ -56,12 +47,12 @@ const validateFormFieldRelation = (req, res, next) => __awaiter(void 0, void 0, 
             message: 'Ошибка валидации связи с формой',
         });
     }
-});
+};
 exports.validateFormFieldRelation = validateFormFieldRelation;
 /**
  * Middleware для валидации при обновлении полей
  */
-const validateFormFieldUpdateRelation = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+const validateFormFieldUpdateRelation = async (req, res, next) => {
     try {
         const { formId } = req.body;
         // Если formId не изменяется, пропускаем валидацию
@@ -78,7 +69,7 @@ const validateFormFieldUpdateRelation = (req, res, next) => __awaiter(void 0, vo
             });
             return;
         }
-        const formExists = yield Form_1.default.findById(formId);
+        const formExists = await Form_1.default.findById(formId);
         if (!formExists) {
             res.status(400).json({
                 message: 'Форма с указанным ID не существует при обновлении',
@@ -97,5 +88,5 @@ const validateFormFieldUpdateRelation = (req, res, next) => __awaiter(void 0, vo
             message: 'Ошибка валидации обновления связи с формой',
         });
     }
-});
+};
 exports.validateFormFieldUpdateRelation = validateFormFieldUpdateRelation;

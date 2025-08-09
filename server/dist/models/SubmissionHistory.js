@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addSubmissionChange = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
@@ -90,7 +81,7 @@ SubmissionHistorySchema.index({ submissionId: 1, changedAt: -1 });
 SubmissionHistorySchema.index({ changedBy: 1 });
 SubmissionHistorySchema.index({ changeType: 1 });
 // Статический метод для создания записи истории
-const addSubmissionChange = (submissionId, changedBy, changeType, description, oldValue, newValue, fieldName, comment, req) => __awaiter(void 0, void 0, void 0, function* () {
+const addSubmissionChange = async (submissionId, changedBy, changeType, description, oldValue, newValue, fieldName, comment, req) => {
     // Обрабатываем случай с админской авторизацией
     let changedByObjectId;
     if (changedBy === 'super_admin' || changedBy === 'admin') {
@@ -114,10 +105,10 @@ const addSubmissionChange = (submissionId, changedBy, changeType, description, o
         newValue,
         fieldName,
         comment,
-        ipAddress: req === null || req === void 0 ? void 0 : req.ip,
-        userAgent: req === null || req === void 0 ? void 0 : req.get('User-Agent')
+        ipAddress: req?.ip,
+        userAgent: req?.get('User-Agent')
     });
-    return yield historyRecord.save();
-});
+    return await historyRecord.save();
+};
 exports.addSubmissionChange = addSubmissionChange;
 exports.default = mongoose_1.default.model('SubmissionHistory', SubmissionHistorySchema);

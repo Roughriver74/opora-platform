@@ -26,13 +26,13 @@ export const authService = {
 
 	async validateToken(token: string): Promise<boolean> {
 		try {
-			const response = await api.get('/api/auth/check', {
-				headers: {
-					Authorization: `Bearer ${token}`,
-				},
-			})
+			// Пробуем проверить токен
+			const response = await api.get('/api/auth/check')
 			return response.status === 200 && response.data.success
-		} catch (error) {
+		} catch (error: any) {
+			// Если ошибка 401, интерцептор автоматически попытается обновить токен
+			// Если обновление не удалось, пользователь будет разлогинен
+			console.error('Token validation error:', error)
 			return false
 		}
 	},
