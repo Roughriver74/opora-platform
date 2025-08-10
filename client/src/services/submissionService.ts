@@ -3,15 +3,15 @@ import { FormSubmission, FormSubmissionResponse } from '../types'
 
 // Типы для заявок
 export interface Submission {
-	_id: string
+	id: string
 	submissionNumber: string
 	formId: {
-		_id: string
+		id: string
 		name: string
 		title: string
 	}
 	userId?: {
-		_id: string
+		id: string
 		name: string
 		email: string
 		firstName?: string
@@ -25,7 +25,7 @@ export interface Submission {
 	bitrixSyncStatus: 'pending' | 'synced' | 'failed'
 	bitrixSyncError?: string
 	assignedTo?: {
-		_id: string
+		id: string
 		name: string
 		email: string
 	}
@@ -36,7 +36,7 @@ export interface Submission {
 }
 
 export interface SubmissionHistory {
-	_id: string
+	id: string
 	submissionId: string
 	action: string
 	changeType: 'status_change' | 'assignment' | 'note_added' | 'data_update'
@@ -45,7 +45,7 @@ export interface SubmissionHistory {
 	newValue?: any
 	comment?: string
 	changedBy: {
-		_id: string
+		id: string
 		name: string
 		email: string
 		firstName?: string
@@ -53,7 +53,7 @@ export interface SubmissionHistory {
 	}
 	changedAt: string
 	userId?: {
-		_id: string
+		id: string
 		name: string
 		email: string
 		firstName?: string
@@ -143,8 +143,8 @@ export const SubmissionService = {
 	): Promise<{
 		success: boolean
 		data: {
-			_id: string
-			formId: { _id: string }
+			id: string
+			formId: { id: string }
 			formData: Record<string, any>
 			preloadedOptions?: Record<string, any[]>
 		}
@@ -167,7 +167,7 @@ export const SubmissionService = {
 			
 			// Проверяем обязательные поля
 			const data = response.data.data
-			if (!data?._id || !data?.formId?._id) {
+			if (!data?.id || !data?.formId?.id) {
 				throw new Error('Получены неполные данные заявки')
 			}
 			

@@ -75,7 +75,7 @@ export const SubmissionsFilters: React.FC<SubmissionsFiltersProps> = ({
 						>
 							<MenuItem value=''>Все пользователи</MenuItem>
 							{users.map(user => (
-								<MenuItem key={user._id} value={user._id}>
+								<MenuItem key={user.id} value={user.id}>
 									{user.firstName && user.lastName
 										? `${user.firstName} ${user.lastName}`
 										: user.name}

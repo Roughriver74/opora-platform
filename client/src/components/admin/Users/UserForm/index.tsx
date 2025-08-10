@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -40,6 +40,8 @@ export const UserForm: React.FC<UserFormProps> = ({
   onClose,
   onSave
 }) => {
+  console.log('🔄 UserForm rendered with props:', { open, user: user?.id || null });
+  
   const {
     formData,
     errors,
@@ -54,6 +56,23 @@ export const UserForm: React.FC<UserFormProps> = ({
   } = useUserForm(user, onSave, onClose);
 
   const isEditing = Boolean(user);
+  
+  console.log('🎭 UserForm state:', { 
+    open, 
+    isEditing, 
+    formData: formData.email || 'empty',
+    loading 
+  });
+
+  // Дополнительное логирование изменений пропов
+  useEffect(() => {
+    console.log('🔄 UserForm props changed:', { open, userId: user?.id || null });
+  }, [open, user]);
+
+  // Проверка корректности отображения Dialog
+  if (open) {
+    console.log('✅ Dialog should be visible with open=true');
+  }
 
   return (
     <Dialog 
@@ -61,8 +80,12 @@ export const UserForm: React.FC<UserFormProps> = ({
       onClose={onClose} 
       maxWidth="md" 
       fullWidth
+      disableEscapeKeyDown={false}
+      keepMounted={true}
       PaperProps={{
-        sx: { minHeight: '600px' }
+        sx: { 
+          minHeight: '600px'
+        }
       }}
     >
       <DialogTitle>

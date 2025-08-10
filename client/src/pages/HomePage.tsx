@@ -28,7 +28,7 @@ const HomePage: React.FC = () => {
 	const handleFieldUpdate = (fieldId: string, updates: Partial<FormField>) => {
 		setFields(prevFields =>
 			prevFields.map(field =>
-				field._id === fieldId ? { ...field, ...updates } : field
+				field.id === fieldId ? { ...field, ...updates } : field
 			)
 		)
 	}
@@ -85,7 +85,7 @@ const HomePage: React.FC = () => {
 
 				// Если есть данные для редактирования, загружаем нужную форму
 				if (editData && editData.formId) {
-					const editForm = forms.find((f: Form) => f._id === editData.formId)
+					const editForm = forms.find((f: Form) => f.id === editData.formId)
 					if (editForm) {
 						setForm(editForm)
 						if (editForm.fields && typeof editForm.fields[0] === 'object') {

@@ -77,7 +77,7 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 						const isShipped = submission.status === 'C1:WON'
 
 						return (
-							<TableRow key={submission._id}>
+							<TableRow key={submission.id}>
 								<TableCell>
 									<Typography variant='body2' fontWeight='bold'>
 										{submission.bitrixDealId || 'Не указан'}
@@ -95,7 +95,7 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 										<Select
 											value={getCleanStatus(submission.status)}
 											onChange={e =>
-												onStatusChange(submission._id, e.target.value)
+												onStatusChange(submission.id, e.target.value)
 											}
 											displayEmpty
 											renderValue={value => {

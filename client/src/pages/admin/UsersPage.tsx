@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Container, 
   Typography, 
@@ -24,6 +24,7 @@ export const UsersPage: React.FC = () => {
   const [syncLoading, setSyncLoading] = useState(false);
   const [userFormOpen, setUserFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [loadingUserData, setLoadingUserData] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -34,6 +35,11 @@ export const UsersPage: React.FC = () => {
     severity: 'success'
   });
 
+  // Логирование изменений состояния для диагностики
+  useEffect(() => {
+    console.log('🔄 State changed - userFormOpen:', userFormOpen, 'editingUser:', editingUser?.id || null);
+  }, [userFormOpen, editingUser]);
+
   // Обработчик добавления пользователя
   const handleAddUser = () => {
     setEditingUser(null);
@@ -41,27 +47,42 @@ export const UsersPage: React.FC = () => {
   };
 
   // Обработчик редактирования пользователя
-  const handleEditUser = async (id: string) => {
+  const handleEditUser = React.useCallback(async (id: string) => {
+    console.log('🔍 handleEditUser called with id:', id);
+    setLoadingUserData(true);
+    
     try {
+      console.log('📡 Making API request to /api/users/' + id);
       const response = await apiService.get(`/api/users/${id}`);
-      if (response.data.success) {
-        setEditingUser(response.data.data);
+      console.log('✅ API response:', response.data);
+      
+      if (response.data.success && response.data.data) {
+        const userData = response.data.data;
+        console.log('👤 Setting editingUser:', userData);
+        
+        // Простая и прямолинейная установка состояния
+        setEditingUser(userData);
         setUserFormOpen(true);
+        console.log('🚀 User form opened with data:', userData.email);
       } else {
+        console.error('❌ API returned invalid data:', response.data);
         setSnackbar({
           open: true,
-          message: 'Не удалось загрузить пользователя',
+          message: response.data.message || 'Не удалось загрузить пользователя',
           severity: 'error'
         });
       }
     } catch (error: any) {
+      console.error('💥 Error in handleEditUser:', error);
       setSnackbar({
         open: true,
         message: error.response?.data?.message || 'Ошибка загрузки пользователя',
         severity: 'error'
       });
+    } finally {
+      setLoadingUserData(false);
     }
-  };
+  }, []);
 
   // Обработчик сохранения пользователя
   const handleSaveUser = (savedUser: User) => {
@@ -85,7 +106,7 @@ export const UsersPage: React.FC = () => {
   const handleDeleteUser = (id: string) => {
     // Найти пользователя в таблице (это временное решение)
     // В реальном приложении нужно получить пользователя по API
-    setUserToDelete({ _id: id } as User);
+    setUserToDelete({ id: id } as User);
     setDeleteDialogOpen(true);
   };
 
@@ -94,7 +115,7 @@ export const UsersPage: React.FC = () => {
     if (!userToDelete) return;
 
     try {
-      const response = await apiService.delete(`/api/users/${userToDelete._id}`);
+      const response = await apiService.delete(`/api/users/${userToDelete.id}`);
       
       if (response.data.success) {
         setSnackbar({

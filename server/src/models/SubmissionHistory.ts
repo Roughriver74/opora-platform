@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ISubmissionHistory extends Document {
-  _id: string;
+  id: string;
   submissionId: mongoose.Types.ObjectId;
   changedBy?: mongoose.Types.ObjectId; // Кто изменил (необязательно для системных админов)
   changeType: 'status_change' | 'priority_change' | 'assignment' | 'data_update' | 'note_added' | 'tag_added' | 'tag_removed';

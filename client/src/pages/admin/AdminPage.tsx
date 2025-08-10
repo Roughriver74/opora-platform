@@ -15,6 +15,7 @@ import BitrixIntegration from '../../components/admin/BitrixIntegration'
 import BackupManagement from '../../components/admin/BackupManagement'
 import Settings from '../../components/admin/Settings'
 import { SimpleDatabase } from '../../components/admin/SimpleDatabase'
+import { UsersPage } from './UsersPage'
 import { Form } from '../../types'
 import { FormService } from '../../services/formService'
 import { useAuth } from '../../contexts/auth'
@@ -177,6 +178,7 @@ const AdminPage: React.FC = () => {
 					<Tab label='Битрикс24' {...a11yProps(3)} />
 					<Tab label='Резервные копии' {...a11yProps(4)} />
 					<Tab label='Настройки' {...a11yProps(5)} />
+					<Tab label='Пользователи' {...a11yProps(6)} />
 				</Tabs>
 			</Box>
 
@@ -228,6 +230,10 @@ const AdminPage: React.FC = () => {
 
 			<TabPanel value={tabValue} index={5}>
 				<Settings />
+			</TabPanel>
+
+			<TabPanel value={tabValue} index={6}>
+				<UsersPage />
 			</TabPanel>
 		</Container>
 	)

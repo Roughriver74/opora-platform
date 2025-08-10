@@ -151,12 +151,12 @@ const SubmissionManagement: React.FC = () => {
 	// Открытие деталей заявки
 	const handleViewDetails = async (submission: Submission) => {
 		try {
-			const response = await submissionService.getSubmissionById(submission._id)
+			const response = await submissionService.getSubmissionById(submission.id)
 			setSelectedSubmission(response.data.submission)
 			setSubmissionHistory(response.data.history)
 
 			// Загружаем поля формы для отображения читаемых названий
-			const formResponse = await fetch(`/api/forms/${submission.formId._id}`)
+			const formResponse = await fetch(`/api/forms/${submission.formId.id}`)
 			if (formResponse.ok) {
 				const formData = await formResponse.json()
 				setFormFields(formData.data.fields || [])
@@ -181,7 +181,7 @@ const SubmissionManagement: React.FC = () => {
 			)
 			setStatusComment('')
 			loadSubmissions()
-			if (selectedSubmission && selectedSubmission._id === submissionId) {
+			if (selectedSubmission && selectedSubmission.id === submissionId) {
 				handleViewDetails(selectedSubmission)
 			}
 		} catch (err: any) {
@@ -314,7 +314,7 @@ const SubmissionManagement: React.FC = () => {
 					</TableHead>
 					<TableBody>
 						{submissions.map(submission => (
-							<TableRow key={submission._id}>
+							<TableRow key={submission.id}>
 								<TableCell>{submission.submissionNumber}</TableCell>
 								<TableCell>{submission.formId.title}</TableCell>
 								<TableCell>
@@ -461,7 +461,7 @@ const SubmissionManagement: React.FC = () => {
 														onChange={e => {
 															if (e.target.value) {
 																handleStatusChange(
-																	selectedSubmission._id,
+																	selectedSubmission.id,
 																	e.target.value
 																)
 															}
@@ -595,7 +595,7 @@ const SubmissionManagement: React.FC = () => {
 										</Typography>
 										<List>
 											{submissionHistory.map((historyItem, index) => (
-												<React.Fragment key={historyItem._id}>
+												<React.Fragment key={historyItem.id}>
 													<ListItem>
 														<ListItemIcon>
 															<Avatar sx={{ width: 32, height: 32 }}>

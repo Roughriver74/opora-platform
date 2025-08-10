@@ -257,7 +257,7 @@ export const useUserForm = (
         }
 
 					const response = await apiService.put(
-						`/api/users/${user._id}`,
+						`/api/users/${user.id}`,
 						updateData
 					)
         
@@ -265,7 +265,7 @@ export const useUserForm = (
 						// Сохраняем настройки пользователя
 						try {
 							await apiService.put(
-								`/api/users/${user._id}/settings`,
+								`/api/users/${user.id}/settings`,
 								{ settings: formData.settings }
 							)
 						} catch (settingsError) {

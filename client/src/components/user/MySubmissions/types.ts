@@ -19,7 +19,7 @@ export interface BitrixStage {
 }
 
 export interface User {
-	_id: string
+	id: string
 	firstName?: string
 	lastName?: string
 	name: string

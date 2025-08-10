@@ -218,7 +218,7 @@ const MySubmissions: React.FC = () => {
 			console.log('🔥 [CLIENT EDIT] КНОПКА РЕДАКТИРОВАТЬ НАЖАТА!')
 			console.log(
 				'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
-				submission._id
+				submission.id
 			)
 			console.log('[CLIENT EDIT DEBUG] Данные заявки:', submission)
 
@@ -227,7 +227,7 @@ const MySubmissions: React.FC = () => {
 				'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
 			)
 			const response = await SubmissionService.getSubmissionForEdit(
-				submission._id
+				submission.id
 			)
 
 			console.log('[CLIENT EDIT DEBUG] Ответ от сервера:', response)
@@ -250,8 +250,8 @@ const MySubmissions: React.FC = () => {
 
 				// Сохраняем актуальные данные для редактирования
 				const editData = {
-					submissionId: response.data._id,
-					formId: response.data.formId?._id || submission.formId?._id,
+					submissionId: response.data.id,
+					formId: response.data.formId?.id || submission.formId?.id,
 					formData: response.data.formData,
 					preloadedOptions: response.data.preloadedOptions || {},
 				}
@@ -260,7 +260,7 @@ const MySubmissions: React.FC = () => {
 				localStorage.setItem('editSubmissionData', JSON.stringify(editData))
 
 				console.log('[CLIENT EDIT DEBUG] Переход к форме редактирования...')
-				navigate(`/?edit=${submission._id}`)
+				navigate(`/?edit=${submission.id}`)
 			} else {
 				console.warn(
 					'[CLIENT EDIT DEBUG] Не удалось получить актуальные данные'
@@ -269,12 +269,12 @@ const MySubmissions: React.FC = () => {
 				localStorage.setItem(
 					'editSubmissionData',
 					JSON.stringify({
-						submissionId: submission._id,
-						formId: submission.formId?._id || 'unknown',
+						submissionId: submission.id,
+						formId: submission.formId?.id || 'unknown',
 						formData: {},
 					})
 				)
-				navigate(`/?edit=${submission._id}`)
+				navigate(`/?edit=${submission.id}`)
 			}
 		} catch (error: any) {
 			console.error('[CLIENT EDIT DEBUG] Ошибка получения данных:', error)
@@ -282,12 +282,12 @@ const MySubmissions: React.FC = () => {
 			localStorage.setItem(
 				'editSubmissionData',
 				JSON.stringify({
-					submissionId: submission._id,
-					formId: submission.formId?._id || 'unknown',
+					submissionId: submission.id,
+					formId: submission.formId?.id || 'unknown',
 					formData: {},
 				})
 			)
-			navigate(`/?edit=${submission._id}`)
+			navigate(`/?edit=${submission.id}`)
 		}
 	}
 
@@ -295,10 +295,10 @@ const MySubmissions: React.FC = () => {
 	const handleCopySubmission = async (submission: Submission) => {
 		try {
 			console.log('🔥 [CLIENT COPY] КНОПКА КОПИРОВАТЬ НАЖАТА!')
-			console.log('[CLIENT COPY] Копирование заявки:', submission._id)
+			console.log('[CLIENT COPY] Копирование заявки:', submission.id)
 
 			// Получаем данные заявки для копирования (теперь с preloadedOptions)
-			const response = await SubmissionService.copySubmission(submission._id)
+			const response = await SubmissionService.copySubmission(submission.id)
 
 			console.log('[CLIENT COPY] Ответ от сервера:', response)
 			console.log('[CLIENT COPY] response.data:', response.data)
@@ -330,7 +330,7 @@ const MySubmissions: React.FC = () => {
 				sessionStorage.setItem('copyFormData', JSON.stringify(copyData))
 
 				console.log('[CLIENT COPY] Переход к форме копирования...')
-				navigate(`/?copy=${submission._id}`)
+				navigate(`/?copy=${submission.id}`)
 			} else {
 				console.warn('[CLIENT COPY] Не удалось получить данные для копирования')
 				showError('Не удалось получить данные для копирования')
@@ -355,7 +355,7 @@ const MySubmissions: React.FC = () => {
 			loadSubmissions() // Перезагружаем список
 
 			// Если детали открыты, обновляем их тоже
-			if (selectedSubmission && selectedSubmission._id === submissionId) {
+			if (selectedSubmission && selectedSubmission.id === submissionId) {
 				const response = await SubmissionService.getSubmissionById(submissionId)
 				setSelectedSubmission(response.data.submission)
 				setSubmissionHistory(response.data.history)
@@ -439,7 +439,7 @@ const MySubmissions: React.FC = () => {
 	// Отображение подробностей заявки
 	const handleShowDetails = async (submission: Submission) => {
 		try {
-			const response = await SubmissionService.getSubmissionById(submission._id)
+			const response = await SubmissionService.getSubmissionById(submission.id)
 			setSelectedSubmission(response.data.submission)
 			setSubmissionHistory(response.data.history)
 			setDetailsOpen(true)
@@ -609,7 +609,7 @@ const MySubmissions: React.FC = () => {
 								<Select
 									value={submission.status}
 									onChange={e =>
-										handleStatusChange(submission._id, e.target.value)
+										handleStatusChange(submission.id, e.target.value)
 									}
 									displayEmpty
 									renderValue={value => {
@@ -721,7 +721,7 @@ const MySubmissions: React.FC = () => {
 									>
 										<MenuItem value=''>Все клиенты</MenuItem>
 										{users.map(user => (
-											<MenuItem key={user._id} value={user._id}>
+											<MenuItem key={user.id} value={user.id}>
 												{user.firstName && user.lastName
 													? `${user.firstName} ${user.lastName}`
 													: user.name}
@@ -806,7 +806,7 @@ const MySubmissions: React.FC = () => {
 						// Мобильное отображение - карточки
 						<Box>
 							{submissions.map(submission => (
-								<SubmissionCard key={submission._id} submission={submission} />
+								<SubmissionCard key={submission.id} submission={submission} />
 							))}
 						</Box>
 					) : (
@@ -826,7 +826,7 @@ const MySubmissions: React.FC = () => {
 								<TableBody>
 									{submissions.map(submission => {
 										// Защита от некорректных данных
-										if (!submission || !submission._id) {
+										if (!submission || !submission.id) {
 											return null
 										}
 
@@ -834,7 +834,7 @@ const MySubmissions: React.FC = () => {
 										const isShipped = submission.status === 'C1:WON'
 
 										return (
-											<TableRow key={submission._id}>
+											<TableRow key={submission.id}>
 												<TableCell>
 													<Typography variant='body2' fontWeight='bold'>
 														{submission.bitrixDealId || 'Не указан'}
@@ -861,7 +861,7 @@ const MySubmissions: React.FC = () => {
 															value={getCleanStatus(submission.status)}
 															onChange={e =>
 																handleStatusChange(
-																	submission._id,
+																	submission.id,
 																	e.target.value
 																)
 															}
@@ -1066,7 +1066,7 @@ const MySubmissions: React.FC = () => {
 													value={getCleanStatus(selectedSubmission.status)}
 													onChange={e =>
 														handleStatusChange(
-															selectedSubmission._id,
+															selectedSubmission.id,
 															e.target.value
 														)
 													}

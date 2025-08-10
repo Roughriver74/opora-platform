@@ -305,10 +305,10 @@ export const UsersTable: React.FC<UsersTableProps> = ({
             <Box>
               {users.map((user) => (
                 <UserCard
-                  key={user._id}
+                  key={user.id}
                   user={user}
-                  onEdit={() => onEditUser(user._id)}
-                  onDelete={() => onDeleteUser(user._id)}
+                  onEdit={() => onEditUser(user.id)}
+                  onDelete={() => onDeleteUser(user.id)}
                 />
               ))}
             </Box>
@@ -331,10 +331,10 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                 <TableBody>
                   {users.map((user) => (
                     <UserRow
-                      key={user._id}
+                      key={user.id}
                       user={user}
-                      onEdit={() => onEditUser(user._id)}
-                      onDelete={() => onDeleteUser(user._id)}
+                      onEdit={() => onEditUser(user.id)}
+                      onDelete={() => onDeleteUser(user.id)}
                     />
                   ))}
                 </TableBody>

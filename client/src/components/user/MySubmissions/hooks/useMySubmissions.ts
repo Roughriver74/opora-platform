@@ -104,7 +104,7 @@ export const useMySubmissions = () => {
 			console.log('🔥 [CLIENT EDIT] КНОПКА РЕДАКТИРОВАТЬ НАЖАТА!')
 			console.log(
 				'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
-				submission._id
+				submission.id
 			)
 			console.log('[CLIENT EDIT DEBUG] Данные заявки:', submission)
 
@@ -113,7 +113,7 @@ export const useMySubmissions = () => {
 				'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
 			)
 			const response = await submissionService.getSubmissionForEdit(
-				submission._id
+				submission.id
 			)
 
 			console.log('[CLIENT EDIT DEBUG] Ответ от сервера:', response)
@@ -136,8 +136,8 @@ export const useMySubmissions = () => {
 
 				// Сохраняем актуальные данные для редактирования
 				const editData = {
-					submissionId: response.data._id,
-					formId: response.data.formId._id,
+					submissionId: response.data.id,
+					formId: response.data.formId.id,
 					formData: response.data.formData,
 					preloadedOptions: response.data.preloadedOptions || {},
 				}
@@ -146,7 +146,7 @@ export const useMySubmissions = () => {
 				localStorage.setItem('editSubmissionData', JSON.stringify(editData))
 
 				console.log('[CLIENT EDIT DEBUG] Переход к форме редактирования...')
-				navigate(`/?edit=${submission._id}`)
+				navigate(`/?edit=${submission.id}`)
 			} else {
 				// Если не удалось получить актуальные данные, используем локальные
 				console.warn(
@@ -155,13 +155,13 @@ export const useMySubmissions = () => {
 				localStorage.setItem(
 					'editSubmissionData',
 					JSON.stringify({
-						submissionId: submission._id,
+						submissionId: submission.id,
 						formId: submission.formId._id,
 						formData: submission.formData,
 					})
 				)
 
-				navigate(`/?edit=${submission._id}`)
+				navigate(`/?edit=${submission.id}`)
 			}
 		} catch (error: any) {
 			console.error(
@@ -176,13 +176,13 @@ export const useMySubmissions = () => {
 			localStorage.setItem(
 				'editSubmissionData',
 				JSON.stringify({
-					submissionId: submission._id,
+					submissionId: submission.id,
 					formId: submission.formId._id,
 					formData: submission.formData,
 				})
 			)
 
-			navigate(`/?edit=${submission._id}`)
+			navigate(`/?edit=${submission.id}`)
 		}
 	}
 
