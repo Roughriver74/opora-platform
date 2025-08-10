@@ -52,7 +52,7 @@ export const useMySubmissions = () => {
 		if (!isAdmin) return
 
 		try {
-			const response = await api.get('/users')
+			const response = await api.get('/api/users')
 			if (response.data.success) {
 				setUsers(response.data.data)
 			}
@@ -78,10 +78,14 @@ export const useMySubmissions = () => {
 						limit: state.rowsPerPage,
 				  })
 
+			// Безопасная обработка ответа с проверкой на существование структуры
+			const submissions = response?.data || []
+			const pagination = response?.pagination || { total: 0 }
+			
 			setState(prev => ({
 				...prev,
-				submissions: response?.data || [],
-				total: response?.pagination?.total || 0,
+				submissions,
+				total: pagination.total || 0,
 				loading: false,
 				error: null,
 			}))

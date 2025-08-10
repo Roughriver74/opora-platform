@@ -12,8 +12,12 @@ RUN npm ci
 # Копируем исходный код
 COPY . .
 
+# Устанавливаем NODE_ENV для production сборки
+ENV NODE_ENV=production
+ARG NODE_ENV=production
+
 # Сборка приложения
-RUN npm run build
+RUN NODE_ENV=production npm run build
 
 # Production образ
 FROM nginx:alpine

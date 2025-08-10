@@ -164,4 +164,80 @@ export class UserRepository extends BaseRepository<User> {
 			accountAgeDays: Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)),
 		}
 	}
+
+	async findWithPaginationAndFilters(
+		page: number = 1,
+		limit: number = 20,
+		filters: { search?: string; role?: UserRole; status?: UserStatus } = {}
+	): Promise<{
+		data: User[]
+		total: number
+		page: number
+		limit: number
+		pages: number
+	}> {
+		const queryBuilder = this.createQueryBuilder('user')
+		
+		// Применяем фильтры
+		if (filters.search) {
+			queryBuilder.where(
+				'LOWER(user.email) LIKE LOWER(:search) OR ' +
+				'LOWER(user.firstName) LIKE LOWER(:search) OR ' +
+				'LOWER(user.lastName) LIKE LOWER(:search)',
+				{ search: `%${filters.search}%` }
+			)
+		}
+
+		if (filters.role) {
+			if (filters.search) {
+				queryBuilder.andWhere('user.role = :role', { role: filters.role })
+			} else {
+				queryBuilder.where('user.role = :role', { role: filters.role })
+			}
+		}
+
+		if (filters.status) {
+			const condition = 'user.status = :status'
+			if (filters.search || filters.role) {
+				queryBuilder.andWhere(condition, { status: filters.status })
+			} else {
+				queryBuilder.where(condition, { status: filters.status })
+			}
+		}
+
+		// Исключаем поле password из выборки
+		queryBuilder.select([
+			'user.id',
+			'user.email',
+			'user.firstName',
+			'user.lastName',
+			'user.phone',
+			'user.bitrixUserId',
+			'user.status',
+			'user.role',
+			'user.isActive',
+			'user.settings',
+			'user.lastLogin',
+			'user.createdAt',
+			'user.updatedAt',
+		])
+
+		// Сортировка по дате создания (новые первыми)
+		queryBuilder.orderBy('user.createdAt', 'DESC')
+
+		// Пагинация
+		const skip = (page - 1) * limit
+		queryBuilder.skip(skip).take(limit)
+
+		// Получаем данные и общее количество
+		const [data, total] = await queryBuilder.getManyAndCount()
+
+		return {
+			data,
+			total,
+			page,
+			limit,
+			pages: Math.ceil(total / limit),
+		}
+	}
 }

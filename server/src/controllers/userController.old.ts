@@ -1,13 +1,10 @@
 import { Request, Response } from 'express'
-import { getUserService } from '../services/UserService'
+import User from '../models/User'
 import { PasswordHashService } from '../utils/passwordHash'
 import bitrix24Service from '../services/bitrix24Service'
-import { UserRole, UserStatus } from '../database/entities/User.entity'
-
-const userService = getUserService()
 
 /**
- * Получение всех пользователей с пагинацией и фильтрацией
+ * Получение всех пользователей
  */
 export const getAllUsers = async (
 	req: Request,
@@ -22,34 +19,43 @@ export const getAllUsers = async (
 			status = '',
 		} = req.query
 
-		const filters: any = {}
-		
-		if (search && typeof search === 'string') {
-			filters.search = search
+		// Строим фильтр
+		const filter: any = {}
+
+		if (search) {
+			filter.$or = [
+				{ email: { $regex: search, $options: 'i' } },
+				{ firstName: { $regex: search, $options: 'i' } },
+				{ lastName: { $regex: search, $options: 'i' } },
+			]
 		}
 
-		if (role && typeof role === 'string' && Object.values(UserRole).includes(role as UserRole)) {
-			filters.role = role as UserRole
+		if (role) {
+			filter.role = role
 		}
 
-		if (status && typeof status === 'string' && Object.values(UserStatus).includes(status as UserStatus)) {
-			filters.status = status as UserStatus
+		if (status) {
+			filter.status = status
 		}
 
-		const result = await userService.findWithPaginationAndFilters(
-			Number(page),
-			Number(limit),
-			filters
-		)
+		const skip = (Number(page) - 1) * Number(limit)
+
+		const users = await User.find(filter)
+			.select('-password')
+			.sort({ createdAt: -1 })
+			.skip(skip)
+			.limit(Number(limit))
+
+		const total = await User.countDocuments(filter)
 
 		res.json({
 			success: true,
-			data: result.data,
+			data: users,
 			pagination: {
-				page: result.page,
-				limit: result.limit,
-				total: result.total,
-				pages: result.pages,
+				page: Number(page),
+				limit: Number(limit),
+				total,
+				pages: Math.ceil(total / Number(limit)),
 			},
 		})
 	} catch (error) {
@@ -71,7 +77,7 @@ export const getUserById = async (
 	try {
 		const { id } = req.params
 
-		const user = await userService.findById(id)
+		const user = await User.findById(id).select('-password')
 
 		if (!user) {
 			res.status(404).json({
@@ -81,11 +87,9 @@ export const getUserById = async (
 			return
 		}
 
-		// Возвращаем пользователя без пароля
-		const { password, ...userWithoutPassword } = user as any
 		res.json({
 			success: true,
-			data: userWithoutPassword,
+			data: user,
 		})
 	} catch (error) {
 		console.error('Ошибка получения пользователя:', error)
@@ -104,7 +108,7 @@ export const createUser = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		const { email, password, role, firstName, lastName, phone, bitrixUserId } =
+		const { email, password, role, firstName, lastName, phone, bitrix_id } =
 			req.body
 
 		// Валидация обязательных полей
@@ -117,7 +121,7 @@ export const createUser = async (
 		}
 
 		// Проверяем, существует ли пользователь с таким email
-		const existingUser = await userService.findByEmail(email)
+		const existingUser = await User.findOne({ email: email.toLowerCase() })
 		if (existingUser) {
 			res.status(400).json({
 				success: false,
@@ -126,9 +130,9 @@ export const createUser = async (
 			return
 		}
 
-		// Проверяем, существует ли пользователь с таким bitrixUserId (если указан)
-		if (bitrixUserId) {
-			const existingBitrixUser = await userService.findByBitrixUserId(bitrixUserId)
+		// Проверяем, существует ли пользователь с таким bitrix_id (если указан)
+		if (bitrix_id) {
+			const existingBitrixUser = await User.findOne({ bitrix_id })
 			if (existingBitrixUser) {
 				res.status(400).json({
 					success: false,
@@ -149,20 +153,21 @@ export const createUser = async (
 		}
 
 		// Создаем пользователя
-		const userData = {
+		const user = new User({
 			email: email.toLowerCase(),
-			password, // будет захеширован в entity
-			role: role || UserRole.USER,
+			password, // будет хеширован в pre-save хуке
+			role: role || 'user',
 			firstName,
 			lastName,
 			phone,
-			bitrixUserId,
-		}
+			bitrix_id,
+			status: 'active',
+		})
 
-		const user = await userService.createUser(userData)
+		await user.save()
 
 		// Возвращаем пользователя без пароля
-		const { password: _, ...userResponse } = user as any
+		const userResponse = await User.findById(user._id).select('-password')
 
 		res.status(201).json({
 			success: true,
@@ -194,11 +199,11 @@ export const updateUser = async (
 			firstName,
 			lastName,
 			phone,
-			bitrixUserId,
+			bitrix_id,
 			status,
 		} = req.body
 
-		const user = await userService.findById(id)
+		const user = await User.findById(id)
 		if (!user) {
 			res.status(404).json({
 				success: false,
@@ -209,7 +214,7 @@ export const updateUser = async (
 
 		// Проверяем email на уникальность (если изменился)
 		if (email && email.toLowerCase() !== user.email) {
-			const existingUser = await userService.findByEmail(email)
+			const existingUser = await User.findOne({ email: email.toLowerCase() })
 			if (existingUser) {
 				res.status(400).json({
 					success: false,
@@ -217,11 +222,12 @@ export const updateUser = async (
 				})
 				return
 			}
+			user.email = email.toLowerCase()
 		}
 
-		// Проверяем bitrixUserId на уникальность (если изменился)
-		if (bitrixUserId && bitrixUserId !== user.bitrixUserId) {
-			const existingBitrixUser = await userService.findByBitrixUserId(bitrixUserId)
+		// Проверяем bitrix_id на уникальность (если изменился)
+		if (bitrix_id && bitrix_id !== user.bitrix_id) {
+			const existingBitrixUser = await User.findOne({ bitrix_id })
 			if (existingBitrixUser) {
 				res.status(400).json({
 					success: false,
@@ -229,18 +235,15 @@ export const updateUser = async (
 				})
 				return
 			}
+			user.bitrix_id = bitrix_id
 		}
 
-		// Подготавливаем данные для обновления
-		const updateData: any = {}
-
-		if (email) updateData.email = email.toLowerCase()
-		if (role) updateData.role = role
-		if (firstName !== undefined) updateData.firstName = firstName
-		if (lastName !== undefined) updateData.lastName = lastName
-		if (phone !== undefined) updateData.phone = phone
-		if (status) updateData.status = status
-		if (bitrixUserId !== undefined) updateData.bitrixUserId = bitrixUserId
+		// Обновляем остальные поля
+		if (role) user.role = role
+		if (firstName !== undefined) user.firstName = firstName
+		if (lastName !== undefined) user.lastName = lastName
+		if (phone !== undefined) user.phone = phone
+		if (status) user.status = status
 
 		// Обновляем пароль, если указан
 		if (password) {
@@ -252,13 +255,13 @@ export const updateUser = async (
 				})
 				return
 			}
-			updateData.password = password // будет захеширован в entity
+			user.password = password // будет хеширован в pre-save хуке
 		}
 
-		const updatedUser = await userService.updateUser(id, updateData)
+		await user.save()
 
 		// Возвращаем обновленного пользователя без пароля
-		const { password: _, ...userResponse } = updatedUser as any
+		const userResponse = await User.findById(user._id).select('-password')
 
 		res.json({
 			success: true,
@@ -284,7 +287,7 @@ export const deleteUser = async (
 	try {
 		const { id } = req.params
 
-		const user = await userService.findById(id)
+		const user = await User.findById(id)
 		if (!user) {
 			res.status(404).json({
 				success: false,
@@ -294,9 +297,9 @@ export const deleteUser = async (
 		}
 
 		// Проверяем, что не удаляем последнего админа
-		if (user.role === UserRole.ADMIN) {
-			const adminUsers = await userService.findAdmins()
-			if (adminUsers.length <= 1) {
+		if (user.role === 'admin') {
+			const adminCount = await User.countDocuments({ role: 'admin' })
+			if (adminCount <= 1) {
 				res.status(400).json({
 					success: false,
 					message: 'Нельзя удалить последнего администратора',
@@ -305,15 +308,7 @@ export const deleteUser = async (
 			}
 		}
 
-		const deleted = await userService.delete(id)
-
-		if (!deleted) {
-			res.status(500).json({
-				success: false,
-				message: 'Не удалось удалить пользователя',
-			})
-			return
-		}
+		await User.findByIdAndDelete(id)
 
 		res.json({
 			success: true,
@@ -339,15 +334,15 @@ export const updateUserStatus = async (
 		const { id } = req.params
 		const { status } = req.body
 
-		if (!Object.values(UserStatus).includes(status)) {
+		if (!['active', 'inactive'].includes(status)) {
 			res.status(400).json({
 				success: false,
-				message: `Неверный статус. Доступны: ${Object.values(UserStatus).join(', ')}`,
+				message: 'Неверный статус. Доступны: active, inactive',
 			})
 			return
 		}
 
-		const user = await userService.findById(id)
+		const user = await User.findById(id)
 		if (!user) {
 			res.status(404).json({
 				success: false,
@@ -356,10 +351,11 @@ export const updateUserStatus = async (
 			return
 		}
 
-		const updatedUser = await userService.updateUser(id, { status })
+		user.status = status
+		await user.save()
 
 		// Возвращаем обновленного пользователя без пароля
-		const { password: _, ...userResponse } = updatedUser as any
+		const userResponse = await User.findById(user._id).select('-password')
 
 		res.json({
 			success: true,
@@ -375,6 +371,9 @@ export const updateUserStatus = async (
 	}
 }
 
+/**
+ * Синхронизация пользователей с Битрикс24
+ */
 /**
  * Обновление настроек пользователя
  */
@@ -396,7 +395,7 @@ export const updateUserSettings = async (
 			return
 		}
 
-		const user = await userService.findById(userId)
+		const user = await User.findById(userId)
 		if (!user) {
 			res.status(404).json({
 				success: false,
@@ -405,11 +404,17 @@ export const updateUserSettings = async (
 			return
 		}
 
-		const updatedUser = await userService.updateSettings(userId, settings)
+		// Обновляем настройки пользователя
+		user.settings = {
+			...user.settings,
+			...settings,
+		}
+
+		await user.save()
 
 		res.json({
 			success: true,
-			data: updatedUser?.settings,
+			data: user.settings,
 			message: 'Настройки пользователя обновлены',
 		})
 	} catch (error) {
@@ -421,9 +426,6 @@ export const updateUserSettings = async (
 	}
 }
 
-/**
- * Синхронизация пользователей с Битрикс24
- */
 export const syncWithBitrix = async (
 	req: Request,
 	res: Response
@@ -453,42 +455,38 @@ export const syncWithBitrix = async (
 				if (!email) continue
 
 				// Ищем пользователя по email или bitrix_id
-				let user = await userService.findByEmail(email) || 
-				         await userService.findByBitrixUserId(bitrixUser.ID || bitrixUser.id)
+				let user = await User.findOne({
+					$or: [
+						{ email: email.toLowerCase() },
+						{ bitrix_id: bitrixUser.ID || bitrixUser.id },
+					],
+				})
 
 				if (user) {
 					// Обновляем существующего пользователя
-					if (forceSync || !user.bitrixUserId) {
-						await userService.updateUser(user.id, {
-							firstName: bitrixUser.NAME || bitrixUser.firstName || user.firstName,
-							lastName: bitrixUser.LAST_NAME || bitrixUser.lastName || user.lastName,
-							phone: bitrixUser.WORK_PHONE || bitrixUser.phone || user.phone,
-						})
-
-						// Отдельно обновляем bitrixUserId
-						await userService.userRepository.update(user.id, {
-							bitrixUserId: bitrixUser.ID || bitrixUser.id
-						})
+					if (forceSync || !user.bitrix_id) {
+						user.bitrix_id = bitrixUser.ID || bitrixUser.id
+						user.firstName =
+							bitrixUser.NAME || bitrixUser.firstName || user.firstName
+						user.lastName =
+							bitrixUser.LAST_NAME || bitrixUser.lastName || user.lastName
+						user.phone = bitrixUser.WORK_PHONE || bitrixUser.phone || user.phone
+						await user.save()
 						updated++
 					}
 				} else {
 					// Создаем нового пользователя
-					await userService.createUser({
+					const newUser = new User({
 						email: email.toLowerCase(),
 						password: PasswordHashService.generateRandomPassword(),
-						role: UserRole.USER,
+						role: 'user',
 						firstName: bitrixUser.NAME || bitrixUser.firstName,
 						lastName: bitrixUser.LAST_NAME || bitrixUser.lastName,
 						phone: bitrixUser.WORK_PHONE || bitrixUser.phone,
+						bitrix_id: bitrixUser.ID || bitrixUser.id,
+						status: 'active',
 					})
-
-					// После создания обновляем bitrixUserId
-					const newUser = await userService.findByEmail(email)
-					if (newUser) {
-						await userService.userRepository.update(newUser.id, {
-							bitrixUserId: bitrixUser.ID || bitrixUser.id
-						})
-					}
+					await newUser.save()
 					created++
 				}
 			} catch (error) {

@@ -2,11 +2,102 @@ import axios from 'axios'
 import config from '../config/config'
 import { bitrixCache } from './cacheService'
 
+// Настройки для retry механизма
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000 // 1 секунда
+
+// Функция для retry запросов
+const retryRequest = async <T>(
+	requestFn: () => Promise<T>,
+	maxRetries: number = MAX_RETRIES,
+	delay: number = RETRY_DELAY
+): Promise<T> => {
+	let lastError: any
+	
+	for (let attempt = 1; attempt <= maxRetries; attempt++) {
+		try {
+			return await requestFn()
+		} catch (error: any) {
+			lastError = error
+			
+			// Если это последняя попытка или ошибка не связана с сетью/таймаутом
+			if (
+				attempt === maxRetries ||
+				(!error.code?.includes('ECONNABORTED') && 
+				 !error.code?.includes('ENOTFOUND') &&
+				 !error.code?.includes('ECONNRESET') &&
+				 error.response?.status !== 500 &&
+				 error.response?.status !== 502 &&
+				 error.response?.status !== 503 &&
+				 error.response?.status !== 504)
+			) {
+				throw error
+			}
+			
+			console.warn(`Bitrix24 запрос неудачен (попытка ${attempt}/${maxRetries}), повтор через ${delay}мс:`, error.message)
+			await new Promise(resolve => setTimeout(resolve, delay * attempt))
+		}
+	}
+	
+	throw lastError
+}
+
 class Bitrix24Service {
 	private webhookUrl: string
 
 	constructor() {
 		this.webhookUrl = config.bitrix24WebhookUrl
+		this.validateConfiguration()
+	}
+	
+	/**
+	 * Валидация конфигурации при инициализации
+	 */
+	private validateConfiguration() {
+		if (!this.webhookUrl) {
+			throw new Error('BITRIX24_WEBHOOK_URL не настроен в переменных окружения')
+		}
+		
+		// Проверяем формат URL
+		try {
+			const url = new URL(this.webhookUrl)
+			if (!url.protocol.startsWith('http')) {
+				throw new Error('Bitrix24 webhook URL должен начинаться с http:// или https://')
+			}
+			
+			// Проверяем, что это похоже на webhook URL Bitrix24
+			if (!this.webhookUrl.includes('/rest/')) {
+				console.warn('⚠️ Предупреждение: URL не содержит "/rest/" - это может быть неверный webhook URL Bitrix24')
+			}
+		} catch (error: any) {
+			throw new Error(`Неверный формат Bitrix24 webhook URL: ${error.message}`)
+		}
+		
+		console.log('✅ Конфигурация Bitrix24Service успешно валидирована')
+	}
+	
+	/**
+	 * Валидация ответа от Bitrix24
+	 */
+	private validateBitrixResponse(response: any, methodName: string = 'API') {
+		if (!response || !response.data) {
+			throw new Error(`Получен пустой ответ от Bitrix24 API (${methodName})`)
+		}
+		
+		const data = response.data
+		
+		// Проверяем на ошибки Bitrix24
+		if (data.error) {
+			const errorMsg = data.error_description || data.error
+			throw new Error(`Ошибка Bitrix24 API (${methodName}): ${errorMsg}`)
+		}
+		
+		// Проверяем наличие результата (для большинства методов)
+		if (data.result === undefined && !['user.current', 'crm.deal.update'].includes(methodName)) {
+			console.warn(`⚠️ Предупреждение: отсутствует поле result в ответе ${methodName}`)
+		}
+		
+		return data
 	}
 
 	/**
@@ -14,10 +105,16 @@ class Bitrix24Service {
 	 */
 	async getDealFields() {
 		try {
-			const response = await axios.post(`${this.webhookUrl}crm.deal.fields`)
-			return response.data
-		} catch (error) {
-			console.error('Ошибка при получении полей сделки из Битрикс24:', error)
+			const response = await retryRequest(async () => {
+				return await axios.post(`${this.webhookUrl}crm.deal.fields`, {}, {
+					timeout: 15000
+				})
+			})
+			
+			// Используем общую валидацию
+			return this.validateBitrixResponse(response, 'crm.deal.fields')
+		} catch (error: any) {
+			console.error('Ошибка при получении полей сделки из Битрикс24:', error.message)
 			throw error
 		}
 	}
@@ -555,12 +652,26 @@ class Bitrix24Service {
 
 			console.log(`✅ Получено ${results?.result?.length || 0} компаний`)
 			return results
-		} catch (error) {
-			console.error('Ошибка при получении компаний из Битрикс24:', error)
-			if (error.response) {
-				console.error('Ответ сервера:', error.response.data)
+		} catch (error: any) {
+			console.error('Ошибка при получении компаний из Битрикс24:', error.message)
+			
+			// Улучшенная обработка ошибок
+			if (error.code === 'ECONNABORTED') {
+				throw new Error('Timeout при загрузке компаний из Bitrix24. Попробуйте позже.')
 			}
-			throw error
+			
+			if (error.response) {
+				const status = error.response.status
+				console.error('Ответ сервера:', error.response.data)
+				
+				if (status === 401 || status === 403) {
+					throw new Error('Нет доступа к данным компаний в Bitrix24')
+				} else if (status >= 500) {
+					throw new Error('Сервер Bitrix24 временно недоступен')
+				}
+			}
+			
+			throw new Error(`Не удалось загрузить компании: ${error.message}`)
 		}
 	}
 
@@ -645,17 +756,21 @@ class Bitrix24Service {
 				`Запрос пользователей из Битрикс24, start: ${start}, limit: ${limit}`
 			)
 
-			const response = await axios.post(`${this.webhookUrl}user.get`, {
-				start: start,
-				limit: limit,
-				sort: 'NAME',
-				order: 'ASC',
+			const response = await retryRequest(async () => {
+				return await axios.post(`${this.webhookUrl}user.get`, {
+					start: start,
+					limit: limit,
+					sort: 'NAME',
+					order: 'ASC',
+				}, {
+					timeout: 30000 // Увеличиваем timeout для запроса пользователей
+				})
 			})
 
 			console.log('Ответ от Bitrix24 (пользователи):', response.data)
 			return response.data
-		} catch (error) {
-			console.error('Ошибка при получении пользователей из Битрикс24:', error)
+		} catch (error: any) {
+			console.error('Ошибка при получении пользователей из Битрикс24:', error.message)
 			if (error.response) {
 				console.error('Ответ сервера:', error.response.data)
 			}
@@ -718,18 +833,46 @@ class Bitrix24Service {
 		try {
 			console.log('Запрос информации о текущем пользователе из Битрикс24')
 
-			const response = await axios.post(`${this.webhookUrl}user.current`)
+			const response = await retryRequest(async () => {
+				return await axios.post(`${this.webhookUrl}user.current`, {}, {
+					timeout: 15000
+				})
+			})
 
 			console.log('Ответ от Bitrix24 (текущий пользователь):', response.data)
 			return response.data
-		} catch (error) {
+		} catch (error: any) {
 			console.error(
 				'Ошибка при получении информации о пользователе из Битрикс24:',
-				error
+				error.message
 			)
-			if (error.response) {
-				console.error('Ответ сервера:', error.response.data)
+			
+			// Более подробная обработка ошибок
+			if (error.code === 'ECONNABORTED') {
+				throw new Error('Timeout при подключении к Bitrix24. Проверьте URL webhook и доступность сервиса.')
 			}
+			
+			if (error.response) {
+				const status = error.response.status
+				const data = error.response.data
+				
+				console.error('Ответ сервера:', data)
+				
+				if (status === 401) {
+					throw new Error('Неверный webhook URL или токен доступа к Bitrix24')
+				} else if (status === 404) {
+					throw new Error('Webhook URL не найден. Проверьте корректность URL')
+				} else if (status >= 500) {
+					throw new Error('Внутренняя ошибка сервера Bitrix24')
+				}
+				
+				throw new Error(`Ошибка Bitrix24 (${status}): ${data?.error_description || data?.error || 'Неизвестная ошибка'}`)
+			}
+			
+			if (error.code === 'ENOTFOUND') {
+				throw new Error('Не удается подключиться к Bitrix24. Проверьте URL и интернет-соединение.')
+			}
+			
 			throw error
 		}
 	}

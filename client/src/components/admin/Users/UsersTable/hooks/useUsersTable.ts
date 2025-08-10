@@ -58,7 +58,7 @@ export const useUsersTable = (): UseUsersTableReturn => {
 				queryParams.append('status', filters.status)
 			}
 
-			const response = await apiService.get(`/users?${queryParams.toString()}`)
+			const response = await apiService.get(`/api/users?${queryParams.toString()}`)
 			const data: UsersResponse = response.data
 
 			if (data.success) {

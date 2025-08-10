@@ -149,8 +149,39 @@ export const SubmissionService = {
 			preloadedOptions?: Record<string, any[]>
 		}
 	}> => {
-		const response = await api.get(`/api/submissions/${id}/edit`)
-		return response.data
+		if (!id || typeof id !== 'string') {
+			throw new Error('ID заявки обязателен и должен быть строкой')
+		}
+		
+		try {
+			const response = await api.get(`/api/submissions/${id}/edit`)
+			
+			// Валидация ответа
+			if (!response.data || typeof response.data !== 'object') {
+				throw new Error('Неверный формат ответа от сервера')
+			}
+			
+			if (!response.data.success) {
+				throw new Error(response.data.message || 'Не удалось получить данные заявки')
+			}
+			
+			// Проверяем обязательные поля
+			const data = response.data.data
+			if (!data?._id || !data?.formId?._id) {
+				throw new Error('Получены неполные данные заявки')
+			}
+			
+			return response.data
+		} catch (error: any) {
+			// Улучшенная обработка ошибок
+			if (error.response?.status === 404) {
+				throw new Error('Заявка не найдена')
+			} else if (error.response?.status === 403) {
+				throw new Error('Нет доступа к данной заявке')
+			}
+			
+			throw error
+		}
 	},
 
 	// Копирование заявки
@@ -178,11 +209,43 @@ export const SubmissionService = {
 		status: string,
 		comment?: string
 	): Promise<{ success: boolean }> => {
-		const response = await api.patch(`/api/submissions/${id}/status`, {
-			status,
-			comment,
-		})
-		return response.data
+		if (!id || typeof id !== 'string') {
+			throw new Error('ID заявки обязателен и должен быть строкой')
+		}
+		
+		if (!status || typeof status !== 'string') {
+			throw new Error('Статус обязателен и должен быть строкой')
+		}
+		
+		// Проверяем валидные статусы
+		const validStatuses = ['new', 'in_progress', 'completed', 'cancelled', 'on_hold']
+		if (!validStatuses.includes(status)) {
+			throw new Error(`Недопустимый статус: ${status}. Разрешены: ${validStatuses.join(', ')}`)
+		}
+		
+		try {
+			const response = await api.patch(`/api/submissions/${id}/status`, {
+				status,
+				comment: comment || '',
+			})
+			
+			if (!response.data || typeof response.data.success !== 'boolean') {
+				throw new Error('Неверный формат ответа от сервера')
+			}
+			
+			return response.data
+		} catch (error: any) {
+			// Улучшенная обработка ошибок
+			if (error.response?.status === 404) {
+				throw new Error('Заявка не найдена')
+			} else if (error.response?.status === 403) {
+				throw new Error('Нет доступа к изменению статуса данной заявки')
+			} else if (error.response?.status === 400) {
+				throw new Error(error.response.data?.message || 'Неверные данные запроса')
+			}
+			
+			throw error
+		}
 	},
 
 	// Получение статусов из Битрикс24

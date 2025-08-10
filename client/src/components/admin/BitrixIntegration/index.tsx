@@ -116,12 +116,24 @@ const BitrixIntegration: React.FC = () => {
 
 			const response = await api.get('/api/forms/bitrix/deal-categories')
 			if (response.data.success) {
-				setCategories(response.data.data)
+				setCategories(response.data.data || [])
 			} else {
-				setError('Не удалось загрузить категории сделок')
+				const errorMessage = response.data.message || 'Не удалось загрузить категории сделок'
+				setError(errorMessage)
 			}
 		} catch (err: any) {
-			setError(err.response?.data?.message || 'Ошибка загрузки категорий')
+			// Более подробная обработка ошибок
+			let errorMessage = 'Ошибка загрузки категорий'
+			
+			if (err.code === 'ECONNABORTED') {
+				errorMessage = 'Превышено время ожидания при загрузке категорий'
+			} else if (err.response?.data?.message) {
+				errorMessage = err.response.data.message
+			} else if (err.message) {
+				errorMessage = `Ошибка загрузки категорий: ${err.message}`
+			}
+			
+			setError(errorMessage)
 		} finally {
 			setLoading(false)
 		}
@@ -138,12 +150,24 @@ const BitrixIntegration: React.FC = () => {
 			})
 
 			if (response.data.success) {
-				setStages(response.data.data)
+				setStages(response.data.data || [])
 			} else {
-				setError('Не удалось загрузить статусы сделок')
+				const errorMessage = response.data.message || 'Не удалось загрузить статусы сделок'
+				setError(errorMessage)
 			}
 		} catch (err: any) {
-			setError(err.response?.data?.message || 'Ошибка загрузки статусов')
+			// Более подробная обработка ошибок
+			let errorMessage = 'Ошибка загрузки статусов'
+			
+			if (err.code === 'ECONNABORTED') {
+				errorMessage = 'Превышено время ожидания при загрузке статусов'
+			} else if (err.response?.data?.message) {
+				errorMessage = err.response.data.message
+			} else if (err.message) {
+				errorMessage = `Ошибка загрузки статусов: ${err.message}`
+			}
+			
+			setError(errorMessage)
 		} finally {
 			setLoading(false)
 		}
@@ -161,13 +185,26 @@ const BitrixIntegration: React.FC = () => {
 				setError(null)
 				alert('Подключение к Битрикс24 работает успешно!')
 			} else {
-				setError('Ошибка подключения к Битрикс24: ' + response.data.message)
+				const errorMessage = response.data.message || 'Неизвестная ошибка подключения'
+				setError(`Ошибка подключения к Битрикс24: ${errorMessage}`)
 			}
 		} catch (err: any) {
-			setError(
-				'Ошибка подключения к Битрикс24: ' +
-					(err.response?.data?.message || err.message)
-			)
+			// Более подробная обработка ошибок
+			let errorMessage = 'Неизвестная ошибка'
+			
+			if (err.code === 'ECONNABORTED') {
+				errorMessage = 'Превышено время ожидания ответа от сервера'
+			} else if (err.response?.status === 500) {
+				errorMessage = 'Внутренняя ошибка сервера'
+			} else if (err.response?.status === 404) {
+				errorMessage = 'Метод API не найден'
+			} else if (err.response?.data?.message) {
+				errorMessage = err.response.data.message
+			} else if (err.message) {
+				errorMessage = err.message
+			}
+			
+			setError(`Ошибка подключения к Битрикс24: ${errorMessage}`)
 		} finally {
 			setLoading(false)
 		}
@@ -247,7 +284,13 @@ const BitrixIntegration: React.FC = () => {
 
 			<TabPanel value={tabValue} index={1}>
 				{error && (
-					<Alert severity='error' sx={{ mb: 2 }}>
+					<Alert severity='error' sx={{ mb: 2 }} 
+						action={
+							<Button color="inherit" size="small" onClick={loadCategories}>
+								Повторить
+							</Button>
+						}
+					>
 						{error}
 					</Alert>
 				)}

@@ -581,7 +581,7 @@ const MySubmissions: React.FC = () => {
 								startIcon={<VisibilityIcon />}
 								onClick={() => handleShowDetails(submission)}
 							>
-								{isSmallMobile ? '' : 'Подробнее'}
+								{isSmallMobile ? '' : ''}
 							</Button>
 							{!isShipped && settings.allowUserEdit && (
 								<Button
@@ -589,7 +589,7 @@ const MySubmissions: React.FC = () => {
 									onClick={() => handleEditSubmission(submission)}
 									color='primary'
 								>
-									{isSmallMobile ? '' : 'Редактировать'}
+									{isSmallMobile ? '' : ''}
 								</Button>
 							)}
 							{settings.enableCopying && (

@@ -43,7 +43,7 @@ export const UsersPage: React.FC = () => {
   // Обработчик редактирования пользователя
   const handleEditUser = async (id: string) => {
     try {
-      const response = await apiService.get(`/users/${id}`);
+      const response = await apiService.get(`/api/users/${id}`);
       if (response.data.success) {
         setEditingUser(response.data.data);
         setUserFormOpen(true);
@@ -94,7 +94,7 @@ export const UsersPage: React.FC = () => {
     if (!userToDelete) return;
 
     try {
-      const response = await apiService.delete(`/users/${userToDelete._id}`);
+      const response = await apiService.delete(`/api/users/${userToDelete._id}`);
       
       if (response.data.success) {
         setSnackbar({
@@ -132,7 +132,7 @@ export const UsersPage: React.FC = () => {
     setSyncLoading(true);
 
     try {
-      const response = await apiService.post('/users/sync/bitrix', {
+      const response = await apiService.post('/api/users/sync/bitrix', {
         forceSync: false
       });
       

@@ -9,7 +9,7 @@ const API_URL =
 
 const api = axios.create({
 	baseURL: API_URL,
-	timeout: 10000,
+	timeout: 30000, // Увеличиваем timeout до 30 секунд для Bitrix24 запросов
 	headers: {
 		'Content-Type': 'application/json',
 	},

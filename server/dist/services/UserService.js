@@ -175,6 +175,13 @@ class UserService extends BaseService_1.BaseService {
             return null;
         }
     }
+    async findWithPaginationAndFilters(page = 1, limit = 20, filters = {}) {
+        return this.repository.findWithPaginationAndFilters(page, limit, filters);
+    }
+    // Публичный доступ к repository для прямых операций
+    get userRepository() {
+        return this.repository;
+    }
 }
 exports.UserService = UserService;
 // Синглтон для сервиса

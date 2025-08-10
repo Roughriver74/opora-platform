@@ -257,7 +257,7 @@ export const useUserForm = (
         }
 
 					const response = await apiService.put(
-						`/users/${user._id}`,
+						`/api/users/${user._id}`,
 						updateData
 					)
         
@@ -265,7 +265,7 @@ export const useUserForm = (
 						// Сохраняем настройки пользователя
 						try {
 							await apiService.put(
-								`/users/${user._id}/settings`,
+								`/api/users/${user._id}/settings`,
 								{ settings: formData.settings }
 							)
 						} catch (settingsError) {
@@ -291,7 +291,7 @@ export const useUserForm = (
 						bitrix_id: formData.bitrix_id || undefined,
 					}
 
-					const response = await apiService.post('/users', createData)
+					const response = await apiService.post('/api/users', createData)
         
         if (response.data.success) {
 						onSave(response.data.data)

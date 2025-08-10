@@ -202,6 +202,25 @@ export class UserService extends BaseService<User, UserRepository> {
 			return null
 		}
 	}
+
+	async findWithPaginationAndFilters(
+		page: number = 1,
+		limit: number = 20,
+		filters: { search?: string; role?: UserRole; status?: UserStatus } = {}
+	): Promise<{
+		data: User[]
+		total: number
+		page: number
+		limit: number
+		pages: number
+	}> {
+		return this.repository.findWithPaginationAndFilters(page, limit, filters)
+	}
+
+	// Публичный доступ к repository для прямых операций
+	get userRepository(): UserRepository {
+		return this.repository
+	}
 }
 
 // Синглтон для сервиса

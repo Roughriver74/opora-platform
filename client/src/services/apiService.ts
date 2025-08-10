@@ -11,7 +11,7 @@ export class ApiService {
 
   constructor() {
     this.api = axios.create({
-      baseURL: '/api',
+      baseURL: process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5001',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -101,19 +101,31 @@ export class ApiService {
 
   private getTokens(): AuthTokens | null {
     try {
-      const tokens = localStorage.getItem('auth_tokens');
-      return tokens ? JSON.parse(tokens) : null;
+      const accessToken = localStorage.getItem('token');
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (accessToken) {
+        return {
+          accessToken,
+          refreshToken: refreshToken || '',
+          expiresIn: '0' // Not used in this context
+        };
+      }
+      return null;
     } catch {
       return null;
     }
   }
 
   private setTokens(tokens: AuthTokens): void {
-    localStorage.setItem('auth_tokens', JSON.stringify(tokens));
+    localStorage.setItem('token', tokens.accessToken);
+    if (tokens.refreshToken) {
+      localStorage.setItem('refreshToken', tokens.refreshToken);
+    }
   }
 
   private clearTokens(): void {
-    localStorage.removeItem('auth_tokens');
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
   }
 
   private async refreshToken(): Promise<boolean> {
