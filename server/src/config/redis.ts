@@ -18,15 +18,12 @@ export class RedisClient {
 		})
 
 		this.client.on('connect', () => {
-			console.log('✅ Redis connected successfully')
 		})
 
 		this.client.on('ready', () => {
-			console.log('🚀 Redis ready for operations')
 		})
 
 		this.client.on('end', () => {
-			console.log('⚠️ Redis connection ended')
 		})
 	}
 

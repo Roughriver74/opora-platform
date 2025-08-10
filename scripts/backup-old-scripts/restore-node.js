@@ -36,22 +36,16 @@ async function restoreBackup(environment, timestamp) {
 		throw new Error(`Backup not found: ${backupPath}`)
 	}
 
-	console.log(`🔄 Восстановление из бэкапа: ${timestamp}`)
-	console.log(`📁 Путь к бэкапу: ${backupPath}`)
 
 	try {
 		// 1. Восстановление базы данных
-		console.log('🗄️  Восстановление базы данных...')
 		await restoreDatabase(env.dbUrl, env.dbName, path.join(backupPath, 'db'))
 
 		// 2. Восстановление файлов приложения
-		console.log('📦 Восстановление файлов приложения...')
 		await restoreFiles(path.join(backupPath, 'app.tar.gz'), env.appDir)
 
-		console.log(`✅ Восстановление завершено успешно!`)
 		return true
 	} catch (error) {
-		console.error(`❌ Ошибка восстановления:`, error.message)
 		throw error
 	}
 }
@@ -74,7 +68,6 @@ async function restoreDatabase(dbUrl, dbName, dbBackupPath) {
 
 		for (const file of backupFiles) {
 			const collectionName = path.basename(file, '.json')
-			console.log(`   📋 Восстановление коллекции: ${collectionName}`)
 
 			// Читаем данные из JSON файла
 			const filePath = path.join(dbBackupPath, file)
@@ -91,9 +84,7 @@ async function restoreDatabase(dbUrl, dbName, dbBackupPath) {
 
 				// Вставляем данные
 				await db.collection(collectionName).insertMany(documents)
-				console.log(`      ✅ Восстановлено ${documents.length} документов`)
 			} else {
-				console.log(`      ⚠️  Коллекция ${collectionName} пуста`)
 			}
 		}
 	} finally {
@@ -116,11 +107,9 @@ async function restoreFiles(archivePath, targetDir) {
 		}
 		fs.mkdirSync(tempDir, { recursive: true })
 
-		console.log(`   📦 Распаковка архива...`)
 		// Распаковываем архив
 		await execAsync(`tar -xzf "${archivePath}" -C "${tempDir}"`)
 
-		console.log(`   🔄 Синхронизация файлов...`)
 		// Синхронизируем файлы, исключая критически важные папки
 		const excludeOptions = [
 			'--exclude=node_modules/',
@@ -134,7 +123,6 @@ async function restoreFiles(archivePath, targetDir) {
 			`rsync -a --delete ${excludeOptions} "${tempDir}/" "${targetDir}/"`
 		)
 
-		console.log(`   ✅ Файлы восстановлены`)
 	} finally {
 		// Удаляем временную папку
 		if (fs.existsSync(tempDir)) {
@@ -149,8 +137,6 @@ if (require.main === module) {
 	const timestamp = process.argv[3]
 
 	if (!timestamp) {
-		console.error('❌ Укажите timestamp бэкапа для восстановления')
-		console.log(
 			'Использование: node restore-node.js [local|production] <timestamp>'
 		)
 		process.exit(1)
@@ -171,15 +157,12 @@ if (require.main === module) {
 			if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
 				restoreBackup(environment, timestamp)
 					.then(() => {
-						console.log(`🎉 Восстановление завершено: ${timestamp}`)
 						process.exit(0)
 					})
 					.catch(error => {
-						console.error('❌ Ошибка восстановления:', error.message)
 						process.exit(1)
 					})
 			} else {
-				console.log('🚫 Восстановление отменено')
 				process.exit(0)
 			}
 		}

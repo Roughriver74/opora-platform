@@ -31,7 +31,6 @@ export const initializeDatabase = async (): Promise<DataSource> => {
 	try {
 		if (!AppDataSource.isInitialized) {
 			await AppDataSource.initialize()
-			console.log('✅ База данных успешно подключена')
 		}
 		return AppDataSource
 	} catch (error) {
@@ -44,7 +43,6 @@ export const closeDatabaseConnection = async (): Promise<void> => {
 	try {
 		if (AppDataSource.isInitialized) {
 			await AppDataSource.destroy()
-			console.log('База данных отключена')
 		}
 	} catch (error) {
 		console.error('Ошибка при отключении базы данных:', error)

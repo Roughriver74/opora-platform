@@ -14,7 +14,6 @@ async function cleanDatabase() {
     
     try {
         await client.connect()
-        console.log('🧹 Очистка базы данных...')
         
         // Удаление таблиц в правильном порядке (с учетом зависимостей)
         await client.query('DROP TABLE IF EXISTS submissions CASCADE')
@@ -22,7 +21,6 @@ async function cleanDatabase() {
         await client.query('DROP TABLE IF EXISTS forms CASCADE')
         await client.query('DROP TABLE IF EXISTS users CASCADE')
         
-        console.log('✅ База данных очищена')
         
         await client.end()
     } catch (error) {

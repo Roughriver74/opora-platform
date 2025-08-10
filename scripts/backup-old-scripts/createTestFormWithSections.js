@@ -11,7 +11,6 @@ const createTestFormWithSectionsAndGroups = async () => {
   try {
     // Удаляем существующие поля
     await FormField.deleteMany({});
-    console.log('Существующие поля удалены');
 
     // Создаем форму с секциями и группировкой
     const fields = [
@@ -407,33 +406,13 @@ const createTestFormWithSectionsAndGroups = async () => {
 
     // Создаем поля
     await FormField.insertMany(fields);
-    console.log(`Создано ${fields.length} полей с секциями и группировкой`);
 
-    console.log('\n=== СТРУКТУРА ФОРМЫ ===');
-    console.log('📋 Секция "Информация о покупателе" (buyer):');
-    console.log('   📁 Основная информация о компании (4 поля)');
-    console.log('   📁 Контактная информация (4 поля)');  
-    console.log('   📁 Адрес и местоположение (2 поля)');
     
-    console.log('\n📦 Секция "Информация о продукте" (product):');
-    console.log('   📁 Характеристики бетона (4 поля)');
-    console.log('   📁 Дополнительные характеристики (3 поля)');
-    console.log('   📁 Сроки и цены (3 поля)');
     
-    console.log('\n🏭 Секция "Информация о заводе" (factory):');
-    console.log('   📁 Завод-изготовитель (4 поля)');
-    console.log('   📁 Производственные мощности (3 поля)');
-    console.log('   📁 Логистика (3 поля)');
 
-    console.log('\n✨ Функции:');
-    console.log('   🔗 Связанные поля: можно копировать данные между секциями');
-    console.log('   📁 Группировка полей: поля организованы в складываемые группы');
-    console.log('   🎯 Разделители: визуальное разделение групп полей');
     
-    console.log('\nДля тестирования перейдите на http://localhost:3001');
     
   } catch (error) {
-    console.error('Ошибка при создании тестовых данных:', error);
   } finally {
     mongoose.connection.close();
   }

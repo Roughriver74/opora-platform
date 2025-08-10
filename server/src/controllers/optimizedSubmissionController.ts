@@ -48,12 +48,10 @@ export const getOptimizedSubmissions = async (req: Request, res: Response): Prom
 			sortOrder: sortOrder as 'asc' | 'desc'
 		}
 
-		console.log(`🚀 Оптимизированный запрос заявок: страница ${page}, лимит ${limit}`)
 		
 		// Используем оптимизированный сервис (БЕЗ populate!)
 		const result = await optimizedSubmissionService.getSubmissions(filters, pagination)
 		
-		console.log(`✅ Получено ${result.data.length} заявок из ${result.pagination.total}`)
 		res.status(200).json(result)
 	} catch (error: any) {
 		console.error('Ошибка при получении заявок:', error)
@@ -106,11 +104,9 @@ export const getOptimizedUserSubmissions = async (req: Request, res: Response): 
 			sortOrder: sortOrder as 'asc' | 'desc'
 		}
 
-		console.log(`🚀 Оптимизированный запрос заявок пользователя ${userId}`)
 		
 		const result = await optimizedSubmissionService.getUserSubmissions(userId, filters, pagination)
 		
-		console.log(`✅ Получено ${result.data.length} заявок пользователя`)
 		res.status(200).json(result)
 	} catch (error: any) {
 		console.error('Ошибка при получении заявок пользователя:', error)
@@ -141,11 +137,9 @@ export const getSubmissionStats = async (req: Request, res: Response): Promise<v
 			formId: formId as string
 		}
 
-		console.log('🚀 Оптимизированный запрос статистики заявок')
 		
 		const stats = await optimizedSubmissionService.getSubmissionStats(filters)
 		
-		console.log('✅ Получена статистика заявок')
 		res.status(200).json({
 			success: true,
 			data: stats
@@ -165,7 +159,6 @@ export const updateDenormalizedData = async (req: Request, res: Response): Promi
 	try {
 		const { submissionIds } = req.body
 
-		console.log('🔄 Запуск обновления денормализованных данных')
 		
 		const updatedCount = await optimizedSubmissionService.updateDenormalizedData(
 			submissionIds ? submissionIds : undefined

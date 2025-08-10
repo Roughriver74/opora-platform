@@ -37,7 +37,6 @@ class PerformanceMonitor {
 		// Устанавливаем пороги производительности
 		this.renderThreshold = this.isAndroid ? 100 : this.isMobile ? 80 : 50
 
-		console.log('🚀 PerformanceMonitor инициализирован', {
 			isAndroid: this.isAndroid,
 			isMobile: this.isMobile,
 			isSlowDevice: this.isSlowDevice,
@@ -197,7 +196,6 @@ class PerformanceMonitor {
 	 */
 	clear(): void {
 		this.slowRenders = []
-		console.log('🧹 История производительности очищена')
 	}
 
 	/**

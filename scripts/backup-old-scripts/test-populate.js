@@ -23,45 +23,28 @@ const Form = mongoose.model('Form', FormSchema)
 const FormField = mongoose.model('FormField', FormFieldSchema)
 
 ;(async () => {
-	console.log('=== ТЕСТ POPULATE ПОЛЕЙ ФОРМЫ ===\n')
-
 	try {
 		await mongoose.connect('mongodb://localhost:27017/beton-crm-production')
-		console.log('✅ Подключение к базе данных успешно')
 
 		// Тест без populate
 		const formWithoutPopulate = await Form.findOne()
-		console.log(
-			`📋 Форма без populate: ${
-				formWithoutPopulate.fields.length
-			} полей (тип: ${typeof formWithoutPopulate.fields[0]})`
-		)
 
 		// Тест с populate
 		const formWithPopulate = await Form.findOne().populate('fields')
-		console.log(
-			`📋 Форма с populate: ${
-				formWithPopulate.fields.length
-			} полей (тип: ${typeof formWithPopulate.fields[0]})`
-		)
 
 		if (formWithPopulate.fields && formWithPopulate.fields[0]) {
 			const firstField = formWithPopulate.fields[0]
 			if (firstField.label) {
-				console.log(
-					`✅ Первое поле: "${firstField.label}" (order: ${firstField.order})`
-				)
-				console.log('🎉 POPULATE РАБОТАЕТ!')
+				// Populate works
 			} else {
-				console.log('❌ Первое поле не содержит label - populate не работает')
+				// Populate doesn't work
 			}
 		} else {
-			console.log('❌ Нет полей после populate')
+			// No fields after populate
 		}
 
 		mongoose.disconnect()
 	} catch (error) {
-		console.error('❌ Ошибка:', error)
 		mongoose.disconnect()
 	}
 })()

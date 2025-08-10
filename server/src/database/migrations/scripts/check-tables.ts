@@ -14,7 +14,6 @@ async function checkTables() {
     
     try {
         await client.connect()
-        console.log('Connected to PostgreSQL')
         
         // List all tables
         const tablesResult = await client.query(`
@@ -24,9 +23,7 @@ async function checkTables() {
             ORDER BY table_name
         `)
         
-        console.log('\nExisting tables:')
         for (const row of tablesResult.rows) {
-            console.log(`- ${row.table_name}`)
         }
         
         // Check columns in users table if it exists
@@ -39,9 +36,7 @@ async function checkTables() {
                 ORDER BY ordinal_position
             `)
             
-            console.log('\nColumns in users table:')
             for (const col of columnsResult.rows) {
-                console.log(`- ${col.column_name} (${col.data_type}, nullable: ${col.is_nullable})`)
             }
         }
         

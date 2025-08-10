@@ -5,7 +5,7 @@ import {
 	ManyToOne,
 	JoinColumn,
 } from 'typeorm'
-import { IsString, IsObject, IsOptional } from 'class-validator'
+import { IsString, IsObject, IsOptional, IsArray } from 'class-validator'
 import { BaseEntity } from './base/BaseEntity'
 import { Submission } from './Submission.entity'
 import { User } from './User.entity'
@@ -52,7 +52,7 @@ export class SubmissionHistory extends BaseEntity {
 
 	@Column({ type: 'jsonb', nullable: true })
 	@IsOptional()
-	@IsObject()
+	@IsArray()
 	changes?: {
 		field: string
 		oldValue: any

@@ -4,7 +4,6 @@
 
 const connectDB = async (): Promise<void> => {
 	// MongoDB больше не используется
-	console.log('ℹ️ MongoDB отключена - используется PostgreSQL')
 	return Promise.resolve()
 }
 

@@ -19,7 +19,6 @@ export class CacheService {
 			const cached = memoryCache.get(fullKey)
 			
 			if (cached && cached.expires > Date.now()) {
-				console.log(`📦 Memory Cache HIT: ${fullKey}`)
 				return cached.data
 			}
 			
@@ -28,7 +27,6 @@ export class CacheService {
 				memoryCache.delete(fullKey)
 			}
 			
-			console.log(`❌ Memory Cache MISS: ${fullKey}`)
 			return null
 		} catch (error) {
 			console.warn('⚠️ Cache GET error:', error)
@@ -50,7 +48,6 @@ export class CacheService {
 			const expires = Date.now() + (ttl * 1000)
 			
 			memoryCache.set(fullKey, { data, expires })
-			console.log(`💾 Memory Cache SET: ${fullKey} (TTL: ${ttl}s)`)
 			return true
 		} catch (error) {
 			console.warn('⚠️ Cache SET error:', error)
@@ -66,7 +63,6 @@ export class CacheService {
 			const fullKey = this.buildKey(key, options?.prefix)
 			const success = memoryCache.delete(fullKey)
 			if (success) {
-				console.log(`🗑️ Memory Cache DEL: ${fullKey}`)
 			}
 			return success
 		} catch (error) {
@@ -113,7 +109,6 @@ export class CacheService {
 			}
 			
 			keysToDelete.forEach(key => memoryCache.delete(key))
-			console.log(`🧹 Memory Cache CLEAR pattern: ${fullPattern} (${keysToDelete.length} keys)`)
 		} catch (error) {
 			console.warn('⚠️ Cache CLEAR pattern error:', error)
 		}

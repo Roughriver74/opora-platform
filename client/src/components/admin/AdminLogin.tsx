@@ -31,9 +31,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
     setError(null);
 
     try {
-      console.log('Отправка запроса на авторизацию...');
       const response = await api.post('/auth/admin-login', { password });
-      console.log('Ответ получен:', response.data);
       
       if (response.data.success) {
         // Сохраняем токен аутентификации в localStorage

@@ -188,7 +188,6 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 
 		try {
 			// TODO: Реализовать загрузку enum значений из Битрикс
-			console.log('Загрузка enum значений для поля:', fieldCode)
 
 			// Временная заглушка
 			setEnumError(
@@ -575,7 +574,6 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 					newOrder = baseSectionOrder + 99
 				}
 
-				console.log(
 					`Установка порядка для поля в разделе ${sectionNumber}: ${newOrder}`
 				)
 				handleFieldChange('order', newOrder)

@@ -39,20 +39,15 @@ const Form = mongoose.model('Form', FormSchema)
 
 async function restoreAll190Fields() {
 	try {
-		console.log('=== ВОССТАНОВЛЕНИЕ ВСЕХ 190 ПОЛЕЙ ===\n')
 
 		// Читаем ПЕРВЫЙ бэкап (более полный)
 		const backup = JSON.parse(
 			fs.readFileSync('./backup-form-fields-1750258907838.json', 'utf8')
 		)
 
-		console.log('📄 Бэкап содержит:')
-		console.log(`   Форм: ${backup.forms.length}`)
-		console.log(`   Полей: ${backup.fields.length}`)
 
 		// Показываем текущее состояние
 		const currentFields = await FormField.find()
-		console.log(`\n📝 Текущее состояние: ${currentFields.length} полей в базе`)
 
 		// Анализируем поля с Битрикс интеграцией в бэкапе
 		const bitrixFields = backup.fields.filter(
@@ -67,26 +62,18 @@ async function restoreAll190Fields() {
 			field => field.type === 'header' || field.type === 'divider'
 		)
 
-		console.log('\n📊 АНАЛИЗ БЭКАПА:')
-		console.log(`🔗 Поля с Битрикс интеграцией: ${bitrixFields.length}`)
-		console.log(`📋 Структурные поля: ${structureFields.length}`)
 
-		console.log('\n🔗 БИТРИКС ПОЛЯ В БЭКАПЕ:')
 		bitrixFields.slice(0, 10).forEach(field => {
-			console.log(`   ${field.label} → ${field.bitrixFieldId}`)
 		})
 		if (bitrixFields.length > 10) {
-			console.log(`   ... и ещё ${bitrixFields.length - 10} полей`)
 		}
 
 		// Команда для восстановления
 		if (process.argv[2] === 'restore-all') {
-			console.log('\n🔧 ПОЛНОЕ ВОССТАНОВЛЕНИЕ...')
 
 			// Очищаем текущие данные
 			await FormField.deleteMany({})
 			await Form.deleteMany({})
-			console.log('✅ Очистили текущие данные')
 
 			// Восстанавливаем ВСЕ поля из бэкапа
 			for (const field of backup.fields) {
@@ -109,13 +96,11 @@ async function restoreAll190Fields() {
 
 					await FormField.create(newField)
 				} catch (error) {
-					console.log(
 						`⚠️  Ошибка восстановления поля ${field.label}: ${error.message}`
 					)
 				}
 			}
 
-			console.log(`✅ Восстановлено ${backup.fields.length} полей`)
 
 			// Восстанавливаем формы
 			for (const form of backup.forms) {
@@ -133,19 +118,14 @@ async function restoreAll190Fields() {
 				await Form.create(newForm)
 			}
 
-			console.log(`✅ Восстановлено ${backup.forms.length} форм`)
 
 			// Проверяем результат
 			const restoredFields = await FormField.find()
 			const restoredForms = await Form.find()
 
-			console.log('\n📊 РЕЗУЛЬТАТ ВОССТАНОВЛЕНИЯ:')
-			console.log(`📝 Полей в базе: ${restoredFields.length}`)
 			if (restoredForms.length > 0) {
-				console.log(`📋 Полей в форме: ${restoredForms[0].fields.length}`)
 			}
 		} else if (process.argv[2] === 'filter-bitrix') {
-			console.log('\n🔧 ФИЛЬТРАЦИЯ ТОЛЬКО БИТРИКС ПОЛЕЙ...')
 
 			// Находим поля с Битрикс интеграцией + структурные
 			const fieldsToKeep = [...bitrixFields, ...structureFields]
@@ -155,7 +135,6 @@ async function restoreAll190Fields() {
 			const fieldsToDelete = backup.fields.filter(
 				f => !fieldsToKeepIds.includes(f._id)
 			)
-			console.log(
 				`🗑️  Будет удалено ${fieldsToDelete.length} полей без Битрикс интеграции`
 			)
 
@@ -198,23 +177,17 @@ async function restoreAll190Fields() {
 
 			await Form.create(newForm)
 
-			console.log(
 				`✅ Сохранено ${fieldsToKeep.length} полей с Битрикс интеграцией`
 			)
 		} else {
-			console.log('\n💡 КОМАНДЫ:')
-			console.log(
 				'   node restore-all-190-fields.js restore-all - восстановить ВСЕ 190 полей'
 			)
-			console.log(
 				'   node restore-all-190-fields.js filter-bitrix - только поля с Битрикс интеграцией'
 			)
 		}
 	} catch (error) {
-		console.error('❌ Ошибка:', error)
 	} finally {
 		await mongoose.disconnect()
-		console.log('\n🔌 Отключено')
 	}
 }
 

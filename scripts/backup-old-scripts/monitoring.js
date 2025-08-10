@@ -54,11 +54,9 @@ function log(message, isError = false) {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] ${isError ? 'ERROR' : 'INFO'}: ${message}\n`;
   
-  console.log(logMessage);
-  
   // Запись в файл
   fs.appendFile(config.logPath, logMessage, (err) => {
-    if (err) console.error('Ошибка записи в лог:', err);
+    // Error handled silently
   });
 }
 

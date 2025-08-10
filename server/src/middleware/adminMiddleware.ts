@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
-import User from '../models/User'
+import { AppDataSource } from '../database/config/database.config'
+import { User } from '../database/entities/User.entity'
 
 export const adminMiddleware = async (
 	req: Request,
@@ -12,7 +13,8 @@ export const adminMiddleware = async (
 	}
 
 	try {
-		const user = await User.findById(req.user.id)
+		const userRepository = AppDataSource.getRepository(User)
+		const user = await userRepository.findOne({ where: { id: req.user.id } })
 		if (!user || user.role !== 'admin') {
 			res.status(403).json({ message: 'Access denied. Admin role required.' })
 			return

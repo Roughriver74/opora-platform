@@ -40,7 +40,6 @@ export const UserForm: React.FC<UserFormProps> = ({
   onClose,
   onSave
 }) => {
-  console.log('🔄 UserForm rendered with props:', { open, user: user?.id || null });
   
   const {
     formData,
@@ -57,7 +56,6 @@ export const UserForm: React.FC<UserFormProps> = ({
 
   const isEditing = Boolean(user);
   
-  console.log('🎭 UserForm state:', { 
     open, 
     isEditing, 
     formData: formData.email || 'empty',
@@ -66,12 +64,10 @@ export const UserForm: React.FC<UserFormProps> = ({
 
   // Дополнительное логирование изменений пропов
   useEffect(() => {
-    console.log('🔄 UserForm props changed:', { open, userId: user?.id || null });
   }, [open, user]);
 
   // Проверка корректности отображения Dialog
   if (open) {
-    console.log('✅ Dialog should be visible with open=true');
   }
 
   return (

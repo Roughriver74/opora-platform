@@ -73,7 +73,6 @@ class Bitrix24Service {
 			throw new Error(`Неверный формат Bitrix24 webhook URL: ${error.message}`)
 		}
 		
-		console.log('✅ Конфигурация Bitrix24Service успешно валидирована')
 	}
 	
 	/**
@@ -129,11 +128,9 @@ class Bitrix24Service {
 			const cached = await bitrixCache.getDynamicOptions('products', filterStr)
 			
 			if (cached) {
-				console.log(`📦 Использован кэш для товаров: ${filterStr}`)
 				return { result: cached, total: cached.length }
 			}
 
-			console.log(`🔄 Загрузка товаров из Битрикс24 по запросу: '${query}'`)
 
 			let filter = {}
 
@@ -144,11 +141,9 @@ class Bitrix24Service {
 				if (isNumericId) {
 					// Если запрос - это число, ищем по ID
 					filter = { ID: query.trim() }
-					console.log(`Поиск по ID продукта: ${query}`)
 				} else {
 					// Иначе ищем по имени
 					filter = { NAME: `%${query}%` }
-					console.log(`Поиск по имени продукта: ${query}`)
 				}
 			}
 
@@ -165,7 +160,6 @@ class Bitrix24Service {
 				await bitrixCache.setDynamicOptions('products', response.data.result, filterStr)
 			}
 
-			console.log(`✅ Получено ${response.data?.result?.length || 0} товаров`)
 			return response.data
 		} catch (error: any) {
 			console.error('Ошибка при получении товаров из Битрикс24:', error.message)
@@ -181,13 +175,11 @@ class Bitrix24Service {
 	 */
 	async getProduct(productId: string) {
 		try {
-			console.log(`Получение товара ${productId} из Битрикс24`)
 
 			const response = await axios.post(`${this.webhookUrl}crm.product.get`, {
 				id: productId,
 			})
 
-			console.log(`Ответ от Bitrix24 для товара ${productId}:`, response.data)
 			return response.data
 		} catch (error: any) {
 			console.error(
@@ -206,13 +198,11 @@ class Bitrix24Service {
 	 */
 	async getCompany(companyId: string) {
 		try {
-			console.log(`Получение компании ${companyId} из Битрикс24`)
 
 			const response = await axios.post(`${this.webhookUrl}crm.company.get`, {
 				id: companyId,
 			})
 
-			console.log(`Ответ от Bitrix24 для компании ${companyId}:`, response.data)
 			return response.data
 		} catch (error: any) {
 			console.error(
@@ -264,12 +254,10 @@ class Bitrix24Service {
 	 */
 	async getUserFields() {
 		try {
-			console.log('Запрос пользовательских полей для сделок из Битрикс24')
 			const response = await axios.post(
 				`${this.webhookUrl}crm.deal.userfield.list`
 			)
 
-			console.log('Получены пользовательские поля:', response.data)
 			return response.data
 		} catch (error) {
 			console.error(
@@ -285,7 +273,6 @@ class Bitrix24Service {
 	 */
 	async getEnumFieldValues(fieldIdentifier: string) {
 		try {
-			console.log(`Запрос значений для поля ${fieldIdentifier} из Битрикс24`)
 
 			// Получаем все пользовательские поля
 			const userFieldsResponse = await this.getUserFields()
@@ -304,7 +291,6 @@ class Bitrix24Service {
 				throw new Error(`Поле ${fieldIdentifier} не найдено`)
 			}
 
-			console.log(`Найдено поле:`, targetField)
 
 			// Проверяем, что это поле типа enumeration
 			if (targetField.USER_TYPE_ID !== 'enumeration') {
@@ -325,7 +311,6 @@ class Bitrix24Service {
 				})
 			}
 
-			console.log(
 				`Извлечено ${enumValues.length} значений для поля ${fieldIdentifier}:`,
 				enumValues
 			)
@@ -349,13 +334,11 @@ class Bitrix24Service {
 	 */
 	async debugFieldStructure() {
 		try {
-			console.log('=== ОТЛАДКА: Исследование структуры полей ===')
 
 			// Получаем пользовательские поля
 			const userFieldsResponse = await this.getUserFields()
 
 			if (userFieldsResponse?.result) {
-				console.log(
 					`Найдено ${userFieldsResponse.result.length} пользовательских полей`
 				)
 
@@ -370,7 +353,6 @@ class Bitrix24Service {
 					{}
 				)
 
-				console.log(
 					'Поля по типам:',
 					Object.keys(fieldsByType).map(
 						type => `${type}: ${fieldsByType[type].length} полей`
@@ -388,7 +370,6 @@ class Bitrix24Service {
 							field.USER_TYPE_ID === 'list')
 				)
 
-				console.log(
 					`Найдено ${potentialEnumFields.length} потенциальных enum полей:`,
 					potentialEnumFields.map((f: any) => ({
 						ID: f.ID,
@@ -419,7 +400,6 @@ class Bitrix24Service {
 	 */
 	async getAllEnumFieldsWithValues() {
 		try {
-			console.log('Получение всех пользовательских полей и их значений')
 
 			// Сначала получаем все пользовательские поля
 			const userFieldsResponse = await this.getUserFields()
@@ -433,7 +413,6 @@ class Bitrix24Service {
 				(field: any) => field.USER_TYPE_ID === 'enumeration'
 			)
 
-			console.log(`Найдено ${enumFields.length} полей типа enumeration`)
 
 			// Извлекаем значения для каждого поля типа enumeration напрямую из LIST
 			const fieldsWithValues = enumFields.map((field: any) => {
@@ -456,7 +435,6 @@ class Bitrix24Service {
 				}
 			})
 
-			console.log(`Обработано ${fieldsWithValues.length} полей с их значениями`)
 
 			return {
 				result: fieldsWithValues,
@@ -475,11 +453,9 @@ class Bitrix24Service {
 			// Проверяем кэш сначала
 			const cached = await bitrixCache.getDealCategories()
 			if (cached) {
-				console.log('📦 Использован кэш для категорий сделок')
 				return { result: cached, total: cached.length }
 			}
 
-			console.log('🔄 Загрузка категорий сделок из Битрикс24')
 
 			// Исправленный метод для получения категорий сделок
 			const response = await axios.post(`${this.webhookUrl}crm.category.list`, {
@@ -491,7 +467,6 @@ class Bitrix24Service {
 				await bitrixCache.setDealCategories(response.data.result)
 			}
 
-			console.log(`✅ Получено ${response.data?.result?.length || 0} категорий сделок`)
 			return response.data
 		} catch (error) {
 			console.error(
@@ -501,14 +476,12 @@ class Bitrix24Service {
 
 			// Пробуем альтернативный метод, если первый не сработал
 			try {
-				console.log(
 					'Пробуем альтернативный метод:',
 					`${this.webhookUrl}crm.dealcategory.list`
 				)
 				const fallbackResponse = await axios.post(
 					`${this.webhookUrl}crm.dealcategory.list`
 				)
-				console.log(
 					'Получен ответ от альтернативного метода:',
 					fallbackResponse.data
 				)
@@ -535,19 +508,15 @@ class Bitrix24Service {
 			const cached = await bitrixCache.getDynamicOptions('companies', filterKey)
 			
 			if (cached) {
-				console.log(`📦 Использован кэш для компаний: ${filterKey}`)
 				return { result: cached, total: cached.length }
 			}
 
-			console.log(`🔄 Загрузка компаний из Битрикс24 по запросу: '${query}'`)
-			console.log(`Фильтр по ответственному: ${assignedToUserId}`)
 
 			let filter: any = {}
 
 			// Добавляем фильтр по ответственному если указан
 			if (assignedToUserId) {
 				filter.ASSIGNED_BY_ID = assignedToUserId
-				console.log(`Фильтрация по ответственному: ${assignedToUserId}`)
 			}
 
 			if (query) {
@@ -557,15 +526,12 @@ class Bitrix24Service {
 				if (isNumericId) {
 					// Если запрос - это число, ищем по ID
 					filter.ID = query.trim()
-					console.log(`Поиск по ID компании: ${query}`)
 				} else {
 					// Иначе ищем по названию
 					filter['?TITLE'] = query
-					console.log(`Поиск по названию компании: ${query}`)
 				}
 			}
 
-			console.log('Данные запроса компаний:', {
 				filter,
 				select: [
 					'ID',
@@ -605,7 +571,6 @@ class Bitrix24Service {
 				results.result.length === 0 &&
 				!/^\d+$/.test(query.trim())
 			) {
-				console.log(
 					'Не найдено результатов, пробуем получить все компании и фильтровать локально'
 				)
 
@@ -650,7 +615,6 @@ class Bitrix24Service {
 				await bitrixCache.setDynamicOptions('companies', results.result, filterKey)
 			}
 
-			console.log(`✅ Получено ${results?.result?.length || 0} компаний`)
 			return results
 		} catch (error: any) {
 			console.error('Ошибка при получении компаний из Битрикс24:', error.message)
@@ -680,7 +644,6 @@ class Bitrix24Service {
 	 */
 	async getContacts(query = '', limit = 50) {
 		try {
-			console.log(`Поиск контактов в Битрикс24 по запросу: '${query}'`)
 
 			let filter = {}
 
@@ -691,7 +654,6 @@ class Bitrix24Service {
 				if (isNumericId) {
 					// Если запрос - это число, ищем по ID
 					filter = { ID: query.trim() }
-					console.log(`Поиск по ID контакта: ${query}`)
 				} else {
 					// Иначе ищем по имени или фамилии
 					filter = {
@@ -699,11 +661,9 @@ class Bitrix24Service {
 						NAME: `%${query}%`,
 						LAST_NAME: `%${query}%`,
 					}
-					console.log(`Поиск по имени/фамилии контакта: ${query}`)
 				}
 			}
 
-			console.log('Данные запроса контактов:', {
 				filter,
 				select: [
 					'ID',
@@ -736,7 +696,6 @@ class Bitrix24Service {
 				order: { LAST_NAME: 'ASC' },
 			})
 
-			console.log('Ответ от Bitrix24 (контакты):', response.data)
 			return response.data
 		} catch (error) {
 			console.error('Ошибка при получении контактов из Битрикс24:', error)
@@ -752,7 +711,6 @@ class Bitrix24Service {
 	 */
 	async getUsers(start = 0, limit = 50) {
 		try {
-			console.log(
 				`Запрос пользователей из Битрикс24, start: ${start}, limit: ${limit}`
 			)
 
@@ -767,7 +725,6 @@ class Bitrix24Service {
 				})
 			})
 
-			console.log('Ответ от Bitrix24 (пользователи):', response.data)
 			return response.data
 		} catch (error: any) {
 			console.error('Ошибка при получении пользователей из Битрикс24:', error.message)
@@ -786,11 +743,9 @@ class Bitrix24Service {
 			// Проверяем кэш сначала
 			const cached = await bitrixCache.getDealStages(categoryId)
 			if (cached) {
-				console.log(`📦 Использован кэш для статусов категории ${categoryId}`)
 				return cached
 			}
 
-			console.log(`🔄 Загрузка статусов сделок для категории ${categoryId} из Битрикс24`)
 
 			const response = await axios.post(`${this.webhookUrl}crm.status.list`, {
 				filter: {
@@ -815,7 +770,6 @@ class Bitrix24Service {
 				await bitrixCache.setDealStages(categoryId, stages)
 			}
 
-			console.log(`✅ Получено ${stages.length} статусов для категории ${categoryId}`)
 			return stages
 		} catch (error) {
 			console.error('Ошибка при получении статусов сделок из Битрикс24:', error)
@@ -831,7 +785,6 @@ class Bitrix24Service {
 	 */
 	async getCurrentUser() {
 		try {
-			console.log('Запрос информации о текущем пользователе из Битрикс24')
 
 			const response = await retryRequest(async () => {
 				return await axios.post(`${this.webhookUrl}user.current`, {}, {
@@ -839,7 +792,6 @@ class Bitrix24Service {
 				})
 			})
 
-			console.log('Ответ от Bitrix24 (текущий пользователь):', response.data)
 			return response.data
 		} catch (error: any) {
 			console.error(
@@ -886,7 +838,6 @@ class Bitrix24Service {
 		categoryId?: string
 	) {
 		try {
-			console.log(`Обновление статуса сделки ${dealId} на ${newStatus}`)
 
 			// Используем статус как есть, без дополнительных префиксов
 			// Статусы уже приходят в правильном формате (NEW, C1:UC_GJLIZP, C1:WON)
@@ -896,14 +847,12 @@ class Bitrix24Service {
 				STAGE_ID: stageId,
 			}
 
-			console.log('Данные для обновления сделки:', updateData)
 
 			const response = await axios.post(`${this.webhookUrl}crm.deal.update`, {
 				id: dealId,
 				fields: updateData,
 			})
 
-			console.log('Ответ от Bitrix24 (обновление сделки):', response.data)
 			return response.data
 		} catch (error) {
 			console.error('Ошибка при обновлении статуса сделки в Битрикс24:', error)
@@ -919,13 +868,11 @@ class Bitrix24Service {
 	 */
 	async getDeal(dealId: string) {
 		try {
-			console.log(`Получение данных сделки ${dealId} из Битрикс24`)
 
 			const response = await axios.post(`${this.webhookUrl}crm.deal.get`, {
 				id: dealId,
 			})
 
-			console.log('Ответ от Bitrix24 (получение сделки):', response.data)
 			return response.data
 		} catch (error) {
 			console.error('Ошибка при получении данных сделки из Битрикс24:', error)
@@ -941,14 +888,12 @@ class Bitrix24Service {
 	 */
 	async updateDeal(dealId: string, dealData: any) {
 		try {
-			console.log(`Обновление сделки ${dealId}`, dealData)
 
 			const response = await axios.post(`${this.webhookUrl}crm.deal.update`, {
 				id: dealId,
 				fields: dealData,
 			})
 
-			console.log('Ответ от Bitrix24 (обновление сделки):', response.data)
 			return response.data
 		} catch (error) {
 			console.error('Ошибка при обновлении сделки в Битрикс24:', error)

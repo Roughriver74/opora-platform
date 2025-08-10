@@ -545,7 +545,6 @@ export const AdvancedFieldsList: React.FC<AdvancedFieldsListProps> = ({
 					if (e.ctrlKey || e.metaKey) {
 						e.preventDefault()
 						// Копирование выбранных элементов
-						console.log('Копирование элементов:', selectedElements)
 					}
 					break
 				case '?':

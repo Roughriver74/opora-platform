@@ -10,7 +10,6 @@ export const getAllForms = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		console.log('🔄 Загрузка форм из БД')
 		
 		// Получаем все активные формы с полями
 		const forms = await formService.findActive()
@@ -23,7 +22,6 @@ export const getAllForms = async (
 			})
 		)
 
-		console.log(`✅ Получено ${formsWithFields.length} форм`)
 		res.status(200).json(formsWithFields)
 	} catch (error: any) {
 		console.error('Ошибка при получении форм:', error)
@@ -41,13 +39,11 @@ export const getFormById = async (
 ): Promise<void> => {
 	try {
 		const { id } = req.params
-		console.log('Получение формы по ID:', id)
 		
 		// Получаем форму с полями через сервис
 		const form = await formService.findWithFields(id)
 		
 		if (!form) {
-			console.log('Форма не найдена:', id)
 			res.status(404).json({ 
 				message: 'Форма не найдена',
 				success: false 
@@ -55,7 +51,6 @@ export const getFormById = async (
 			return
 		}
 
-		console.log(`Найдена форма: ${form.title}, полей: ${form.fields.length}`)
 		res.status(200).json(form)
 	} catch (error: any) {
 		console.error('Ошибка при получении формы:', error)
@@ -72,7 +67,6 @@ export const createForm = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		console.log('Создание новой формы:', req.body)
 		
 		const form = await formService.createForm(req.body)
 		
@@ -105,8 +99,6 @@ export const updateForm = async (
 ): Promise<void> => {
 	try {
 		const { id } = req.params
-		console.log('Обновление формы с ID:', id)
-		console.log('Данные для обновления:', JSON.stringify(req.body, null, 2))
 
 		const updatedForm = await formService.updateForm(id, req.body)
 		
@@ -118,7 +110,6 @@ export const updateForm = async (
 			return
 		}
 
-		console.log('Форма успешно обновлена:', updatedForm.id)
 		res.status(200).json({
 			success: true,
 			data: updatedForm,
@@ -153,7 +144,6 @@ export const deleteForm = async (
 ): Promise<void> => {
 	try {
 		const { id } = req.params
-		console.log('Удаление формы с ID:', id)
 		
 		const deleted = await formService.delete(id)
 		
@@ -185,7 +175,6 @@ export const getDealCategories = async (
 ): Promise<void> => {
 	try {
 		const categoriesData = await bitrix24Service.getDealCategories()
-		console.log(
 			'Полученные данные от Bitrix24:',
 			JSON.stringify(categoriesData, null, 2)
 		)
@@ -223,7 +212,6 @@ export const getDealCategories = async (
 			]
 		}
 
-		console.log('Отформатированные категории:', categories)
 
 		// Возвращаем данные в формате, который ожидает фронтенд
 		res.status(200).json({

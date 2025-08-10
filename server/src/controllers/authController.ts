@@ -82,18 +82,14 @@ export const adminLogin = async (
  * Логин пользователя
  */
 export const userLogin = async (req: Request, res: Response): Promise<void> => {
-	console.log(`🔑 User login - URL: ${req.originalUrl}, Method: ${req.method}`)
-	console.log(`🔑 Request headers:`, req.headers)
 	try {
 		const { email, password } = req.body
 
-		console.log(`🔍 Login attempt for email: ${email}`)
 
 		// Используем сервис для аутентификации
 		const authResult = await userService.login({ email, password })
 
 		if (!authResult) {
-			console.log('❌ Authentication failed')
 			res.status(401).json({
 				success: false,
 				message: 'Неверный email или пароль',
@@ -101,7 +97,6 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 			return
 		}
 
-		console.log('✅ Authentication successful')
 
 		res.json({
 			success: true,

@@ -31,14 +31,12 @@ const initializeServer = async () => {
 	try {
 		// Инициализация PostgreSQL
 		await initializeDatabase()
-		console.log('✅ PostgreSQL подключен')
 
 		// Redis временно отключен для стабильной работы
 		// await redisClient.connect()
 
 		// Инициализация настроек
 		await initializeDefaultSettings()
-		console.log('✅ Настройки инициализированы')
 	} catch (error) {
 		console.error('❌ Ошибка инициализации сервера:', error)
 		process.exit(1)
@@ -130,14 +128,11 @@ async function checkDatabaseConnection(): Promise<boolean> {
 // Запуск сервера
 const PORT = process.env.PORT || 5000
 const server = app.listen(PORT, () => {
-	console.log(`🚀 Сервер запущен на порту ${PORT}`)
 })
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-	console.log('SIGTERM сигнал получен: закрытие HTTP сервера')
 	server.close(async () => {
-		console.log('HTTP сервер закрыт')
 		
 		// Закрытие подключения к БД
 		await closeDatabaseConnection()

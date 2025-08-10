@@ -12,17 +12,24 @@ const userService = getUserService()
 // Обработка отправки формы заявки
 export const submitForm = async (req: Request, res: Response) => {
 	try {
+
 		const { formId, formData } = req.body
 
+
 		if (!formId || !formData) {
+			
 			return res.status(400).json({
 				message: 'Необходимо указать ID формы и данные формы',
+				debug: {
+					receivedFormId: formId,
+					receivedFormData: formData,
+					hasFormId: !!formId,
+					hasFormData: !!formData,
+					bodyKeys: Object.keys(req.body)
+				}
 			})
 		}
 
-		console.log('[SUBMIT] Начало обработки заявки')
-		console.log('[SUBMIT] Form ID:', formId)
-		console.log('[SUBMIT] Form Data:', Object.keys(formData))
 
 		// Получаем форму с полями для маппинга
 		const form = await formService.findWithFields(formId)
@@ -35,17 +42,22 @@ export const submitForm = async (req: Request, res: Response) => {
 			return res.status(400).json({ message: 'Форма не активна' })
 		}
 
-		console.log('[SUBMIT] Форма найдена:', form.name)
-		console.log('[SUBMIT] Полей в форме:', form.fields.length)
 
 		// Валидация данных формы
 		const validation = await formService.validateFormData(formId, formData)
+		
 		if (!validation.isValid) {
 			return res.status(400).json({
 				message: 'Ошибка валидации данных',
-				errors: validation.errors
+				errors: validation.errors,
+				debug: {
+					formId,
+					formDataKeys: Object.keys(formData),
+					formFields: form.fields.map(f => ({ name: f.name, type: f.type, required: f.required }))
+				}
 			})
 		}
+
 
 		// Подготавливаем данные для создания сделки в Битрикс24
 		const dealData: Record<string, any> = {}
@@ -65,7 +77,6 @@ export const submitForm = async (req: Request, res: Response) => {
 					dealTitle = value
 				}
 
-				console.log(
 					`[SUBMIT] Поле ${field.name} -> ${field.bitrixFieldId}: "${value}"`
 				)
 			}
@@ -82,45 +93,40 @@ export const submitForm = async (req: Request, res: Response) => {
 			const user = await userService.findById(req.user.id)
 			if (user && user.bitrixUserId) {
 				dealData['ASSIGNED_BY_ID'] = user.bitrixUserId
-				console.log(`[SUBMIT] Ответственный: ${user.bitrixUserId}`)
 			}
 		}
 
 		// Устанавливаем категорию сделки (по умолчанию 1, если не указана)
 		const categoryId = form.bitrixDealCategory || '1'
 		dealData['CATEGORY_ID'] = categoryId
-		console.log(`[SUBMIT] Категория: ${categoryId}`)
 
-		console.log('[SUBMIT] Данные для Битрикс24:', dealData)
 
 		let submission: any = null
 
 		try {
 			// СНАЧАЛА создаем заявку в БД для получения ID
-			console.log('[SUBMIT] Создание заявки в БД...')
-			submission = await submissionService.createSubmission({
+			const submissionData = {
 				formId: formId,
 				userId: req.user?.id,
 				title: dealTitle,
 				notes: 'Заявка создана через форму'
-			})
+			}
+			
+			submission = await submissionService.createSubmission(submissionData)
 
-			console.log(
-				`[SUBMIT] Заявка сохранена в БД: ${submission.submissionNumber}, ID: ${submission.id}`
+				`[SUBMIT] ✅ Заявка сохранена в БД: ${submission.submissionNumber}, ID: ${submission.id}`
 			)
 
 			// Добавляем ID заявки в поле UF_CRM_1750107484181
 			dealData['UF_CRM_1750107484181'] = submission.id
-			console.log(
-				`[SUBMIT] ✅ Добавлен ID заявки в поле UF_CRM_1750107484181: ${submission.id}`
+				`[SUBMIT] 🔗 Добавлен ID заявки в поле UF_CRM_1750107484181: ${submission.id}`
 			)
 
 			// ТЕПЕРЬ создаем сделку в Битрикс24 с ID заявки
-			console.log('[SUBMIT] Создание сделки в Битрикс24...')
+			
 			const dealResponse = await bitrix24Service.createDeal(dealData)
 
-			console.log(
-				'[SUBMIT] Сделка создана в Битрикс24:',
+				'[SUBMIT] ✅ Сделка создана в Битрикс24, ID:',
 				dealResponse.result
 			)
 
@@ -131,7 +137,6 @@ export const submitForm = async (req: Request, res: Response) => {
 				dealResponse.result.toString()
 			)
 
-			console.log(
 				`[SUBMIT] Заявка обновлена с bitrixDealId: ${dealResponse.result}`
 			)
 
@@ -146,20 +151,29 @@ export const submitForm = async (req: Request, res: Response) => {
 			})
 		} catch (bitrixError: any) {
 			console.error(
-				'[SUBMIT] КРИТИЧЕСКАЯ ОШИБКА - не удалось создать сделку в Битрикс24:',
-				bitrixError
+				'[SUBMIT] 🚨 КРИТИЧЕСКАЯ ОШИБКА - не удалось создать сделку в Битрикс24:'
 			)
+			console.error('[SUBMIT] 🔍 Детали ошибки Bitrix24:', {
+				message: bitrixError.message,
+				status: bitrixError.response?.status,
+				statusText: bitrixError.response?.statusText,
+				data: bitrixError.response?.data,
+				config: {
+					url: bitrixError.config?.url,
+					method: bitrixError.config?.method,
+					data: bitrixError.config?.data
+				}
+			})
 
 			// Удаляем созданную заявку из БД, если не удалось создать сделку в Битрикс24
 			if (submission && submission.id) {
 				try {
 					await submissionService.delete(submission.id)
-					console.log(
-						`[SUBMIT] Заявка ${submission.id} удалена из БД после ошибки Битрикс24`
+						`[SUBMIT] 🗑️ Заявка ${submission.id} удалена из БД после ошибки Битрикс24`
 					)
 				} catch (deleteError) {
 					console.error(
-						`[SUBMIT] Ошибка удаления заявки ${submission.id}:`,
+						`[SUBMIT] ❌ Ошибка удаления заявки ${submission.id}:`,
 						deleteError
 					)
 				}
@@ -168,13 +182,25 @@ export const submitForm = async (req: Request, res: Response) => {
 			return res.status(500).json({
 				message: 'Ошибка создания заявки в системе',
 				error: bitrixError.message,
+				debug: {
+					bitrixUrl: bitrixError.config?.url,
+					bitrixStatus: bitrixError.response?.status,
+					bitrixData: bitrixError.response?.data,
+					dealData: dealData,
+					submissionId: submission?.id
+				}
 			})
 		}
 	} catch (error: any) {
-		console.error('[SUBMIT] Общая ошибка при отправке формы:', error)
+		console.error('[SUBMIT] 🚨 Общая ошибка при отправке формы:', error)
+		console.error('[SUBMIT] 🔍 Stack trace:', error.stack)
 		res.status(500).json({
 			message: 'Произошла ошибка при обработке заявки',
 			error: error.message,
+			debug: {
+				stack: error.stack,
+				name: error.name
+			}
 		})
 	}
 }
@@ -221,7 +247,6 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			sortOrder: (sortOrder as string).toUpperCase() as 'ASC' | 'DESC'
 		}
 
-		console.log(`🔍 Запрос заявок: страница ${page}, лимит ${limit}`)
 		
 		// Используем сервис для получения заявок
 		const result = await submissionService.searchSubmissions({
@@ -229,7 +254,6 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			...pagination
 		})
 		
-		console.log(`✅ Получено ${result.data.length} заявок из ${result.total}`)
 		res.status(200).json({
 			success: true,
 			...result
@@ -410,12 +434,10 @@ export const getSubmissionWithBitrixData = async (
 		const { id } = req.params
 		const userId = req.user?.id
 
-		console.log(`[EDIT] Получение заявки ${id} для редактирования`)
 
 		const submission = await submissionService.findById(id)
 
 		if (!submission) {
-			console.log(`[EDIT] Заявка ${id} не найдена`)
 			return res.status(404).json({
 				success: false,
 				message: 'Заявка не найдена',
@@ -425,7 +447,6 @@ export const getSubmissionWithBitrixData = async (
 		// Проверяем права доступа
 		const isAdmin = req.isAdmin
 		if (!isAdmin && submission.userId !== userId) {
-			console.log(
 				`[EDIT] ❌ ДОСТУП ЗАПРЕЩЕН: Пользователь ${userId} пытается получить заявку пользователя ${submission.userId}`
 			)
 			return res.status(403).json({
@@ -439,7 +460,6 @@ export const getSubmissionWithBitrixData = async (
 		let preloadedOptions: Record<string, any[]> = {}
 
 		try {
-			console.log(
 				`[EDIT] Получение актуальных данных сделки ${submission.bitrixDealId}`
 			)
 
@@ -448,11 +468,9 @@ export const getSubmissionWithBitrixData = async (
 				submission.bitrixDealId!
 			)
 
-			console.log(`[EDIT] Ответ от Битрикс24:`, dealResponse)
 
 			if (dealResponse?.result) {
 				const dealData = dealResponse.result
-				console.log(
 					`[EDIT] Данные сделки из Битрикс24:`,
 					Object.keys(dealData)
 				)
@@ -460,11 +478,9 @@ export const getSubmissionWithBitrixData = async (
 				// Получаем форму для правильного маппинга полей
 				const form = await formService.findWithFields(submission.formId)
 				if (form) {
-					console.log(`[EDIT] Форма найдена, полей: ${form.fields.length}`)
 
 					// Конвертируем данные из Битрикс24 обратно в формат формы
 					for (const field of form.fields) {
-						console.log(
 							`[EDIT] Проверяем поле: ${field.name}, bitrixFieldId: ${field.bitrixFieldId}`
 						)
 
@@ -483,7 +499,6 @@ export const getSubmissionWithBitrixData = async (
 								try {
 									// Загрузка названий в зависимости от источника
 									if (field.dynamicSource.source === 'catalog') {
-										console.log(
 											`[EDIT] 🔍 Загрузка названия товара для ID: ${bitrixValue}`
 										)
 										const productResponse = await bitrix24Service.getProduct(
@@ -491,7 +506,6 @@ export const getSubmissionWithBitrixData = async (
 										)
 										if (productResponse?.result) {
 											const productName = productResponse.result.NAME
-											console.log(
 												`[EDIT] 📦 Товар ${bitrixValue}: "${productName}"`
 											)
 
@@ -504,7 +518,6 @@ export const getSubmissionWithBitrixData = async (
 											]
 										}
 									} else if (field.dynamicSource.source === 'companies') {
-										console.log(
 											`[EDIT] 🔍 Загрузка названия компании для ID: ${bitrixValue}`
 										)
 										const companyResponse = await bitrix24Service.getCompany(
@@ -512,7 +525,6 @@ export const getSubmissionWithBitrixData = async (
 										)
 										if (companyResponse?.result) {
 											const companyName = companyResponse.result.TITLE
-											console.log(
 												`[EDIT] 🏢 Компания ${bitrixValue}: "${companyName}"`
 											)
 
@@ -535,26 +547,21 @@ export const getSubmissionWithBitrixData = async (
 
 							formDataFromBitrix[field.name] = bitrixValue
 
-							console.log(
 								`[EDIT] ✅ Маппинг ${field.bitrixFieldId} -> ${field.name}:`,
 								bitrixValue
 							)
 						}
 					}
 
-					console.log(
 						'[EDIT] FormData восстановлен из Битрикс24:',
 						Object.keys(formDataFromBitrix)
 					)
-					console.log(
 						'[EDIT] Предзагруженные опции:',
 						JSON.stringify(preloadedOptions, null, 2)
 					)
 				} else {
-					console.log('[EDIT] Форма не найдена')
 				}
 			} else {
-				console.log('[EDIT] Пустой ответ от Битрикс24')
 			}
 
 			// Обновляем статус синхронизации
@@ -578,12 +585,17 @@ export const getSubmissionWithBitrixData = async (
 
 		// Возвращаем заявку с данными из Битрикс24
 		const responseData = {
-			...submission,
+			id: submission.id,
+			formId: submission.formId, // Это уже строка, не объект
 			formData: formDataFromBitrix, // Данные ВСЕГДА из Битрикс24
 			preloadedOptions: preloadedOptions, // Предзагруженные опции для автокомплита
 		}
 
-		console.log(`[EDIT] Возвращаем данные заявки`)
+			id: responseData.id,
+			formId: responseData.formId,
+			formDataKeys: Object.keys(formDataFromBitrix),
+			preloadedOptionsKeys: Object.keys(preloadedOptions)
+		})
 
 		res.json({
 			success: true,
@@ -605,8 +617,6 @@ export const updateSubmission = async (req: Request, res: Response) => {
 		const updateData = req.body // Это formData из клиента
 		const userId = req.user?.id
 
-		console.log(`[UPDATE] Обновление заявки ${id}`)
-		console.log(`[UPDATE] Данные для обновления:`, Object.keys(updateData))
 
 		const submission = await submissionService.findById(id)
 		if (!submission) {
@@ -619,7 +629,6 @@ export const updateSubmission = async (req: Request, res: Response) => {
 		// Проверяем права доступа
 		const isAdmin = req.isAdmin
 		if (!isAdmin && submission.userId !== userId) {
-			console.log(
 				`[UPDATE] ❌ ДОСТУП ЗАПРЕЩЕН: Пользователь ${userId} пытается обновить заявку пользователя ${submission.userId}`
 			)
 			return res.status(403).json({
@@ -628,11 +637,8 @@ export const updateSubmission = async (req: Request, res: Response) => {
 			})
 		}
 
-		console.log(`[UPDATE] Заявка найдена: ${submission.submissionNumber}`)
-		console.log(`[UPDATE] Битрикс Deal ID: ${submission.bitrixDealId}`)
 
 		try {
-			console.log(
 				`[UPDATE] Обновление сделки ${submission.bitrixDealId} в Битрикс24`
 			)
 
@@ -642,7 +648,6 @@ export const updateSubmission = async (req: Request, res: Response) => {
 				throw new Error('Форма не найдена')
 			}
 
-			console.log(`[UPDATE] Форма найдена, полей: ${form.fields.length}`)
 
 			// Формируем данные для обновления сделки
 			const dealData: any = {}
@@ -660,13 +665,11 @@ export const updateSubmission = async (req: Request, res: Response) => {
 						newTitle = value
 					}
 
-					console.log(
 						`[UPDATE] Поле ${field.name} -> ${field.bitrixFieldId}: "${value}"`
 					)
 				}
 			}
 
-			console.log('[UPDATE] Данные для обновления в Битрикс24:', dealData)
 
 			// Обновляем сделку в Битрикс24
 			await bitrix24Service.updateDeal(submission.bitrixDealId!, dealData)
@@ -681,7 +684,6 @@ export const updateSubmission = async (req: Request, res: Response) => {
 			// Обновляем статус синхронизации
 			await submissionService.updateSyncStatus(id, BitrixSyncStatus.SYNCED)
 
-			console.log(
 				`[UPDATE] Сделка ${submission.bitrixDealId} успешно обновлена`
 			)
 
@@ -804,7 +806,6 @@ export const updateStatusByBitrixId = async (req: Request, res: Response) => {
 			})
 		}
 
-		console.log(`[API UPDATE STATUS] Поиск заявки с bitrixDealId: ${bitrixid}`)
 
 		// Ищем заявку по bitrixDealId
 		const submission = await submissionService.findByBitrixDealId(bitrixid as string)
@@ -815,11 +816,8 @@ export const updateStatusByBitrixId = async (req: Request, res: Response) => {
 			})
 		}
 
-		console.log(
 			`[API UPDATE STATUS] Заявка найдена: ${submission.submissionNumber}`
 		)
-		console.log(`[API UPDATE STATUS] Старый статус: ${submission.status}`)
-		console.log(`[API UPDATE STATUS] Новый статус: ${status}`)
 
 		// Обновляем статус
 		await submissionService.updateStatus(submission.id, status as string)
@@ -831,7 +829,6 @@ export const updateStatusByBitrixId = async (req: Request, res: Response) => {
 			undefined // Системное изменение
 		)
 
-		console.log(`[API UPDATE STATUS] Статус успешно обновлен в БД`)
 
 		res.json({
 			success: true,
@@ -845,7 +842,6 @@ export const updateStatusByBitrixId = async (req: Request, res: Response) => {
 			},
 		})
 
-		console.log(`[API UPDATE STATUS] Ответ отправлен`)
 	} catch (error: any) {
 		console.error('[API UPDATE STATUS] Ошибка:', error)
 		res.status(500).json({
@@ -868,7 +864,6 @@ export const checkBitrixField = async (req: Request, res: Response) => {
 			})
 		}
 
-		console.log(
 			`[CHECK FIELD] Проверка поля UF_CRM_1750107484181 для сделки ${dealId}`
 		)
 
@@ -884,7 +879,6 @@ export const checkBitrixField = async (req: Request, res: Response) => {
 
 		const fieldValue = dealData.result.UF_CRM_1750107484181
 
-		console.log(
 			`[CHECK FIELD] Значение поля UF_CRM_1750107484181: ${fieldValue}`
 		)
 
@@ -912,7 +906,6 @@ export const copySubmission = async (req: Request, res: Response) => {
 		const { id } = req.params
 		const userId = req.user?.id
 
-		console.log(`[COPY] Копирование заявки ${id} пользователем ${userId}`)
 
 		// Получаем оригинальную заявку
 		const originalSubmission = await submissionService.findById(id)
@@ -933,7 +926,6 @@ export const copySubmission = async (req: Request, res: Response) => {
 			})
 		}
 
-		console.log(`[COPY] Пользователь ${user.email} копирует заявку ${id}`)
 
 		// Получаем данные формы с полями
 		const form = await formService.findWithFields(originalSubmission.formId)
@@ -950,7 +942,6 @@ export const copySubmission = async (req: Request, res: Response) => {
 
 		if (originalSubmission.bitrixDealId) {
 			try {
-				console.log(
 					`[COPY] Получение данных из Битрикс24 сделки ${originalSubmission.bitrixDealId}`
 				)
 				const dealResponse = await bitrix24Service.getDeal(
@@ -959,7 +950,6 @@ export const copySubmission = async (req: Request, res: Response) => {
 
 				if (dealResponse?.result) {
 					const dealData = dealResponse.result
-					console.log(`[COPY] Данные из Битрикс24:`, Object.keys(dealData))
 
 					// Мапим данные обратно в формат формы
 					for (const field of form.fields) {
@@ -977,7 +967,6 @@ export const copySubmission = async (req: Request, res: Response) => {
 										field.bitrixFieldId === 'UF_CRM_1726227410' ||
 										field.bitrixFieldId === 'UF_CRM_1726645231'
 									) {
-										console.log(
 											`[COPY] 🔍 Загрузка названия продукта для ID: ${bitrixValue}`
 										)
 										const productResponse = await bitrix24Service.getProduct(
@@ -985,7 +974,6 @@ export const copySubmission = async (req: Request, res: Response) => {
 										)
 										if (productResponse?.result) {
 											const productName = productResponse.result.NAME
-											console.log(
 												`[COPY] 📦 Продукт ${bitrixValue}: "${productName}"`
 											)
 
@@ -998,7 +986,6 @@ export const copySubmission = async (req: Request, res: Response) => {
 											]
 										}
 									} else if (field.bitrixEntity === 'contact') {
-										console.log(
 											`[COPY] 🔍 Загрузка названия контакта для ID: ${bitrixValue}`
 										)
 										const contactResponse = await bitrix24Service.getContacts(
@@ -1008,7 +995,6 @@ export const copySubmission = async (req: Request, res: Response) => {
 										if (contactResponse?.result) {
 											const contactName =
 												`${contactResponse.result.NAME} ${contactResponse.result.LAST_NAME}`.trim()
-											console.log(
 												`[COPY] 👤 Контакт ${bitrixValue}: "${contactName}"`
 											)
 
@@ -1021,7 +1007,6 @@ export const copySubmission = async (req: Request, res: Response) => {
 											]
 										}
 									} else if (field.bitrixEntity === 'company') {
-										console.log(
 											`[COPY] 🔍 Загрузка названия компании для ID: ${bitrixValue}`
 										)
 										const companyResponse = await bitrix24Service.getCompany(
@@ -1029,7 +1014,6 @@ export const copySubmission = async (req: Request, res: Response) => {
 										)
 										if (companyResponse?.result) {
 											const companyName = companyResponse.result.TITLE
-											console.log(
 												`[COPY] 🏢 Компания ${bitrixValue}: "${companyName}"`
 											)
 
@@ -1053,23 +1037,19 @@ export const copySubmission = async (req: Request, res: Response) => {
 
 							formDataFromBitrix[field.name] = bitrixValue
 
-							console.log(
 								`[COPY] ✅ Маппинг ${field.bitrixFieldId} -> ${field.name}:`,
 								bitrixValue
 							)
 						}
 					}
 
-					console.log(
 						'[COPY] FormData восстановлен из Битрикс24:',
 						Object.keys(formDataFromBitrix)
 					)
-					console.log(
 						'[COPY] Предзагруженные опции:',
 						JSON.stringify(preloadedOptions, null, 2)
 					)
 				} else {
-					console.log('[COPY] Пустой ответ от Битрикс24')
 				}
 			} catch (bitrixError) {
 				console.error(

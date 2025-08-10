@@ -70,7 +70,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 		scrollToTop,
 		handleFieldChange,
 		getFieldError,
-	} = useBetoneForm(form._id ?? '', fields, editData, preloadedOptions)
+	} = useBetoneForm(form.id || form._id || '', fields, editData, preloadedOptions)
 
 	// Автоматическое переключение на мобильную версию для небольших экранов
 	if (isMobile || isTablet) {

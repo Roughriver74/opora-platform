@@ -10,7 +10,6 @@ export const optionalAuthMiddleware = async (req: Request, res: Response, next: 
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       // Нет токена - продолжаем как анонимный пользователь
-      console.log('Нет токена авторизации, продолжаем как анонимный пользователь');
       return next();
     }
 
@@ -18,7 +17,6 @@ export const optionalAuthMiddleware = async (req: Request, res: Response, next: 
     
     if (!token) {
       // Пустой токен - продолжаем как анонимный пользователь
-      console.log('Пустой токен, продолжаем как анонимный пользователь');
       return next();
     }
 
@@ -27,7 +25,6 @@ export const optionalAuthMiddleware = async (req: Request, res: Response, next: 
       const tokenData: TokenPayload | null = await jwtService.verifyToken(token);
       
       if (!tokenData || tokenData.type !== 'access') {
-        console.log('Неверный или недействительный токен, продолжаем как анонимный пользователь');
         return next();
       }
 
@@ -40,18 +37,15 @@ export const optionalAuthMiddleware = async (req: Request, res: Response, next: 
         tokenType: tokenData.type
       };
       
-      console.log('Пользователь авторизован:', req.user);
       next();
       
     } catch (jwtError) {
       // Ошибка декодирования токена - продолжаем как анонимный пользователь
-      console.log('Ошибка декодирования токена, продолжаем как анонимный пользователь:', jwtError.message);
       next();
     }
     
   } catch (error) {
     // Любая другая ошибка - продолжаем как анонимный пользователь
-    console.log('Ошибка в optionalAuthMiddleware, продолжаем как анонимный пользователь:', error.message);
     next();
   }
 }; 

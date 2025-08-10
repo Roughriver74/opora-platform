@@ -333,11 +333,9 @@ export const useLinkedFields = ({
 
 							// Логируем информацию о копировании автозаполнения
 							if (result.newOption) {
-								console.log(
 									`🔄 Автозаполнение "${targetField.label}": скопировано "${result.newOption.label}" (${result.value})`
 								)
 							} else {
-								console.log(
 									`🔄 Автозаполнение "${targetField.label}": найдена существующая опция (${result.value})`
 								)
 							}
@@ -371,9 +369,6 @@ export const useLinkedFields = ({
 			}
 
 			if (copiedCount > 0) {
-				console.log('📋 До изменения значений:', Object.keys(values))
-				console.log('📋 Новые значения для передачи:', Object.keys(newValues))
-				console.log(
 					'📋 Изменения:',
 					Object.keys(newValues)
 						.filter(key => newValues[key] !== values[key])
@@ -389,7 +384,6 @@ export const useLinkedFields = ({
 				// Сохраняем в историю
 				setCopyHistory(prev => [...prev, operation])
 
-				console.log(`✅ Скопировано полей: ${copiedCount}`, validation.warnings)
 				return true
 			}
 

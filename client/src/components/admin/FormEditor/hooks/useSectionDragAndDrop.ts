@@ -68,7 +68,6 @@ export const useSectionDragAndDrop = (
 
 			const sourceSectionIndex = Number(e.dataTransfer.getData('section-index'))
 
-			console.log('🎯 Section drop:', {
 				sourceSectionIndex,
 				targetSectionIndex,
 			})
@@ -84,7 +83,6 @@ export const useSectionDragAndDrop = (
 					.filter(field => field.type === 'header')
 					.sort((a, b) => (a.order || 0) - (b.order || 0))
 
-				console.log('📂 Sections found:', sections.length)
 
 				if (sourceSectionIndex < 0 || sourceSectionIndex >= sections.length) {
 					console.error('Неверный source индекс раздела:', sourceSectionIndex)
@@ -105,7 +103,6 @@ export const useSectionDragAndDrop = (
 					actualTargetIndex = targetSectionIndex
 				}
 
-				console.log('🎯 Normalized target index:', actualTargetIndex)
 
 				// Создаем новый порядок разделов
 				const reorderedSections = [...sections]
@@ -181,7 +178,6 @@ export const useSectionDragAndDrop = (
 				// Ждем завершения всех обновлений
 				await Promise.all([...sectionPromises, ...fieldPromises])
 
-				console.log(
 					`✅ Обновлен порядок ${sectionPromises.length} разделов и ${fieldPromises.length} полей`
 				)
 

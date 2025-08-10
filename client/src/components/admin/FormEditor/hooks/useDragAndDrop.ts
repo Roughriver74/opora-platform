@@ -81,7 +81,6 @@ export const useDragAndDrop = (
       
       if (savePromises.length > 0) {
         await Promise.all(savePromises);
-        console.log('Порядок полей успешно сохранен');
       }
     } catch (err: any) {
       console.error('Ошибка при сохранении порядка полей:', err);

@@ -59,7 +59,7 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 			formId: data.formId,
 			userId: data.userId,
 			title: data.title,
-			status: 'NEW',
+			status: 'C1:NEW',
 			priority: data.priority || SubmissionPriority.MEDIUM,
 			notes: data.notes,
 			tags: data.tags || [],

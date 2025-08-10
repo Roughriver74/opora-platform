@@ -9,12 +9,10 @@ mongoose.connect('mongodb://localhost:27017/beton-crm', {
 
 mongoose.connection.once('open', async () => {
 	try {
-		console.log('=== Исправление порядка полей ===')
 
 		// Получаем форму и все её поля
 		const form = await Form.findOne()
 		if (!form) {
-			console.log('❌ Форма не найдена!')
 			process.exit(1)
 		}
 
@@ -22,7 +20,6 @@ mongoose.connection.once('open', async () => {
 			order: 1,
 		})
 
-		console.log(`📋 Найдено ${fields.length} полей для исправления`)
 
 		// Группируем поля логически
 		const sections = [
@@ -146,7 +143,6 @@ mongoose.connection.once('open', async () => {
 					},
 				})
 				createdHeaders.push(newHeader)
-				console.log(
 					`➕ Создан заголовок: ${section.name} (order: ${section.headerOrder})`
 				)
 			}
@@ -161,7 +157,6 @@ mongoose.connection.once('open', async () => {
 							update: { order: newOrder },
 						},
 					})
-					console.log(`🔄 ${field.name}: ${field.order} → ${newOrder}`)
 				}
 			})
 		}
@@ -176,13 +171,11 @@ mongoose.connection.once('open', async () => {
 				$push: { fields: { $each: headerIds } },
 			})
 
-			console.log(`✅ Создано ${createdHeaders.length} новых заголовков`)
 		}
 
 		// Выполняем массовое обновление порядков
 		if (updates.length > 0) {
 			await FormField.bulkWrite(updates)
-			console.log(`✅ Обновлено ${updates.length} полей`)
 		}
 
 		// Проверяем результат
@@ -190,7 +183,6 @@ mongoose.connection.once('open', async () => {
 			_id: { $in: form.fields },
 		}).sort({ order: 1 })
 
-		console.log('\n📊 Результат исправления:')
 		const resultSections = {}
 		updatedFields.forEach(field => {
 			const sectionOrder = Math.floor(field.order / 100) * 100
@@ -207,13 +199,10 @@ mongoose.connection.once('open', async () => {
 		Object.keys(resultSections)
 			.sort((a, b) => a - b)
 			.forEach(sectionOrder => {
-				console.log(`\n📁 Раздел ${sectionOrder}:`)
 				resultSections[sectionOrder].forEach(field => {
-					console.log(`  ${field.order}: ${field.name} (${field.type})`)
 				})
 			})
 
-		console.log('\n✅ Исправление завершено!')
 		process.exit(0)
 	} catch (error) {
 		console.error('❌ Ошибка:', error)

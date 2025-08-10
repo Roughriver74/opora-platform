@@ -94,7 +94,7 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = ({
 		resetForm,
 		getFieldError,
 		handleFieldChange,
-	} = useBetoneForm(form._id ?? '', fields, editData, preloadedOptions)
+	} = useBetoneForm(form.id || form._id || '', fields, editData, preloadedOptions)
 
 	// Мемоизированные вычисления для производительности
 	const sortedFields = useMemo(() => getSortedFields(fields), [fields])

@@ -37,7 +37,6 @@ export const UsersPage: React.FC = () => {
 
   // Логирование изменений состояния для диагностики
   useEffect(() => {
-    console.log('🔄 State changed - userFormOpen:', userFormOpen, 'editingUser:', editingUser?.id || null);
   }, [userFormOpen, editingUser]);
 
   // Обработчик добавления пользователя
@@ -48,22 +47,17 @@ export const UsersPage: React.FC = () => {
 
   // Обработчик редактирования пользователя
   const handleEditUser = React.useCallback(async (id: string) => {
-    console.log('🔍 handleEditUser called with id:', id);
     setLoadingUserData(true);
     
     try {
-      console.log('📡 Making API request to /api/users/' + id);
       const response = await apiService.get(`/api/users/${id}`);
-      console.log('✅ API response:', response.data);
       
       if (response.data.success && response.data.data) {
         const userData = response.data.data;
-        console.log('👤 Setting editingUser:', userData);
         
         // Простая и прямолинейная установка состояния
         setEditingUser(userData);
         setUserFormOpen(true);
-        console.log('🚀 User form opened with data:', userData.email);
       } else {
         console.error('❌ API returned invalid data:', response.data);
         setSnackbar({

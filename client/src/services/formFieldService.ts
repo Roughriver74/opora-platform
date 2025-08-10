@@ -18,12 +18,10 @@ export const FormFieldService = {
 	// Создание нового поля
 	async createField(fieldData: Omit<FormField, '_id'>) {
 		try {
-			console.log(
 				'Отправка данных на сервер:',
 				JSON.stringify(fieldData, null, 2)
 			)
 			const response = await api.post('/api/form-fields', fieldData)
-			console.log('Успешный ответ сервера:', response.data)
 			return response.data
 		} catch (error: any) {
 			console.error('Ошибка при создании поля:', error)
@@ -40,9 +38,7 @@ export const FormFieldService = {
 	// Удаление поля
 	async deleteField(id: string) {
 		try {
-			console.log('🗑️ Удаление поля с ID:', id)
 			const response = await api.delete(`/api/form-fields/${id}`)
-			console.log('✅ Поле успешно удалено:', response.data)
 			return response.data
 		} catch (error: any) {
 			console.error('❌ Ошибка при удалении поля:', error)
@@ -87,9 +83,7 @@ export const FormFieldService = {
 	// Обновление существующего поля
 	async updateField(id: string, fieldData: Partial<FormField>) {
 		try {
-			console.log('🔄 FormFieldService.updateField:', { id, fieldData })
 			const response = await api.put(`/api/form-fields/${id}`, fieldData)
-			console.log('✅ Поле успешно обновлено:', response.data)
 			return response.data
 		} catch (error: any) {
 			console.error('❌ Ошибка при обновлении поля:', error)

@@ -9,7 +9,6 @@ const DB_NAME = 'beton-crm-production'
 const MONGO_URI = 'mongodb://localhost:27017'
 
 async function validateDatabase() {
-	console.log('🔍 === ВАЛИДАЦИЯ БАЗЫ ДАННЫХ ===\n')
 
 	const client = new MongoClient(MONGO_URI)
 
@@ -27,11 +26,6 @@ async function validateDatabase() {
 			.collection('formfields')
 			.countDocuments({ formId: { $exists: false } })
 
-		console.log('📊 Статистика:')
-		console.log(`   Форм: ${formsCount}`)
-		console.log(`   Полей: ${fieldsCount}`)
-		console.log(`   Полей с formId: ${fieldsWithFormId}`)
-		console.log(`   Полей без formId: ${fieldsWithoutFormId}\n`)
 
 		// Проверки
 		const issues = []
@@ -48,7 +42,6 @@ async function validateDatabase() {
 			const fieldsInForm = await db
 				.collection('formfields')
 				.countDocuments({ formId: form._id.toString() })
-			console.log(`📋 Форма "${form.title}": ${fieldsInForm} полей`)
 
 			if (fieldsInForm === 0) {
 				issues.push(`⚠️ Форма "${form.title}" не имеет полей`)
@@ -61,7 +54,6 @@ async function validateDatabase() {
 			.findOne({ formId: { $exists: true } })
 		if (sampleField) {
 			const formIdType = typeof sampleField.formId
-			console.log(`\n🔍 Тип formId в базе: ${formIdType}`)
 
 			if (formIdType !== 'string') {
 				issues.push(`❌ formId хранится как ${formIdType}, ожидается string`)
@@ -69,26 +61,19 @@ async function validateDatabase() {
 		}
 
 		// Результат
-		console.log('\n📋 === РЕЗУЛЬТАТ ПРОВЕРКИ ===')
 
 		if (issues.length === 0) {
-			console.log('✅ Все проверки пройдены успешно!')
 		} else {
-			console.log('❌ Обнаружены проблемы:')
-			issues.forEach(issue => console.log(`   ${issue}`))
 
 			// Автоисправление если запрошено
 			if (process.argv.includes('--fix')) {
-				console.log('\n🔧 === АВТОИСПРАВЛЕНИЕ ===')
 				await autoFix(db, forms)
 			} else {
-				console.log(
 					'\n💡 Для автоисправления запустите: node scripts/validate-database.js --fix'
 				)
 			}
 		}
 	} catch (error) {
-		console.error('❌ Ошибка:', error)
 	} finally {
 		await client.close()
 	}
@@ -111,26 +96,20 @@ async function autoFix(db, forms) {
 					{ $set: { formId: firstForm._id.toString() } }
 				)
 
-			console.log(
 				`✅ Привязано ${result.modifiedCount} полей к форме "${firstForm.title}"`
 			)
 		}
 
 		// Проверка после исправления
-		console.log('\n🔍 Повторная проверка...')
 		const fieldsWithoutFormIdAfter = await db
 			.collection('formfields')
 			.countDocuments({ formId: { $exists: false } })
 
 		if (fieldsWithoutFormIdAfter === 0) {
-			console.log('✅ Все поля теперь привязаны к формам!')
 		} else {
-			console.log(`⚠️ Осталось ${fieldsWithoutFormIdAfter} полей без формы`)
 		}
 	} catch (error) {
-		console.error('❌ Ошибка автоисправления:', error)
 	}
 }
 
 // Запуск
-validateDatabase().catch(console.error)

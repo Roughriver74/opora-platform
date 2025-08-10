@@ -108,11 +108,9 @@ export const usePerformanceMonitor = (componentName: string) => {
 
 	React.useEffect(() => {
 		mountTimeRef.current = Date.now()
-		console.log(`🚀 ${componentName} mounted`)
 
 		return () => {
 			const lifeTime = Date.now() - mountTimeRef.current
-			console.log(
 				`🔄 ${componentName} unmounted after ${lifeTime}ms, renders: ${renderCountRef.current}`
 			)
 		}
@@ -188,7 +186,6 @@ export const checkLocalStorageLeaks = (): void => {
 			}))
 			.sort((a, b) => b.size - a.size)
 
-		console.log('🔍 Самые большие элементы localStorage:', items.slice(0, 5))
 	}
 }
 
@@ -210,7 +207,6 @@ export const checkGlobalLeaks = (): void => {
 
 	if (globalKeys.length > 50) {
 		console.warn(`⚠️ Много глобальных переменных: ${globalKeys.length}`)
-		console.log(
 			'🔍 Пользовательские глобальные переменные:',
 			globalKeys.slice(0, 10)
 		)
@@ -246,7 +242,6 @@ export const startPerformanceMonitoring = (): void => {
  */
 export const initPerformanceMonitoring = (): void => {
 	if (process.env.NODE_ENV === 'development') {
-		console.log('🔍 Мониторинг производительности включен')
 		startPerformanceMonitoring()
 	}
 }

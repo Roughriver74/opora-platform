@@ -20,7 +20,6 @@ export const useFieldManagement = (
 	const handleFieldSave = useCallback(
 		async (index: number, updatedField: Partial<FormField>) => {
 			try {
-				console.log('Сохранение поля:', { index, updatedField })
 
 				let savedField: FormField
 
@@ -41,7 +40,6 @@ export const useFieldManagement = (
 						_id: updatedField._id, // Убеждаемся что _id сохранен
 					} as FormField
 
-					console.log('🔄 Обновляем поле с полными данными:', {
 						original: originalField,
 						updates: updatedField,
 						complete: completeField,
@@ -51,7 +49,6 @@ export const useFieldManagement = (
 						updatedField._id,
 						completeField
 					)
-					console.log('Поле обновлено:', savedField)
 				} else {
 					// Создаем новое поле
 					const fieldToCreate = {
@@ -64,7 +61,6 @@ export const useFieldManagement = (
 						formId || '',
 						fieldToCreate
 					)
-					console.log('Поле создано:', savedField)
 				}
 
 				setState(prev => {
@@ -83,7 +79,6 @@ export const useFieldManagement = (
 						(a, b) => (a.order || 0) - (b.order || 0)
 					)
 
-					console.log(
 						'🔄 Поля после сохранения:',
 						sortedFields.map(f => ({
 							name: f.name,
@@ -100,7 +95,6 @@ export const useFieldManagement = (
 					}
 				})
 
-				console.log('Поле успешно сохранено')
 
 				// НЕ перезагружаем поля автоматически, чтобы избежать прокрутки страницы
 				// Состояние уже обновлено выше и поля отсортированы
@@ -147,7 +141,6 @@ export const useFieldManagement = (
 			...DEFAULT_FIELD_DATA,
 		}
 
-		console.log('➕ Добавляется новое поле:', {
 			name: newField.name,
 			order: newField.order,
 			formId: newField.formId,
@@ -182,7 +175,6 @@ export const useFieldManagement = (
 			},
 		}
 
-		console.log('📁 Добавляется новый раздел:', {
 			name: newSection.name,
 			label: newSection.label,
 			order: newSection.order,
@@ -206,7 +198,6 @@ export const useFieldManagement = (
 				...DEFAULT_FIELD_DATA,
 			}
 
-			console.log('➕ Добавляется поле в раздел:', {
 				name: newField.name,
 				order: newField.order,
 				formId: newField.formId,
@@ -278,7 +269,6 @@ export const useFieldManagement = (
 					newOrder = maxSectionOrder + 1
 				}
 
-				console.log('🔄 Перемещение поля:', {
 					fieldName: fieldToMove.name,
 					oldOrder: fieldToMove.order,
 					newOrder,
@@ -305,7 +295,6 @@ export const useFieldManagement = (
 	// Нормализация порядка полей
 	const normalizeOrders = useCallback(async () => {
 		try {
-			console.log('🔧 Начинаем нормализацию порядка полей...')
 
 			// Группируем поля по типам
 			const sections = state.fields
@@ -318,7 +307,6 @@ export const useFieldManagement = (
 
 			// Первый проход: пересчитываем разделы на основе их текущего порядка
 			// НЕ меняем порядок разделов, только нормализуем поля внутри разделов
-			console.log(
 				'📋 Разделы в текущем порядке:',
 				sections.map(s => ({ label: s.label, order: s.order }))
 			)
@@ -335,7 +323,6 @@ export const useFieldManagement = (
 					})
 					.sort((a, b) => (a.order || 0) - (b.order || 0))
 
-				console.log(
 					`📁 Раздел "${section.label}" (${sectionOrder}): ${sectionFields.length} полей`
 				)
 
@@ -343,7 +330,6 @@ export const useFieldManagement = (
 				sectionFields.forEach((field, fieldIndex) => {
 					const newOrder = sectionOrder + 1 + fieldIndex
 					if (field.order !== newOrder && field._id) {
-						console.log(
 							`🔹 Поле "${field.label}": ${field.order} → ${newOrder}`
 						)
 						updates.push(
@@ -375,7 +361,6 @@ export const useFieldManagement = (
 				orphanFields.forEach((field, index) => {
 					const newOrder = index + 1
 					if (field.order !== newOrder && field._id) {
-						console.log(
 							`🔸 Поле без раздела "${field.label}": ${field.order} → ${newOrder}`
 						)
 						updates.push(
@@ -389,7 +374,6 @@ export const useFieldManagement = (
 			// Выполняем все обновления
 			if (updates.length > 0) {
 				await Promise.all(updates)
-				console.log(`✅ Обновлено ${updates.length} полей`)
 
 				// Обновляем локальное состояние без перезагрузки из БД
 				setState(prev => ({
@@ -403,7 +387,6 @@ export const useFieldManagement = (
 					hasChanges: true,
 				}))
 			} else {
-				console.log('✅ Порядок полей уже корректный')
 			}
 		} catch (error) {
 			console.error('❌ Ошибка при нормализации порядка:', error)

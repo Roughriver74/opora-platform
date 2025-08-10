@@ -27,7 +27,7 @@ async function createBackup(environment) {
 		throw new Error(`Unknown environment: ${environment}`)
 	}
 
-	console.log(`🔄 Создание бэкапа для окружения: ${environment}`)
+	// Creating backup for environment
 
 	// Создаем папку для бэкапов
 	if (!fs.existsSync(env.backupDir)) {
@@ -38,11 +38,10 @@ async function createBackup(environment) {
 	const backupPath = path.join(env.backupDir, timestamp)
 	fs.mkdirSync(backupPath, { recursive: true })
 
-	console.log(`📁 Папка бэкапа: ${backupPath}`)
+	// Backup folder path
 
 	try {
 		// 1. Создание бэкапа базы данных
-		console.log('🗄️  Создание бэкапа базы данных...')
 		await createDatabaseBackup(
 			env.dbUrl,
 			env.dbName,
@@ -50,10 +49,9 @@ async function createBackup(environment) {
 		)
 
 		// 2. Создание архива файлов приложения
-		console.log('📦 Архивирование файлов приложения...')
 		await createFilesBackup(env.appDir, path.join(backupPath, 'app.tar.gz'))
 
-		console.log(`✅ Бэкап успешно создан: ${backupPath}`)
+		// Backup successfully created
 		return backupPath
 	} catch (error) {
 		// Удаляем неполный бэкап в случае ошибки
@@ -78,7 +76,7 @@ async function createDatabaseBackup(dbUrl, dbName, outputPath) {
 
 		for (const collectionInfo of collections) {
 			const collectionName = collectionInfo.name
-			console.log(`   📋 Экспорт коллекции: ${collectionName}`)
+			// Exporting collection
 
 			const collection = db.collection(collectionName)
 			const documents = await collection.find({}).toArray()
@@ -97,7 +95,7 @@ async function createFilesBackup(sourceDir, outputPath) {
 		const archive = archiver('tar', { gzip: true })
 
 		output.on('close', () => {
-			console.log(`   📦 Архив создан: ${archive.pointer()} байт`)
+			// Archive created
 			resolve()
 		})
 
@@ -120,11 +118,11 @@ if (require.main === module) {
 
 	createBackup(environment)
 		.then(backupPath => {
-			console.log(`🎉 Бэкап завершен: ${backupPath}`)
+			// Backup completed
 			process.exit(0)
 		})
 		.catch(error => {
-			console.error('❌ Ошибка создания бэкапа:', error.message)
+			// Error creating backup
 			process.exit(1)
 		})
 }

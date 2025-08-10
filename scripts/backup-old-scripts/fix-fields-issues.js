@@ -39,19 +39,14 @@ const FormField = mongoose.model('FormField', FormFieldSchema)
 const Form = mongoose.model('Form', FormSchema)
 
 async function diagnoseFieldsIssues() {
-	console.log('=== ДИАГНОСТИКА ПРОБЛЕМ С ПОЛЯМИ ===\n')
 
 	try {
 		// 1. Проверяем все формы
 		const forms = await Form.find()
-		console.log(`📋 Найдено форм: ${forms.length}`)
 
 		for (const form of forms) {
-			console.log(`\n🔍 Форма: "${form.title}" (ID: ${form._id})`)
-			console.log(`   Поля в форме: ${form.fields ? form.fields.length : 0}`)
 
 			if (form.fields && form.fields.length > 0) {
-				console.log(
 					`   ID полей в форме:`,
 					form.fields.slice(0, 5),
 					form.fields.length > 5 ? '...' : ''
@@ -61,7 +56,6 @@ async function diagnoseFieldsIssues() {
 
 		// 2. Проверяем все поля в базе
 		const allFields = await FormField.find()
-		console.log(`\n📝 Всего полей в базе: ${allFields.length}`)
 
 		// 3. Проверяем несоответствия
 		let orphanedFields = []
@@ -69,7 +63,6 @@ async function diagnoseFieldsIssues() {
 
 		if (forms.length > 0) {
 			const mainForm = forms[0] // Берем первую форму
-			console.log(`\n🔗 Анализ связей для формы "${mainForm.title}":`)
 
 			// Поля, которые есть в форме, но нет в базе
 			if (mainForm.fields) {
@@ -91,18 +84,13 @@ async function diagnoseFieldsIssues() {
 				}
 			}
 
-			console.log(`❌ Поля в форме, но НЕТ в базе: ${missingFields.length}`)
 			if (missingFields.length > 0) {
-				console.log('   Отсутствующие ID:', missingFields)
 			}
 
-			console.log(
 				`🚫 Поля в базе, но НЕ привязаны к форме: ${orphanedFields.length}`
 			)
 			if (orphanedFields.length > 0) {
-				console.log('   Отвязанные поля:')
 				orphanedFields.forEach(field => {
-					console.log(
 						`   - ${field.label} (${field.name}) - Order: ${field.order}`
 					)
 				})
@@ -110,7 +98,6 @@ async function diagnoseFieldsIssues() {
 		}
 
 		// 4. Анализ порядка полей
-		console.log(`\n📊 АНАЛИЗ ПОРЯДКА ПОЛЕЙ:`)
 		const fieldsByOrder = allFields.sort(
 			(a, b) => (a.order || 0) - (b.order || 0)
 		)
@@ -119,7 +106,6 @@ async function diagnoseFieldsIssues() {
 		fieldsByOrder.forEach((field, index) => {
 			if (index < 10) {
 				// Показываем первые 10
-				console.log(
 					`   ${field.order || 'NO_ORDER'}: ${field.label} (${field.type})`
 				)
 			}
@@ -131,7 +117,6 @@ async function diagnoseFieldsIssues() {
 		})
 
 		if (hasOrderIssues) {
-			console.log(`⚠️  Обнаружены поля без порядка или с некорректным порядком`)
 		}
 
 		return {
@@ -142,19 +127,16 @@ async function diagnoseFieldsIssues() {
 			hasOrderIssues,
 		}
 	} catch (error) {
-		console.error('❌ Ошибка диагностики:', error)
 		throw error
 	}
 }
 
 async function fixFieldsIssues(options = {}) {
-	console.log('\n=== ИСПРАВЛЕНИЕ ПРОБЛЕМ ===\n')
 
 	const diagnosis = await diagnoseFieldsIssues()
 	const { forms, allFields, orphanedFields, missingFields } = diagnosis
 
 	if (forms.length === 0) {
-		console.log('❌ Нет форм для работы')
 		return
 	}
 
@@ -162,7 +144,6 @@ async function fixFieldsIssues(options = {}) {
 
 	// 1. Удаляем из формы несуществующие поля
 	if (missingFields.length > 0 && options.removeMissingFields) {
-		console.log(
 			`🔧 Удаляем ${missingFields.length} несуществующих полей из формы...`
 		)
 
@@ -171,12 +152,10 @@ async function fixFieldsIssues(options = {}) {
 		)
 		await Form.findByIdAndUpdate(mainForm._id, { fields: validFields })
 
-		console.log(`✅ Удалено ${missingFields.length} несуществующих ссылок`)
 	}
 
 	// 2. Привязываем отвязанные поля к форме
 	if (orphanedFields.length > 0 && options.attachOrphanedFields) {
-		console.log(
 			`🔗 Привязываем ${orphanedFields.length} отвязанных полей к форме...`
 		)
 
@@ -186,12 +165,10 @@ async function fixFieldsIssues(options = {}) {
 
 		await Form.findByIdAndUpdate(mainForm._id, { fields: newFields })
 
-		console.log(`✅ Привязано ${orphanedFields.length} полей к форме`)
 	}
 
 	// 3. Исправляем порядок полей
 	if (diagnosis.hasOrderIssues && options.fixOrder) {
-		console.log(`📋 Исправляем порядок полей...`)
 
 		// Группируем поля по типам
 		const headers = allFields
@@ -242,18 +219,15 @@ async function fixFieldsIssues(options = {}) {
 
 		if (updates.length > 0) {
 			await FormField.bulkWrite(updates)
-			console.log(`✅ Обновлен порядок для ${updates.length} полей`)
 		}
 	}
 
 	// 4. Удаляем отвязанные поля если нужно
 	if (orphanedFields.length > 0 && options.deleteOrphanedFields) {
-		console.log(`🗑️  Удаляем ${orphanedFields.length} отвязанных полей...`)
 
 		const orphanedIds = orphanedFields.map(field => field._id)
 		const result = await FormField.deleteMany({ _id: { $in: orphanedIds } })
 
-		console.log(`✅ Удалено ${result.deletedCount} отвязанных полей`)
 	}
 }
 
@@ -289,19 +263,12 @@ async function main() {
 				deleteOrphanedFields: true,
 			})
 		} else {
-			console.log('Использование:')
-			console.log('  node fix-fields-issues.js diagnose - диагностика проблем')
-			console.log('  node fix-fields-issues.js fix - исправление (безопасное)')
-			console.log(
 				'  node fix-fields-issues.js fix --delete-orphaned - удалить отвязанные поля'
 			)
-			console.log('  node fix-fields-issues.js clean - агрессивная очистка')
 		}
 	} catch (error) {
-		console.error('❌ Ошибка:', error)
 	} finally {
 		await mongoose.disconnect()
-		console.log('\n🔌 Отключено от базы данных')
 	}
 }
 

@@ -144,12 +144,9 @@ const MySubmissions: React.FC = () => {
 	// Загрузка статусов из Битрикс24
 	const loadBitrixStages = async () => {
 		try {
-			console.log('Загрузка статусов из Битрикс24...')
 			const response = await SubmissionService.getBitrixDealStages('1') // Используем категорию 1
-			console.log('Ответ от сервера:', response)
 
 			if (response.success && response.data && response.data.length > 0) {
-				console.log('Статусы загружены:', response.data)
 				setBitrixStages(response.data)
 			} else {
 				console.warn('Нет данных о статусах или некорректный ответ')
@@ -197,7 +194,7 @@ const MySubmissions: React.FC = () => {
 			}
 
 			setSubmissions(response.data)
-			setTotal(response.pagination.total)
+			setTotal(response.total || response.pagination?.total || 0)
 		} catch (err: any) {
 			showError(err.message || 'Ошибка загрузки заявок')
 		} finally {
@@ -215,35 +212,25 @@ const MySubmissions: React.FC = () => {
 	// Функция для редактирования заявки - НОВАЯ ЛОГИКА
 	const handleEditSubmission = async (submission: Submission) => {
 		try {
-			console.log('🔥 [CLIENT EDIT] КНОПКА РЕДАКТИРОВАТЬ НАЖАТА!')
-			console.log(
 				'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
 				submission.id
 			)
-			console.log('[CLIENT EDIT DEBUG] Данные заявки:', submission)
 
 			// Получаем заявку с актуальными данными из Битрикс24
-			console.log(
 				'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
 			)
 			const response = await SubmissionService.getSubmissionForEdit(
 				submission.id
 			)
 
-			console.log('[CLIENT EDIT DEBUG] Ответ от сервера:', response)
-			console.log('[CLIENT EDIT DEBUG] response.data:', response.data)
-			console.log(
 				'[CLIENT EDIT DEBUG] response.data.preloadedOptions:',
 				response.data.preloadedOptions
 			)
 
 			if (response.success) {
-				console.log('[CLIENT EDIT DEBUG] Успешно получены актуальные данные')
-				console.log(
 					'[CLIENT EDIT DEBUG] Обновленные formData:',
 					response.data.formData
 				)
-				console.log(
 					'[CLIENT EDIT DEBUG] Предзагруженные опции:',
 					response.data.preloadedOptions
 				)
@@ -251,15 +238,13 @@ const MySubmissions: React.FC = () => {
 				// Сохраняем актуальные данные для редактирования
 				const editData = {
 					submissionId: response.data.id,
-					formId: response.data.formId?.id || submission.formId?.id,
+					formId: response.data.formId || submission.formId?.id || submission.formId,
 					formData: response.data.formData,
 					preloadedOptions: response.data.preloadedOptions || {},
 				}
 
-				console.log('[CLIENT EDIT DEBUG] Сохраняем в localStorage:', editData)
 				localStorage.setItem('editSubmissionData', JSON.stringify(editData))
 
-				console.log('[CLIENT EDIT DEBUG] Переход к форме редактирования...')
 				navigate(`/?edit=${submission.id}`)
 			} else {
 				console.warn(
@@ -294,23 +279,15 @@ const MySubmissions: React.FC = () => {
 	// Копирование заявки - точно как редактирование
 	const handleCopySubmission = async (submission: Submission) => {
 		try {
-			console.log('🔥 [CLIENT COPY] КНОПКА КОПИРОВАТЬ НАЖАТА!')
-			console.log('[CLIENT COPY] Копирование заявки:', submission.id)
 
 			// Получаем данные заявки для копирования (теперь с preloadedOptions)
 			const response = await SubmissionService.copySubmission(submission.id)
 
-			console.log('[CLIENT COPY] Ответ от сервера:', response)
-			console.log('[CLIENT COPY] response.data:', response.data)
-			console.log(
 				'[CLIENT COPY] response.data.preloadedOptions:',
 				response.data.preloadedOptions
 			)
 
 			if (response.success) {
-				console.log('[CLIENT COPY] Успешно получены данные для копирования')
-				console.log('[CLIENT COPY] FormData:', response.data.formData)
-				console.log(
 					'[CLIENT COPY] Предзагруженные опции:',
 					response.data.preloadedOptions
 				)
@@ -326,10 +303,8 @@ const MySubmissions: React.FC = () => {
 					originalSubmissionNumber: response.data.originalSubmissionNumber,
 				}
 
-				console.log('[CLIENT COPY] Сохраняем в sessionStorage:', copyData)
 				sessionStorage.setItem('copyFormData', JSON.stringify(copyData))
 
-				console.log('[CLIENT COPY] Переход к форме копирования...')
 				navigate(`/?copy=${submission.id}`)
 			} else {
 				console.warn('[CLIENT COPY] Не удалось получить данные для копирования')

@@ -5,16 +5,14 @@ async function analyzeFormFields() {
 
 	try {
 		await client.connect()
-		console.log('Подключение к базе данных успешно')
 
 		const db = client.db('beton-crm-production')
 
 		// Получаем все формы
 		const forms = await db.collection('forms').find({}).toArray()
-		console.log(`Найдено форм: ${forms.length}`)
 
 		for (const form of forms) {
-			console.log(`\n=== ФОРМА: ${form.title} (ID: ${form._id}) ===`)
+			// Processing form
 
 			// Получаем все поля этой формы
 			const fields = await db
@@ -23,7 +21,7 @@ async function analyzeFormFields() {
 				.sort({ order: 1 })
 				.toArray()
 
-			console.log(`Полей в форме: ${fields.length}`)
+			// Count fields in form
 
 			// Анализируем порядок полей
 			const orders = fields.map(f => f.order).sort((a, b) => a - b)
@@ -32,9 +30,7 @@ async function analyzeFormFields() {
 			)
 
 			if (duplicateOrders.length > 0) {
-				console.log(
-					`⚠️  ДУБЛИРУЮЩИЕСЯ ПОРЯДКОВЫЕ НОМЕРА: ${duplicateOrders.join(', ')}`
-				)
+				// Found duplicate orders
 			}
 
 			// Анализируем разделы
@@ -42,8 +38,7 @@ async function analyzeFormFields() {
 			const headerFields = fields.filter(f => f.type === 'header')
 			const regularFields = fields.filter(f => f.type !== 'header')
 
-			console.log(`Заголовков разделов: ${headerFields.length}`)
-			console.log(`Обычных полей: ${regularFields.length}`)
+			// Count header and regular fields
 
 			// Группируем поля по разделам
 			for (const field of fields) {
@@ -54,28 +49,26 @@ async function analyzeFormFields() {
 				sections[sectionOrder].push(field)
 			}
 
-			console.log('\nСТРУКТУРА РАЗДЕЛОВ:')
+			// Analyzing section structure
 			for (const [sectionOrder, sectionFields] of Object.entries(sections)) {
 				const headerField = sectionFields.find(f => f.type === 'header')
 				const nonHeaderFields = sectionFields.filter(f => f.type !== 'header')
 
-				console.log(`\nРаздел ${sectionOrder}:`)
+				// Process section fields
 				if (headerField) {
-					console.log(
-						`  📋 Заголовок: "${headerField.label}" (order: ${headerField.order})`
-					)
+					// Section has header
 				} else {
-					console.log(`  ⚠️  НЕТ ЗАГОЛОВКА!`)
+					// Section missing header
 				}
 
-				console.log(`  📄 Полей: ${nonHeaderFields.length}`)
+				// Process non-header fields
 				nonHeaderFields.forEach(f => {
-					console.log(`    - ${f.label} (order: ${f.order}, type: ${f.type})`)
+					// Field processing
 				})
 			}
 
 			// Проверяем последовательность порядков
-			console.log('\nПРОВЕРКА ПОСЛЕДОВАТЕЛЬНОСТИ:')
+			// Checking order sequence
 			const gaps = []
 			for (let i = 1; i < orders.length; i++) {
 				const diff = orders[i] - orders[i - 1]
@@ -87,14 +80,16 @@ async function analyzeFormFields() {
 			}
 
 			if (gaps.length > 0) {
-				console.log(`⚠️  ПРОПУСКИ В НУМЕРАЦИИ:`)
-				gaps.forEach(gap => console.log(`    ${gap}`))
+				// Found gaps in numbering
+				gaps.forEach(gap => {
+					// Gap in numbering
+				})
 			} else {
-				console.log(`✅ Нумерация последовательная`)
+				// Numbering is sequential
 			}
 		}
 	} catch (error) {
-		console.error('Ошибка:', error)
+		// Error occurred
 	} finally {
 		await client.close()
 	}
@@ -121,10 +116,10 @@ async function backupFormFields() {
 		const backupFile = `backup-form-fields-${Date.now()}.json`
 		fs.writeFileSync(backupFile, JSON.stringify(backup, null, 2))
 
-		console.log(`✅ Резервная копия сохранена в файл: ${backupFile}`)
+		// Backup file saved
 		return backupFile
 	} catch (error) {
-		console.error('Ошибка создания резервной копии:', error)
+		// Error creating backup
 	} finally {
 		await client.close()
 	}
@@ -141,7 +136,7 @@ async function fixFieldOrders() {
 		const forms = await db.collection('forms').find({}).toArray()
 
 		for (const form of forms) {
-			console.log(`\nИсправляем форму: ${form.title}`)
+			// Fixing form
 
 			const fields = await db
 				.collection('formfields')
@@ -173,16 +168,16 @@ async function fixFieldOrders() {
 						await db
 							.collection('formfields')
 							.updateOne({ _id: field._id }, { $set: { order: newOrder } })
-						console.log(`  Поле "${field.label}": ${field.order} → ${newOrder}`)
+						// Field order updated
 						updateCount++
 					}
 				}
 			}
 
-			console.log(`Обновлено полей: ${updateCount}`)
+			// Fields updated
 		}
 	} catch (error) {
-		console.error('Ошибка исправления порядка:', error)
+		// Error fixing order
 	} finally {
 		await client.close()
 	}
@@ -200,25 +195,16 @@ async function main() {
 			await backupFormFields()
 			break
 		case 'fix':
-			console.log('Создаем резервную копию перед исправлением...')
+			// Creating backup before fixing
 			await backupFormFields()
-			console.log('\nНачинаем исправление...')
+			// Starting fix
 			await fixFieldOrders()
-			console.log('\nПроверяем результат...')
+			// Checking result
 			await analyzeFormFields()
 			break
 		default:
-			console.log('Использование:')
-			console.log(
-				'  node analyze-form-fields.js analyze  - Анализ состояния полей'
-			)
-			console.log(
-				'  node analyze-form-fields.js backup   - Создание резервной копии'
-			)
-			console.log(
-				'  node analyze-form-fields.js fix      - Исправление порядка полей'
-			)
+			// Show usage information
 	}
 }
 
-main().catch(console.error)
+main().catch(() => {})

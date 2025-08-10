@@ -137,7 +137,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 	const safeBitrixFields = bitrixFields || {}
 
 	// Логирование для диагностики
-	console.log('🎯 FieldsList: Render with props:', {
 		fieldsLength: fields?.length || 0,
 		loading,
 		bitrixFieldsKeys: Object.keys(bitrixFields || {}).length,
@@ -151,7 +150,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 		)
 		const sections: Section[] = []
 
-		console.log(
 			'🔍 Сортированные поля:',
 			sorted.map(f => ({ name: f.name, type: f.type, order: f.order }))
 		)
@@ -216,7 +214,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 			})
 		}
 
-		console.log(
 			'📋 Группированные разделы:',
 			sections.map(s => ({
 				id: s.id,
@@ -298,7 +295,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 		(targetSectionOrder: number) => {
 			if (selectedFields.size === 0) return
 
-			console.log(
 				`📦 Перемещаем ${selectedFields.size} полей в раздел с order ${targetSectionOrder}`
 			)
 
@@ -331,7 +327,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 			return
 		}
 
-		console.log(
 			'🔄 Применяем локальные изменения порядка разделов:',
 			localOrderChanges
 		)
@@ -356,7 +351,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 			const sectionHeader = section.header
 			const oldSectionOrder = sectionHeader.order || 0
 
-			console.log(`📁 Обрабатываем раздел "${sectionHeader.name}":`, {
 				oldOrder: oldSectionOrder,
 				newOrder: newSectionOrder,
 				fieldsCount: section.fields.length,
@@ -371,7 +365,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 			allUpdatePromises.push(
 				new Promise<void>((resolve, reject) => {
 					try {
-						console.log(
 							`📝 Обновляем раздел ${sectionHeader.name}: ${oldSectionOrder} → ${newSectionOrder}`
 						)
 						onFieldSave(section.headerIndex!, updatedSectionField)
@@ -399,7 +392,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 				const newFieldOrder =
 					parseInt(newSectionOrder.toString()) + fieldIndex + 1
 
-				console.log(
 					`🔍 Анализ поля "${field.name}": section=${newSectionOrder}, fieldIndex=${fieldIndex}, newOrder=${newFieldOrder}`
 				)
 
@@ -409,7 +401,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 						order: newFieldOrder,
 					}
 
-					console.log(
 						`🔹 Перемещаем поле "${field.name}": ${oldFieldOrder} → ${newFieldOrder}`
 					)
 
@@ -424,7 +415,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 						})
 					)
 				} else {
-					console.log(
 						`⏭️ Поле "${field.name}" остается на месте: order=${oldFieldOrder}`
 					)
 				}
@@ -433,13 +423,11 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 
 		try {
 			// Ждем выполнения всех обновлений (разделы + поля)
-			console.log(`⏳ Выполняем ${allUpdatePromises.length} обновлений...`)
 			await Promise.all(allUpdatePromises)
 
 			// Очищаем локальные изменения
 			setLocalOrderChanges({})
 
-			console.log(
 				'✅ Все изменения применены, запускаем финальную нормализацию...'
 			)
 
@@ -667,7 +655,6 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 												onChange={e => {
 													// НЕ сохраняем в БД, только обновляем локальное состояние
 													const newOrder = parseInt(e.target.value) || 0
-													console.log(
 														'📝 Локальное изменение порядка раздела:',
 														{
 															sectionId: section.id,

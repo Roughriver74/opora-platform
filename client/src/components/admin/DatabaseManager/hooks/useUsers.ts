@@ -46,7 +46,6 @@ export const useUsers = (): UseUsersReturn => {
 	const updateUser = useCallback(
 		async (id: string, updates: Partial<User>) => {
 			try {
-				console.log('🔄 Обновление пользователя:', { id, updates })
 
 				// Оптимистичное обновление
 				setData(prev => {
@@ -58,7 +57,6 @@ export const useUsers = (): UseUsersReturn => {
 
 				// Отправляем обновление на сервер
 				await UserService.updateUser(id, updates)
-				console.log('✅ Пользователь успешно обновлен')
 			} catch (err: any) {
 				console.error('❌ Ошибка обновления пользователя:', err)
 

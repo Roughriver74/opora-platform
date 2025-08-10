@@ -18,7 +18,6 @@ export const useDynamicOptions = (
 	// Initialize preloaded options
 	useEffect(() => {
 		if (preloadedOptions && preloadedOptions.length > 0) {
-			console.log(
 				'🔧 [useDynamicOptions] Устанавливаем предзагруженные опции:',
 				preloadedOptions
 			)
@@ -144,7 +143,6 @@ export const useDynamicOptions = (
 
 				dataOptions = uniqueOptions
 
-				console.log(
 					`🔍 useDynamicOptions: Загружены опции для "${query}":`,
 					dataOptions.length,
 					'штук'
@@ -155,14 +153,12 @@ export const useDynamicOptions = (
 				if (query && dataOptions.length > 0) {
 					const exactMatch = dataOptions.find(opt => opt.value === query)
 					if (exactMatch) {
-						console.log(
 							`✅ useDynamicOptions: Автоматически выбираем точное совпадение:`,
 							exactMatch
 						)
 						setSelectedOption(exactMatch)
 					} else if (autoSelectFirst && dataOptions.length === 1) {
 						// Если был запрос на автоматический выбор и найдена только одна опция
-						console.log(
 							`✅ useDynamicOptions: Автоматически выбираем единственную найденную опцию:`,
 							dataOptions[0]
 						)
@@ -188,7 +184,6 @@ export const useDynamicOptions = (
 			if (value && options.length > 0) {
 				const foundOption = options.find(opt => opt.value === value)
 				if (foundOption) {
-					console.log(
 						`🔄 useDynamicOptions: Принудительная синхронизация с опцией:`,
 						foundOption
 					)

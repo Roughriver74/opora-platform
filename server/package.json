@@ -11,10 +11,9 @@
 		"migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/database/config/database.config.ts",
 		"migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/config/database.config.ts",
 		"migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/config/database.config.ts",
-		"migrate:export": "ts-node --transpile-only src/database/migrations/scripts/export-from-mongodb.ts",
-		"migrate:transform": "ts-node --transpile-only src/database/migrations/scripts/transform-data.ts",
-		"migrate:import": "ts-node --transpile-only src/database/migrations/scripts/import-to-postgresql.ts",
-		"migrate:all": "ts-node --transpile-only src/database/migrations/scripts/migrate-all.ts"
+		"db:check": "ts-node --transpile-only src/database/migrations/scripts/check-tables.ts",
+		"db:clean": "ts-node --transpile-only src/database/migrations/scripts/clean-db.ts",
+		"db:verify": "ts-node --transpile-only src/database/migrations/scripts/verify-import.ts"
 	},
 	"keywords": [],
 	"author": "",
@@ -33,7 +32,6 @@
 		"dotenv": "^16.5.0",
 		"express": "^5.1.0",
 		"jsonwebtoken": "^9.0.2",
-		"mongoose": "^8.15.1",
 		"pg": "^8.16.3",
 		"redis": "^4.7.1",
 		"reflect-metadata": "^0.2.2",

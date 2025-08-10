@@ -9,34 +9,32 @@ mongoose.connect('mongodb://localhost:27017/beton-crm', {
 
 mongoose.connection.once('open', async () => {
 	try {
-		console.log('=== Проверка текущего состояния ===')
+		// Checking current state
 
 		// Проверяем форму
 		const form = await Form.findOne()
 		if (!form) {
-			console.log('❌ Форма не найдена!')
 			process.exit(1)
 		}
 
-		console.log('✅ Форма найдена:', form.title)
-		console.log('📋 Количество полей в форме:', form.fields.length)
+		// Form found and field count checked
 
 		// Проверяем поля в базе
 		const totalFields = await FormField.countDocuments()
-		console.log('🗂️ Всего полей в базе данных:', totalFields)
+		// Total fields in database
 
 		// Проверяем привязанные поля
 		const linkedFields = await FormField.countDocuments({
 			_id: { $in: form.fields },
 		})
-		console.log('🔗 Привязанных полей найдено:', linkedFields)
+		// Linked fields found
 
 		// Проверяем порядок полей
 		const fields = await FormField.find({ _id: { $in: form.fields } }).sort({
 			order: 1,
 		})
 
-		console.log('\n📊 Анализ порядка полей:')
+		// Analyzing field order
 		const sections = {}
 		fields.forEach(field => {
 			const sectionOrder = Math.floor(field.order / 100) * 100
@@ -54,15 +52,14 @@ mongoose.connection.once('open', async () => {
 		Object.keys(sections)
 			.sort((a, b) => a - b)
 			.forEach(sectionOrder => {
-				console.log(`\n📁 Раздел ${sectionOrder}:`)
+				// Process section
 				sections[sectionOrder].forEach(field => {
-					console.log(`  ${field.order}: ${field.name} (${field.type})`)
+					// Process field
 				})
 			})
 
 		process.exit(0)
 	} catch (error) {
-		console.error('❌ Ошибка:', error)
 		process.exit(1)
 	}
 })

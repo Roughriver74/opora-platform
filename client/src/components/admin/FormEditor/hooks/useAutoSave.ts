@@ -42,7 +42,6 @@ export const useAutoSave = (
 					autoSaving: false,
 				}))
 
-				console.log('Автосохранение успешно:', savedForm._id)
 			} catch (err: any) {
 				console.error('Ошибка автосохранения:', err)
 

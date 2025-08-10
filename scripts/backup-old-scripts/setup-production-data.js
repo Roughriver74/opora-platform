@@ -37,19 +37,15 @@ const FormField = mongoose.model('FormField', formFieldSchema)
 
 async function setupProductionData() {
 	try {
-		console.log('🚀 Настройка данных для продакшн среды...')
 
 		// Подключение через переменную окружения или локальный URI
 		const MONGODB_URI =
 			process.env.MONGODB_URI ||
 			'mongodb://localhost:27017/beton-crm-production'
 		await mongoose.connect(MONGODB_URI)
-		console.log('✅ Подключение к базе данных успешно')
-		console.log(`📍 База данных: ${MONGODB_URI}`)
 
 		// Проверяем существующие данные
 		const existingFields = await FormField.countDocuments()
-		console.log(`📊 Найдено полей: ${existingFields}`)
 
 		// Создаем header поля
 		const headerFields = [
@@ -190,10 +186,8 @@ async function setupProductionData() {
 			if (!existingField) {
 				const newField = new FormField(field)
 				await newField.save()
-				console.log(`✅ Создано поле: ${field.label} (тип: ${field.type})`)
 				createdFieldsCount++
 			} else {
-				console.log(`ℹ️  Поле "${field.label}" уже существует`)
 			}
 		}
 
@@ -201,16 +195,9 @@ async function setupProductionData() {
 		const totalFields = await FormField.countDocuments()
 		const headerFieldsCount = await FormField.countDocuments({ type: 'header' })
 
-		console.log('\n=== ИТОГОВАЯ СТАТИСТИКА ===')
-		console.log(`📊 Всего полей в базе: ${totalFields}`)
-		console.log(`📊 Header полей: ${headerFieldsCount}`)
-		console.log(`✅ Создано новых полей: ${createdFieldsCount}`)
 
 		await mongoose.disconnect()
-		console.log('🔌 Отключение от базы данных')
-		console.log('🎉 Настройка данных завершена успешно!')
 	} catch (error) {
-		console.error('❌ Ошибка при настройке данных:', error)
 		process.exit(1)
 	}
 }

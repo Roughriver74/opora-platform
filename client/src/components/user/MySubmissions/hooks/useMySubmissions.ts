@@ -101,35 +101,25 @@ export const useMySubmissions = () => {
 	// Обработчики событий
 	const handleEditSubmission = async (submission: any) => {
 		try {
-			console.log('🔥 [CLIENT EDIT] КНОПКА РЕДАКТИРОВАТЬ НАЖАТА!')
-			console.log(
 				'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
 				submission.id
 			)
-			console.log('[CLIENT EDIT DEBUG] Данные заявки:', submission)
 
 			// Получаем заявку с актуальными данными из Битрикс24
-			console.log(
 				'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
 			)
 			const response = await submissionService.getSubmissionForEdit(
 				submission.id
 			)
 
-			console.log('[CLIENT EDIT DEBUG] Ответ от сервера:', response)
-			console.log('[CLIENT EDIT DEBUG] response.data:', response.data)
-			console.log(
 				'[CLIENT EDIT DEBUG] response.data.preloadedOptions:',
 				response.data.preloadedOptions
 			)
 
 			if (response.success) {
-				console.log('[CLIENT EDIT DEBUG] Успешно получены актуальные данные')
-				console.log(
 					'[CLIENT EDIT DEBUG] Обновленные formData:',
 					response.data.formData
 				)
-				console.log(
 					'[CLIENT EDIT DEBUG] Предзагруженные опции:',
 					response.data.preloadedOptions
 				)
@@ -137,15 +127,13 @@ export const useMySubmissions = () => {
 				// Сохраняем актуальные данные для редактирования
 				const editData = {
 					submissionId: response.data.id,
-					formId: response.data.formId.id,
+					formId: response.data.formId,
 					formData: response.data.formData,
 					preloadedOptions: response.data.preloadedOptions || {},
 				}
 
-				console.log('[CLIENT EDIT DEBUG] Сохраняем в localStorage:', editData)
 				localStorage.setItem('editSubmissionData', JSON.stringify(editData))
 
-				console.log('[CLIENT EDIT DEBUG] Переход к форме редактирования...')
 				navigate(`/?edit=${submission.id}`)
 			} else {
 				// Если не удалось получить актуальные данные, используем локальные
@@ -170,7 +158,6 @@ export const useMySubmissions = () => {
 			)
 
 			// В случае ошибки используем локальные данные
-			console.log(
 				'[CLIENT EDIT DEBUG] Используем локальные данные из-за ошибки'
 			)
 			localStorage.setItem(

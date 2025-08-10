@@ -32,7 +32,6 @@ export const useImprovedDragAndDrop = (
 	// Начало перетаскивания
 	const handleDragStart = useCallback(
 		(e: React.DragEvent<HTMLDivElement>, elementId: string, index: number) => {
-			console.log('🎯 Начало перетаскивания:', { elementId, index })
 
 			// Устанавливаем данные для передачи
 			e.dataTransfer.setData('text/plain', index.toString())
@@ -90,7 +89,6 @@ export const useImprovedDragAndDrop = (
 			const sourceIndex = Number(e.dataTransfer.getData('text/plain'))
 			const elementId = e.dataTransfer.getData('elementId')
 
-			console.log('📦 Сброс элемента:', {
 				sourceIndex,
 				targetIndex,
 				elementId,
@@ -133,7 +131,6 @@ export const useImprovedDragAndDrop = (
 					)
 
 				await Promise.all(savePromises)
-				console.log('✅ Порядок успешно обновлен в базе данных')
 				
 				// Перезагружаем поля с сервера для получения актуальных данных
 				if (onLoadFields) {
@@ -234,7 +231,6 @@ export const useImprovedDragAndDrop = (
 					)
 
 				await Promise.all(savePromises)
-				console.log('✅ Порядок успешно изменен')
 				
 				// Перезагружаем поля с сервера для получения актуальных данных
 				if (onLoadFields) {
@@ -261,7 +257,6 @@ export const useImprovedDragAndDrop = (
 	// Нормализация всех порядков
 	const normalizeOrders = useCallback(async () => {
 		try {
-			console.log('🔧 Нормализация всех порядков...')
 
 			const normalizedFields = normalizeAllOrders(state.fields)
 
@@ -282,7 +277,6 @@ export const useImprovedDragAndDrop = (
 				)
 
 			await Promise.all(savePromises)
-			console.log('✅ Все порядки нормализованы')
 			
 			// Перезагружаем поля с сервера для получения актуальных данных
 			if (onLoadFields) {

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
-import Form from '../models/Form'
-import { DatabaseIdUtils, MongoStringId } from '../types/database'
+import { AppDataSource } from '../database/config/database.config'
+import { Form } from '../database/entities/Form.entity'
+import { validate as isUUID } from 'uuid'
 
 /**
  * Middleware для валидации связей между формами и полями
@@ -19,10 +20,10 @@ export const validateFormFieldRelation = async (
 			return
 		}
 
-		// Проверяем формат ID
-		if (!DatabaseIdUtils.isValidObjectId(formId)) {
+		// Проверяем формат ID (теперь используем UUID)
+		if (!isUUID(formId)) {
 			res.status(400).json({
-				message: 'Некорректный формат formId',
+				message: 'Некорректный формат formId (ожидается UUID)',
 				field: 'formId',
 				received: formId,
 			})
@@ -30,7 +31,8 @@ export const validateFormFieldRelation = async (
 		}
 
 		// Проверяем существование формы
-		const formExists = await Form.findById(formId)
+		const formRepository = AppDataSource.getRepository(Form)
+		const formExists = await formRepository.findOne({ where: { id: formId } })
 		if (!formExists) {
 			res.status(400).json({
 				message: 'Форма с указанным ID не существует',
@@ -40,10 +42,9 @@ export const validateFormFieldRelation = async (
 			return
 		}
 
-		// Приводим formId к строке для консистентности
-		req.body.formId = DatabaseIdUtils.toString(formId)
+		// formId уже в правильном формате UUID
+		req.body.formId = formId
 
-		console.log(
 			`✅ Валидация связи: поле будет привязано к форме ${req.body.formId}`
 		)
 		next()
@@ -72,17 +73,19 @@ export const validateFormFieldUpdateRelation = async (
 			return
 		}
 
-		// Аналогичная валидация для обновления
-		if (!DatabaseIdUtils.isValidObjectId(formId)) {
+		// Проверяем формат ID (используем UUID)
+		if (!isUUID(formId)) {
 			res.status(400).json({
-				message: 'Некорректный формат formId при обновлении',
+				message: 'Некорректный формат formId при обновлении (ожидается UUID)',
 				field: 'formId',
 				received: formId,
 			})
 			return
 		}
 
-		const formExists = await Form.findById(formId)
+		// Проверяем существование формы
+		const formRepository = AppDataSource.getRepository(Form)
+		const formExists = await formRepository.findOne({ where: { id: formId } })
 		if (!formExists) {
 			res.status(400).json({
 				message: 'Форма с указанным ID не существует при обновлении',
@@ -92,9 +95,9 @@ export const validateFormFieldUpdateRelation = async (
 			return
 		}
 
-		req.body.formId = DatabaseIdUtils.toString(formId)
+		// formId уже в правильном формате UUID
+		req.body.formId = formId
 
-		console.log(
 			`✅ Валидация обновления: поле остается привязанным к форме ${req.body.formId}`
 		)
 		next()

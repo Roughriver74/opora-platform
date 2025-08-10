@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
-import AdminToken from '../models/AdminToken'
+import { AppDataSource } from '../database/config/database.config'
+import { AdminToken } from '../database/entities/AdminToken.entity'
 
 // Время жизни токенов
 const ACCESS_TOKEN_EXPIRY = '4h' // Увеличено время для access токена до 4 часов
@@ -47,10 +48,12 @@ export class JWTService {
 		)
 
 		// Сохраняем refresh токен в базе данных
-		await AdminToken.create({
-			token: refreshToken,
-			type: 'refresh',
-		})
+		const tokenRepository = AppDataSource.getRepository(AdminToken)
+		const adminToken = new AdminToken()
+		adminToken.token = refreshToken
+		adminToken.purpose = 'refresh'
+		adminToken.userId = payload.id || '' // Нужен userId
+		await tokenRepository.save(adminToken)
 
 		return {
 			accessToken,
@@ -68,8 +71,11 @@ export class JWTService {
 
 			// Для refresh токенов проверяем наличие в базе данных
 			if (decoded.type === 'refresh') {
-				const tokenDoc = await AdminToken.findOne({ token })
-				if (!tokenDoc) {
+				const tokenRepository = AppDataSource.getRepository(AdminToken)
+				const tokenDoc = await tokenRepository.findOne({ 
+					where: { token, isActive: true } 
+				})
+				if (!tokenDoc || tokenDoc.isExpired()) {
 					return null
 				}
 			}
@@ -113,7 +119,8 @@ export class JWTService {
 	 */
 	async revokeToken(token: string): Promise<boolean> {
 		try {
-			await AdminToken.deleteOne({ token })
+			const tokenRepository = AppDataSource.getRepository(AdminToken)
+			await tokenRepository.delete({ token })
 			return true
 		} catch (error) {
 			console.error('Ошибка при отзыве токена:', error)
@@ -126,9 +133,13 @@ export class JWTService {
 	 */
 	async revokeAllUserTokens(userId?: string): Promise<boolean> {
 		try {
-			// Для текущей простой системы удаляем все токены
-			// В будущем можно добавить фильтрацию по userId
-			await AdminToken.deleteMany({})
+			const tokenRepository = AppDataSource.getRepository(AdminToken)
+			if (userId) {
+				await tokenRepository.delete({ userId })
+			} else {
+				// Удаляем все токены
+				await tokenRepository.delete({})
+			}
 			return true
 		} catch (error) {
 			console.error('Ошибка при отзыве всех токенов:', error)

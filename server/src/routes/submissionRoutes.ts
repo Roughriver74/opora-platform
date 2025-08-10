@@ -44,15 +44,11 @@ router.get('/:id', requireAuth, (req: Request, res: Response) => {
 
 // Получение заявки с актуальными данными из Битрикс24 для редактирования
 router.get('/:id/edit', requireAuth, (req: Request, res: Response) => {
-	console.log(`[ROUTE EDIT] GET /:id/edit вызван для заявки ${req.params.id}`)
-	console.log(`[ROUTE EDIT] Пользователь: ${req.user?.id}`)
 	submissionController.getSubmissionWithBitrixData(req, res)
 })
 
 // Копирование заявки
 router.post('/:id/copy', requireAuth, (req: Request, res: Response) => {
-	console.log(`[ROUTE COPY] POST /:id/copy вызван для заявки ${req.params.id}`)
-	console.log(`[ROUTE COPY] Пользователь: ${req.user?.id}`)
 	submissionController.copySubmission(req, res)
 })
 

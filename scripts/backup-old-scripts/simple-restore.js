@@ -39,24 +39,18 @@ const Form = mongoose.model('Form', FormSchema)
 
 async function simpleRestore() {
 	try {
-		console.log('=== ПРОСТОЕ ВОССТАНОВЛЕНИЕ ===\n')
 
 		// Читаем бэкап
 		const backup = JSON.parse(
 			fs.readFileSync('./backup-form-fields-1750258946011.json', 'utf8')
 		)
 
-		console.log('📄 Бэкап содержит:')
-		console.log(`   Форм: ${backup.forms.length}`)
-		console.log(`   Полей: ${backup.fields.length}`)
 
 		// Очищаем существующие данные
-		console.log('\n🧹 Очистка...')
 		await FormField.deleteMany({})
 		await Form.deleteMany({})
 
 		// Восстанавливаем поля (без timestamps)
-		console.log('\n📝 Восстановление полей...')
 
 		for (const field of backup.fields) {
 			const newField = {
@@ -78,10 +72,8 @@ async function simpleRestore() {
 			await FormField.create(newField)
 		}
 
-		console.log(`✅ Восстановлено ${backup.fields.length} полей`)
 
 		// Восстанавливаем формы (без timestamps)
-		console.log('\n📋 Восстановление форм...')
 
 		for (const form of backup.forms) {
 			const newForm = {
@@ -98,15 +90,11 @@ async function simpleRestore() {
 			await Form.create(newForm)
 		}
 
-		console.log(`✅ Восстановлено ${backup.forms.length} форм`)
 
 		// Проверяем связи
-		console.log('\n🔗 Проверка связей...')
 
 		const forms = await Form.find()
 		for (const form of forms) {
-			console.log(`\n📋 Форма: ${form.title}`)
-			console.log(`   ID полей в форме: ${form.fields.length}`)
 
 			let foundFields = 0
 			for (const fieldId of form.fields) {
@@ -116,23 +104,17 @@ async function simpleRestore() {
 				}
 			}
 
-			console.log(`   Найдено в базе: ${foundFields}`)
 
 			if (foundFields === form.fields.length) {
-				console.log('   ✅ Все поля найдены')
 			} else {
-				console.log(
 					`   ❌ Не найдено ${form.fields.length - foundFields} полей`
 				)
 			}
 		}
 
-		console.log('\n🎉 Восстановление завершено!')
 	} catch (error) {
-		console.error('❌ Ошибка:', error)
 	} finally {
 		await mongoose.disconnect()
-		console.log('\n🔌 Отключено')
 	}
 }
 

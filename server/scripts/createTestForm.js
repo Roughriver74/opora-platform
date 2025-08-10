@@ -29,7 +29,6 @@ const Form = mongoose.model('Form', FormSchema);
 
 async function createTestForm() {
   try {
-    console.log('Создаю тестовую форму с секциями...');
     
     // Создаем поля для тестовой формы с секциями
     const fields = await FormField.insertMany([
@@ -54,7 +53,6 @@ async function createTestForm() {
       { name: 'factory_address', label: 'Адрес завода', type: 'text', required: false, bitrixFieldId: 'FACTORY_ADDRESS', bitrixFieldType: 'string', order: 24 }
     ]);
     
-    console.log(`Создано полей: ${fields.length}`);
     
     // Создаем форму
     const form = await Form.create({
@@ -67,15 +65,6 @@ async function createTestForm() {
       successMessage: 'Заявка успешно отправлена!'
     });
     
-    console.log('✅ Тестовая форма создана!');
-    console.log('ID формы:', form._id);
-    console.log('Название:', form.title);
-    console.log('Количество полей:', fields.length);
-    console.log('\n🔗 Теперь можно протестировать связанные поля:');
-    console.log('1. Откройте форму в браузере');
-    console.log('2. Заполните поля в секции "Информация о покупателе"');
-    console.log('3. В секции "Информация о заводе" появится кнопка "Копировать поля"');
-    console.log('4. Нажмите кнопку и выберите, какие поля копировать');
     
   } catch (error) {
     console.error('❌ Ошибка создания формы:', error);

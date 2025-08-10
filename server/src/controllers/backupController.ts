@@ -13,7 +13,6 @@ const executeNodeScript = (
 ): Promise<string> => {
 	return new Promise((resolve, reject) => {
 		const command = `node ${scriptPath} ${args.join(' ')}`
-		console.log(`Executing command: ${command}`)
 		exec(command, (error, stdout, stderr) => {
 			if (error) {
 				console.error(`Error executing script: ${stderr}`)
@@ -62,7 +61,6 @@ export const createBackup = async (
 		const environment =
 			process.env.NODE_ENV === 'production' ? 'production' : 'local'
 
-		console.log(
 			`Creating backup with script: ${scriptPath}, environment: ${environment}`
 		)
 
@@ -100,7 +98,6 @@ export const restoreBackup = async (
 		const environment =
 			process.env.NODE_ENV === 'production' ? 'production' : 'local'
 
-		console.log(`Starting restore from backup: ${timestamp}`)
 
 		// Проверяем существование скрипта
 		if (!fs.existsSync(scriptPath)) {
@@ -121,7 +118,6 @@ export const restoreBackup = async (
 				console.error(`Restore Error: ${stderr}`)
 				// В продакшене здесь можно добавить уведомление админу
 			} else {
-				console.log(`Restore Success: ${stdout}`)
 				// В продакшене здесь можно добавить уведомление об успехе
 			}
 		})

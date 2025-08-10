@@ -264,7 +264,6 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 					newOrder = baseSectionOrder + 99
 				}
 
-				console.log(
 					`Установка порядка для поля в разделе ${sectionNumber}: ${newOrder}`
 				)
 				handleChange('order', newOrder)

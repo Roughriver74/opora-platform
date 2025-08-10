@@ -141,7 +141,6 @@ export const deleteSetting = async (
 export const initializeDefaultSettings = async () => {
 	try {
 		await settingsService.initializeDefaultSettings()
-		console.log('✅ Настройки по умолчанию инициализированы')
 	} catch (error) {
 		console.error('❌ Ошибка инициализации настроек:', error)
 	}

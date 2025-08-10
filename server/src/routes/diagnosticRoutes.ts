@@ -1,9 +1,6 @@
 import express from 'express'
-import {
-	validateFormFieldsIntegrity,
-	autoFixDatabaseIssues,
-} from '../utils/databaseValidation'
 import { adminMiddleware } from '../middleware/adminMiddleware'
+import { AppDataSource } from '../database/config/database.config'
 
 const router = express.Router()
 
@@ -13,11 +10,16 @@ const router = express.Router()
  */
 router.get('/database', adminMiddleware, async (req, res) => {
 	try {
-		const validation = await validateFormFieldsIntegrity()
-
+		// Простая проверка подключения к базе данных
+		const isConnected = AppDataSource.isInitialized
+		
 		res.json({
 			success: true,
-			validation,
+			validation: {
+				isValid: isConnected,
+				database: 'PostgreSQL',
+				connection: isConnected ? 'active' : 'inactive'
+			},
 			timestamp: new Date().toISOString(),
 		})
 	} catch (error) {
@@ -31,19 +33,16 @@ router.get('/database', adminMiddleware, async (req, res) => {
 
 /**
  * POST /api/diagnostic/fix-database
- * Автоматическое исправление проблем в базе данных
+ * Автоматическое исправление проблем в базе данных (заглушка)
  */
 router.post('/fix-database', adminMiddleware, async (req, res) => {
 	try {
-		const fixResult = await autoFixDatabaseIssues()
-
-		// Повторная проверка после исправлений
-		const validationAfterFix = await validateFormFieldsIntegrity()
-
 		res.json({
 			success: true,
-			fixResult,
-			validationAfterFix,
+			fixResult: {
+				message: 'PostgreSQL database is managed by migrations',
+				recommendation: 'Run migrations if needed'
+			},
 			timestamp: new Date().toISOString(),
 		})
 	} catch (error) {
@@ -61,20 +60,19 @@ router.post('/fix-database', adminMiddleware, async (req, res) => {
  */
 router.get('/health', async (req, res) => {
 	try {
-		const validation = await validateFormFieldsIntegrity()
+		const isConnected = AppDataSource.isInitialized
 
 		const healthStatus = {
-			database: validation.isValid ? 'healthy' : 'issues_detected',
+			database: isConnected ? 'healthy' : 'disconnected',
 			uptime: process.uptime(),
 			timestamp: new Date().toISOString(),
-			issues: validation.issues,
-			statistics: validation.statistics,
+			connection: isConnected ? 'active' : 'inactive',
 		}
 
-		const statusCode = validation.isValid ? 200 : 500
+		const statusCode = isConnected ? 200 : 500
 
 		res.status(statusCode).json({
-			success: validation.isValid,
+			success: isConnected,
 			health: healthStatus,
 		})
 	} catch (error) {

@@ -76,6 +76,7 @@ export interface SubmissionFilters {
 export interface SubmissionResponse {
 	success: boolean
 	data: Submission[]
+	total?: number
 	pagination: {
 		page: number
 		limit: number
@@ -144,7 +145,7 @@ export const SubmissionService = {
 		success: boolean
 		data: {
 			id: string
-			formId: { id: string }
+			formId: string
 			formData: Record<string, any>
 			preloadedOptions?: Record<string, any[]>
 		}
@@ -167,7 +168,12 @@ export const SubmissionService = {
 			
 			// Проверяем обязательные поля
 			const data = response.data.data
-			if (!data?.id || !data?.formId?.id) {
+			if (!data?.id || !data?.formId) {
+					hasDataId: !!data?.id,
+					hasFormId: !!data?.formId,
+					formIdType: typeof data?.formId,
+					data: data
+				})
 				throw new Error('Получены неполные данные заявки')
 			}
 			

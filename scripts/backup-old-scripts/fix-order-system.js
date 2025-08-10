@@ -24,10 +24,8 @@ const FormField = mongoose.model('FormField', FormFieldSchema)
 
 async function fixOrderSystem() {
 	try {
-		console.log('=== ИСПРАВЛЕНИЕ СИСТЕМЫ ПОРЯДКА ===\n')
 
 		const allFields = await FormField.find().sort({ order: 1 })
-		console.log(`📝 Всего полей: ${allFields.length}`)
 
 		// Группируем поля по типам
 		const headers = allFields.filter(f => f.type === 'header')
@@ -36,17 +34,12 @@ async function fixOrderSystem() {
 			f => f.type !== 'header' && f.type !== 'divider'
 		)
 
-		console.log(`\n📊 АНАЛИЗ:`)
-		console.log(`📋 Заголовков: ${headers.length}`)
-		console.log(`➖ Разделителей: ${dividers.length}`)
-		console.log(`📝 Обычных полей: ${regularFields.length}`)
 
 		// Применяем новую систему порядка
 		const updates = []
 		let currentOrder = 100
 		let sectionNumber = 1
 
-		console.log(`\n🔧 НОВАЯ СИСТЕМА ПОРЯДКА:`)
 
 		// Сначала обрабатываем по логическим группам
 		const fieldGroups = [
@@ -90,7 +83,6 @@ async function fixOrderSystem() {
 			})
 
 			if (groupHeaders.length > 0) {
-				console.log(`\n${group.name} (${group.order}):`)
 
 				// Берем первый заголовок группы
 				const mainHeader = groupHeaders[0]
@@ -100,7 +92,6 @@ async function fixOrderSystem() {
 						update: { order: group.order },
 					},
 				})
-				console.log(`   ${group.order}: ${mainHeader.label} (header)`)
 
 				// Находим поля этой группы и назначаем им порядок
 				const groupFields = regularFields.filter(field => {
@@ -122,7 +113,6 @@ async function fixOrderSystem() {
 							update: { order: newOrder },
 						},
 					})
-					console.log(`   ${newOrder}: ${field.label} (${field.type})`)
 				})
 
 				// Удаляем обработанные поля из общего списка
@@ -151,7 +141,6 @@ async function fixOrderSystem() {
 					update: { order: newOrder },
 				},
 			})
-			console.log(`\n${newOrder}: ${header.label} (header)`)
 		})
 
 		// Обрабатываем оставшиеся обычные поля
@@ -178,17 +167,12 @@ async function fixOrderSystem() {
 
 		// Выполняем обновления
 		if (updates.length > 0) {
-			console.log(`\n🔄 Выполняем обновление ${updates.length} полей...`)
 			await FormField.bulkWrite(updates)
-			console.log(`✅ Порядок обновлен для ${updates.length} полей`)
 		}
 
-		console.log('\n🎉 Система порядка исправлена!')
 	} catch (error) {
-		console.error('❌ Ошибка:', error)
 	} finally {
 		await mongoose.disconnect()
-		console.log('\n🔌 Отключено')
 	}
 }
 

@@ -41,14 +41,9 @@ export const authMiddleware = async (
 		const authHeader = req.headers.authorization
 		const token = authHeader && authHeader.split(' ')[1]
 
-		console.log(`🔍 AuthMiddleware: ${req.method} ${req.originalUrl}`)
-		console.log(`🔍 Full URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`)
-		console.log(`🔍 Authorization header: ${authHeader ? 'present' : 'missing'}`)
-		console.log(`🔍 Token: ${token ? 'present' : 'missing'}`)
 
 		// Если токен не предоставлен, пропускаем запрос для публичных маршрутов
 		if (!token) {
-			console.log('❌ No token provided')
 			req.isAdmin = false
 			return next()
 		}
@@ -65,7 +60,6 @@ export const authMiddleware = async (
 				return next()
 			}
 
-			console.log('✅ Token verified, decoded:', decoded)
 
 			try {
 				// Проверяем тип токена
@@ -78,7 +72,6 @@ export const authMiddleware = async (
 					})
 
 					if (storedToken && storedToken.isValid()) {
-						console.log('✅ Valid admin token found')
 						// Обновляем время последнего использования
 						storedToken.markAsUsed()
 						await tokenRepository.save(storedToken)
@@ -92,19 +85,16 @@ export const authMiddleware = async (
 							tokenType: 'access',
 						}
 					} else {
-						console.log(`❌ Invalid or expired admin token`)
 						req.isAdmin = false
 						req.user = undefined
 					}
 				} else {
 					// Токен пользователя
 					const userId = decoded.id || decoded.userId || decoded.sub
-					console.log(`🔍 Looking for user with ID: ${userId}`)
 					
 					const user = await userService.findById(userId)
 					
 					if (user && user.isActive) {
-						console.log(`✅ User found: ${user.email}, role: ${user.role}`)
 						req.user = {
 							id: user.id,
 							role: user.role,
@@ -116,7 +106,6 @@ export const authMiddleware = async (
 						}
 						req.isAdmin = user.role === 'admin'
 					} else {
-						console.log(`❌ User not found or inactive for ID: ${userId}`)
 						req.isAdmin = false
 						req.user = undefined
 					}
@@ -127,8 +116,6 @@ export const authMiddleware = async (
 				req.user = undefined
 			}
 
-			console.log(`🔍 Final req.user: ${req.user ? 'set' : 'undefined'}`)
-			console.log(`🔍 Final req.isAdmin: ${req.isAdmin}`)
 			next()
 		})
 	} catch (error) {

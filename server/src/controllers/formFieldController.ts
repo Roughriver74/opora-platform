@@ -53,7 +53,6 @@ export const createField = async (
 ): Promise<void> => {
 	try {
 		const fieldData = req.body
-		console.log('📝 Создание поля с данными:', {
 			name: fieldData.name,
 			type: fieldData.type,
 			formId: fieldData.formId,
@@ -72,7 +71,6 @@ export const createField = async (
 		}
 
 		const savedField = await formFieldService.createField(fieldData)
-		console.log(`📋 Поле ${savedField.name} создано для формы ${form.title}`)
 
 		res.status(201).json(savedField)
 	} catch (error: any) {
@@ -87,8 +85,6 @@ export const updateField = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		console.log('🔄 Обновление поля ID:', req.params.id)
-		console.log('📝 Данные для обновления:', JSON.stringify(req.body, null, 2))
 
 		const updatedField = await formFieldService.updateField(req.params.id, req.body)
 
@@ -97,7 +93,6 @@ export const updateField = async (
 			return
 		}
 
-		console.log('✅ Поле успешно обновлено:', {
 			id: updatedField.id,
 			name: updatedField.name,
 			label: updatedField.label,
@@ -125,7 +120,6 @@ export const deleteField = async (
 			return
 		}
 
-		console.log(`🗑️ Поле ${req.params.id} удалено`)
 		res.status(200).json({ message: 'Поле успешно удалено' })
 	} catch (error: any) {
 		console.error('❌ Ошибка при удалении поля:', error)
@@ -210,7 +204,6 @@ export const getCompaniesList = async (
 			assignedFilter = user.bitrix_id
 		}
 
-		console.log('🔍 Запрос компаний:', {
 			query: query as string,
 			userId: user?.id,
 			// @ts-ignore
@@ -314,7 +307,6 @@ export const searchProducts = async (
 ): Promise<void> => {
 	try {
 		const { query } = req.body
-		console.log('🔍 POST Поиск продуктов:', query)
 		const products = await bitrix24Service.getProducts(query as string)
 		res.status(200).json(products)
 	} catch (error: any) {
@@ -340,7 +332,6 @@ export const searchCompanies = async (
 			assignedFilter = user.bitrix_id
 		}
 
-		console.log('🔍 POST Поиск компаний:', {
 			query: query as string,
 			userId: user?.id,
 			// @ts-ignore
@@ -368,7 +359,6 @@ export const searchContacts = async (
 ): Promise<void> => {
 	try {
 		const { query } = req.body
-		console.log('🔍 POST Поиск контактов:', query)
 		const contacts = await bitrix24Service.getContacts(query as string)
 		res.status(200).json(contacts)
 	} catch (error: any) {
@@ -384,7 +374,6 @@ export const updateFieldsOrder = async (
 ): Promise<void> => {
 	try {
 		const { updates } = req.body
-		console.log('📝 Обновление порядка полей:', updates)
 
 		if (!updates || !Array.isArray(updates)) {
 			res.status(400).json({ 
@@ -396,7 +385,6 @@ export const updateFieldsOrder = async (
 
 		const result = await formFieldService.updateFieldsOrder(updates)
 		
-		console.log(`✅ Обновлен порядок для ${result.updatedCount} полей`)
 		
 		res.status(200).json({
 			success: result.success,

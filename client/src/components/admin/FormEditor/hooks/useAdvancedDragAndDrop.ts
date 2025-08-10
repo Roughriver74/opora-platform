@@ -262,7 +262,6 @@ export const useAdvancedDragAndDrop = (
 		async (sourceIndex: number, targetIndex: number) => {
 			if (sourceIndex === targetIndex) return
 
-			console.log('📦 Продвинутый drop:', { sourceIndex, targetIndex })
 
 			try {
 				// Используем новую систему порядка для перемещения
@@ -298,7 +297,6 @@ export const useAdvancedDragAndDrop = (
 				// Показываем успешную анимацию
 				showDropSuccess(targetIndex)
 
-				console.log('✅ Продвинутое перемещение завершено успешно')
 			} catch (error) {
 				console.error('❌ Ошибка при продвинутом перемещении:', error)
 
@@ -433,7 +431,6 @@ export const useAdvancedDragAndDrop = (
 
 			if (!element) return
 
-			console.log('🎯 Начало продвинутого перетаскивания:', {
 				elementId,
 				index,
 			})
@@ -517,7 +514,6 @@ export const useAdvancedDragAndDrop = (
 
 				showDropSuccess(newOrder)
 
-				console.log('✅ Порядок успешно изменен')
 			} catch (error) {
 				console.error('❌ Ошибка при изменении порядка:', error)
 				showDropError()
@@ -534,7 +530,6 @@ export const useAdvancedDragAndDrop = (
 	// Нормализация порядков с анимацией
 	const normalizeOrders = useCallback(async () => {
 		try {
-			console.log('🔧 Нормализация с анимацией...')
 
 			const normalizedFields = normalizeAllOrders(state.fields)
 
@@ -561,7 +556,6 @@ export const useAdvancedDragAndDrop = (
 
 			showDropSuccess(0)
 
-			console.log('✅ Нормализация завершена')
 		} catch (error) {
 			console.error('❌ Ошибка при нормализации:', error)
 			showDropError()

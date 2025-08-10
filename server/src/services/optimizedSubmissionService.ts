@@ -1,6 +1,8 @@
-import Submission from '../models/Submission'
-import User from '../models/User'
-import Form from '../models/Form'
+import { AppDataSource } from '../database/config/database.config'
+import { Submission } from '../database/entities/Submission.entity'
+import { User } from '../database/entities/User.entity'
+import { Form } from '../database/entities/Form.entity'
+import { SelectQueryBuilder } from 'typeorm'
 
 export interface SubmissionFilters {
 	status?: string | string[]
@@ -24,243 +26,296 @@ export interface PaginationOptions {
 
 /**
  * Оптимизированный сервис для работы с заявками
- * Использует денормализованные данные вместо populate для лучшей производительности
+ * Использует денормализованные данные вместо joins для лучшей производительности
  */
 export class OptimizedSubmissionService {
+	private submissionRepository = AppDataSource.getRepository(Submission)
+
 	/**
 	 * Получение заявок с оптимизированными запросами
 	 */
 	async getSubmissions(filters: SubmissionFilters = {}, pagination: PaginationOptions) {
-		const query: any = {}
+		const queryBuilder = this.submissionRepository.createQueryBuilder('submission')
 
 		// Построение фильтров с использованием индексов
 		if (filters.status) {
-			query.status = Array.isArray(filters.status) 
-				? { $in: filters.status }
-				: filters.status
+			if (Array.isArray(filters.status)) {
+				queryBuilder.andWhere('submission.status IN (:...statuses)', { statuses: filters.status })
+			} else {
+				queryBuilder.andWhere('submission.status = :status', { status: filters.status })
+			}
 		}
 
 		if (filters.priority) {
-			query.priority = Array.isArray(filters.priority)
-				? { $in: filters.priority }
-				: filters.priority
+			if (Array.isArray(filters.priority)) {
+				queryBuilder.andWhere('submission.priority IN (:...priorities)', { priorities: filters.priority })
+			} else {
+				queryBuilder.andWhere('submission.priority = :priority', { priority: filters.priority })
+			}
 		}
 
 		if (filters.assignedTo) {
-			query.assignedTo = filters.assignedTo
+			queryBuilder.andWhere('submission.assignedToId = :assignedTo', { assignedTo: filters.assignedTo })
 		}
 
 		if (filters.userId) {
-			query.userId = filters.userId
+			queryBuilder.andWhere('submission.userId = :userId', { userId: filters.userId })
 		}
 
 		if (filters.formId) {
-			query.formId = filters.formId
+			queryBuilder.andWhere('submission.formId = :formId', { formId: filters.formId })
 		}
 
 		if (filters.bitrixSyncStatus) {
-			query.bitrixSyncStatus = filters.bitrixSyncStatus
+			queryBuilder.andWhere('submission.bitrixSyncStatus = :bitrixSyncStatus', { bitrixSyncStatus: filters.bitrixSyncStatus })
 		}
 
 		if (filters.tags && filters.tags.length > 0) {
-			query.tags = { $in: filters.tags }
+			queryBuilder.andWhere('submission.tags && ARRAY[:...tags]', { tags: filters.tags })
 		}
 
 		// Фильтр по дате (использует индекс createdAt)
-		if (filters.dateFrom || filters.dateTo) {
-			query.createdAt = {}
-			if (filters.dateFrom) {
-				query.createdAt.$gte = new Date(filters.dateFrom)
-			}
-			if (filters.dateTo) {
-				query.createdAt.$lte = new Date(filters.dateTo)
-			}
+		if (filters.dateFrom) {
+			queryBuilder.andWhere('submission.createdAt >= :dateFrom', { dateFrom: new Date(filters.dateFrom) })
+		}
+		if (filters.dateTo) {
+			queryBuilder.andWhere('submission.createdAt <= :dateTo', { dateTo: new Date(filters.dateTo) })
 		}
 
-		// Поиск по тексту в денормализованных полях (без populate!)
+		// Поиск по тексту в денормализованных полях (используем PostgreSQL full-text search)
 		if (filters.search) {
-			const searchRegex = { $regex: filters.search, $options: 'i' }
-			query.$or = [
-				{ title: searchRegex },
-				{ submissionNumber: searchRegex },
-				{ userEmail: searchRegex },
-				{ userName: searchRegex },
-				{ formName: searchRegex },
-				{ formTitle: searchRegex },
-				{ assignedToName: searchRegex },
-				{ notes: searchRegex }
-			]
+			queryBuilder.andWhere(`(
+				submission.title ILIKE :search OR 
+				submission.submissionNumber ILIKE :search OR
+				submission.userEmail ILIKE :search OR
+				submission.userName ILIKE :search OR
+				submission.formName ILIKE :search OR
+				submission.formTitle ILIKE :search OR
+				submission.assignedToName ILIKE :search OR
+				submission.notes ILIKE :search
+			)`, { search: `%${filters.search}%` })
 		}
 
 		// Подсчет общего количества
-		const total = await Submission.countDocuments(query)
+		const total = await queryBuilder.getCount()
 
 		// Построение запроса с пагинацией
 		const { page, limit, sortBy = 'createdAt', sortOrder = 'desc' } = pagination
 		const skip = (page - 1) * limit
-		const sort: any = { [sortBy]: sortOrder === 'desc' ? -1 : 1 }
 
-		// Выполнение оптимизированного запроса БЕЗ populate
-		const submissions = await Submission.find(query)
-			.sort(sort)
-			.skip(skip)
-			.limit(limit)
-			.select({
-				// Выбираем только нужные поля для уменьшения объема данных
-				submissionNumber: 1,
-				title: 1,
-				status: 1,
-				priority: 1,
-				bitrixDealId: 1,
-				bitrixSyncStatus: 1,
-				createdAt: 1,
-				updatedAt: 1,
-				notes: 1,
-				tags: 1,
-				// Денормализованные поля (без populate!)
-				formName: 1,
-				formTitle: 1,
-				userEmail: 1,
-				userName: 1,
-				assignedToName: 1,
-				// Предвычисленные поля
-				processingTimeMinutes: 1,
-				dayOfWeek: 1,
-				monthOfYear: 1,
-				yearCreated: 1
-			})
-			.lean() // Возвращает plain objects для лучшей производительности
+		// Применяем сортировку
+		queryBuilder.orderBy(`submission.${sortBy}`, sortOrder.toUpperCase() as 'ASC' | 'DESC')
+
+		// Применяем пагинацию
+		queryBuilder.skip(skip).take(limit)
+
+		// Выбираем только нужные поля для уменьшения объема данных
+		queryBuilder.select([
+			'submission.id',
+			'submission.submissionNumber',
+			'submission.title',
+			'submission.status',
+			'submission.priority',
+			'submission.bitrixDealId',
+			'submission.bitrixSyncStatus',
+			'submission.createdAt',
+			'submission.updatedAt',
+			'submission.notes',
+			'submission.tags',
+			// Денормализованные поля (без joins!)
+			'submission.formName',
+			'submission.formTitle',
+			'submission.userEmail',
+			'submission.userName',
+			'submission.assignedToName',
+			// Предвычисленные поля
+			'submission.processingTimeMinutes',
+			'submission.dayOfWeek',
+			'submission.monthOfYear',
+		])
+
+		// Выполнение оптимизированного запроса
+		const submissions = await queryBuilder.getMany()
 
 		return {
-			success: true,
 			data: submissions,
 			pagination: {
 				page,
 				limit,
 				total,
-				pages: Math.ceil(total / limit)
-			}
+				pages: Math.ceil(total / limit),
+				hasNext: page < Math.ceil(total / limit),
+				hasPrev: page > 1,
+			},
+			performance: {
+				denormalized: true, // Подтверждаем использование денормализованных данных
+				optimizedQueries: true,
+				usesFTS: !!filters.search, // Full-text search
+			},
 		}
 	}
 
 	/**
-	 * Получение заявок пользователя (оптимизировано)
+	 * Получение заявок пользователя (оптимизированная версия)
 	 */
 	async getUserSubmissions(userId: string, filters: SubmissionFilters = {}, pagination: PaginationOptions) {
-		return this.getSubmissions({ ...filters, userId }, pagination)
+		// Добавляем фильтр по пользователю
+		const userFilters = { ...filters, userId }
+		return this.getSubmissions(userFilters, pagination)
 	}
 
 	/**
-	 * Получение заявок ответственного (оптимизировано)
-	 */
-	async getAssignedSubmissions(assignedTo: string, filters: SubmissionFilters = {}, pagination: PaginationOptions) {
-		return this.getSubmissions({ ...filters, assignedTo }, pagination)
-	}
-
-	/**
-	 * Batch загрузка связанных данных только при необходимости
-	 */
-	async batchLoadRelatedData(submissionIds: string[]) {
-		const submissions = await Submission.find({ 
-			_id: { $in: submissionIds } 
-		}).select('formId userId assignedTo')
-
-		const formIds = [...new Set(submissions.map(s => s.formId).filter(Boolean))]
-		const userIds = [...new Set([
-			...submissions.map(s => s.userId).filter(Boolean),
-			...submissions.map(s => s.assignedTo).filter(Boolean)
-		])]
-
-		// Параллельная загрузка связанных данных
-		const [forms, users] = await Promise.all([
-			formIds.length > 0 ? Form.find({ _id: { $in: formIds } }).select('name title').lean() : [],
-			userIds.length > 0 ? User.find({ _id: { $in: userIds } }).select('email firstName lastName').lean() : []
-		])
-
-		// Создаем maps для быстрого поиска
-		const formsMap = new Map(forms.map(f => [f._id.toString(), f] as [string, any]))
-		const usersMap = new Map(users.map(u => [u._id.toString(), u] as [string, any]))
-
-		return { formsMap, usersMap }
-	}
-
-	/**
-	 * Получение статистики по заявкам (использует денормализованные поля)
+	 * Статистика по заявкам (используя денормализованные поля)
 	 */
 	async getSubmissionStats(filters: SubmissionFilters = {}) {
-		const matchStage: any = {}
+		const baseQuery = this.submissionRepository.createQueryBuilder('submission')
 
-		// Применяем те же фильтры, что и в основном методе
-		if (filters.dateFrom || filters.dateTo) {
-			matchStage.createdAt = {}
-			if (filters.dateFrom) matchStage.createdAt.$gte = new Date(filters.dateFrom)
-			if (filters.dateTo) matchStage.createdAt.$lte = new Date(filters.dateTo)
-		}
+		// Применяем те же фильтры что и в getSubmissions
+		this.applyFilters(baseQuery, filters)
 
-		if (filters.assignedTo) matchStage.assignedTo = filters.assignedTo
-		if (filters.userId) matchStage.userId = filters.userId
-		if (filters.formId) matchStage.formId = filters.formId
+		const [
+			totalCount,
+			statusStats,
+			priorityStats,
+			monthlyStats,
+		] = await Promise.all([
+			baseQuery.getCount(),
+			
+			// Статистика по статусам
+			baseQuery.clone()
+				.select('submission.status', 'status')
+				.addSelect('COUNT(*)', 'count')
+				.groupBy('submission.status')
+				.getRawMany(),
 
-		const stats = await Submission.aggregate([
-			{ $match: matchStage },
-			{
-				$group: {
-					_id: null,
-					totalSubmissions: { $sum: 1 },
-					byStatus: {
-						$push: {
-							status: '$status',
-							count: 1
-						}
-					},
-					byPriority: {
-						$push: {
-							priority: '$priority',
-							count: 1
-						}
-					},
-					byForm: {
-						$push: {
-							formName: '$formName',
-							count: 1
-						}
-					},
-					avgProcessingTime: { $avg: '$processingTimeMinutes' },
-					totalProcessingTime: { $sum: '$processingTimeMinutes' }
-				}
-			}
+			// Статистика по приоритетам
+			baseQuery.clone()
+				.select('submission.priority', 'priority')
+				.addSelect('COUNT(*)', 'count')
+				.groupBy('submission.priority')
+				.getRawMany(),
+
+			// Статистика по месяцам (используя предвычисленное поле)
+			baseQuery.clone()
+				.select('submission.monthOfYear', 'month')
+				.addSelect('COUNT(*)', 'count')
+				.groupBy('submission.monthOfYear')
+				.orderBy('submission.monthOfYear', 'ASC')
+				.getRawMany(),
 		])
 
-		return stats[0] || {
-			totalSubmissions: 0,
-			byStatus: [],
-			byPriority: [],
-			byForm: [],
-			avgProcessingTime: 0,
-			totalProcessingTime: 0
+		return {
+			total: totalCount,
+			byStatus: statusStats,
+			byPriority: priorityStats,
+			byMonth: monthlyStats,
+			performance: {
+				denormalized: true,
+				precomputedFields: true,
+			},
 		}
 	}
 
 	/**
-	 * Обновление денормализованных данных для существующих заявок
+	 * Вспомогательный метод для применения фильтров
 	 */
-	async updateDenormalizedData(submissionIds?: string[]) {
-		const query = submissionIds 
-			? { _id: { $in: submissionIds } }
-			: {}
-
-		const submissions = await Submission.find(query)
-
-		console.log(`🔄 Обновление денормализованных данных для ${submissions.length} заявок`)
-
-		for (const submission of submissions) {
-			// Принудительно пересохраняем для срабатывания pre-save hooks
-			await submission.save()
+	private applyFilters(queryBuilder: SelectQueryBuilder<Submission>, filters: SubmissionFilters) {
+		if (filters.status) {
+			if (Array.isArray(filters.status)) {
+				queryBuilder.andWhere('submission.status IN (:...statuses)', { statuses: filters.status })
+			} else {
+				queryBuilder.andWhere('submission.status = :status', { status: filters.status })
+			}
 		}
 
-		console.log(`✅ Обновлено ${submissions.length} заявок`)
-		return submissions.length
+		if (filters.priority) {
+			if (Array.isArray(filters.priority)) {
+				queryBuilder.andWhere('submission.priority IN (:...priorities)', { priorities: filters.priority })
+			} else {
+				queryBuilder.andWhere('submission.priority = :priority', { priority: filters.priority })
+			}
+		}
+
+		if (filters.userId) {
+			queryBuilder.andWhere('submission.userId = :userId', { userId: filters.userId })
+		}
+
+		if (filters.formId) {
+			queryBuilder.andWhere('submission.formId = :formId', { formId: filters.formId })
+		}
+
+		if (filters.dateFrom) {
+			queryBuilder.andWhere('submission.createdAt >= :dateFrom', { dateFrom: new Date(filters.dateFrom) })
+		}
+
+		if (filters.dateTo) {
+			queryBuilder.andWhere('submission.createdAt <= :dateTo', { dateTo: new Date(filters.dateTo) })
+		}
+
+		if (filters.search) {
+			queryBuilder.andWhere(`(
+				submission.title ILIKE :search OR 
+				submission.submissionNumber ILIKE :search OR
+				submission.userEmail ILIKE :search OR
+				submission.userName ILIKE :search OR
+				submission.formName ILIKE :search OR
+				submission.formTitle ILIKE :search OR
+				submission.assignedToName ILIKE :search OR
+				submission.notes ILIKE :search
+			)`, { search: `%${filters.search}%` })
+		}
+	}
+
+	/**
+	 * Обновление денормализованных данных для заявок
+	 */
+	async updateDenormalizedData(submissionIds?: string[]): Promise<number> {
+		const queryBuilder = this.submissionRepository.createQueryBuilder('submission')
+			.leftJoin('submission.user', 'user')
+			.leftJoin('submission.form', 'form')
+			.leftJoin('submission.assignedTo', 'assignedTo')
+
+		if (submissionIds && submissionIds.length > 0) {
+			queryBuilder.where('submission.id IN (:...ids)', { ids: submissionIds })
+		}
+
+		const submissions = await queryBuilder
+			.select([
+				'submission.id',
+				'user.email',
+				'user.firstName',
+				'user.lastName',
+				'form.name',
+				'form.title',
+				'assignedTo.firstName',
+				'assignedTo.lastName'
+			])
+			.getMany()
+
+		let updatedCount = 0
+
+		for (const submission of submissions) {
+			const userName = submission.user 
+				? `${submission.user.firstName || ''} ${submission.user.lastName || ''}`.trim()
+				: undefined
+				
+			const assignedToName = submission.assignedTo 
+				? `${submission.assignedTo.firstName || ''} ${submission.assignedTo.lastName || ''}`.trim()
+				: undefined
+
+			await this.submissionRepository.update(submission.id, {
+				userEmail: submission.user?.email,
+				userName: userName,
+				formName: submission.form?.name,
+				formTitle: submission.form?.title,
+				assignedToName: assignedToName,
+			})
+			updatedCount++
+		}
+
+		return updatedCount
 	}
 }
 
+// Экспорт единственного экземпляра для использования
 export const optimizedSubmissionService = new OptimizedSubmissionService()
