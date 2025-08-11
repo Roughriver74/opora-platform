@@ -15,12 +15,35 @@ body {
 input,
 textarea,
 select {
-	/* Ускорение ввода на мобильных */
-	font-size: 16px;
+	/* Ускорение ввода на мобильных и предотвращение зума */
+	font-size: 16px !important;
 	/* Предотвращение zoom на iOS */
 	-webkit-tap-highlight-color: transparent;
 	/* Улучшение производительности */
 	will-change: auto;
+}
+
+/* Дополнительные правила для предотвращения зума на мобильных */
+@media screen and (max-width: 767px) {
+	input[type="text"],
+	input[type="email"],
+	input[type="number"],
+	input[type="tel"],
+	input[type="password"],
+	input[type="search"],
+	textarea,
+	select {
+		font-size: 16px !important;
+		transform: scale(1);
+		zoom: 1;
+	}
+	
+	/* MUI специфичные селекторы */
+	.MuiInputBase-input,
+	.MuiOutlinedInput-input,
+	.MuiFilledInput-input {
+		font-size: 16px !important;
+	}
 }
 
 code {

@@ -6,11 +6,12 @@ export const getFieldStyles = (
 		compact || isMobile
 			? {
 					'& .MuiInputBase-root': {
-						fontSize: isMobile ? '0.8rem' : '0.875rem',
-						minHeight: isMobile ? '36px' : '44px', // Еще меньше для мобильных
+						fontSize: isMobile ? '16px' : '0.875rem', // 16px минимум для iOS чтобы не было зума
+						minHeight: isMobile ? '40px' : '44px', // Увеличил чуть-чуть для 16px шрифта
 					},
 					'& .MuiInputBase-input': {
-						padding: isMobile ? '6px 8px' : '10px 12px', // Меньше padding для мобильных
+						padding: isMobile ? '8px 8px' : '10px 12px', // Увеличил padding для мобильных под 16px шрифт
+						fontSize: isMobile ? '16px' : 'inherit', // Принудительно 16px для iOS
 					},
 					'& .MuiInputLabel-root': {
 						fontSize: isMobile ? '0.75rem' : '0.85rem',

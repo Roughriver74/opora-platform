@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import {
 	Box,
 	Typography,
@@ -27,7 +27,7 @@ interface FormSectionProps {
 	onSectionTitleChange?: (sectionId: string, newTitle: string) => void
 }
 
-export const FormSection: React.FC<FormSectionProps> = ({
+export const FormSection: React.FC<FormSectionProps> = React.memo(({
 	section,
 	values,
 	onFieldChange,
@@ -74,15 +74,15 @@ export const FormSection: React.FC<FormSectionProps> = ({
 		}
 	}
 
-	// Определяем отступы для полей
-	const getFieldSpacing = () => {
+	// Мемоизированные отступы для полей
+	const fieldSpacing = useMemo(() => {
 		if (isMobile) {
 			return FORM_CONSTANTS.MOBILE_FIELD_SPACING.xs
 		}
 		return compact
 			? FORM_CONSTANTS.FIELD_SPACING.xs
 			: FORM_CONSTANTS.FIELD_SPACING.sm
-	}
+	}, [isMobile, compact])
 
 	return (
 		<Box>
@@ -202,7 +202,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
 											sx={{
 												display: 'flex',
 												gap: 2,
-												mb: getFieldSpacing(),
+												mb: fieldSpacing,
 											}}
 										>
 											<Box sx={{ flex: 1 }}>
@@ -235,7 +235,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
 										<Box
 											key={field1._id || field1.name}
 											sx={{
-												mb: getFieldSpacing(),
+												mb: fieldSpacing,
 												maxWidth: isMobile ? '100%' : '300px',
 											}}
 										>
@@ -259,7 +259,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
 									<Box
 										key={field._id || field.name}
 										sx={{
-											mb: getFieldSpacing(),
+											mb: fieldSpacing,
 											maxWidth: isMobile ? '100%' : '300px',
 										}}
 									>
@@ -284,7 +284,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
 						groupedElements.push(
 							<Box
 								key={currentField._id || currentField.name}
-								sx={{ mb: getFieldSpacing() }}
+								sx={{ mb: fieldSpacing }}
 							>
 								<FormField
 									field={currentField}
@@ -305,4 +305,14 @@ export const FormSection: React.FC<FormSectionProps> = ({
 			})()}
 		</Box>
 	)
-}
+}, (prevProps, nextProps) => {
+	// Кастомная функция сравнения для оптимизации React.memo
+	return (
+		prevProps.section.title === nextProps.section.title &&
+		JSON.stringify(prevProps.values) === JSON.stringify(nextProps.values) &&
+		prevProps.compact === nextProps.compact &&
+		prevProps.showTitle === nextProps.showTitle &&
+		prevProps.isAdminMode === nextProps.isAdminMode &&
+		JSON.stringify(prevProps.preloadedOptions) === JSON.stringify(nextProps.preloadedOptions)
+	)
+})

@@ -33,10 +33,12 @@ export const useBetoneForm = (
 	const [submitting, setSubmitting] = useState(false)
 	const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null)
 
-	// Инициализация formik
+	// Инициализация formik с оптимизированными настройками
 	const formik = useFormik({
 		initialValues: generateInitialValues(fields, editData?.formData),
 		validationSchema: generateValidationSchema(fields),
+		validateOnChange: false, // Отключаем валидацию при каждом изменении
+		validateOnBlur: true,    // Включаем валидацию только при blur
 		onSubmit: async values => {
 			setSubmitting(true)
 			setSubmitResult(null)

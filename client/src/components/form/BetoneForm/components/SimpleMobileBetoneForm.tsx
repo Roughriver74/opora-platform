@@ -38,11 +38,16 @@ const MOBILE_CONSTANTS = {
 	COMPACT_SPACING: 1, // компактные отступы
 }
 
-// Функция для подсчета заполненности секции
-const calculateSectionCompleteness = (
-	section: any,
-	values: Record<string, any>
-) => {
+// Функция для подсчета заполненности секции с мемоизацией
+const cache = new Map<string, any>()
+
+const calculateSectionCompleteness = (section: any, values: Record<string, any>) => {
+	const cacheKey = `${section.title}-${Object.keys(values).map(k => `${k}:${values[k]}`).join(',')}`
+	
+	if (cache.has(cacheKey)) {
+		return cache.get(cacheKey)
+	}
+	
 	const requiredFields = section.fields.filter((field: any) => field.required)
 	const totalFields = section.fields.length
 	const filledFields = section.fields.filter((field: any) => {
@@ -50,7 +55,7 @@ const calculateSectionCompleteness = (
 		return value !== undefined && value !== null && value !== ''
 	})
 
-	return {
+	const result = {
 		filled: filledFields.length,
 		total: totalFields,
 		required: requiredFields.length,
@@ -64,9 +69,14 @@ const calculateSectionCompleteness = (
 			return value !== undefined && value !== null && value !== ''
 		}),
 	}
+	
+	cache.set(cacheKey, result)
+	if (cache.size > 100) cache.clear() // Простая очистка кеша
+	
+	return result
 }
 
-const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = ({
+const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(({
 	form,
 	fields,
 	editData,
@@ -104,7 +114,7 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = ({
 		() => ({
 			padding: isMobile ? MOBILE_CONSTANTS.COMPACT_PADDING : 3,
 			spacing: isMobile ? MOBILE_CONSTANTS.COMPACT_SPACING : 2,
-			fontSize: isMobile ? '0.875rem' : '1rem', // уменьшил с 0.9rem
+			fontSize: isMobile ? '16px' : '1rem', // 16px для предотвращения зума на iOS
 			borderRadius: isMobile ? 1 : 2,
 			headerPadding: isMobile ? 1.5 : 2,
 			sectionPadding: isMobile ? 1.5 : 2,
@@ -112,12 +122,12 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = ({
 		[isMobile]
 	)
 
-	// Компонент индикатора заполненности секции
+	// Мемоизированный компонент индикатора заполненности секции
 	const SectionCompletionIndicator: React.FC<{
 		section: any
 		values: Record<string, any>
 		compact?: boolean
-	}> = ({ section, values, compact = false }) => {
+	}> = React.memo(({ section, values, compact = false }) => {
 		const completion = calculateSectionCompleteness(section, values)
 
 		if (compact) {
@@ -180,7 +190,7 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = ({
 				</Typography>
 			</Box>
 		)
-	}
+	})
 
 	// Мобильная версия секционных кнопок - более компактная
 	const renderMobileSectionControls = useCallback(
@@ -233,10 +243,7 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = ({
 
 				{fieldSections.map((section, index) => {
 					const isExpanded = isSectionExpanded(index)
-					const completion = calculateSectionCompleteness(
-						section,
-						formik.values
-					)
+					const completion = calculateSectionCompleteness(section, formik.values)
 
 					return (
 						<Paper
@@ -526,6 +533,6 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = ({
 			<ScrollToTopButton show={showScrollTop} onClick={scrollToTop} />
 		</Box>
 	)
-}
+})
 
 export default SimpleMobileBetoneForm

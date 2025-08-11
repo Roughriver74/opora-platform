@@ -1,5 +1,5 @@
 export const FIELD_CONSTANTS = {
-	DEBOUNCE_DELAY: 100, // Еще быстрее для текстовых полей - как у автокомплита
+	DEBOUNCE_DELAY: 50, // Еще быстрее для лучшего отклика
 	MIN_SEARCH_LENGTH: 1, // Возвращаем к 1 для удобства
 	DEFAULT_TEXTAREA_ROWS: 4,
 	COMPACT_TEXTAREA_ROWS: 3,

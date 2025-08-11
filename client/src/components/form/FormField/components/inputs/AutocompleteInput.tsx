@@ -4,6 +4,7 @@ import React, {
 	useEffect,
 	useImperativeHandle,
 	forwardRef,
+	useCallback,
 } from 'react'
 import {
 	FormControl,
@@ -58,6 +59,35 @@ export const AutocompleteInput = forwardRef<
 			[onSearchChange]
 		)
 
+		// Оптимизированные обработчики
+		const handleInputChange = useCallback((event: any, newInputValue: string, reason: string) => {
+			if (reason === 'reset' && isSelectingRef.current) {
+				isSelectingRef.current = false
+				return
+			}
+
+			setInputValue(newInputValue || '')
+
+			if (reason === 'input') {
+				onSearchChange?.(newInputValue || '')
+			}
+		}, [onSearchChange])
+
+		const handleChange = useCallback((event: any, newValue: any) => {
+			isSelectingRef.current = true
+			onChange(field.name, newValue ? newValue.value : '')
+
+			if (newValue) {
+				setInputValue(newValue.label)
+			} else {
+				setInputValue('')
+			}
+
+			setTimeout(() => {
+				isSelectingRef.current = false
+			}, 100)
+		}, [onChange, field.name])
+
 		// Синхронизируем inputValue с выбранным значением
 		useEffect(() => {
 			if (selectedOption && !isSelectingRef.current) {
@@ -85,32 +115,8 @@ export const AutocompleteInput = forwardRef<
 					id={field.name}
 					value={selectedOption}
 					inputValue={inputValue}
-					onInputChange={(_, newInputValue, reason) => {
-						if (reason === 'reset' && isSelectingRef.current) {
-							isSelectingRef.current = false
-							return
-						}
-
-						setInputValue(newInputValue || '')
-
-						if (reason === 'input') {
-							onSearchChange?.(newInputValue || '')
-						}
-					}}
-					onChange={(_, newValue) => {
-						isSelectingRef.current = true
-						onChange(field.name, newValue ? newValue.value : '')
-
-						if (newValue) {
-							setInputValue(newValue.label)
-						} else {
-							setInputValue('')
-						}
-
-						setTimeout(() => {
-							isSelectingRef.current = false
-						}, 100)
-					}}
+					onInputChange={handleInputChange}
+					onChange={handleChange}
 					options={options}
 					getOptionLabel={option => option?.label || ''}
 					loading={loading}

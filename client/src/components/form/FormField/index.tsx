@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { FormFieldProps } from './types'
 import { FIELD_CONSTANTS, FIELD_TYPES } from './constants'
-import { useDebounce } from './hooks/useDebounce'
 import { useDynamicOptions } from './hooks/useDynamicOptions'
 import { getFieldStyles } from './utils/fieldStyles'
 
@@ -19,7 +18,7 @@ import { DateInput } from './components/inputs/DateInput'
 import { DividerField } from './components/display/DividerField'
 import { HeaderField } from './components/display/HeaderField'
 
-const FormField: React.FC<FormFieldProps> = ({
+const FormField: React.FC<FormFieldProps> = React.memo(({
 	field,
 	value,
 	onChange,
@@ -32,10 +31,6 @@ const FormField: React.FC<FormFieldProps> = ({
 	const [isValueSelected, setIsValueSelected] = useState(false)
 	const [forceUpdateKey, setForceUpdateKey] = useState(0)
 	const [lastValue, setLastValue] = useState(value)
-	const debouncedSearchQuery = useDebounce(
-		searchQuery,
-		FIELD_CONSTANTS.DEBOUNCE_DELAY
-	)
 
 	const {
 		options,
@@ -67,12 +62,12 @@ const FormField: React.FC<FormFieldProps> = ({
 		}
 	}, [value, syncWithOptions, isValueSelected])
 
-	// Load dynamic options when needed
+	// Load dynamic options when needed - directly with searchQuery without debounce
 	useEffect(() => {
-		if (field.dynamicSource && debouncedSearchQuery) {
-			loadDynamicOptions(debouncedSearchQuery)
+		if (field.dynamicSource && searchQuery) {
+			loadDynamicOptions(searchQuery)
 		}
-	}, [debouncedSearchQuery, field.dynamicSource, loadDynamicOptions])
+	}, [searchQuery, field.dynamicSource, loadDynamicOptions])
 
 	// Force update when value changes externally
 	useEffect(() => {
@@ -85,17 +80,17 @@ const FormField: React.FC<FormFieldProps> = ({
 		}
 	}, [value, lastValue])
 
-	const handleChange = (name: string, newValue: any) => {
+	const handleChange = useCallback((name: string, newValue: any) => {
 		onChange(name, newValue)
 		setIsValueSelected(!!newValue)
-	}
+	}, [onChange])
 
-	const handleSearchChange = (query: string) => {
+	const handleSearchChange = useCallback((query: string) => {
 		setSearchQuery(query)
 		if (!query) {
 			setIsValueSelected(false)
 		}
-	}
+	}, [])
 
 	const renderField = () => {
 		const baseProps = {
@@ -153,7 +148,7 @@ const FormField: React.FC<FormFieldProps> = ({
 	const styles = getFieldStyles(compact, isMobile)
 
 	// Определяем правильные отступы в зависимости от типа поля и режима
-	const getFieldMargin = () => {
+	const getFieldMargin = useMemo(() => {
 		// Для мобильных устройств используем пиксельные значения
 		if (isMobile) {
 			if (
@@ -191,7 +186,7 @@ const FormField: React.FC<FormFieldProps> = ({
 		return compact
 			? FIELD_CONSTANTS.COMPACT_FIELD_MARGIN
 			: FIELD_CONSTANTS.FORM_FIELD_MARGIN
-	}
+	}, [isMobile, compact, field.type])
 
 	// For divider and header fields, use minimal styling
 	if (field.type === FIELD_TYPES.DIVIDER || field.type === FIELD_TYPES.HEADER) {
@@ -199,7 +194,7 @@ const FormField: React.FC<FormFieldProps> = ({
 			<div
 				style={{
 					...styles.container,
-					marginBottom: getFieldMargin(),
+					marginBottom: getFieldMargin,
 				}}
 			>
 				{renderField()}
@@ -208,10 +203,20 @@ const FormField: React.FC<FormFieldProps> = ({
 	}
 
 	return (
-		<div className='form-field' style={{ marginBottom: getFieldMargin() }}>
+		<div className='form-field' style={{ marginBottom: getFieldMargin }}>
 			{renderField()}
 		</div>
 	)
-}
+}, (prevProps, nextProps) => {
+	// Кастомная функция сравнения для React.memo
+	return (
+		prevProps.field.name === nextProps.field.name &&
+		prevProps.value === nextProps.value &&
+		prevProps.error === nextProps.error &&
+		prevProps.compact === nextProps.compact &&
+		prevProps.isMobile === nextProps.isMobile &&
+		JSON.stringify(prevProps.preloadedOptions) === JSON.stringify(nextProps.preloadedOptions)
+	)
+})
 
 export default FormField

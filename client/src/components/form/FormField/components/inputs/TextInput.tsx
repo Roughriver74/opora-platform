@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback } from 'react'
 import { TextField } from '@mui/material'
 import { FieldInputProps } from '../../types'
 import { getFieldStyles } from '../../utils/fieldStyles'
-import { useDebounce } from '../../hooks/useDebounce'
-import { FIELD_CONSTANTS } from '../../constants'
 
-export const TextInput: React.FC<FieldInputProps> = ({
+export const TextInput: React.FC<FieldInputProps> = React.memo(({
 	field,
 	value,
 	onChange,
@@ -15,27 +13,10 @@ export const TextInput: React.FC<FieldInputProps> = ({
 }) => {
 	const styles = getFieldStyles(compact, isMobile)
 
-	// Локальное состояние для мгновенного отображения ввода
-	const [localValue, setLocalValue] = useState(value || '')
-	const [isTyping, setIsTyping] = useState(false)
-
-	// Debounced значение для отправки в форму
-	const debouncedValue = useDebounce(localValue, FIELD_CONSTANTS.DEBOUNCE_DELAY)
-
-	// Синхронизируем с внешним value только если пользователь не печатает
-	useEffect(() => {
-		if (!isTyping) {
-			setLocalValue(value || '')
-		}
-	}, [value, isTyping])
-
-	// Отправляем изменения в форму с задержкой
-	useEffect(() => {
-		if (debouncedValue !== value && isTyping) {
-			onChange(field.name, debouncedValue)
-			setIsTyping(false)
-		}
-	}, [debouncedValue, value, field.name, onChange, isTyping])
+	// Оптимизированный обработчик изменений - без debounce для мгновенного отклика
+	const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+		onChange(field.name, e.target.value)
+	}, [field.name, onChange])
 
 	return (
 		<TextField
@@ -46,15 +27,12 @@ export const TextInput: React.FC<FieldInputProps> = ({
 			type={field.type === 'number' ? 'number' : 'text'}
 			margin={compact || isMobile ? 'dense' : 'normal'}
 			size={isMobile ? 'small' : compact ? 'small' : 'medium'}
-			value={localValue}
-			onChange={e => {
-				setLocalValue(e.target.value)
-				setIsTyping(true)
-			}}
+			value={value || ''}
+			onChange={handleChange}
 			error={!!error}
 			helperText={error}
 			required={field.required}
 			sx={styles.textField}
 		/>
 	)
-}
+})
