@@ -1,58 +1,37 @@
 services:
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
-    container_name: beton_backend
-    restart: unless-stopped
-    environment:
-      NODE_ENV: development
-      PORT: 5001
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USERNAME: beton_user
-      DB_PASSWORD: ${DB_PASSWORD:-beton_password}
-      DB_NAME: beton_crm
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET}
-      BITRIX24_WEBHOOK_URL: ${BITRIX24_WEBHOOK_URL}
-      CORS_ORIGIN: http://localhost:3000
-    ports:
-      - "${APP_PORT:-5001}:5001"
+      context: ./server
+      dockerfile: Dockerfile.dev
     volumes:
-      - /Users/evgenijsikunov/projects/beton-crm/beton-crm/server:/app
+      - ./server:/app
       - /app/node_modules
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - beton_network
-    command: npm run dev
+    environment:
+      - NODE_ENV=development
 
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    container_name: beton_frontend
-    restart: unless-stopped
-    environment:
-      NODE_ENV: development
-      REACT_APP_API_URL: http://localhost:5001
-      HOST: 0.0.0.0
-    ports:
-      - "${CLIENT_PORT:-3000}:3000"
+      context: ./client
+      dockerfile: Dockerfile.dev
     volumes:
-      - /Users/evgenijsikunov/projects/beton-crm/beton-crm/client:/app
+      - ./client:/app
       - /app/node_modules
-    depends_on:
-      - backend
-    networks:
-      - beton_network
-    command: npm start
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:5001
 
-networks:
-  beton_network:
-    external: true
+  postgres:
+    ports:
+      - "5489:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+
+  redis:
+    ports:
+      - "6396:6379"
+    volumes:
+      - redis_data_dev:/data
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:

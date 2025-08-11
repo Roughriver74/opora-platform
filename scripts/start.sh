@@ -68,7 +68,10 @@ fi
 
 # Очистка локальных build директорий для уменьшения контекста Docker
 echo "🧹 Очистка локальных build директорий..."
-rm -rf client/node_modules client/build server/node_modules server/dist 2>/dev/null || true
+rm -rf client/build server/dist 2>/dev/null || true
+
+# Локальная сборка не требуется - все происходит внутри Docker контейнеров
+echo "📦 Сборка будет выполнена внутри Docker контейнеров..."
 
 # Пересборка без кеша (сначала backend, потом frontend)
 echo "🏗️ Пересборка backend без кеша..."

@@ -1,0 +1,26 @@
+FROM node:18-alpine
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Копируем файлы зависимостей
+COPY package*.json ./
+
+# Устанавливаем все зависимости
+RUN npm install
+
+# Создаем пользователя для безопасности
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Меняем владельца файлов
+RUN chown -R nodejs:nodejs /app
+
+# Переключаемся на пользователя nodejs
+USER nodejs
+
+# Открываем порт
+EXPOSE 5001
+
+# Запускаем в dev режиме с hot reload
+CMD ["npm", "run", "dev"]

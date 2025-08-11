@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import bitrix24Service from '../services/bitrix24Service'
 import { getUserService } from '../services/UserService'
+import { UserRole } from '../database/entities/User.entity'
 
 const userService = getUserService()
 
@@ -44,12 +45,12 @@ export const syncUsers = async (req: Request, res: Response): Promise<void> => {
 						password: `bitrix_${bitrixUser.ID}`, // Временный пароль
 						firstName: bitrixUser.NAME || '',
 						lastName: bitrixUser.LAST_NAME || '',
-						role: 'user' as const,
+						role: UserRole.USER,
 						bitrixUserId: bitrixUser.ID,
 						isActive: bitrixUser.ACTIVE === 'Y'
 					}
 
-					await userService.create(userData)
+					await userService.create(userData as any)
 					syncedCount++
 					console.log(`Создан пользователь: ${bitrixUser.EMAIL}`)
 				} else {
