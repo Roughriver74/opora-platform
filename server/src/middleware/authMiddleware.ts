@@ -134,7 +134,12 @@ export const requireAdmin = (
 	res: Response,
 	next: NextFunction
 ): void => {
+	console.log(`🔒 requireAdmin: проверка прав для ${req.method} ${req.path}`)
+	console.log(`🔒 req.isAdmin: ${req.isAdmin}`)
+	console.log(`🔒 req.user: ${JSON.stringify(req.user, null, 2)}`)
+	
 	if (!req.isAdmin) {
+		console.log(`❌ Доступ запрещен - требуются права администратора`)
 		res.status(401).json({
 			success: false,
 			message: 'Требуются права администратора',
@@ -142,6 +147,7 @@ export const requireAdmin = (
 		return
 	}
 
+	console.log(`✅ Доступ разрешен - пользователь является администратором`)
 	next()
 }
 
@@ -153,8 +159,12 @@ export const requireAuth = (
 	res: Response,
 	next: NextFunction
 ): void => {
+	console.log(`🔓 requireAuth: проверка авторизации для ${req.method} ${req.path}`)
+	console.log(`🔓 req.user: ${JSON.stringify(req.user, null, 2)}`)
+	
 	// Проверяем, есть ли авторизованный пользователь или админ
 	if (!req.user) {
+		console.log(`❌ Доступ запрещен - требуется авторизация`)
 		res.status(401).json({
 			success: false,
 			message: 'Требуется авторизация',
@@ -162,5 +172,6 @@ export const requireAuth = (
 		return
 	}
 
+	console.log(`✅ Доступ разрешен - пользователь авторизован`)
 	next()
 }

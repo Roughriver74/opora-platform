@@ -14,9 +14,9 @@ docker compose down --rmi local
 echo "📝 Создание .dockerignore файлов..."
 
 # .dockerignore для клиента (frontend)
+# ВАЖНО: не игнорируем build, т.к. он копируется в образ nginx
 cat > client/.dockerignore << 'EOF'
 node_modules
-build
 .git
 *.log
 npm-debug.log*
@@ -66,12 +66,14 @@ if [ "$AVAILABLE_SPACE" -lt 2000000 ]; then
     docker system prune -a -f --volumes
 fi
 
-# Очистка локальных build директорий для уменьшения контекста Docker
-echo "🧹 Очистка локальных build директорий..."
-rm -rf client/build server/dist 2>/dev/null || true
+# Локальная сборка фронтенда (для образа nginx)
+echo "🧱 Сборка frontend локально..."
+pushd client >/dev/null
+npm ci --silent
+npm run build --silent
+popd >/dev/null
 
-# Локальная сборка не требуется - все происходит внутри Docker контейнеров
-echo "📦 Сборка будет выполнена внутри Docker контейнеров..."
+echo "📦 Сборка backend и упаковка образов внутри Docker..."
 
 # Пересборка без кеша (сначала backend, потом frontend)
 echo "🏗️ Пересборка backend без кеша..."

@@ -13,6 +13,7 @@ export interface CreateUserDTO {
 	lastName?: string
 	phone?: string
 	role?: UserRole
+	bitrixUserId?: string
 }
 
 export interface UpdateUserDTO {
@@ -22,6 +23,7 @@ export interface UpdateUserDTO {
 	status?: UserStatus
 	isActive?: boolean
 	settings?: Record<string, any>
+	bitrixUserId?: string
 }
 
 export interface LoginDTO {
@@ -60,13 +62,27 @@ export class UserService extends BaseService<User, UserRepository> {
 
 	async login(credentials: LoginDTO): Promise<AuthResponse | null> {
 		const user = await this.repository.findByEmail(credentials.email)
-		
+
 		if (!user || !user.isActive) {
 			return null
 		}
 
-		// Используем bcrypt напрямую
-		const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
+		// Используем bcrypt напрямую, с безопасным фолбэком для старых (нехэшированных) паролей
+		let isPasswordValid = false
+		try {
+			isPasswordValid = await bcrypt.compare(
+				credentials.password,
+				user.password
+			)
+		} catch (e) {
+			// Если в БД хранится невалидный/нехэшированный пароль — пробуем прямое сравнение
+			isPasswordValid =
+				credentials.password === (user.password as unknown as string)
+			if (isPasswordValid) {
+				// Перехэшируем пароль и сохраняем
+				await this.repository.changePassword(user.id, credentials.password)
+			}
+		}
 		if (!isPasswordValid) {
 			return null
 		}
@@ -92,11 +108,18 @@ export class UserService extends BaseService<User, UserRepository> {
 		return this.repository.update(id, data)
 	}
 
-	async updateSettings(userId: string, settings: Record<string, any>): Promise<User | null> {
+	async updateSettings(
+		userId: string,
+		settings: Record<string, any>
+	): Promise<User | null> {
 		return this.repository.updateSettings(userId, settings)
 	}
 
-	async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<boolean> {
+	async changePassword(
+		userId: string,
+		oldPassword: string,
+		newPassword: string
+	): Promise<boolean> {
 		const user = await this.repository.findById(userId)
 		if (!user) {
 			this.throwNotFound('Пользователь', userId)
@@ -186,17 +209,23 @@ export class UserService extends BaseService<User, UserRepository> {
 
 		const secret = process.env.JWT_SECRET || 'secret'
 		const expiresIn = process.env.JWT_EXPIRES_IN || '7d'
-		
+
 		return jwt.sign(payload, secret, { expiresIn } as jwt.SignOptions)
 	}
 
 	private generateRandomPassword(): string {
-		return Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8)
+		return (
+			Math.random().toString(36).slice(-8) +
+			Math.random().toString(36).slice(-8)
+		)
 	}
 
 	async verifyToken(token: string): Promise<User | null> {
 		try {
-			const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any
+			const decoded = jwt.verify(
+				token,
+				process.env.JWT_SECRET || 'secret'
+			) as any
 			return this.repository.findById(decoded.id)
 		} catch (error) {
 			return null

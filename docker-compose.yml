@@ -9,12 +9,12 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-beton_password}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "${DB_PORT:-5489}:5432"
+      - '${DB_PORT:-5489}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # - ./server/src/database/scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U beton_user -d beton_crm"]
+      test: ['CMD-SHELL', 'pg_isready -U beton_user -d beton_crm']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,12 +26,12 @@ services:
     container_name: beton_redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6396}:6379"
+      - '${REDIS_PORT:-6396}:6379'
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,13 +45,13 @@ services:
     container_name: beton_backend
     restart: unless-stopped
     ports:
-      - "${PORT:-5001}:5001"
+      - '${PORT:-5001}:5001'
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-5001}
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USER: beton_user
+      DB_USERNAME: beton_user
       DB_PASSWORD: ${DB_PASSWORD:-beton_password}
       DB_NAME: beton_crm
       REDIS_HOST: redis
@@ -60,7 +60,8 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN:-30d}
       BITRIX_WEBHOOK: ${BITRIX_WEBHOOK}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      # Разрешаем домен и IP через запятую
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://beton.shknv.ru,http://beton.shknv.ru,https://beton.shknv.ru:3000,http://beton.shknv.ru:3000,http://31.128.39.123:3000,https://31.128.39.123:3000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -79,7 +80,7 @@ services:
     container_name: beton_frontend
     restart: unless-stopped
     ports:
-      - "${CLIENT_PORT:-3000}:3000"
+      - '${CLIENT_PORT:-3000}:3000'
     environment:
       REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5001}
       NODE_ENV: ${NODE_ENV:-production}

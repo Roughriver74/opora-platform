@@ -47,10 +47,10 @@ export const syncUsers = async (req: Request, res: Response): Promise<void> => {
 						lastName: bitrixUser.LAST_NAME || '',
 						role: UserRole.USER,
 						bitrixUserId: bitrixUser.ID,
-						isActive: bitrixUser.ACTIVE === 'Y'
+						phone: bitrixUser.PERSONAL_MOBILE || bitrixUser.PERSONAL_PHONE || ''
 					}
 
-					await userService.create(userData as any)
+					await userService.createUser(userData)
 					syncedCount++
 					console.log(`Создан пользователь: ${bitrixUser.EMAIL}`)
 				} else {
@@ -59,10 +59,11 @@ export const syncUsers = async (req: Request, res: Response): Promise<void> => {
 						firstName: bitrixUser.NAME || existingUser.firstName,
 						lastName: bitrixUser.LAST_NAME || existingUser.lastName,
 						bitrixUserId: bitrixUser.ID,
-						isActive: bitrixUser.ACTIVE === 'Y'
+						isActive: true, // По умолчанию активные пользователи
+						phone: bitrixUser.PERSONAL_MOBILE || bitrixUser.PERSONAL_PHONE || existingUser.phone
 					}
 
-					await userService.update(existingUser.id, updateData)
+					await userService.updateUser(existingUser.id, updateData)
 					syncedCount++
 					console.log(`Обновлен пользователь: ${bitrixUser.EMAIL}`)
 				}

@@ -2,7 +2,10 @@ import 'reflect-metadata'
 import express from 'express'
 import cors from 'cors'
 import bodyParser from 'body-parser'
-import { initializeDatabase, closeDatabaseConnection } from './database/config/database.config'
+import {
+	initializeDatabase,
+	closeDatabaseConnection,
+} from './database/config/database.config'
 import redisClient from './config/redis'
 import config from './config/config'
 import { authMiddleware } from './middleware/authMiddleware'
@@ -48,19 +51,10 @@ const initializeServer = async () => {
 initializeServer()
 
 // Middleware
-// Настройка CORS
-const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000'
+// Настройка CORS (разрешаем все origin; модуль выставит конкретный Origin)
 app.use(
 	cors({
-		origin: function (origin, callback) {
-			// Разрешаем запросы с указанного origin и без origin (для Postman и т.д.)
-			const allowedOrigins = corsOrigin.split(',').map(o => o.trim())
-			if (!origin || allowedOrigins.includes(origin)) {
-				callback(null, true)
-			} else {
-				callback(new Error('Not allowed by CORS'))
-			}
-		},
+		origin: true,
 		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
 		allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 		credentials: true,
@@ -90,10 +84,10 @@ app.use('/api/sync', syncRoutes)
 
 // Базовый маршрут для проверки работоспособности API
 app.get('/', (req, res) => {
-	res.json({ 
+	res.json({
 		message: 'Beton CRM API работает',
 		database: 'PostgreSQL',
-		version: '2.0.0'
+		version: '2.0.0',
 	})
 })
 
@@ -102,18 +96,34 @@ app.get('/health', async (req, res) => {
 	try {
 		// Проверка подключения к БД
 		const dbConnected = await checkDatabaseConnection()
-		
+
 		res.json({
 			status: 'ok',
 			database: dbConnected ? 'connected' : 'disconnected',
 			uptime: process.uptime(),
-			timestamp: new Date().toISOString()
+			timestamp: new Date().toISOString(),
 		})
 	} catch (error: any) {
 		res.status(503).json({
 			status: 'error',
-			error: error.message
+			error: error.message,
 		})
+	}
+})
+
+// Алиас для health под /api/health, чтобы скрипты деплоя и внешние проверки
+// использовали единый путь
+app.get('/api/health', async (req, res) => {
+	try {
+		const dbConnected = await checkDatabaseConnection()
+		res.json({
+			status: 'ok',
+			database: dbConnected ? 'connected' : 'disconnected',
+			uptime: process.uptime(),
+			timestamp: new Date().toISOString(),
+		})
+	} catch (error: any) {
+		res.status(503).json({ status: 'error', error: error.message })
 	}
 })
 
@@ -129,21 +139,19 @@ async function checkDatabaseConnection(): Promise<boolean> {
 
 // Запуск сервера
 const PORT = process.env.PORT || 5000
-const server = app.listen(PORT, () => {
-})
+const server = app.listen(PORT, () => {})
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
 	server.close(async () => {
-		
 		// Закрытие подключения к БД
 		await closeDatabaseConnection()
-		
+
 		// Закрытие Redis если подключен
 		if (redisClient && redisClient.isConnected()) {
 			await redisClient.disconnect()
 		}
-		
+
 		process.exit(0)
 	})
 })

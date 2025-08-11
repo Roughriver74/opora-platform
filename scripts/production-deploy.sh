@@ -13,6 +13,7 @@ NC='\033[0m' # No Color
 # Параметры сервера
 SERVER_USER="root"
 SERVER_IP="31.128.39.123"
+SERVER_DOMAIN="beton.shknv.ru"
 APP_DIR="/var/www/beton-crm"
 BACKUP_DIR="/var/backups/beton-crm"
 
@@ -43,8 +44,9 @@ ENV_BACKUP="client/.env.backup"
 # Сохранение и изменение .env для сборки
 if [ -f "$ENV_FILE" ]; then
     cp "$ENV_FILE" "$ENV_BACKUP"
-    echo "REACT_APP_API_URL=http://$SERVER_IP:5001/api" > "$ENV_FILE"
-    echo -e "${GREEN}✓ API URL настроен для продакшн сервера${NC}"
+    # Используем домен для продакшн сервера
+    echo "REACT_APP_API_URL=https://$SERVER_DOMAIN:5001/api" > "$ENV_FILE"
+    echo -e "${GREEN}✓ API URL настроен для продакшн сервера (HTTPS)${NC}"
 fi
 
 # Установка зависимостей и сборка проекта
@@ -83,6 +85,8 @@ tar -czf "$ARCHIVE_NAME" \
     --exclude="postgres_data" \
     --exclude="redis_data" \
     server/dist \
+    server/src \
+    server/tsconfig.json \
     server/package.json \
     server/package-lock.json \
     server/Dockerfile.production \
@@ -128,6 +132,8 @@ fi
 
 # Распаковка нового приложения
 echo "Распаковка нового приложения..."
+# Чистим предыдущие директории, чтобы не мешали остатки
+rm -rf server client 2>/dev/null || true
 tar -xzf $ARCHIVE_NAME
 
 # Установка Docker если не установлен
@@ -168,9 +174,15 @@ cd $APP_DIR
 # Остановка существующих контейнеров
 docker-compose down 2>/dev/null || true
 
-# Запуск новых контейнеров
-echo "Запуск Docker контейнеров..."
-docker-compose up -d --build
+# Очистка старых образов и кэша для принудительной пересборки
+echo "Очистка Docker кэша..."
+docker system prune -f 2>/dev/null || true
+docker builder prune -f 2>/dev/null || true
+
+# Запуск новых контейнеров БЕЗ КЭША для обновления оптимизаций
+echo "Запуск Docker контейнеров (пересборка без кэша)..."
+docker-compose build --no-cache
+docker-compose up -d
 
 # Ожидание запуска сервисов
 echo "Ожидание запуска сервисов..."
@@ -180,9 +192,9 @@ sleep 30
 echo "Статус контейнеров:"
 docker-compose ps
 
-# Запуск миграций базы данных
+# Запуск миграций базы данных (исп. prod-конфиг из dist)
 echo "Запуск миграций базы данных..."
-docker-compose exec -T backend npm run migration:run
+docker-compose exec -T backend npm run migration:run:prod
 
 echo "Деплой в Docker завершен!"
 ENDSSH
@@ -193,16 +205,20 @@ sleep 10
 
 # Проверка API
 echo "Проверка Backend API..."
-if curl -f -s "http://$SERVER_IP:5001/api/health" > /dev/null; then
-    echo -e "${GREEN}✅ Backend API доступен${NC}"
+if curl -f -s -k "https://$SERVER_IP:5001/api/health" > /dev/null; then
+    echo -e "${GREEN}✅ Backend API доступен (HTTPS)${NC}"
+elif curl -f -s "http://$SERVER_IP:5001/api/health" > /dev/null; then
+    echo -e "${YELLOW}⚠️ Backend API доступен только по HTTP${NC}"
 else
     echo -e "${RED}❌ Backend API недоступен${NC}"
 fi
 
 # Проверка Frontend  
 echo "Проверка Frontend..."
-if curl -f -s "http://$SERVER_IP:3000" > /dev/null; then
-    echo -e "${GREEN}✅ Frontend доступен${NC}"
+if curl -f -s -k "https://$SERVER_IP:3000" > /dev/null; then
+    echo -e "${GREEN}✅ Frontend доступен (HTTPS)${NC}"
+elif curl -f -s "http://$SERVER_IP:3000" > /dev/null; then
+    echo -e "${YELLOW}⚠️ Frontend доступен только по HTTP${NC}"
 else
     echo -e "${RED}❌ Frontend недоступен${NC}"
 fi
@@ -212,6 +228,6 @@ rm "$ARCHIVE_NAME"
 
 echo -e "${GREEN}=== Деплой успешно завершен! ===${NC}"
 echo -e "${YELLOW}Приложение доступно по адресам:${NC}"
-echo -e "  Frontend: ${BLUE}http://$SERVER_IP:3000${NC}"
-echo -e "  Backend API: ${BLUE}http://$SERVER_IP:5001/api${NC}"
+echo -e "  Frontend: ${BLUE}https://$SERVER_IP:3000${NC} (или http://$SERVER_IP:3000)"
+echo -e "  Backend API: ${BLUE}https://$SERVER_IP:5001/api${NC} (или http://$SERVER_IP:5001/api)"
 echo -e "${YELLOW}Для просмотра логов: ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && docker-compose logs -f'${NC}"

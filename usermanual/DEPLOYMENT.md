@@ -1,180 +1,164 @@
-# Инструкция по развертыванию Beton CRM
+# Production Deployment Guide для Beton CRM
 
-В этом документе описаны шаги по настройке сервера и CI/CD для автоматического развертывания приложения Beton CRM.
+## ⚠️ КРИТИЧЕСКИ ВАЖНО: Порядок выполнения
 
-## Подготовка сервера
-
-1. Скопируйте скрипт `server-setup.sh` на ваш сервер:
-
-   ```
-   scp server-setup.sh user@your-server-ip:~/
-   ```
-2. Запустите скрипт для базовой настройки сервера:
-
-   ```
-   ssh user@your-server-ip "chmod +x ~/server-setup.sh && ~/server-setup.sh"
-   ```
-3. Настройте MongoDB (при необходимости изменить настройки по умолчанию):
-
-   ```
-   ssh user@your-server-ip
-   sudo nano /etc/mongod.conf
-   sudo systemctl restart mongod
-   ```
-4. Настройте nginx конфигурацию:
-
-   ```
-   # Скопируйте файл на сервер
-   scp nginx.conf user@your-server-ip:~/nginx.conf
-
-   # На сервере
-   ssh user@your-server-ip
-   sudo cp ~/nginx.conf /etc/nginx/sites-available/beton-crm
-
-   # Отредактируйте конфигурацию, обновив данные для вашего домена
-   sudo nano /etc/nginx/sites-available/beton-crm
-
-   # Создайте символическую ссылку
-   sudo ln -s /etc/nginx/sites-available/beton-crm /etc/nginx/sites-enabled/
-
-   # Проверьте конфигурацию
-   sudo nginx -t
-
-   # Перезапустите nginx
-   sudo systemctl reload nginx
-   ```
-5. Настройте SSL с Let's Encrypt:
-
-   ```
-   sudo certbot --nginx -d your-domain.com -d www.your-domain.com
-   ```
-
-## Настройка GitHub Actions CI/CD
-
-1. Создайте публичный и приватный SSH-ключи для деплоя:
-
-   ```
-   ssh-keygen -t ed25519 -C "github-deploy-key" -f ~/.ssh/github_deploy_key
-   ```
-2. Добавьте публичный ключ на сервер:
-
-   ```
-   ssh user@your-server-ip "mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
-   cat ~/.ssh/github_deploy_key.pub | ssh user@your-server-ip "cat >> ~/.ssh/authorized_keys"
-   ```
-3. В GitHub репозитории добавьте следующие секреты (Settings → Secrets and variables → Actions → New repository secret):
-
-   * `SSH_PRIVATE_KEY`: Содержимое файла `~/.ssh/github_deploy_key`
-   * `SSH_HOST`: IP-адрес или доменное имя вашего сервера
-   * `SSH_USER`: Имя пользователя для подключения к серверу
-   * `DEPLOY_PATH`: Путь к директории на сервере, куда будет производиться деплой (например, `/var/www/beton-crm`)
-   * `KNOWN_HOSTS`: Выполните команду `ssh-keyscan -H your-server-ip` и добавьте результат в этот секрет
-4. Подготовьте директорию для деплоя на сервере:
-
-   ```
-   ssh user@your-server-ip "mkdir -p /var/www/beton-crm"
-   ```
-
-## Ручной деплой
-
-### Использование скрипта автоматического деплоя
-
-**ВАЖНО:** Скрипт необходимо запускать из корневой директории проекта, а не из директории scripts!
-
+### 1. Резервное копирование MongoDB (ОБЯЗАТЕЛЬНО)
 ```bash
-# Правильно - из корня проекта:
-cd /путь/к/beton-crm && ./scripts/manual-deploy.sh
+./scripts/backup-mongodb.sh
+```
+**Результат**: Полный бэкап текущих данных (пользователи, формы, заявки)
 
-# НЕПРАВИЛЬНО - не запускайте из директории scripts:
-# cd /путь/к/beton-crm/scripts && ./manual-deploy.sh
+### 2. Деплой нового приложения с Docker
+```bash
+./scripts/production-deploy.sh
+```
+**Результат**: Развертывание Docker контейнеров (PostgreSQL, Redis, Backend, Frontend)
+
+### 3. Миграция данных из MongoDB в PostgreSQL
+```bash
+./scripts/migrate-data-to-postgres.sh
+```
+**Результат**: Перенос всех данных в новую базу PostgreSQL
+
+## 📋 Что происходит при деплое
+
+### Backup Phase (backup-mongodb.sh)
+- ✅ Остановка старого приложения
+- ✅ Создание MongoDB dump
+- ✅ Экспорт коллекций в JSON
+- ✅ Архивирование текущего приложения
+- ✅ Скачивание бэкапа локально
+
+### Deploy Phase (production-deploy.sh)
+- ✅ Сборка React приложения для продакшн
+- ✅ Создание деплой архива
+- ✅ Установка Docker и Docker Compose на сервере
+- ✅ Запуск PostgreSQL и Redis контейнеров
+- ✅ Развертывание Backend и Frontend
+- ✅ Запуск миграций схемы БД
+
+### Migration Phase (migrate-data-to-postgres.sh)
+- ✅ Парсинг JSON экспортов из MongoDB
+- ✅ Трансформация данных для PostgreSQL
+- ✅ Импорт пользователей, форм, полей и заявок
+- ✅ Сохранение всех связей и истории
+
+## 🔧 Новая архитектура
+
+### Docker Services
+- **PostgreSQL**: Порт 5432 (внутренний)
+- **Redis**: Порт 6379 (внутренний) 
+- **Backend**: Порт 5001 (внешний)
+- **Frontend**: Порт 3000 (внешний)
+
+### Volumes
+- `postgres_data`: Данные PostgreSQL
+- `redis_data`: Данные Redis с AOF persistence
+
+### Networks
+- `beton_network`: Внутренняя сеть для межсервисного общения
+
+## 🌐 URL доступа после деплоя
+- **Frontend**: http://31.128.39.123:3000
+- **Backend API**: http://31.128.39.123:5001/api
+
+## 🛠️ Команды управления
+
+### На сервере
+```bash
+cd /var/www/beton-crm
+
+# Просмотр статуса
+docker-compose ps
+
+# Просмотр логов
+docker-compose logs -f
+
+# Рестарт сервисов
+docker-compose restart
+
+# Остановка
+docker-compose down
+
+# Запуск
+docker-compose up -d
 ```
 
-Скрипт выполнит следующие действия:
-1. Создаст резервную копию .env файла
-2. Установит нужные настройки окружения для сборки
-3. Соберёт проект (клиент и сервер)
-4. Восстановит оригинальную конфигурацию .env
-5. Упакует необходимые файлы в архив
-6. Загрузит архив на сервер и развернёт его
-7. Перезапустит приложение с помощью PM2
+### Миграции базы данных
+```bash
+# Запуск миграций
+docker-compose exec backend npm run migration:run
 
-### Альтернативный способ ручного деплоя
-
-Если по какой-то причине вы не можете использовать скрипт автоматического деплоя:
-
-1. Соберите клиентскую часть:
-
-   ```
-   cd client
-   npm run build
-   ```
-2. Соберите серверную часть:
-
-   ```
-   cd server
-   npm run build
-   ```
-3. Скопируйте файлы на сервер:
-
-   ```
-   # Создайте структуру директорий
-   ssh user@your-server-ip "mkdir -p /var/www/beton-crm/{client/build,server/dist}"
-
-   # Копируйте файлы
-   scp -r client/build/* user@your-server-ip:/var/www/beton-crm/client/build/
-   scp -r server/dist/* user@your-server-ip:/var/www/beton-crm/server/dist/
-   scp server/package.json user@your-server-ip:/var/www/beton-crm/server/
-   scp package.json ecosystem.config.js .env.production user@your-server-ip:/var/www/beton-crm/
-
-   # Переименуйте .env.production в .env на сервере
-   ssh user@your-server-ip "mv /var/www/beton-crm/.env.production /var/www/beton-crm/.env"
-   ```
-4. Установите зависимости и запустите приложение:
-
-   ```
-   ssh user@your-server-ip "cd /var/www/beton-crm && npm install --production && cd server && npm install --production"
-   ssh user@your-server-ip "cd /var/www/beton-crm && pm2 delete beton-crm || true && pm2 start ecosystem.config.js --env production && pm2 save"
-   ```
-
-## Проверка развертывания
-
-1. Проверьте, что API сервер работает:
-
-   ```
-   curl http://your-domain.com/api
-   ```
-2. Откройте ваш сайт в браузере: `https://your-domain.com`
-3. Проверьте логи PM2:
-
-   ```
-   ssh user@your-server-ip "pm2 logs beton-crm"
-   ```
-
-## Резервное копирование данных
-
-Чтобы создать резервную копию базы данных MongoDB:
-
-```
-ssh user@your-server-ip "mongodump --out=/backup/$(date +%Y-%m-%d) --db=beton-crm"
+# Проверка базы данных
+docker-compose exec backend npm run db:check
 ```
 
-Для восстановления:
+## 🆘 Troubleshooting
 
+### Если что-то пошло не так
+
+1. **Проверить статус контейнеров**:
+   ```bash
+   docker-compose ps
+   ```
+
+2. **Посмотреть логи**:
+   ```bash
+   docker-compose logs backend
+   docker-compose logs frontend
+   ```
+
+3. **Откат к старой версии**:
+   ```bash
+   # Остановить Docker
+   docker-compose down
+   
+   # Восстановить из бэкапа
+   cd /var/backups/beton-crm/[timestamp]
+   tar -xzf app-backup.tar.gz -C /var/www/
+   
+   # Восстановить MongoDB
+   mongorestore --host localhost --port 27017 --db beton_crm mongodb/beton_crm
+   
+   # Запустить старое приложение
+   pm2 start ecosystem.config.js
+   ```
+
+## 🔐 Безопасность
+
+### Настройки файрвола
+- Порт 22 (SSH)
+- Порт 80 (HTTP) 
+- Порт 443 (HTTPS)
+- Порт 3000 (Frontend)
+- Порт 5001 (Backend API)
+
+### SSL сертификаты (опционально)
+```bash
+# Установка Let's Encrypt
+certbot --nginx -d your-domain.com
 ```
-ssh user@your-server-ip "mongorestore --db=beton-crm /backup/YYYY-MM-DD/beton-crm"
+
+## 📊 Мониторинг
+
+### Автоматически настроенные службы
+- ✅ Проверка состояния Docker контейнеров (каждые 5 минут)
+- ✅ Ежедневное резервное копирование PostgreSQL (02:00)
+- ✅ Ротация логов
+- ✅ Автоматические обновления системы
+
+### Просмотр логов мониторинга
+```bash
+tail -f /var/log/beton-crm/docker-monitor.log
+tail -f /var/log/beton-crm/backup.log
 ```
 
-## Работа с администраторской панелью
+## 📞 Контакты для поддержки
 
-Для входа в администраторскую панель:
+В случае проблем с деплоем:
+1. Проверьте логи всех сервисов
+2. Убедитесь в доступности портов
+3. Проверьте права доступа к файлам
+4. При критических ошибках используйте процедуру отката
 
-1. Перейдите на страницу `/admin` вашего сайта
-2. Используйте пароль, указанный в .env файле в переменной `ADMIN_PASSWORD`
-
-Обязательно измените пароль администратора в файле `.env` на сервере перед запуском в продакшене.
-
-
-
-
-# Правильный способ запуска скрипта деплоя (выполнять из корневой директории проекта):
-cd /путь/к/beton-crm && ./scripts/manual-deploy.sh
+**ВАЖНО**: Все скрипты создают множественные бэкапы - данные в безопасности!

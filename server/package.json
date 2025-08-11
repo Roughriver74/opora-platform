@@ -10,6 +10,7 @@
 		"typeorm": "typeorm-ts-node-commonjs",
 		"migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/database/config/database.config.ts",
 		"migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/config/database.config.ts",
+		"migration:run:prod": "node ./node_modules/typeorm/cli.js migration:run -d dist/database/config/database.config.js",
 		"migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/config/database.config.ts",
 		"db:check": "ts-node --transpile-only src/database/migrations/scripts/check-tables.ts",
 		"db:clean": "ts-node --transpile-only src/database/migrations/scripts/clean-db.ts",
@@ -46,6 +47,6 @@
 		"@types/redis": "^4.0.11",
 		"nodemon": "^3.1.10",
 		"ts-node": "^10.9.2",
-		"typescript": "^5.8.3"
+		"typescript": "5.4.5"
 	}
 }

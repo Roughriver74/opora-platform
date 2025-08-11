@@ -128,13 +128,32 @@ export class User extends BaseEntity {
 	}
 
 	toJSON() {
-		const obj = super.toJSON()
+		const obj: any = super.toJSON()
 		delete obj.password
+		// Преобразуем bitrixUserId в bitrix_id для совместимости с фронтендом
+		if (obj.bitrixUserId) {
+			obj.bitrix_id = obj.bitrixUserId
+			delete obj.bitrixUserId
+		}
+		// Синхронизируем status и isActive для фронтенда
+		// Если isActive = false, то status должен быть 'inactive'
+		if (!obj.isActive) {
+			obj.status = 'inactive'
+		}
 		return obj
 	}
 
 	toSafeObject() {
 		const { password, ...safeUser } = this
+		// Преобразуем bitrixUserId в bitrix_id для совместимости с фронтендом
+		if (safeUser.bitrixUserId) {
+			(safeUser as any).bitrix_id = safeUser.bitrixUserId
+			delete (safeUser as any).bitrixUserId
+		}
+		// Синхронизируем status и isActive для фронтенда
+		if (!safeUser.isActive) {
+			(safeUser as any).status = 'inactive'
+		}
 		return safeUser
 	}
 }

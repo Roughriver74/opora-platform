@@ -42,9 +42,15 @@ export const getAllUsers = async (
 			filters
 		)
 
+		// Преобразуем данные для фронтенда
+		const transformedData = result.data.map(user => {
+			const userJson = user.toJSON ? user.toJSON() : user
+			return userJson
+		})
+
 		res.json({
 			success: true,
-			data: result.data,
+			data: transformedData,
 			pagination: {
 				page: result.page,
 				limit: result.limit,
@@ -81,11 +87,11 @@ export const getUserById = async (
 			return
 		}
 
-		// Возвращаем пользователя без пароля
-		const { password, ...userWithoutPassword } = user as any
+		// Возвращаем пользователя без пароля и с правильным форматом
+		const userJson = user.toJSON ? user.toJSON() : user
 		res.json({
 			success: true,
-			data: userWithoutPassword,
+			data: userJson,
 		})
 	} catch (error) {
 		console.error('Ошибка получения пользователя:', error)
@@ -239,7 +245,11 @@ export const updateUser = async (
 		if (firstName !== undefined) updateData.firstName = firstName
 		if (lastName !== undefined) updateData.lastName = lastName
 		if (phone !== undefined) updateData.phone = phone
-		if (status) updateData.status = status
+		if (status) {
+			updateData.status = status
+			// Синхронизируем isActive со status
+			updateData.isActive = status === 'active'
+		}
 		if (bitrixUserId !== undefined) updateData.bitrixUserId = bitrixUserId
 
 		// Обновляем пароль, если указан
@@ -257,12 +267,12 @@ export const updateUser = async (
 
 		const updatedUser = await userService.updateUser(id, updateData)
 
-		// Возвращаем обновленного пользователя без пароля
-		const { password: _, ...userResponse } = updatedUser as any
+		// Возвращаем обновленного пользователя с правильным форматом
+		const userJson = updatedUser?.toJSON ? updatedUser.toJSON() : updatedUser
 
 		res.json({
 			success: true,
-			data: userResponse,
+			data: userJson,
 			message: 'Пользователь успешно обновлен',
 		})
 	} catch (error) {
@@ -463,6 +473,7 @@ export const syncWithBitrix = async (
 							firstName: bitrixUser.NAME || bitrixUser.firstName || user.firstName,
 							lastName: bitrixUser.LAST_NAME || bitrixUser.lastName || user.lastName,
 							phone: bitrixUser.WORK_PHONE || bitrixUser.phone || user.phone,
+							isActive: true, // Делаем пользователя активным
 						})
 
 						// Отдельно обновляем bitrixUserId
@@ -472,7 +483,7 @@ export const syncWithBitrix = async (
 						updated++
 					}
 				} else {
-					// Создаем нового пользователя
+					// Создаем нового пользователя с битрикс ID
 					await userService.createUser({
 						email: email.toLowerCase(),
 						password: PasswordHashService.generateRandomPassword(),
@@ -480,15 +491,8 @@ export const syncWithBitrix = async (
 						firstName: bitrixUser.NAME || bitrixUser.firstName,
 						lastName: bitrixUser.LAST_NAME || bitrixUser.lastName,
 						phone: bitrixUser.WORK_PHONE || bitrixUser.phone,
+						bitrixUserId: bitrixUser.ID || bitrixUser.id
 					})
-
-					// После создания обновляем bitrixUserId
-					const newUser = await userService.findByEmail(email)
-					if (newUser) {
-						await userService.userRepository.update(newUser.id, {
-							bitrixUserId: bitrixUser.ID || bitrixUser.id
-						})
-					}
 					created++
 				}
 			} catch (error) {
