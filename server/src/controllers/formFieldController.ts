@@ -53,6 +53,7 @@ export const createField = async (
 ): Promise<void> => {
 	try {
 		const fieldData = req.body
+		console.log('Creating field with data:', {
 			name: fieldData.name,
 			type: fieldData.type,
 			formId: fieldData.formId,
@@ -93,6 +94,7 @@ export const updateField = async (
 			return
 		}
 
+		console.log('Field updated successfully:', {
 			id: updatedField.id,
 			name: updatedField.name,
 			label: updatedField.label,
@@ -204,6 +206,7 @@ export const getCompaniesList = async (
 			assignedFilter = user.bitrix_id
 		}
 
+			console.log('Search params:', {
 			query: query as string,
 			userId: user?.id,
 			// @ts-ignore
@@ -332,6 +335,7 @@ export const searchCompanies = async (
 			assignedFilter = user.bitrix_id
 		}
 
+			console.log('Search params:', {
 			query: query as string,
 			userId: user?.id,
 			// @ts-ignore

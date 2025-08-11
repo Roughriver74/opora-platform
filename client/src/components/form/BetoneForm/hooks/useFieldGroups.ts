@@ -93,13 +93,6 @@ export const useFieldGroups = (fields: FormFieldType[]) => {
 		}
 	}, [hasDividers, fieldGroups])
 
-		totalGroups: fieldGroups.length,
-		groupTitles: fieldGroups.map(g => g.title),
-		expandedGroups: Array.from(expandedGroups),
-		hasDividers,
-		stats: groupsStats,
-	})
-
 	return {
 		// Основные данные
 		fieldGroups,

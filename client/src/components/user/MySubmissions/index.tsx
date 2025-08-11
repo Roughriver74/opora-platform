@@ -212,26 +212,31 @@ const MySubmissions: React.FC = () => {
 	// Функция для редактирования заявки - НОВАЯ ЛОГИКА
 	const handleEditSubmission = async (submission: Submission) => {
 		try {
-				'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
-				submission.id
-			)
+				console.log(
+					'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
+					submission.id
+				)
 
 			// Получаем заявку с актуальными данными из Битрикс24
-				'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
-			)
+				console.log(
+					'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
+				)
 			const response = await SubmissionService.getSubmissionForEdit(
 				submission.id
 			)
 
-				'[CLIENT EDIT DEBUG] response.data.preloadedOptions:',
+			console.log(
+			'[CLIENT EDIT DEBUG] response.data.preloadedOptions:',
 				response.data.preloadedOptions
 			)
 
 			if (response.success) {
-					'[CLIENT EDIT DEBUG] Обновленные formData:',
+				console.log(
+				'[CLIENT EDIT DEBUG] Обновленные formData:',
 					response.data.formData
 				)
-					'[CLIENT EDIT DEBUG] Предзагруженные опции:',
+				console.log(
+				'[CLIENT EDIT DEBUG] Предзагруженные опции:',
 					response.data.preloadedOptions
 				)
 
@@ -283,12 +288,14 @@ const MySubmissions: React.FC = () => {
 			// Получаем данные заявки для копирования (теперь с preloadedOptions)
 			const response = await SubmissionService.copySubmission(submission.id)
 
-				'[CLIENT COPY] response.data.preloadedOptions:',
+			console.log(
+			'[CLIENT COPY] response.data.preloadedOptions:',
 				response.data.preloadedOptions
 			)
 
 			if (response.success) {
-					'[CLIENT COPY] Предзагруженные опции:',
+				console.log(
+				'[CLIENT COPY] Предзагруженные опции:',
 					response.data.preloadedOptions
 				)
 

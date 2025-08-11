@@ -175,6 +175,7 @@ export const getDealCategories = async (
 ): Promise<void> => {
 	try {
 		const categoriesData = await bitrix24Service.getDealCategories()
+		console.log(
 			'Полученные данные от Bitrix24:',
 			JSON.stringify(categoriesData, null, 2)
 		)

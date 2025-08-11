@@ -18,9 +18,10 @@ export const useDynamicOptions = (
 	// Initialize preloaded options
 	useEffect(() => {
 		if (preloadedOptions && preloadedOptions.length > 0) {
-				'🔧 [useDynamicOptions] Устанавливаем предзагруженные опции:',
-				preloadedOptions
-			)
+				console.log(
+					'🔧 [useDynamicOptions] Устанавливаем предзагруженные опции:',
+					preloadedOptions
+				)
 			setOptions(preloadedOptions)
 		}
 	}, [preloadedOptions])
@@ -143,7 +144,8 @@ export const useDynamicOptions = (
 
 				dataOptions = uniqueOptions
 
-					`🔍 useDynamicOptions: Загружены опции для "${query}":`,
+				console.log(
+				`🔍 useDynamicOptions: Загружены опции для "${query}":`,
 					dataOptions.length,
 					'штук'
 				)
@@ -153,16 +155,18 @@ export const useDynamicOptions = (
 				if (query && dataOptions.length > 0) {
 					const exactMatch = dataOptions.find(opt => opt.value === query)
 					if (exactMatch) {
+						console.log(
 							`✅ useDynamicOptions: Автоматически выбираем точное совпадение:`,
 							exactMatch
-						)
-						setSelectedOption(exactMatch)
+						);
+						setSelectedOption(exactMatch);
 					} else if (autoSelectFirst && dataOptions.length === 1) {
 						// Если был запрос на автоматический выбор и найдена только одна опция
+						console.log(
 							`✅ useDynamicOptions: Автоматически выбираем единственную найденную опцию:`,
 							dataOptions[0]
-						)
-						setSelectedOption(dataOptions[0])
+						);
+						setSelectedOption(dataOptions[0]);
 					}
 				}
 			} catch (error) {
@@ -184,9 +188,10 @@ export const useDynamicOptions = (
 			if (value && options.length > 0) {
 				const foundOption = options.find(opt => opt.value === value)
 				if (foundOption) {
+					console.log(
 						`🔄 useDynamicOptions: Принудительная синхронизация с опцией:`,
 						foundOption
-					)
+					);
 					setSelectedOption(foundOption)
 					return foundOption
 				}

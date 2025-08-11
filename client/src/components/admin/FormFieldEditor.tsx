@@ -574,9 +574,10 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 					newOrder = baseSectionOrder + 99
 				}
 
+				console.log(
 					`Установка порядка для поля в разделе ${sectionNumber}: ${newOrder}`
-				)
-				handleFieldChange('order', newOrder)
+				);
+				handleFieldChange('order', newOrder);
 			}
 		}
 	}

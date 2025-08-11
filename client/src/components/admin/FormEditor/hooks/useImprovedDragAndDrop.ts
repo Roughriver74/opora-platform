@@ -89,10 +89,11 @@ export const useImprovedDragAndDrop = (
 			const sourceIndex = Number(e.dataTransfer.getData('text/plain'))
 			const elementId = e.dataTransfer.getData('elementId')
 
-				sourceIndex,
-				targetIndex,
-				elementId,
-			})
+				console.log({
+					sourceIndex,
+					targetIndex,
+					elementId,
+				})
 
 			// Если сбрасываем на то же место, ничего не делаем
 			if (sourceIndex === targetIndex) {

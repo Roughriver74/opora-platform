@@ -18,9 +18,10 @@ export const FormFieldService = {
 	// Создание нового поля
 	async createField(fieldData: Omit<FormField, '_id'>) {
 		try {
-				'Отправка данных на сервер:',
-				JSON.stringify(fieldData, null, 2)
-			)
+				console.log(
+					'Отправка данных на сервер:',
+					JSON.stringify(fieldData, null, 2)
+				)
 			const response = await api.post('/api/form-fields', fieldData)
 			return response.data
 		} catch (error: any) {

@@ -61,6 +61,7 @@ export const createBackup = async (
 		const environment =
 			process.env.NODE_ENV === 'production' ? 'production' : 'local'
 
+		console.log(
 			`Creating backup with script: ${scriptPath}, environment: ${environment}`
 		)
 

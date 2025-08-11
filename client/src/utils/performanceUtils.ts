@@ -111,7 +111,8 @@ export const usePerformanceMonitor = (componentName: string) => {
 
 		return () => {
 			const lifeTime = Date.now() - mountTimeRef.current
-				`🔄 ${componentName} unmounted after ${lifeTime}ms, renders: ${renderCountRef.current}`
+			console.log(
+			`🔄 ${componentName} unmounted after ${lifeTime}ms, renders: ${renderCountRef.current}`
 			)
 		}
 	}, [componentName])
@@ -207,7 +208,8 @@ export const checkGlobalLeaks = (): void => {
 
 	if (globalKeys.length > 50) {
 		console.warn(`⚠️ Много глобальных переменных: ${globalKeys.length}`)
-			'🔍 Пользовательские глобальные переменные:',
+		console.log(
+		'🔍 Пользовательские глобальные переменные:',
 			globalKeys.slice(0, 10)
 		)
 	}

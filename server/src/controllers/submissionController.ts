@@ -3,7 +3,10 @@ import { getFormService } from '../services/FormService'
 import { getSubmissionService } from '../services/SubmissionService'
 import { getUserService } from '../services/UserService'
 import bitrix24Service from '../services/bitrix24Service'
-import { BitrixSyncStatus, SubmissionPriority } from '../database/entities/Submission.entity'
+import {
+	BitrixSyncStatus,
+	SubmissionPriority,
+} from '../database/entities/Submission.entity'
 
 const formService = getFormService()
 const submissionService = getSubmissionService()
@@ -12,195 +15,102 @@ const userService = getUserService()
 // Обработка отправки формы заявки
 export const submitForm = async (req: Request, res: Response) => {
 	try {
-
 		const { formId, formData } = req.body
 
-
 		if (!formId || !formData) {
-			
 			return res.status(400).json({
 				message: 'Необходимо указать ID формы и данные формы',
-				debug: {
-					receivedFormId: formId,
-					receivedFormData: formData,
-					hasFormId: !!formId,
-					hasFormData: !!formData,
-					bodyKeys: Object.keys(req.body)
-				}
 			})
 		}
 
-
-		// Получаем форму с полями для маппинга
 		const form = await formService.findWithFields(formId)
 		if (!form) {
 			return res.status(404).json({ message: 'Форма не найдена' })
 		}
 
-		// Проверяем, активна ли форма
 		if (!form.isActive) {
 			return res.status(400).json({ message: 'Форма не активна' })
 		}
 
-
-		// Валидация данных формы
 		const validation = await formService.validateFormData(formId, formData)
-		
 		if (!validation.isValid) {
 			return res.status(400).json({
 				message: 'Ошибка валидации данных',
 				errors: validation.errors,
-				debug: {
-					formId,
-					formDataKeys: Object.keys(formData),
-					formFields: form.fields.map(f => ({ name: f.name, type: f.type, required: f.required }))
-				}
 			})
 		}
 
-
-		// Подготавливаем данные для создания сделки в Битрикс24
 		const dealData: Record<string, any> = {}
+		let dealTitle = `Заявка ${Date.now()}`
 
-		// Динамически определяем TITLE из поля формы
-		let dealTitle = `Заявка ${Date.now()}` // fallback
-
-		// Проходим по всем полям формы и заполняем данные для сделки
 		for (const field of form.fields) {
-			// Проверяем, есть ли значение для этого поля
 			if (formData[field.name] !== undefined && field.bitrixFieldId) {
 				const value = formData[field.name]
 				dealData[field.bitrixFieldId] = value
-
-				// Если это поле маппится на TITLE, используем его как название
 				if (field.bitrixFieldId === 'TITLE' && value) {
 					dealTitle = value
 				}
-
-					`[SUBMIT] Поле ${field.name} -> ${field.bitrixFieldId}: "${value}"`
-				)
 			}
 		}
 
-		// Устанавливаем название сделки
-		dealData['TITLE'] = dealTitle
+		dealData.TITLE = dealTitle
+		dealData.STAGE_ID = 'C1:NEW'
 
-		// Устанавливаем начальный статус
-		dealData['STAGE_ID'] = 'C1:NEW'
-
-		// Если пользователь авторизован, добавляем информацию о нем
 		if (req.user?.id) {
 			const user = await userService.findById(req.user.id)
 			if (user && user.bitrixUserId) {
-				dealData['ASSIGNED_BY_ID'] = user.bitrixUserId
+				dealData.ASSIGNED_BY_ID = user.bitrixUserId
 			}
 		}
 
-		// Устанавливаем категорию сделки (по умолчанию 1, если не указана)
 		const categoryId = form.bitrixDealCategory || '1'
-		dealData['CATEGORY_ID'] = categoryId
-
+		dealData.CATEGORY_ID = categoryId
 
 		let submission: any = null
 
 		try {
-			// СНАЧАЛА создаем заявку в БД для получения ID
 			const submissionData = {
 				formId: formId,
 				userId: req.user?.id,
 				title: dealTitle,
-				notes: 'Заявка создана через форму'
+				notes: 'Заявка создана через форму',
 			}
-			
+
 			submission = await submissionService.createSubmission(submissionData)
+			dealData.UF_CRM_1750107484181 = submission.id
 
-				`[SUBMIT] ✅ Заявка сохранена в БД: ${submission.submissionNumber}, ID: ${submission.id}`
-			)
-
-			// Добавляем ID заявки в поле UF_CRM_1750107484181
-			dealData['UF_CRM_1750107484181'] = submission.id
-				`[SUBMIT] 🔗 Добавлен ID заявки в поле UF_CRM_1750107484181: ${submission.id}`
-			)
-
-			// ТЕПЕРЬ создаем сделку в Битрикс24 с ID заявки
-			
 			const dealResponse = await bitrix24Service.createDeal(dealData)
 
-				'[SUBMIT] ✅ Сделка создана в Битрикс24, ID:',
-				dealResponse.result
-			)
-
-			// Обновляем заявку с полученным bitrixDealId
 			await submissionService.updateSyncStatus(
 				submission.id,
 				BitrixSyncStatus.SYNCED,
-				dealResponse.result.toString()
+				dealResponse.result?.toString?.()
 			)
 
-				`[SUBMIT] Заявка обновлена с bitrixDealId: ${dealResponse.result}`
-			)
-
-			// Возвращаем успешный ответ
-			res.status(200).json({
+			return res.status(200).json({
 				success: true,
 				message:
 					form.successMessage || 'Спасибо! Ваша заявка успешно отправлена.',
 				submissionId: submission.id,
 				submissionNumber: submission.submissionNumber,
-				dealId: dealResponse.result.toString(),
+				dealId: dealResponse.result?.toString?.(),
 			})
 		} catch (bitrixError: any) {
-			console.error(
-				'[SUBMIT] 🚨 КРИТИЧЕСКАЯ ОШИБКА - не удалось создать сделку в Битрикс24:'
-			)
-			console.error('[SUBMIT] 🔍 Детали ошибки Bitrix24:', {
-				message: bitrixError.message,
-				status: bitrixError.response?.status,
-				statusText: bitrixError.response?.statusText,
-				data: bitrixError.response?.data,
-				config: {
-					url: bitrixError.config?.url,
-					method: bitrixError.config?.method,
-					data: bitrixError.config?.data
-				}
-			})
-
-			// Удаляем созданную заявку из БД, если не удалось создать сделку в Битрикс24
 			if (submission && submission.id) {
 				try {
 					await submissionService.delete(submission.id)
-						`[SUBMIT] 🗑️ Заявка ${submission.id} удалена из БД после ошибки Битрикс24`
-					)
-				} catch (deleteError) {
-					console.error(
-						`[SUBMIT] ❌ Ошибка удаления заявки ${submission.id}:`,
-						deleteError
-					)
-				}
+				} catch {}
 			}
 
 			return res.status(500).json({
 				message: 'Ошибка создания заявки в системе',
-				error: bitrixError.message,
-				debug: {
-					bitrixUrl: bitrixError.config?.url,
-					bitrixStatus: bitrixError.response?.status,
-					bitrixData: bitrixError.response?.data,
-					dealData: dealData,
-					submissionId: submission?.id
-				}
+				error: bitrixError?.message,
 			})
 		}
 	} catch (error: any) {
-		console.error('[SUBMIT] 🚨 Общая ошибка при отправке формы:', error)
-		console.error('[SUBMIT] 🔍 Stack trace:', error.stack)
-		res.status(500).json({
+		return res.status(500).json({
 			message: 'Произошла ошибка при обработке заявки',
-			error: error.message,
-			debug: {
-				stack: error.stack,
-				name: error.name
-			}
+			error: error?.message,
 		})
 	}
 }
@@ -222,7 +132,7 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			formId,
 			bitrixSyncStatus,
 			sortBy = 'createdAt',
-			sortOrder = 'desc'
+			sortOrder = 'desc',
 		} = req.query
 
 		// Подготовка фильтров
@@ -234,9 +144,13 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
 			dateTo: dateTo ? new Date(dateTo as string) : undefined,
 			search: search as string,
-			tags: Array.isArray(tags) ? tags as string[] : tags ? [tags as string] : undefined,
+			tags: Array.isArray(tags)
+				? (tags as string[])
+				: tags
+				? [tags as string]
+				: undefined,
 			formId: formId as string,
-			bitrixSyncStatus: bitrixSyncStatus as BitrixSyncStatus
+			bitrixSyncStatus: bitrixSyncStatus as BitrixSyncStatus,
 		}
 
 		// Подготовка пагинации
@@ -244,19 +158,18 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			page: Number(page),
 			limit: Number(limit),
 			sortBy: sortBy as string,
-			sortOrder: (sortOrder as string).toUpperCase() as 'ASC' | 'DESC'
+			sortOrder: (sortOrder as string).toUpperCase() as 'ASC' | 'DESC',
 		}
 
-		
 		// Используем сервис для получения заявок
 		const result = await submissionService.searchSubmissions({
 			...filters,
-			...pagination
+			...pagination,
 		})
-		
+
 		res.status(200).json({
 			success: true,
-			...result
+			...result,
 		})
 	} catch (error: any) {
 		console.error('Ошибка при получении заявок:', error)
@@ -300,7 +213,11 @@ export const getMySubmissions = async (req: Request, res: Response) => {
 			dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
 			dateTo: dateTo ? new Date(dateTo as string) : undefined,
 			search: search as string,
-			tags: Array.isArray(tags) ? tags as string[] : tags ? [tags as string] : undefined,
+			tags: Array.isArray(tags)
+				? (tags as string[])
+				: tags
+				? [tags as string]
+				: undefined,
 		}
 
 		// Подготовка пагинации
@@ -308,14 +225,14 @@ export const getMySubmissions = async (req: Request, res: Response) => {
 			page: Number(page),
 			limit: Number(limit),
 			sortBy: 'createdAt',
-			sortOrder: 'desc' as const
+			sortOrder: 'desc' as const,
 		}
 
 		const result = await submissionService.getUserSubmissions(userId, filters)
 
 		res.json({
 			success: true,
-			...result
+			...result,
 		})
 	} catch (error: any) {
 		console.error('Ошибка получения заявок:', error)
@@ -402,7 +319,6 @@ export const updateSubmissionStatus = async (req: Request, res: Response) => {
 				)
 				await submissionService.updateSyncStatus(id, BitrixSyncStatus.SYNCED)
 			} catch (bitrixError: any) {
-				console.error('Ошибка синхронизации статуса с Битрикс24:', bitrixError)
 				await submissionService.updateSyncStatus(
 					id,
 					BitrixSyncStatus.FAILED,
@@ -434,179 +350,98 @@ export const getSubmissionWithBitrixData = async (
 		const { id } = req.params
 		const userId = req.user?.id
 
-
 		const submission = await submissionService.findById(id)
-
 		if (!submission) {
-			return res.status(404).json({
-				success: false,
-				message: 'Заявка не найдена',
-			})
+			return res
+				.status(404)
+				.json({ success: false, message: 'Заявка не найдена' })
 		}
 
-		// Проверяем права доступа
 		const isAdmin = req.isAdmin
 		if (!isAdmin && submission.userId !== userId) {
-				`[EDIT] ❌ ДОСТУП ЗАПРЕЩЕН: Пользователь ${userId} пытается получить заявку пользователя ${submission.userId}`
-			)
-			return res.status(403).json({
-				success: false,
-				message: 'Нет прав для просмотра этой заявки',
-			})
+			return res
+				.status(403)
+				.json({ success: false, message: 'Нет прав доступа' })
 		}
 
-		// Получаем актуальные данные из Битрикс24
-		let formDataFromBitrix = {}
-		let preloadedOptions: Record<string, any[]> = {}
+		let formDataFromBitrix: Record<string, any> = {}
+		let preloadedOptions: Record<string, { value: any; label: string }[]> = {}
 
 		try {
-				`[EDIT] Получение актуальных данных сделки ${submission.bitrixDealId}`
-			)
-
-			// Получаем данные сделки из Битрикс24
-			const dealResponse = await bitrix24Service.getDeal(
-				submission.bitrixDealId!
-			)
-
-
-			if (dealResponse?.result) {
-				const dealData = dealResponse.result
-					`[EDIT] Данные сделки из Битрикс24:`,
-					Object.keys(dealData)
+			if (submission.bitrixDealId) {
+				const dealResponse = await bitrix24Service.getDeal(
+					submission.bitrixDealId
 				)
+				const dealData = dealResponse?.result || {}
 
-				// Получаем форму для правильного маппинга полей
 				const form = await formService.findWithFields(submission.formId)
 				if (form) {
-
-					// Конвертируем данные из Битрикс24 обратно в формат формы
 					for (const field of form.fields) {
-							`[EDIT] Проверяем поле: ${field.name}, bitrixFieldId: ${field.bitrixFieldId}`
-						)
+						if (field.bitrixFieldId) {
+							const bitrixValue = dealData[field.bitrixFieldId]
+							if (bitrixValue !== undefined) {
+								formDataFromBitrix[field.name] = bitrixValue
 
-						if (
-							field.bitrixFieldId &&
-							dealData[field.bitrixFieldId] !== undefined
-						) {
-							let bitrixValue = dealData[field.bitrixFieldId]
-
-							// Для полей автокомплита - загружаем названия
-							if (
-								field.type === 'autocomplete' &&
-								field.dynamicSource?.enabled &&
-								bitrixValue
-							) {
-								try {
-									// Загрузка названий в зависимости от источника
-									if (field.dynamicSource.source === 'catalog') {
-											`[EDIT] 🔍 Загрузка названия товара для ID: ${bitrixValue}`
-										)
-										const productResponse = await bitrix24Service.getProduct(
-											bitrixValue
-										)
-										if (productResponse?.result) {
-											const productName = productResponse.result.NAME
-												`[EDIT] 📦 Товар ${bitrixValue}: "${productName}"`
+								if (
+									field.type === 'autocomplete' &&
+									field.dynamicSource?.enabled
+								) {
+									try {
+										if (field.dynamicSource.source === 'products') {
+											const productResponse = await bitrix24Service.getProduct(
+												String(bitrixValue)
 											)
-
-											// Добавляем в предзагруженные опции
-											preloadedOptions[field.name] = [
-												{
-													value: bitrixValue,
-													label: productName,
-												},
-											]
-										}
-									} else if (field.dynamicSource.source === 'companies') {
-											`[EDIT] 🔍 Загрузка названия компании для ID: ${bitrixValue}`
-										)
-										const companyResponse = await bitrix24Service.getCompany(
-											bitrixValue
-										)
-										if (companyResponse?.result) {
-											const companyName = companyResponse.result.TITLE
-												`[EDIT] 🏢 Компания ${bitrixValue}: "${companyName}"`
+											const productName = productResponse?.result?.NAME
+											if (productName) {
+												preloadedOptions[field.name] = [
+													{ value: bitrixValue, label: productName },
+												]
+											}
+										} else if (field.dynamicSource.source === 'companies') {
+											const companyResponse = await bitrix24Service.getCompany(
+												String(bitrixValue)
 											)
-
-											// Добавляем в предзагруженные опции
-											preloadedOptions[field.name] = [
-												{
-													value: bitrixValue,
-													label: companyName,
-												},
-											]
+											const companyName = companyResponse?.result?.TITLE
+											if (companyName) {
+												preloadedOptions[field.name] = [
+													{ value: bitrixValue, label: companyName },
+												]
+											}
 										}
-									}
-								} catch (entityError) {
-									console.error(
-										`[EDIT] ❌ Ошибка загрузки ${field.dynamicSource.source} ${bitrixValue}:`,
-										entityError
-									)
+									} catch {}
 								}
 							}
-
-							formDataFromBitrix[field.name] = bitrixValue
-
-								`[EDIT] ✅ Маппинг ${field.bitrixFieldId} -> ${field.name}:`,
-								bitrixValue
-							)
 						}
 					}
-
-						'[EDIT] FormData восстановлен из Битрикс24:',
-						Object.keys(formDataFromBitrix)
-					)
-						'[EDIT] Предзагруженные опции:',
-						JSON.stringify(preloadedOptions, null, 2)
-					)
-				} else {
 				}
-			} else {
 			}
 
-			// Обновляем статус синхронизации
-			await submissionService.updateSyncStatus(submission.id, BitrixSyncStatus.SYNCED)
-		} catch (bitrixError: any) {
-			console.error(
-				'[EDIT] Ошибка получения данных из Битрикс24:',
-				bitrixError
+			await submissionService.updateSyncStatus(
+				submission.id,
+				BitrixSyncStatus.SYNCED
 			)
-			// Не блокируем выдачу заявки, если есть ошибки с Битрикс24
+		} catch (bitrixError: any) {
 			await submissionService.updateSyncStatus(
 				submission.id,
 				BitrixSyncStatus.FAILED,
 				undefined,
-				bitrixError.message
+				bitrixError?.message
 			)
-
-			// В случае ошибки возвращаем пустую форму
 			formDataFromBitrix = {}
 		}
 
-		// Возвращаем заявку с данными из Битрикс24
 		const responseData = {
 			id: submission.id,
-			formId: submission.formId, // Это уже строка, не объект
-			formData: formDataFromBitrix, // Данные ВСЕГДА из Битрикс24
-			preloadedOptions: preloadedOptions, // Предзагруженные опции для автокомплита
+			formId: submission.formId,
+			formData: formDataFromBitrix,
+			preloadedOptions,
 		}
 
-			id: responseData.id,
-			formId: responseData.formId,
-			formDataKeys: Object.keys(formDataFromBitrix),
-			preloadedOptionsKeys: Object.keys(preloadedOptions)
-		})
-
-		res.json({
-			success: true,
-			data: responseData,
-		})
+		return res.json({ success: true, data: responseData })
 	} catch (error: any) {
-		console.error('[EDIT] Ошибка получения заявки:', error)
-		res.status(500).json({
-			success: false,
-			message: 'Ошибка получения заявки',
-		})
+		return res
+			.status(500)
+			.json({ success: false, message: 'Ошибка получения заявки' })
 	}
 }
 
@@ -614,80 +449,51 @@ export const getSubmissionWithBitrixData = async (
 export const updateSubmission = async (req: Request, res: Response) => {
 	try {
 		const { id } = req.params
-		const updateData = req.body // Это formData из клиента
+		const updateData = req.body
 		const userId = req.user?.id
-
 
 		const submission = await submissionService.findById(id)
 		if (!submission) {
-			return res.status(404).json({
-				success: false,
-				message: 'Заявка не найдена',
-			})
+			return res
+				.status(404)
+				.json({ success: false, message: 'Заявка не найдена' })
 		}
 
-		// Проверяем права доступа
 		const isAdmin = req.isAdmin
 		if (!isAdmin && submission.userId !== userId) {
-				`[UPDATE] ❌ ДОСТУП ЗАПРЕЩЕН: Пользователь ${userId} пытается обновить заявку пользователя ${submission.userId}`
-			)
-			return res.status(403).json({
-				success: false,
-				message: 'Нет прав для редактирования этой заявки',
-			})
+			return res
+				.status(403)
+				.json({
+					success: false,
+					message: 'Нет прав для редактирования этой заявки',
+				})
 		}
 
-
 		try {
-				`[UPDATE] Обновление сделки ${submission.bitrixDealId} в Битрикс24`
-			)
-
-			// Получаем форму для правильного маппинга полей
 			const form = await formService.findWithFields(submission.formId)
 			if (!form) {
 				throw new Error('Форма не найдена')
 			}
 
+			const dealData: Record<string, any> = {}
+			let newTitle: string = submission.title
 
-			// Формируем данные для обновления сделки
-			const dealData: any = {}
-			let newTitle = submission.title // fallback
-
-			// Проходим по всем полям формы и маппим данные в поля Битрикс24
 			for (const field of form.fields) {
-				// Проверяем, есть ли значение для этого поля в updateData
 				if (updateData[field.name] !== undefined && field.bitrixFieldId) {
 					const value = updateData[field.name]
 					dealData[field.bitrixFieldId] = value
-
-					// Если это поле маппится на TITLE, обновляем название
 					if (field.bitrixFieldId === 'TITLE' && value) {
 						newTitle = value
 					}
-
-						`[UPDATE] Поле ${field.name} -> ${field.bitrixFieldId}: "${value}"`
-					)
 				}
 			}
 
-
-			// Обновляем сделку в Битрикс24
 			await bitrix24Service.updateDeal(submission.bitrixDealId!, dealData)
 
-			// Обновляем заявку в БД
-			await submissionService.updateSubmission(
-				id,
-				{ title: newTitle },
-				userId
-			)
-
-			// Обновляем статус синхронизации
+			await submissionService.updateSubmission(id, { title: newTitle }, userId)
 			await submissionService.updateSyncStatus(id, BitrixSyncStatus.SYNCED)
 
-				`[UPDATE] Сделка ${submission.bitrixDealId} успешно обновлена`
-			)
-
-			res.json({
+			return res.json({
 				success: true,
 				data: {
 					id: submission.id,
@@ -699,30 +505,23 @@ export const updateSubmission = async (req: Request, res: Response) => {
 				message: 'Заявка успешно обновлена',
 			})
 		} catch (bitrixError: any) {
-			console.error(
-				'[UPDATE] Ошибка обновления сделки в Битрикс24:',
-				bitrixError
-			)
-
 			await submissionService.updateSyncStatus(
 				id,
 				BitrixSyncStatus.FAILED,
 				undefined,
-				bitrixError.message
+				bitrixError?.message
 			)
 
-			res.status(500).json({
+			return res.status(500).json({
 				success: false,
 				message: 'Ошибка обновления заявки в Битрикс24',
-				error: bitrixError.message,
+				error: bitrixError?.message,
 			})
 		}
 	} catch (error: any) {
-		console.error('[UPDATE] Ошибка обновления заявки:', error)
-		res.status(500).json({
-			success: false,
-			message: 'Ошибка обновления заявки',
-		})
+		return res
+			.status(500)
+			.json({ success: false, message: 'Ошибка обновления заявки' })
 	}
 }
 
@@ -806,18 +605,16 @@ export const updateStatusByBitrixId = async (req: Request, res: Response) => {
 			})
 		}
 
-
 		// Ищем заявку по bitrixDealId
-		const submission = await submissionService.findByBitrixDealId(bitrixid as string)
+		const submission = await submissionService.findByBitrixDealId(
+			bitrixid as string
+		)
 		if (!submission) {
 			return res.status(404).json({
 				success: false,
 				message: `Заявка с bitrixDealId ${bitrixid} не найдена`,
 			})
 		}
-
-			`[API UPDATE STATUS] Заявка найдена: ${submission.submissionNumber}`
-		)
 
 		// Обновляем статус
 		await submissionService.updateStatus(submission.id, status as string)
@@ -828,7 +625,6 @@ export const updateStatusByBitrixId = async (req: Request, res: Response) => {
 			'Автоматическое обновление через внешний API',
 			undefined // Системное изменение
 		)
-
 
 		res.json({
 			success: true,
@@ -841,7 +637,6 @@ export const updateStatusByBitrixId = async (req: Request, res: Response) => {
 				updatedAt: new Date(),
 			},
 		})
-
 	} catch (error: any) {
 		console.error('[API UPDATE STATUS] Ошибка:', error)
 		res.status(500).json({
@@ -864,9 +659,6 @@ export const checkBitrixField = async (req: Request, res: Response) => {
 			})
 		}
 
-			`[CHECK FIELD] Проверка поля UF_CRM_1750107484181 для сделки ${dealId}`
-		)
-
 		// Получаем данные сделки из Битрикс24
 		const dealData = await bitrix24Service.getDeal(dealId)
 
@@ -878,9 +670,6 @@ export const checkBitrixField = async (req: Request, res: Response) => {
 		}
 
 		const fieldValue = dealData.result.UF_CRM_1750107484181
-
-			`[CHECK FIELD] Значение поля UF_CRM_1750107484181: ${fieldValue}`
-		)
 
 		res.json({
 			success: true,
@@ -906,180 +695,108 @@ export const copySubmission = async (req: Request, res: Response) => {
 		const { id } = req.params
 		const userId = req.user?.id
 
-
-		// Получаем оригинальную заявку
 		const originalSubmission = await submissionService.findById(id)
-
 		if (!originalSubmission) {
-			return res.status(404).json({
-				success: false,
-				message: 'Заявка не найдена',
-			})
+			return res
+				.status(404)
+				.json({ success: false, message: 'Заявка не найдена' })
 		}
 
-		// Проверяем права доступа - любой авторизованный пользователь может копировать заявки
-		const user = await userService.findById(userId!)
+		const user = userId ? await userService.findById(userId) : null
 		if (!user) {
-			return res.status(404).json({
-				success: false,
-				message: 'Пользователь не найден',
-			})
+			return res
+				.status(404)
+				.json({ success: false, message: 'Пользователь не найден' })
 		}
 
-
-		// Получаем данные формы с полями
 		const form = await formService.findWithFields(originalSubmission.formId)
 		if (!form) {
-			return res.status(404).json({
-				success: false,
-				message: 'Форма не найдена',
-			})
+			return res
+				.status(404)
+				.json({ success: false, message: 'Форма не найдена' })
 		}
 
-		// Используем ту же логику что и в getSubmissionWithBitrixData
 		let formDataFromBitrix: Record<string, any> = {}
-		let preloadedOptions: Record<string, any[]> = {}
+		let preloadedOptions: Record<string, { value: any; label: string }[]> = {}
 
 		if (originalSubmission.bitrixDealId) {
 			try {
-					`[COPY] Получение данных из Битрикс24 сделки ${originalSubmission.bitrixDealId}`
-				)
 				const dealResponse = await bitrix24Service.getDeal(
 					originalSubmission.bitrixDealId
 				)
+				const dealData = dealResponse?.result || {}
 
-				if (dealResponse?.result) {
-					const dealData = dealResponse.result
+				for (const field of form.fields) {
+					if (
+						field.bitrixFieldId &&
+						dealData[field.bitrixFieldId] !== undefined
+					) {
+						const bitrixValue = dealData[field.bitrixFieldId]
+						formDataFromBitrix[field.name] = bitrixValue
 
-					// Мапим данные обратно в формат формы
-					for (const field of form.fields) {
-						if (
-							field.bitrixFieldId &&
-							dealData[field.bitrixFieldId] !== undefined
-						) {
-							const bitrixValue = dealData[field.bitrixFieldId]
-
-							// Для автокомплита полей загружаем названия
-							if (field.type === 'autocomplete' && bitrixValue) {
-								try {
-									if (
-										field.bitrixEntity === 'product' ||
-										field.bitrixFieldId === 'UF_CRM_1726227410' ||
-										field.bitrixFieldId === 'UF_CRM_1726645231'
-									) {
-											`[COPY] 🔍 Загрузка названия продукта для ID: ${bitrixValue}`
-										)
-										const productResponse = await bitrix24Service.getProduct(
-											bitrixValue
-										)
-										if (productResponse?.result) {
-											const productName = productResponse.result.NAME
-												`[COPY] 📦 Продукт ${bitrixValue}: "${productName}"`
-											)
-
-											// Добавляем в предзагруженные опции
-											preloadedOptions[field.name] = [
-												{
-													value: bitrixValue,
-													label: productName,
-												},
-											]
-										}
-									} else if (field.bitrixEntity === 'contact') {
-											`[COPY] 🔍 Загрузка названия контакта для ID: ${bitrixValue}`
-										)
-										const contactResponse = await bitrix24Service.getContacts(
-											bitrixValue,
-											1
-										)
-										if (contactResponse?.result) {
-											const contactName =
-												`${contactResponse.result.NAME} ${contactResponse.result.LAST_NAME}`.trim()
-												`[COPY] 👤 Контакт ${bitrixValue}: "${contactName}"`
-											)
-
-											// Добавляем в предзагруженные опции
-											preloadedOptions[field.name] = [
-												{
-													value: bitrixValue,
-													label: contactName,
-												},
-											]
-										}
-									} else if (field.bitrixEntity === 'company') {
-											`[COPY] 🔍 Загрузка названия компании для ID: ${bitrixValue}`
-										)
-										const companyResponse = await bitrix24Service.getCompany(
-											bitrixValue
-										)
-										if (companyResponse?.result) {
-											const companyName = companyResponse.result.TITLE
-												`[COPY] 🏢 Компания ${bitrixValue}: "${companyName}"`
-											)
-
-											// Добавляем в предзагруженные опции
-											preloadedOptions[field.name] = [
-												{
-													value: bitrixValue,
-													label: companyName,
-												},
-											]
-										}
-									}
-								} catch (entityError) {
-									console.error(
-										`[COPY] ❌ Ошибка загрузки сущности ${field.bitrixEntity} ${bitrixValue}:`,
-										entityError
+						if (field.type === 'autocomplete' && bitrixValue) {
+							try {
+								if (field.bitrixEntity === 'product') {
+									const productResponse = await bitrix24Service.getProduct(
+										String(bitrixValue)
 									)
-									// Оставляем ID если не удалось загрузить название
+									const productName = productResponse?.result?.NAME
+									if (productName) {
+										preloadedOptions[field.name] = [
+											{ value: bitrixValue, label: productName },
+										]
+									}
+								} else if (field.bitrixEntity === 'contact') {
+									const contactResponse = await bitrix24Service.getContacts(
+										String(bitrixValue),
+										1
+									)
+									const first = Array.isArray(contactResponse?.result)
+										? contactResponse.result[0]
+										: contactResponse?.result
+									const contactName = first
+										? `${first.NAME || ''} ${first.LAST_NAME || ''}`.trim()
+										: ''
+									if (contactName) {
+										preloadedOptions[field.name] = [
+											{ value: bitrixValue, label: contactName },
+										]
+									}
+								} else if (field.bitrixEntity === 'company') {
+									const companyResponse = await bitrix24Service.getCompany(
+										String(bitrixValue)
+									)
+									const companyName = companyResponse?.result?.TITLE
+									if (companyName) {
+										preloadedOptions[field.name] = [
+											{ value: bitrixValue, label: companyName },
+										]
+									}
 								}
-							}
-
-							formDataFromBitrix[field.name] = bitrixValue
-
-								`[COPY] ✅ Маппинг ${field.bitrixFieldId} -> ${field.name}:`,
-								bitrixValue
-							)
+							} catch {}
 						}
 					}
-
-						'[COPY] FormData восстановлен из Битрикс24:',
-						Object.keys(formDataFromBitrix)
-					)
-						'[COPY] Предзагруженные опции:',
-						JSON.stringify(preloadedOptions, null, 2)
-					)
-				} else {
 				}
-			} catch (bitrixError) {
-				console.error(
-					'[COPY] Ошибка получения данных из Битрикс24:',
-					bitrixError
-				)
-				// Продолжаем с пустыми данными
-			}
+			} catch {}
 		}
 
-		// Возвращаем данные в том же формате что и getSubmissionWithBitrixData
-		res.json({
+		return res.json({
 			success: true,
 			message: 'Данные заявки получены для копирования',
 			data: {
 				formId: originalSubmission.formId,
-				formData: formDataFromBitrix, // Данные из Битрикс24
-				preloadedOptions: preloadedOptions, // Предзагруженные опции для автокомплита
+				formData: formDataFromBitrix,
+				preloadedOptions,
 				originalTitle: originalSubmission.title,
 				originalSubmissionNumber: originalSubmission.submissionNumber,
-				// НЕ передаем submissionId - это новая заявка
 				isCopy: true,
 			},
 		})
 	} catch (error: any) {
-		console.error('[COPY] Ошибка копирования заявки:', error)
-		res.status(500).json({
+		return res.status(500).json({
 			success: false,
 			message: 'Ошибка копирования заявки',
-			error: error.message,
+			error: error?.message,
 		})
 	}
 }

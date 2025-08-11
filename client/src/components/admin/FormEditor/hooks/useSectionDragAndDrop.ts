@@ -68,10 +68,6 @@ export const useSectionDragAndDrop = (
 
 			const sourceSectionIndex = Number(e.dataTransfer.getData('section-index'))
 
-				sourceSectionIndex,
-				targetSectionIndex,
-			})
-
 			if (sourceSectionIndex === targetSectionIndex) {
 				setState(prev => ({ ...prev, dragOverSectionIndex: null }))
 				return
@@ -178,6 +174,7 @@ export const useSectionDragAndDrop = (
 				// Ждем завершения всех обновлений
 				await Promise.all([...sectionPromises, ...fieldPromises])
 
+				console.log(
 					`✅ Обновлен порядок ${sectionPromises.length} разделов и ${fieldPromises.length} полей`
 				)
 

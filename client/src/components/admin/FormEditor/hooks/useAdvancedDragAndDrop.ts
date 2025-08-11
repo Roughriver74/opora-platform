@@ -431,6 +431,7 @@ export const useAdvancedDragAndDrop = (
 
 			if (!element) return
 
+			console.log('Drag start:', {
 				elementId,
 				index,
 			})

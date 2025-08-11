@@ -1,0 +1,3809 @@
+{
+  "timestamp": "2025-06-18T15:09:14.753Z",
+  "note": "Состояние перед восстановлением",
+  "fields": [
+    {
+      "_id": "684eaf7679efb9a94d53ba32",
+      "name": "section_550",
+      "label": "Раздел 4",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 401,
+      "options": [],
+      "createdAt": "2025-06-15T11:33:10.965Z",
+      "updatedAt": "2025-06-15T11:33:10.965Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f344ac43c2286d99c6f12",
+      "name": "section_1750021194439",
+      "label": "Основное",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 1,
+      "options": [],
+      "createdAt": "2025-06-15T20:59:54.574Z",
+      "updatedAt": "2025-06-16T10:39:08.640Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3455c43c2286d99c6f1e",
+      "name": "section_1750021205472",
+      "label": "Раздел 2",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 202,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:05.621Z",
+      "updatedAt": "2025-06-15T21:00:05.621Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3457c43c2286d99c6f22",
+      "name": "field_1750021207768",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 203,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:07.897Z",
+      "updatedAt": "2025-06-15T21:00:07.897Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3459c43c2286d99c6f26",
+      "name": "section_1750021209651",
+      "label": "Раздел 3",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 302,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:09.782Z",
+      "updatedAt": "2025-06-15T21:00:09.782Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f345bc43c2286d99c6f2a",
+      "name": "field_1750021211269",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 303,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:11.398Z",
+      "updatedAt": "2025-06-15T21:00:11.398Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f345dc43c2286d99c6f2e",
+      "name": "field_1750021213087",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 304,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:13.225Z",
+      "updatedAt": "2025-06-15T21:00:13.225Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3460c43c2286d99c6f32",
+      "name": "field_1750021215939",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 306,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:16.133Z",
+      "updatedAt": "2025-06-15T21:00:16.133Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3462c43c2286d99c6f36",
+      "name": "field_1750021218761",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 205,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:18.908Z",
+      "updatedAt": "2025-06-15T21:00:18.908Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3463c43c2286d99c6f3a",
+      "name": "field_1750021219442",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 207,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:19.596Z",
+      "updatedAt": "2025-06-15T21:00:19.596Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3464c43c2286d99c6f3e",
+      "name": "field_1750021220282",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 209,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:20.414Z",
+      "updatedAt": "2025-06-15T21:00:20.414Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3465c43c2286d99c6f42",
+      "name": "field_1750021221745",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 107,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:21.877Z",
+      "updatedAt": "2025-06-15T21:00:21.877Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3466c43c2286d99c6f46",
+      "name": "field_1750021221934",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 109,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:22.062Z",
+      "updatedAt": "2025-06-15T21:00:22.062Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3466c43c2286d99c6f4a",
+      "name": "field_1750021222113",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 112,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:22.239Z",
+      "updatedAt": "2025-06-15T21:00:22.239Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3468c43c2286d99c6f4e",
+      "name": "section_1750021224809",
+      "label": "Раздел 4",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 403,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:24.939Z",
+      "updatedAt": "2025-06-15T21:00:24.939Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f346bc43c2286d99c6f52",
+      "name": "field_1750021227267",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 406,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:27.398Z",
+      "updatedAt": "2025-06-15T21:00:27.398Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f346dc43c2286d99c6f56",
+      "name": "field_1750021229162",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 407,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:29.298Z",
+      "updatedAt": "2025-06-15T21:00:29.298Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f346dc43c2286d99c6f5a",
+      "name": "field_1750021229382",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 408,
+      "options": [],
+      "createdAt": "2025-06-15T21:00:29.552Z",
+      "updatedAt": "2025-06-15T21:00:29.552Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f385aa92df63ca36dcc19",
+      "name": "section_1750022234654",
+      "label": "Покупатель",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 3,
+      "options": [],
+      "createdAt": "2025-06-15T21:17:14.766Z",
+      "updatedAt": "2025-06-16T10:39:08.823Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3864a92df63ca36dcc25",
+      "name": "field_1750022244067",
+      "label": "Бетон*(Покупатель)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 204,
+      "options": [],
+      "createdAt": "2025-06-15T21:17:24.178Z",
+      "updatedAt": "2025-06-15T21:17:56.176Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726227037"
+    },
+    {
+      "_id": "684f397ee5e51e19cd927cf2",
+      "name": "field_1750022526206",
+      "label": "Бетон*(Покупатель)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 27,
+      "options": [],
+      "createdAt": "2025-06-15T21:22:06.323Z",
+      "updatedAt": "2025-06-16T10:39:08.842Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726227037"
+    },
+    {
+      "_id": "684f399ce5e51e19cd927d02",
+      "name": "section_1750022556734",
+      "label": "Завод",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 5,
+      "options": [],
+      "createdAt": "2025-06-15T21:22:36.857Z",
+      "updatedAt": "2025-06-16T10:39:09.131Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f39b0e5e51e19cd927d12",
+      "name": "field_1750022576426",
+      "label": "Бетон*(Завод)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 50,
+      "options": [],
+      "createdAt": "2025-06-15T21:22:56.529Z",
+      "updatedAt": "2025-06-16T10:39:09.175Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726227410"
+    },
+    {
+      "_id": "684f3a36e5e51e19cd927d31",
+      "name": "section_1750022710546",
+      "label": "Перекуп",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 6,
+      "options": [],
+      "createdAt": "2025-06-15T21:25:10.656Z",
+      "updatedAt": "2025-06-16T11:33:32.902Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3a41e5e51e19cd927d3d",
+      "name": "field_1750022721686",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 404,
+      "options": [],
+      "createdAt": "2025-06-15T21:25:21.799Z",
+      "updatedAt": "2025-06-15T21:25:21.799Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3a6ae5e51e19cd927d6d",
+      "name": "section_1750022762061",
+      "label": "Раздел 4",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 402,
+      "options": [],
+      "createdAt": "2025-06-15T21:26:02.170Z",
+      "updatedAt": "2025-06-15T21:26:02.170Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3ac2e5e51e19cd927ddd",
+      "name": "field_1750022850623",
+      "label": "Объем м3",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 29,
+      "options": [],
+      "createdAt": "2025-06-15T21:27:30.738Z",
+      "updatedAt": "2025-06-16T10:39:08.893Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_SDLLUUKQTVRWOVQK"
+    },
+    {
+      "_id": "684f3ae1e5e51e19cd927ded",
+      "name": "field_1750022881571",
+      "label": "Продажа цена",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 31,
+      "options": [],
+      "createdAt": "2025-06-15T21:28:01.677Z",
+      "updatedAt": "2025-06-16T10:39:08.911Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701767765591"
+    },
+    {
+      "_id": "684f3b05e5e51e19cd927e06",
+      "name": "field_1750022917340",
+      "label": "Объем м3 (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 52,
+      "options": [],
+      "createdAt": "2025-06-15T21:28:37.446Z",
+      "updatedAt": "2025-06-16T10:39:09.192Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1703322858101"
+    },
+    {
+      "_id": "684f3b59e5e51e19cd927e16",
+      "name": "field_1750023001064",
+      "label": "Закупка цена",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 54,
+      "options": [],
+      "createdAt": "2025-06-15T21:30:01.165Z",
+      "updatedAt": "2025-06-16T10:39:09.238Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701767745071"
+    },
+    {
+      "_id": "684f3b85e5e51e19cd927e22",
+      "name": "field_1750023045389",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 405,
+      "options": [],
+      "createdAt": "2025-06-15T21:30:45.534Z",
+      "updatedAt": "2025-06-15T21:30:45.534Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3b96e5e51e19cd927e34",
+      "name": "field_1750023061999",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 305,
+      "options": [],
+      "createdAt": "2025-06-15T21:31:02.104Z",
+      "updatedAt": "2025-06-15T21:31:02.104Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3bf3e5e51e19cd927ea4",
+      "name": "field_1750023155282",
+      "label": "Компания",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "companies"
+      },
+      "order": 14,
+      "options": [],
+      "createdAt": "2025-06-15T21:32:35.397Z",
+      "updatedAt": "2025-06-16T10:39:08.744Z",
+      "__v": 0,
+      "bitrixFieldId": "COMPANY_ID"
+    },
+    {
+      "_id": "684f3c11e5e51e19cd927eb4",
+      "name": "field_1750023184896",
+      "label": "Комментарий",
+      "type": "textarea",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 16,
+      "options": [],
+      "createdAt": "2025-06-15T21:33:05.033Z",
+      "updatedAt": "2025-06-16T10:39:08.691Z",
+      "__v": 0,
+      "bitrixFieldId": "COMMENTS"
+    },
+    {
+      "_id": "684f3cd169ecdb6bd86cc818",
+      "name": "field_1750023377851",
+      "label": "Бетон*(Дилер)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 69,
+      "options": [],
+      "createdAt": "2025-06-15T21:36:17.975Z",
+      "updatedAt": "2025-06-16T10:39:09.366Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726646101"
+    },
+    {
+      "_id": "684f3d7569ecdb6bd86cc83a",
+      "name": "field_1750023541679",
+      "label": "Новое поле",
+      "type": "divider",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 33,
+      "options": [],
+      "createdAt": "2025-06-15T21:39:01.799Z",
+      "updatedAt": "2025-06-16T10:39:08.920Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3d8a69ecdb6bd86cc84a",
+      "name": "field_1750023562480",
+      "label": "Новое поле",
+      "type": "divider",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 35,
+      "options": [],
+      "createdAt": "2025-06-15T21:39:22.578Z",
+      "updatedAt": "2025-06-16T10:39:08.932Z",
+      "__v": 0
+    },
+    {
+      "_id": "684f3d9969ecdb6bd86cc85a",
+      "name": "field_1750023576925",
+      "label": "Раствор*(покупатель)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 37,
+      "options": [],
+      "createdAt": "2025-06-15T21:39:37.031Z",
+      "updatedAt": "2025-06-16T10:39:08.971Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726645181"
+    },
+    {
+      "_id": "684fa1cb69ecdb6bd86cc885",
+      "name": "field_1750049227064",
+      "label": "Объем раствора м3",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 39,
+      "options": [],
+      "createdAt": "2025-06-16T04:47:07.120Z",
+      "updatedAt": "2025-06-16T10:39:08.969Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006045698"
+    },
+    {
+      "_id": "684fa1eb69ecdb6bd86cc899",
+      "name": "field_1750049259578",
+      "label": "Продажа цена (раствора)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 41,
+      "options": [],
+      "createdAt": "2025-06-16T04:47:39.617Z",
+      "updatedAt": "2025-06-16T10:39:09.019Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717005986470"
+    },
+    {
+      "_id": "684fa22c69ecdb6bd86cc8a9",
+      "name": "field_1750049324217",
+      "label": "ЦПС*(покупатель)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 43,
+      "options": [],
+      "createdAt": "2025-06-16T04:48:44.261Z",
+      "updatedAt": "2025-06-16T10:39:09.041Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726646781"
+    },
+    {
+      "_id": "684fa25669ecdb6bd86cc8b9",
+      "name": "field_1750049366333",
+      "label": "Объем м3 ЦПС",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 45,
+      "options": [],
+      "createdAt": "2025-06-16T04:49:26.376Z",
+      "updatedAt": "2025-06-16T10:39:09.060Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006372206"
+    },
+    {
+      "_id": "684fa29369ecdb6bd86cc8c9",
+      "name": "field_1750049427602",
+      "label": "Продажа цена (ЦПС)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 47,
+      "options": [],
+      "createdAt": "2025-06-16T04:50:27.658Z",
+      "updatedAt": "2025-06-16T10:39:09.087Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006325903"
+    },
+    {
+      "_id": "684fac1469ecdb6bd86cc8f4",
+      "name": "field_1750051860735",
+      "label": "Раствор*(завод)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 56,
+      "options": [],
+      "createdAt": "2025-06-16T05:31:00.898Z",
+      "updatedAt": "2025-06-16T10:39:09.252Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726645231"
+    },
+    {
+      "_id": "684fac3969ecdb6bd86cc904",
+      "name": "field_1750051897712",
+      "label": "Объем раствора м3 (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 58,
+      "options": [],
+      "createdAt": "2025-06-16T05:31:37.903Z",
+      "updatedAt": "2025-06-16T10:39:09.249Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006036025"
+    },
+    {
+      "_id": "684fac5469ecdb6bd86cc918",
+      "name": "field_1750051924693",
+      "label": "Продажа цена (раствора)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 60,
+      "options": [],
+      "createdAt": "2025-06-16T05:32:04.914Z",
+      "updatedAt": "2025-06-16T10:39:09.261Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717005986470"
+    },
+    {
+      "_id": "684fac7269ecdb6bd86cc92c",
+      "name": "field_1750051954464",
+      "label": "ЦПС*(завод)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 62,
+      "options": [],
+      "createdAt": "2025-06-16T05:32:34.695Z",
+      "updatedAt": "2025-06-16T10:39:09.281Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726646803"
+    },
+    {
+      "_id": "684fac9869ecdb6bd86cc93c",
+      "name": "field_1750051992505",
+      "label": "Объем ЦПС м3 (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 64,
+      "options": [],
+      "createdAt": "2025-06-16T05:33:12.692Z",
+      "updatedAt": "2025-06-16T10:39:09.309Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006355619"
+    },
+    {
+      "_id": "684facc469ecdb6bd86cc94c",
+      "name": "field_1750052036714",
+      "label": "Закупка цена (ЦПС)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 66,
+      "options": [],
+      "createdAt": "2025-06-16T05:33:56.936Z",
+      "updatedAt": "2025-06-16T10:39:09.326Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006310796"
+    },
+    {
+      "_id": "684face769ecdb6bd86cc965",
+      "name": "section_1750052071436",
+      "label": "Логистика",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 7,
+      "options": [],
+      "createdAt": "2025-06-16T05:34:31.669Z",
+      "updatedAt": "2025-06-16T10:39:09.406Z",
+      "__v": 0
+    },
+    {
+      "_id": "684facfb69ecdb6bd86cc979",
+      "name": "field_1750052090795",
+      "label": "Длина стрелы*",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 503,
+      "options": [],
+      "createdAt": "2025-06-16T05:34:51.055Z",
+      "updatedAt": "2025-06-16T05:35:10.058Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1728560118"
+    },
+    {
+      "_id": "684fad2169ecdb6bd86cc9a7",
+      "name": "section_1750052129376",
+      "label": "Раздел 5",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 501,
+      "options": [],
+      "createdAt": "2025-06-16T05:35:29.670Z",
+      "updatedAt": "2025-06-16T05:35:29.670Z",
+      "__v": 0
+    },
+    {
+      "_id": "684fad3569ecdb6bd86cc9bf",
+      "name": "field_1750052149612",
+      "label": "Длина стрелы*",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 502,
+      "options": [],
+      "createdAt": "2025-06-16T05:35:49.789Z",
+      "updatedAt": "2025-06-16T10:41:39.018Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1728560118"
+    },
+    {
+      "_id": "684fad8d69ecdb6bd86cc9df",
+      "name": "field_1750052237630",
+      "label": "Грузополучатель(new)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "companies"
+      },
+      "order": 18,
+      "options": [],
+      "createdAt": "2025-06-16T05:37:17.830Z",
+      "updatedAt": "2025-06-16T10:39:08.758Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1734765673"
+    },
+    {
+      "_id": "684fadb369ecdb6bd86cc9ef",
+      "name": "field_1750052275616",
+      "label": "Заказчик",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "companies"
+      },
+      "order": 21,
+      "options": [],
+      "createdAt": "2025-06-16T05:37:55.799Z",
+      "updatedAt": "2025-06-16T10:39:08.810Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1738914120"
+    },
+    {
+      "_id": "684ff406153858c7430eece6",
+      "name": "field_1750070278318",
+      "label": "Дата отгрузки(заявка)",
+      "type": "date",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 12,
+      "options": [],
+      "createdAt": "2025-06-16T10:37:58.466Z",
+      "updatedAt": "2025-06-16T10:39:08.729Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_ZQPKHIULGGHVBIQB"
+    },
+    {
+      "_id": "684ff445153858c7430eed8a",
+      "name": "field_1750070341268",
+      "label": "Форма оплаты",
+      "type": "select",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 103,
+      "options": [
+        {
+          "value": "184",
+          "label": "НЛ",
+          "_id": "684ff467153858c7430eee25"
+        },
+        {
+          "value": "185",
+          "label": "БН",
+          "_id": "684ff467153858c7430eee26"
+        },
+        {
+          "value": "383",
+          "label": "БР",
+          "_id": "684ff467153858c7430eee27"
+        }
+      ],
+      "createdAt": "2025-06-16T10:39:01.370Z",
+      "updatedAt": "2025-06-16T10:39:48.495Z",
+      "__v": 1,
+      "bitrixFieldId": "UF_CRM_1703351328529"
+    },
+    {
+      "_id": "68500230f26c2c7c07952b25",
+      "name": "field_1750073904555",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 23,
+      "options": [],
+      "createdAt": "2025-06-16T11:38:24.692Z",
+      "updatedAt": "2025-06-16T11:38:24.692Z",
+      "__v": 0
+    },
+    {
+      "_id": "68500273f26c2c7c07952b7c",
+      "name": "section_1750073971758",
+      "label": "Основное",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 2,
+      "options": [],
+      "createdAt": "2025-06-16T11:39:31.894Z",
+      "updatedAt": "2025-06-18T09:57:58.130Z",
+      "__v": 0,
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "6850027df26c2c7c07952b88",
+      "name": "section_1750073981194",
+      "label": "Покупаьтель",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 201,
+      "options": [],
+      "createdAt": "2025-06-16T11:39:41.331Z",
+      "updatedAt": "2025-06-16T11:39:50.665Z",
+      "__v": 0
+    },
+    {
+      "_id": "68500289f26c2c7c07952b9c",
+      "name": "section_1750073992930",
+      "label": "Завод",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 301,
+      "options": [],
+      "createdAt": "2025-06-16T11:39:53.064Z",
+      "updatedAt": "2025-06-16T11:41:06.645Z",
+      "__v": 0
+    },
+    {
+      "_id": "685002d5f26c2c7c07952c00",
+      "name": "field_1750074069572",
+      "label": "Название",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 104,
+      "options": [],
+      "createdAt": "2025-06-16T11:41:09.715Z",
+      "updatedAt": "2025-06-16T11:41:18.253Z",
+      "__v": 0,
+      "bitrixFieldId": "TITLE"
+    },
+    {
+      "_id": "6850041ff26c2c7c07952c86",
+      "name": "field_1750074399350",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 105,
+      "options": [],
+      "createdAt": "2025-06-16T11:46:39.475Z",
+      "updatedAt": "2025-06-16T11:46:39.475Z",
+      "__v": 0
+    },
+    {
+      "_id": "6850043bf26c2c7c07952c93",
+      "name": "field_1750074427066",
+      "label": "Название",
+      "type": "text",
+      "required": true,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 130,
+      "options": [],
+      "createdAt": "2025-06-16T11:47:07.197Z",
+      "updatedAt": "2025-06-18T10:51:08.126Z",
+      "__v": 0,
+      "bitrixFieldId": "TITLE",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68500aaa35758a8b28b3664c",
+      "name": "section_1750076074599",
+      "label": "Покупатель",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 4,
+      "options": [],
+      "createdAt": "2025-06-16T12:14:34.713Z",
+      "updatedAt": "2025-06-18T05:57:40.270Z",
+      "__v": 0,
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68500ab435758a8b28b36658",
+      "name": "field_1750076084806",
+      "label": "Бетон*(Покупатель)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 28,
+      "options": [],
+      "createdAt": "2025-06-16T12:14:44.918Z",
+      "updatedAt": "2025-06-18T05:57:40.292Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726227037",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68501c4635758a8b28b366c5",
+      "name": "field_1750080582846",
+      "label": "Форма оплаты",
+      "type": "select",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 13,
+      "options": [
+        {
+          "value": "184",
+          "label": "НЛ",
+          "_id": "68501c7535758a8b28b366d0"
+        },
+        {
+          "value": "185",
+          "label": "БН",
+          "_id": "68501c7535758a8b28b366d1"
+        },
+        {
+          "value": "383",
+          "label": "БР",
+          "_id": "68501c7535758a8b28b366d2"
+        }
+      ],
+      "createdAt": "2025-06-16T13:29:42.931Z",
+      "updatedAt": "2025-06-18T05:57:40.152Z",
+      "__v": 1,
+      "bitrixFieldId": "UF_CRM_1703351328529",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68501cc235758a8b28b36753",
+      "name": "section_1750080705946",
+      "label": "Завод",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 8,
+      "options": [],
+      "createdAt": "2025-06-16T13:31:46.034Z",
+      "updatedAt": "2025-06-18T05:57:41.016Z",
+      "__v": 0,
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68501cda35758a8b28b3676f",
+      "name": "section_1750080730181",
+      "label": "Логистика",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 9,
+      "options": [],
+      "createdAt": "2025-06-16T13:32:10.270Z",
+      "updatedAt": "2025-06-18T05:57:41.605Z",
+      "__v": 0,
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68501ce835758a8b28b3677f",
+      "name": "field_1750080744062",
+      "label": "Бетон*(Завод)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 83,
+      "options": [],
+      "createdAt": "2025-06-16T13:32:24.143Z",
+      "updatedAt": "2025-06-18T05:57:41.063Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726227410",
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750076084806",
+          "sourceFieldLabel": "Бетон*(Покупатель)",
+          "sourceSectionName": "Раздел 2"
+        }
+      }
+    },
+    {
+      "_id": "68507b95c32bec5862f22b64",
+      "name": "section_1750104981182",
+      "label": "Об объекте",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 10,
+      "options": [],
+      "createdAt": "2025-06-16T20:16:21.431Z",
+      "updatedAt": "2025-06-18T05:57:41.735Z",
+      "__v": 0,
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68507ba7c32bec5862f22b74",
+      "name": "field_1750104999128",
+      "label": "Заказчик",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "companies"
+      },
+      "order": 121,
+      "options": [],
+      "createdAt": "2025-06-16T20:16:39.359Z",
+      "updatedAt": "2025-06-18T05:57:41.769Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1738914120",
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750138035057",
+          "sourceFieldLabel": "Компания",
+          "sourceSectionName": "Раздел 1"
+        }
+      }
+    },
+    {
+      "_id": "68507bcec32bec5862f22b84",
+      "name": "field_1750105038285",
+      "label": "Плательщик",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "companies"
+      },
+      "order": 122,
+      "options": [],
+      "createdAt": "2025-06-16T20:17:18.520Z",
+      "updatedAt": "2025-06-18T05:57:41.771Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1738914155",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68507bf0c32bec5862f22b94",
+      "name": "field_1750105072735",
+      "label": "Грузополучатель(new)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "companies"
+      },
+      "order": 123,
+      "options": [],
+      "createdAt": "2025-06-16T20:17:52.972Z",
+      "updatedAt": "2025-06-18T05:57:41.782Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1734765673",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68507c39c32bec5862f22bb4",
+      "name": "field_1750105145689",
+      "label": "Сумма с объекта",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 124,
+      "options": [],
+      "createdAt": "2025-06-16T20:19:05.925Z",
+      "updatedAt": "2025-06-18T05:57:41.804Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1703351404840",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68507d7ec32bec5862f22bf8",
+      "name": "field_1750105469802",
+      "label": "Контактное лицо на объекте",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 125,
+      "options": [],
+      "createdAt": "2025-06-16T20:24:30.044Z",
+      "updatedAt": "2025-06-18T05:57:41.812Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701768456179",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68507d94c32bec5862f22c08",
+      "name": "field_1750105492493",
+      "label": "Телефон на объекте",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 126,
+      "options": [],
+      "createdAt": "2025-06-16T20:24:52.729Z",
+      "updatedAt": "2025-06-18T05:57:41.834Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1702993608250",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68507da4c32bec5862f22c18",
+      "name": "field_1750105507946",
+      "label": "Комментарий",
+      "type": "textarea",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 127,
+      "options": [],
+      "createdAt": "2025-06-16T20:25:08.182Z",
+      "updatedAt": "2025-06-18T05:57:41.844Z",
+      "__v": 0,
+      "bitrixFieldId": "COMMENTS",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68507db7c32bec5862f22c28",
+      "name": "field_1750105527640",
+      "label": " Получатель ТТН",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 128,
+      "options": [],
+      "createdAt": "2025-06-16T20:25:27.878Z",
+      "updatedAt": "2025-06-18T05:57:41.871Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_OTGCXAXYBKJBVOFS",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68507e6bc32bec5862f22c61",
+      "name": "field_1750105707581",
+      "label": "Продажа цена",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 206,
+      "options": [],
+      "createdAt": "2025-06-16T20:28:27.819Z",
+      "updatedAt": "2025-06-16T20:29:03.191Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701767765591"
+    },
+    {
+      "_id": "68507e91c32bec5862f22c6d",
+      "name": "field_1750105745207",
+      "label": "Объем м3",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 208,
+      "options": [],
+      "createdAt": "2025-06-16T20:29:05.433Z",
+      "updatedAt": "2025-06-16T20:29:15.348Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_SDLLUUKQTVRWOVQK"
+    },
+    {
+      "_id": "68507ea8c32bec5862f22c7d",
+      "name": "field_1750105768099",
+      "label": "Раствор*(покупатель)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 210,
+      "options": [],
+      "createdAt": "2025-06-16T20:29:28.327Z",
+      "updatedAt": "2025-06-16T20:29:42.293Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726645181"
+    },
+    {
+      "_id": "68507ed0c32bec5862f22c8d",
+      "name": "field_1750105808093",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 211,
+      "options": [],
+      "createdAt": "2025-06-16T20:30:08.321Z",
+      "updatedAt": "2025-06-16T20:30:08.321Z",
+      "__v": 0
+    },
+    {
+      "_id": "68507f4bc32bec5862f22c9a",
+      "name": "field_1750105931186",
+      "label": "Объем м3",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 30,
+      "options": [],
+      "createdAt": "2025-06-16T20:32:11.422Z",
+      "updatedAt": "2025-06-18T05:57:40.314Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_SDLLUUKQTVRWOVQK",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68507f68c32bec5862f22caa",
+      "name": "field_1750105960110",
+      "label": "Продажа цена",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 32,
+      "options": [],
+      "createdAt": "2025-06-16T20:32:40.368Z",
+      "updatedAt": "2025-06-18T05:57:40.392Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701767765591",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "68507f80c32bec5862f22cba",
+      "name": "field_1750105984579",
+      "label": "Раствор*(покупатель)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "order": 34,
+      "options": [],
+      "createdAt": "2025-06-16T20:33:04.807Z",
+      "updatedAt": "2025-06-18T05:57:40.466Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726645181",
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      }
+    },
+    {
+      "_id": "685081beeac91dea137cf9de",
+      "name": "field_1750106558070",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "order": 110,
+      "options": [],
+      "createdAt": "2025-06-16T20:42:38.319Z",
+      "updatedAt": "2025-06-16T20:42:38.319Z",
+      "__v": 0
+    },
+    {
+      "_id": "68508a95fd7ae2e508677b86",
+      "name": "field_1750108821202",
+      "label": "Дата отгрузки(заявка)",
+      "type": "date",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 129,
+      "options": [],
+      "createdAt": "2025-06-16T21:20:21.374Z",
+      "updatedAt": "2025-06-18T05:57:41.884Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_ZQPKHIULGGHVBIQB"
+    },
+    {
+      "_id": "6850f7d0c4bfb95e567e34d3",
+      "name": "field_1750136784169",
+      "label": "Объем раствора м3",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 36,
+      "options": [],
+      "createdAt": "2025-06-17T05:06:24.352Z",
+      "updatedAt": "2025-06-18T05:57:40.488Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006045698"
+    },
+    {
+      "_id": "6850f7e8c4bfb95e567e34e3",
+      "name": "field_1750136808627",
+      "label": "Продажа цена (раствора)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 38,
+      "options": [],
+      "createdAt": "2025-06-17T05:06:48.884Z",
+      "updatedAt": "2025-06-18T05:57:40.494Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717005986470"
+    },
+    {
+      "_id": "6850f809c4bfb95e567e34f3",
+      "name": "field_1750136841597",
+      "label": "ЦПС*(покупатель)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 40,
+      "options": [],
+      "createdAt": "2025-06-17T05:07:21.740Z",
+      "updatedAt": "2025-06-18T05:57:40.542Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726646781"
+    },
+    {
+      "_id": "6850f827c4bfb95e567e3503",
+      "name": "field_1750136871703",
+      "label": "Объем м3 ЦПС",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 42,
+      "options": [],
+      "createdAt": "2025-06-17T05:07:51.842Z",
+      "updatedAt": "2025-06-18T05:57:40.554Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006372206"
+    },
+    {
+      "_id": "6850f83ec4bfb95e567e3517",
+      "name": "field_1750136894749",
+      "label": "Продажа цена (ЦПС)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 44,
+      "options": [],
+      "createdAt": "2025-06-17T05:08:14.884Z",
+      "updatedAt": "2025-06-18T05:57:40.576Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006325903"
+    },
+    {
+      "_id": "6850f885c4bfb95e567e353f",
+      "name": "field_1750136965731",
+      "label": "Адрес доставки",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 114,
+      "options": [],
+      "createdAt": "2025-06-17T05:09:25.866Z",
+      "updatedAt": "2025-06-18T05:57:41.627Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_EYJSNWMSVBDZFPVH"
+    },
+    {
+      "_id": "6850f8adc4bfb95e567e3557",
+      "name": "field_1750137005359",
+      "label": "Завод отгрузки",
+      "type": "select",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 115,
+      "options": [
+        {
+          "value": "87",
+          "label": "ТШ",
+          "_id": "6850f8bdc4bfb95e567e3562"
+        },
+        {
+          "value": "88",
+          "label": "ВШ",
+          "_id": "6850f8bdc4bfb95e567e3563"
+        },
+        {
+          "value": "89",
+          "label": "ЯН",
+          "_id": "6850f8bdc4bfb95e567e3564"
+        },
+        {
+          "value": "86",
+          "label": "БО",
+          "_id": "6850f8bdc4bfb95e567e3565"
+        }
+      ],
+      "createdAt": "2025-06-17T05:10:05.489Z",
+      "updatedAt": "2025-06-18T05:57:41.650Z",
+      "__v": 1,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_PCQAEQKUXZMBZXMG"
+    },
+    {
+      "_id": "6850f93cc4bfb95e567e357d",
+      "name": "field_1750137148694",
+      "label": "Количество доставок (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 116,
+      "options": [],
+      "createdAt": "2025-06-17T05:12:28.827Z",
+      "updatedAt": "2025-06-18T05:57:41.648Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701769301290"
+    },
+    {
+      "_id": "6850f94ec4bfb95e567e358d",
+      "name": "field_1750137166329",
+      "label": "Количество доставок(покупатель)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 117,
+      "options": [],
+      "createdAt": "2025-06-17T05:12:46.530Z",
+      "updatedAt": "2025-06-18T09:21:33.432Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701769324763"
+    },
+    {
+      "_id": "6850f96cc4bfb95e567e359d",
+      "name": "field_1750137196696",
+      "label": "Цена доставки (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 118,
+      "options": [],
+      "createdAt": "2025-06-17T05:13:16.879Z",
+      "updatedAt": "2025-06-18T05:57:41.682Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1703322990010"
+    },
+    {
+      "_id": "6850f991c4bfb95e567e35ad",
+      "name": "field_1750137233487",
+      "label": "Цена доставки",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 119,
+      "options": [],
+      "createdAt": "2025-06-17T05:13:53.630Z",
+      "updatedAt": "2025-06-18T05:57:41.687Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701765793423"
+    },
+    {
+      "_id": "6850f9a7c4bfb95e567e35c5",
+      "name": "field_1750137255804",
+      "label": "Интервал",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 120,
+      "options": [],
+      "createdAt": "2025-06-17T05:14:15.954Z",
+      "updatedAt": "2025-06-18T05:57:41.709Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1702992754327"
+    },
+    {
+      "_id": "6850fa47c4bfb95e567e3615",
+      "name": "field_1750137415621",
+      "label": "Закупка цена",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750105960110",
+          "sourceFieldLabel": "Продажа цена",
+          "sourceSectionName": "Раздел 2"
+        }
+      },
+      "order": 84,
+      "options": [],
+      "createdAt": "2025-06-17T05:16:55.757Z",
+      "updatedAt": "2025-06-18T05:57:41.094Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701767745071"
+    },
+    {
+      "_id": "6850fa97c4bfb95e567e3635",
+      "name": "field_1750137495540",
+      "label": "Объем м3 (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750105931186",
+          "sourceFieldLabel": "Объем м3",
+          "sourceSectionName": "Раздел 2"
+        }
+      },
+      "order": 85,
+      "options": [],
+      "createdAt": "2025-06-17T05:18:15.681Z",
+      "updatedAt": "2025-06-18T05:57:41.172Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1703322858101"
+    },
+    {
+      "_id": "6850fb5dc4bfb95e567e3675",
+      "name": "field_1750137692941",
+      "label": "Раствор*(завод)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750105984579",
+          "sourceFieldLabel": "Раствор*(покупатель)",
+          "sourceSectionName": "Раздел 2"
+        }
+      },
+      "order": 86,
+      "options": [],
+      "createdAt": "2025-06-17T05:21:33.081Z",
+      "updatedAt": "2025-06-18T05:57:41.174Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726645231"
+    },
+    {
+      "_id": "6850fb5dc4bfb95e567e3678",
+      "name": "field_1750137692943",
+      "label": "Объем раствора м3 (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750136784169",
+          "sourceFieldLabel": "Объем раствора м3",
+          "sourceSectionName": "Раздел 2"
+        }
+      },
+      "order": 87,
+      "options": [],
+      "createdAt": "2025-06-17T05:21:33.092Z",
+      "updatedAt": "2025-06-18T05:57:41.184Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006036025"
+    },
+    {
+      "_id": "6850fb8ec4bfb95e567e3690",
+      "name": "field_1750137742668",
+      "label": "Закупка цена (раствора)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750136808627",
+          "sourceFieldLabel": "Продажа цена (раствора)",
+          "sourceSectionName": "Раздел 2"
+        }
+      },
+      "order": 88,
+      "options": [],
+      "createdAt": "2025-06-17T05:22:22.801Z",
+      "updatedAt": "2025-06-18T05:57:41.201Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717005961120"
+    },
+    {
+      "_id": "6850fbb4c4bfb95e567e36a0",
+      "name": "field_1750137780202",
+      "label": "ЦПС*(завод)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750136841597",
+          "sourceFieldLabel": "ЦПС*(покупатель)",
+          "sourceSectionName": "Раздел 2"
+        }
+      },
+      "order": 89,
+      "options": [],
+      "createdAt": "2025-06-17T05:23:00.334Z",
+      "updatedAt": "2025-06-18T05:57:41.221Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726646803"
+    },
+    {
+      "_id": "6850fbd4c4bfb95e567e36b0",
+      "name": "field_1750137812381",
+      "label": "Объем ЦПС м3 (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750136871703",
+          "sourceFieldLabel": "Объем м3 ЦПС",
+          "sourceSectionName": "Раздел 2"
+        }
+      },
+      "order": 90,
+      "options": [],
+      "createdAt": "2025-06-17T05:23:32.516Z",
+      "updatedAt": "2025-06-18T05:57:41.234Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006355619"
+    },
+    {
+      "_id": "6850fbf3c4bfb95e567e36c0",
+      "name": "field_1750137843299",
+      "label": "Закупка цена (ЦПС)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750136894749",
+          "sourceFieldLabel": "Продажа цена (ЦПС)",
+          "sourceSectionName": "Раздел 2"
+        }
+      },
+      "order": 91,
+      "options": [],
+      "createdAt": "2025-06-17T05:24:03.434Z",
+      "updatedAt": "2025-06-18T05:57:41.267Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717006310796"
+    },
+    {
+      "_id": "6850fcb3c4bfb95e567e3716",
+      "name": "field_1750138035057",
+      "label": "Компания",
+      "type": "autocomplete",
+      "required": true,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "companies"
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 15,
+      "options": [],
+      "createdAt": "2025-06-17T05:27:15.196Z",
+      "updatedAt": "2025-06-18T05:57:40.177Z",
+      "__v": 0,
+      "bitrixFieldId": "COMPANY_ID"
+    },
+    {
+      "_id": "6850fd12c4bfb95e567e374f",
+      "name": "section_1750138130241",
+      "label": "Детали спецтехники",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 11,
+      "options": [],
+      "createdAt": "2025-06-17T05:28:50.385Z",
+      "updatedAt": "2025-06-18T05:57:41.893Z",
+      "__v": 0
+    },
+    {
+      "_id": "6850fd22c4bfb95e567e375b",
+      "name": "field_1750138145975",
+      "label": "Время АБН(дата/время)",
+      "type": "date",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 130,
+      "options": [],
+      "createdAt": "2025-06-17T05:29:06.111Z",
+      "updatedAt": "2025-06-18T05:57:41.908Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1732302589098"
+    },
+    {
+      "_id": "6850fd48c4bfb95e567e376b",
+      "name": "field_1750138184859",
+      "label": "Длина стрелы*",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 131,
+      "options": [],
+      "createdAt": "2025-06-17T05:29:44.991Z",
+      "updatedAt": "2025-06-18T05:57:41.918Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1728560118"
+    },
+    {
+      "_id": "6850fd49c4bfb95e567e376f",
+      "name": "field_1750138184861",
+      "label": "Количество часов подачи (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 132,
+      "options": [],
+      "createdAt": "2025-06-17T05:29:45.009Z",
+      "updatedAt": "2025-06-18T05:57:41.942Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717095831894"
+    },
+    {
+      "_id": "6850fd7ac4bfb95e567e3783",
+      "name": "field_1750138234169",
+      "label": "Количество часов подачи",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 102,
+      "options": [],
+      "createdAt": "2025-06-17T05:30:34.304Z",
+      "updatedAt": "2025-06-18T05:57:42.013Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717095861228"
+    },
+    {
+      "_id": "6850fd92c4bfb95e567e3793",
+      "name": "field_1750138257883",
+      "label": "Количество часов (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 106,
+      "options": [],
+      "createdAt": "2025-06-17T05:30:58.024Z",
+      "updatedAt": "2025-06-18T05:57:42.047Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701775589163"
+    },
+    {
+      "_id": "6850fdaac4bfb95e567e37a3",
+      "name": "field_1750138282486",
+      "label": "Количество часов",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 108,
+      "options": [],
+      "createdAt": "2025-06-17T05:31:22.620Z",
+      "updatedAt": "2025-06-18T05:57:42.058Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701776045278"
+    },
+    {
+      "_id": "6850fdbbc4bfb95e567e37b3",
+      "name": "field_1750138299159",
+      "label": "Цена часа (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 111,
+      "options": [],
+      "createdAt": "2025-06-17T05:31:39.296Z",
+      "updatedAt": "2025-06-18T05:57:42.084Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701776248446"
+    },
+    {
+      "_id": "6850fdcbc4bfb95e567e37c3",
+      "name": "field_1750138315756",
+      "label": "Цена часа",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 113,
+      "options": [],
+      "createdAt": "2025-06-17T05:31:55.889Z",
+      "updatedAt": "2025-06-18T05:57:42.102Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701776307741"
+    },
+    {
+      "_id": "68517f2ebb68e6599d5a327e",
+      "name": "field_1750171438342",
+      "label": "Контактное лицо",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 17,
+      "options": [],
+      "createdAt": "2025-06-17T14:43:58.531Z",
+      "updatedAt": "2025-06-18T05:57:40.110Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1744282204457"
+    },
+    {
+      "_id": "68517f43bb68e6599d5a328e",
+      "name": "field_1750171459084",
+      "label": "Моб.телефон контактного лица",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 19,
+      "options": [],
+      "createdAt": "2025-06-17T14:44:19.216Z",
+      "updatedAt": "2025-06-18T05:57:40.129Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1744282234297"
+    },
+    {
+      "_id": "68517f5abb68e6599d5a329e",
+      "name": "field_1750171482547",
+      "label": "Почта контактного лица",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 20,
+      "options": [],
+      "createdAt": "2025-06-17T14:44:42.674Z",
+      "updatedAt": "2025-06-18T05:57:40.170Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1744282253689"
+    },
+    {
+      "_id": "68517f78bb68e6599d5a32ae",
+      "name": "field_1750171511943",
+      "label": "Дополнительно об источнике",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 22,
+      "options": [],
+      "createdAt": "2025-06-17T14:45:12.066Z",
+      "updatedAt": "2025-06-18T05:57:40.215Z",
+      "__v": 0,
+      "bitrixFieldId": "SOURCE_DESCRIPTION"
+    },
+    {
+      "_id": "68517f9ebb68e6599d5a32ce",
+      "name": "field_1750171550156",
+      "label": "ПМД клиент *",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 46,
+      "options": [],
+      "createdAt": "2025-06-17T14:45:50.285Z",
+      "updatedAt": "2025-06-18T05:57:40.593Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1728985169"
+    },
+    {
+      "_id": "68517fc1bb68e6599d5a32e3",
+      "name": "field_1750171585087",
+      "label": "ПМД цена",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 48,
+      "options": [],
+      "createdAt": "2025-06-17T14:46:25.216Z",
+      "updatedAt": "2025-06-18T05:57:40.615Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1703354580587"
+    },
+    {
+      "_id": "68517fc1bb68e6599d5a32e6",
+      "name": "field_1750171585085",
+      "label": "Труба кол-во",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 49,
+      "options": [],
+      "createdAt": "2025-06-17T14:46:25.231Z",
+      "updatedAt": "2025-06-18T05:57:40.631Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717096373303"
+    },
+    {
+      "_id": "68517ff0bb68e6599d5a32fe",
+      "name": "field_1750171632443",
+      "label": "Труба цена",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 51,
+      "options": [],
+      "createdAt": "2025-06-17T14:47:12.579Z",
+      "updatedAt": "2025-06-18T05:57:40.653Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701770192694"
+    },
+    {
+      "_id": "68518008bb68e6599d5a330e",
+      "name": "field_1750171656436",
+      "label": "Простой продажа",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 53,
+      "options": [],
+      "createdAt": "2025-06-17T14:47:36.561Z",
+      "updatedAt": "2025-06-18T05:57:40.647Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701769400178"
+    },
+    {
+      "_id": "68518035bb68e6599d5a331e",
+      "name": "field_1750171701388",
+      "label": "Замывка кол-во",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 55,
+      "options": [],
+      "createdAt": "2025-06-17T14:48:21.517Z",
+      "updatedAt": "2025-06-18T05:57:40.663Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717096242315"
+    },
+    {
+      "_id": "6851804cbb68e6599d5a332e",
+      "name": "field_1750171724092",
+      "label": "Замывка продажа",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 57,
+      "options": [],
+      "createdAt": "2025-06-17T14:48:44.215Z",
+      "updatedAt": "2025-06-18T05:57:40.675Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_UBIRIOZMVVXSQCQX"
+    },
+    {
+      "_id": "68518065bb68e6599d5a333e",
+      "name": "field_1750171749042",
+      "label": "Перестановка кол-во",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 59,
+      "options": [],
+      "createdAt": "2025-06-17T14:49:09.174Z",
+      "updatedAt": "2025-06-18T05:57:40.725Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717098917545"
+    },
+    {
+      "_id": "6851808ebb68e6599d5a3352",
+      "name": "field_1750171790063",
+      "label": "Перестановка продажа",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 61,
+      "options": [],
+      "createdAt": "2025-06-17T14:49:50.191Z",
+      "updatedAt": "2025-06-18T05:57:40.708Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_ZCAXLRFJAJVSCLKU"
+    },
+    {
+      "_id": "685180acbb68e6599d5a3362",
+      "name": "field_1750171819876",
+      "label": "Вибратор кол-во",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 63,
+      "options": [],
+      "createdAt": "2025-06-17T14:50:20.004Z",
+      "updatedAt": "2025-06-18T05:57:40.747Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717096301193"
+    },
+    {
+      "_id": "685180c4bb68e6599d5a3372",
+      "name": "field_1750171844071",
+      "label": "Вибратор цена",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 65,
+      "options": [],
+      "createdAt": "2025-06-17T14:50:44.204Z",
+      "updatedAt": "2025-06-18T05:57:40.766Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701770255484"
+    },
+    {
+      "_id": "68518126bb68e6599d5a33ae",
+      "name": "field_1750171942037",
+      "label": "Конус кол-во",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 67,
+      "options": [],
+      "createdAt": "2025-06-17T14:52:22.166Z",
+      "updatedAt": "2025-06-18T05:57:40.772Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717096448380"
+    },
+    {
+      "_id": "6851813abb68e6599d5a33be",
+      "name": "field_1750171962612",
+      "label": "Конус цена",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 68,
+      "options": [],
+      "createdAt": "2025-06-17T14:52:42.738Z",
+      "updatedAt": "2025-06-18T05:57:40.778Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717096477308"
+    },
+    {
+      "_id": "68518178bb68e6599d5a33ce",
+      "name": "field_1750172024341",
+      "label": "Шланги метров*",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 70,
+      "options": [],
+      "createdAt": "2025-06-17T14:53:44.457Z",
+      "updatedAt": "2025-06-18T05:57:40.820Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_OCVXGORBIKXPDWXR"
+    },
+    {
+      "_id": "6851818ebb68e6599d5a33de",
+      "name": "field_1750172046771",
+      "label": "Шланги цена*",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 71,
+      "options": [],
+      "createdAt": "2025-06-17T14:54:06.894Z",
+      "updatedAt": "2025-06-18T05:57:40.827Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701776649263"
+    },
+    {
+      "_id": "685181a9bb68e6599d5a33ee",
+      "name": "field_1750172072977",
+      "label": "Перестановка АБН кол-во",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 72,
+      "options": [],
+      "createdAt": "2025-06-17T14:54:33.083Z",
+      "updatedAt": "2025-06-18T05:57:40.848Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717095321371"
+    },
+    {
+      "_id": "685181c0bb68e6599d5a3402",
+      "name": "field_1750172096480",
+      "label": "Перестановка АБН",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 73,
+      "options": [],
+      "createdAt": "2025-06-17T14:54:56.592Z",
+      "updatedAt": "2025-06-18T05:57:40.866Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701776849642"
+    },
+    {
+      "_id": "685181dabb68e6599d5a3412",
+      "name": "field_1750172122063",
+      "label": "Замывка АБН кол-во",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 74,
+      "options": [],
+      "createdAt": "2025-06-17T14:55:22.175Z",
+      "updatedAt": "2025-06-18T05:57:40.880Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717095184056"
+    },
+    {
+      "_id": "685181f6bb68e6599d5a3422",
+      "name": "field_1750172150634",
+      "label": "Замывка АБН",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 75,
+      "options": [],
+      "createdAt": "2025-06-17T14:55:50.743Z",
+      "updatedAt": "2025-06-18T05:57:40.895Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701776883160"
+    },
+    {
+      "_id": "6851820ebb68e6599d5a3432",
+      "name": "field_1750172174800",
+      "label": "Гаситель/компенсатор кол-во",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 76,
+      "options": [],
+      "createdAt": "2025-06-17T14:56:14.909Z",
+      "updatedAt": "2025-06-18T05:57:40.908Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717094034869"
+    },
+    {
+      "_id": "68518225bb68e6599d5a3442",
+      "name": "field_1750172197734",
+      "label": "Гаситель/компенсатор продажа",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 77,
+      "options": [],
+      "createdAt": "2025-06-17T14:56:37.842Z",
+      "updatedAt": "2025-06-18T05:57:40.914Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_ZTPZAOFYKAAFZAFZ"
+    },
+    {
+      "_id": "6851824dbb68e6599d5a3452",
+      "name": "field_1750172237383",
+      "label": "АБН ПОКУБОВКА",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 78,
+      "options": [],
+      "createdAt": "2025-06-17T14:57:17.504Z",
+      "updatedAt": "2025-06-18T05:57:40.935Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1735217306"
+    },
+    {
+      "_id": "6851826bbb68e6599d5a3466",
+      "name": "field_1750172267464",
+      "label": "Покубовка цена",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 79,
+      "options": [],
+      "createdAt": "2025-06-17T14:57:47.570Z",
+      "updatedAt": "2025-06-18T05:57:40.947Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701776494308"
+    },
+    {
+      "_id": "68518280bb68e6599d5a3476",
+      "name": "field_1750172288449",
+      "label": "Покубовка Объем м3",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 80,
+      "options": [],
+      "createdAt": "2025-06-17T14:58:08.560Z",
+      "updatedAt": "2025-06-18T05:57:40.974Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1736847470169"
+    },
+    {
+      "_id": "68519b2ebb68e6599d5a34d3",
+      "name": "field_1750178606338",
+      "label": "ПМД цена (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750171585087",
+          "sourceFieldLabel": "ПМД цена",
+          "sourceSectionName": "Раздел 2"
+        }
+      },
+      "order": 93,
+      "options": [],
+      "createdAt": "2025-06-17T16:43:26.521Z",
+      "updatedAt": "2025-06-18T05:57:41.299Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1734770907"
+    },
+    {
+      "_id": "68519b5bbb68e6599d5a34e3",
+      "name": "field_1750178651006",
+      "label": "Труба кол-во (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 94,
+      "options": [],
+      "createdAt": "2025-06-17T16:44:11.108Z",
+      "updatedAt": "2025-06-18T05:57:41.322Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717096348203"
+    },
+    {
+      "_id": "68519b85bb68e6599d5a34f3",
+      "name": "field_1750178693847",
+      "label": "ПМД (завод)*",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "linkedFields": {
+        "enabled": true,
+        "mappings": [],
+        "sourceField": {
+          "sourceFieldName": "field_1750171550156",
+          "sourceFieldLabel": "ПМД клиент *",
+          "sourceSectionName": "Раздел 2"
+        }
+      },
+      "order": 92,
+      "options": [],
+      "createdAt": "2025-06-17T16:44:53.910Z",
+      "updatedAt": "2025-06-18T05:57:41.312Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1728985144"
+    },
+    {
+      "_id": "68519b98bb68e6599d5a34fb",
+      "name": "field_1750178712022",
+      "label": "Простой закупка*",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 95,
+      "options": [],
+      "createdAt": "2025-06-17T16:45:12.452Z",
+      "updatedAt": "2025-06-18T05:57:41.346Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_XKQXWUUDQBTPHUVF"
+    },
+    {
+      "_id": "68519bcebb68e6599d5a350b",
+      "name": "field_1750178766402",
+      "label": "Замывка кол-во (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 96,
+      "options": [],
+      "createdAt": "2025-06-17T16:46:06.491Z",
+      "updatedAt": "2025-06-18T05:57:41.348Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717096226584"
+    },
+    {
+      "_id": "68519bf3bb68e6599d5a351f",
+      "name": "field_1750178803311",
+      "label": "Замывка закупка",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 97,
+      "options": [],
+      "createdAt": "2025-06-17T16:46:43.493Z",
+      "updatedAt": "2025-06-18T05:57:41.358Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_CBNPUFWPEBKNPOND"
+    },
+    {
+      "_id": "68519c3abb68e6599d5a353f",
+      "name": "field_1750178874789",
+      "label": "Перестановка кол-во (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 98,
+      "options": [],
+      "createdAt": "2025-06-17T16:47:54.978Z",
+      "updatedAt": "2025-06-18T05:57:41.372Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717098906429"
+    },
+    {
+      "_id": "68519c55bb68e6599d5a354f",
+      "name": "field_1750178901146",
+      "label": "Перестановка закупка",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 99,
+      "options": [],
+      "createdAt": "2025-06-17T16:48:21.246Z",
+      "updatedAt": "2025-06-18T05:57:41.396Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_WQWMNREMXIDNPPOW"
+    },
+    {
+      "_id": "68519c7dbb68e6599d5a355f",
+      "name": "field_1750178941735",
+      "label": "Вибратор кол-во (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 100,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:01.931Z",
+      "updatedAt": "2025-06-18T05:57:41.412Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717096287433"
+    },
+    {
+      "_id": "68519c9bbb68e6599d5a356f",
+      "name": "field_1750178971415",
+      "label": "Вибратор (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 101,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:31.494Z",
+      "updatedAt": "2025-06-18T05:57:41.431Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701770238864"
+    },
+    {
+      "_id": "68519c9cbb68e6599d5a3573",
+      "name": "field_1750178972158",
+      "label": "Конус кол-во (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 102,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:32.293Z",
+      "updatedAt": "2025-06-18T05:57:41.446Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717096432722"
+    },
+    {
+      "_id": "68519c9cbb68e6599d5a3577",
+      "name": "field_1750178972662",
+      "label": "Конус цена (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 103,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:32.732Z",
+      "updatedAt": "2025-06-18T05:57:41.449Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717096463485"
+    },
+    {
+      "_id": "68519c9dbb68e6599d5a357b",
+      "name": "field_1750178973117",
+      "label": "Шланги цена (завод)*",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 104,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:33.175Z",
+      "updatedAt": "2025-06-18T05:57:41.458Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701776635179"
+    },
+    {
+      "_id": "68519c9dbb68e6599d5a357f",
+      "name": "field_1750178973648",
+      "label": "Перестановка АБН кол-во (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 105,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:33.702Z",
+      "updatedAt": "2025-06-18T05:57:41.469Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717095299101"
+    },
+    {
+      "_id": "68519c9ebb68e6599d5a3583",
+      "name": "field_1750178974114",
+      "label": "Перестановка АБН (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 106,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:34.182Z",
+      "updatedAt": "2025-06-18T05:57:41.495Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701776837170"
+    },
+    {
+      "_id": "68519c9ebb68e6599d5a3587",
+      "name": "field_1750178974799",
+      "label": "Замывка АБН кол-во (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 107,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:34.892Z",
+      "updatedAt": "2025-06-18T05:57:41.509Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717095122311"
+    },
+    {
+      "_id": "68519ca0bb68e6599d5a358f",
+      "name": "field_1750178975819",
+      "label": "Замывка АБН (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 108,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:36.079Z",
+      "updatedAt": "2025-06-18T05:57:41.528Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701776871745"
+    },
+    {
+      "_id": "68519ca0bb68e6599d5a3593",
+      "name": "field_1750178975790",
+      "label": "Гаситель/компенсатор кол-во (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 109,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:36.095Z",
+      "updatedAt": "2025-06-18T05:57:41.545Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717333167990"
+    },
+    {
+      "_id": "68519ca0bb68e6599d5a3597",
+      "name": "field_1750178975852",
+      "label": "Гаситель/компенсатор закупка",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 110,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:36.202Z",
+      "updatedAt": "2025-06-18T05:57:41.550Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_DEAL_AMO_KJXVYFAWBCQLXZHO"
+    },
+    {
+      "_id": "68519ca0bb68e6599d5a359b",
+      "name": "field_1750178976027",
+      "label": "Покубовка цена (завод)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 111,
+      "options": [],
+      "createdAt": "2025-06-17T16:49:36.228Z",
+      "updatedAt": "2025-06-18T05:57:41.562Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701776482726"
+    },
+    {
+      "_id": "6851a018bb68e6599d5a3625",
+      "name": "field_1750179863912",
+      "label": "Прокачка фибры цена*",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 81,
+      "options": [],
+      "createdAt": "2025-06-17T17:04:24.142Z",
+      "updatedAt": "2025-06-18T05:57:40.987Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701777034844"
+    },
+    {
+      "_id": "6851a019bb68e6599d5a3629",
+      "name": "field_1750179865008",
+      "label": "Прокачка керамзита*",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 82,
+      "options": [],
+      "createdAt": "2025-06-17T17:04:25.122Z",
+      "updatedAt": "2025-06-18T05:57:40.989Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701777074178"
+    },
+    {
+      "_id": "6851a119bb68e6599d5a3665",
+      "name": "field_1750180121142",
+      "label": "Прокачка фибры  цена (завод)*",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 112,
+      "options": [],
+      "createdAt": "2025-06-17T17:08:41.238Z",
+      "updatedAt": "2025-06-18T05:57:41.581Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701777022069"
+    },
+    {
+      "_id": "6851a11bbb68e6599d5a3669",
+      "name": "field_1750180122922",
+      "label": "Прокачка керамзита (завод)*",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 113,
+      "options": [],
+      "createdAt": "2025-06-17T17:08:43.142Z",
+      "updatedAt": "2025-06-18T05:57:41.593Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1701777063043"
+    },
+    {
+      "_id": "68525235bb68e6599d5a3e12",
+      "name": "field_1750225461598",
+      "label": "Грузоотправитель",
+      "type": "select",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 114,
+      "options": [
+        {
+          "value": "191",
+          "label": "(5348)Бетон Экспресс",
+          "_id": "68525244bb68e6599d5a3e1d"
+        },
+        {
+          "value": "187",
+          "label": "(5351)БРУ",
+          "_id": "68525244bb68e6599d5a3e1e"
+        },
+        {
+          "value": "401",
+          "label": "(4941)ООО ТСК МОНОЛИТ",
+          "_id": "68525244bb68e6599d5a3e1f"
+        },
+        {
+          "value": "186",
+          "label": "(4587)ПроБетон СПб",
+          "_id": "68525244bb68e6599d5a3e20"
+        },
+        {
+          "value": "291",
+          "label": "(2513)БетонПроГрупп",
+          "_id": "68525244bb68e6599d5a3e21"
+        },
+        {
+          "value": "400",
+          "label": "(6692)Ресурс Логистик",
+          "_id": "68525244bb68e6599d5a3e22"
+        },
+        {
+          "value": "417",
+          "label": "(6672)ЛИДЕР БЕТОН ГРУПП",
+          "_id": "68525244bb68e6599d5a3e23"
+        }
+      ],
+      "createdAt": "2025-06-18T05:44:21.759Z",
+      "updatedAt": "2025-06-18T05:57:42.114Z",
+      "__v": 1,
+      "bitrixFieldId": "UF_CRM_1703424883476"
+    },
+    {
+      "_id": "6852524cbb68e6599d5a3e2c",
+      "name": "field_1750225484240",
+      "label": "Дилер (Контрагент)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "companies"
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 115,
+      "options": [],
+      "createdAt": "2025-06-18T05:44:44.400Z",
+      "updatedAt": "2025-06-18T05:57:42.129Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1727975949"
+    },
+    {
+      "_id": "6852524cbb68e6599d5a3e2f",
+      "name": "field_1750225484243",
+      "label": "Диллер контрагент (Текст)",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 116,
+      "options": [],
+      "createdAt": "2025-06-18T05:44:44.412Z",
+      "updatedAt": "2025-06-18T05:57:42.152Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1740140160976"
+    },
+    {
+      "_id": "6852526bbb68e6599d5a3e40",
+      "name": "field_1750225515582",
+      "label": "Бетон*(Дилер)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 117,
+      "options": [],
+      "createdAt": "2025-06-18T05:45:15.743Z",
+      "updatedAt": "2025-06-18T05:57:42.166Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726646101"
+    },
+    {
+      "_id": "6852526bbb68e6599d5a3e43",
+      "name": "field_1750225515584",
+      "label": "Объем (Дилер)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 118,
+      "options": [],
+      "createdAt": "2025-06-18T05:45:15.753Z",
+      "updatedAt": "2025-06-18T05:57:42.198Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1713181946618"
+    },
+    {
+      "_id": "685252ecbb68e6599d5a3e7f",
+      "name": "field_1750225644148",
+      "label": "Цена (Дилер)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 119,
+      "options": [],
+      "createdAt": "2025-06-18T05:47:24.303Z",
+      "updatedAt": "2025-06-18T05:57:42.205Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1713181905877"
+    },
+    {
+      "_id": "6852532dbb68e6599d5a3e8f",
+      "name": "field_1750225709139",
+      "label": "Раствор*(дилер)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 120,
+      "options": [],
+      "createdAt": "2025-06-18T05:48:29.291Z",
+      "updatedAt": "2025-06-18T05:57:42.221Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726646140"
+    },
+    {
+      "_id": "6852532ebb68e6599d5a3e93",
+      "name": "field_1750225709919",
+      "label": "Объем раствор*(Дилер)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 121,
+      "options": [],
+      "createdAt": "2025-06-18T05:48:30.080Z",
+      "updatedAt": "2025-06-18T05:57:42.236Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726646365"
+    },
+    {
+      "_id": "6852532ebb68e6599d5a3e97",
+      "name": "field_1750225710516",
+      "label": "Цена раствор*(Дилер)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 122,
+      "options": [],
+      "createdAt": "2025-06-18T05:48:30.673Z",
+      "updatedAt": "2025-06-18T05:57:42.247Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726646347"
+    },
+    {
+      "_id": "6852537abb68e6599d5a3eb7",
+      "name": "field_1750225786099",
+      "label": "ЦПС*(дилер)",
+      "type": "autocomplete",
+      "required": false,
+      "dynamicSource": {
+        "enabled": true,
+        "source": "catalog"
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 123,
+      "options": [],
+      "createdAt": "2025-06-18T05:49:46.256Z",
+      "updatedAt": "2025-06-18T05:57:42.264Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726646819"
+    },
+    {
+      "_id": "6852537abb68e6599d5a3ebb",
+      "name": "field_1750225786102",
+      "label": "Объем ЦПС м3*(дилер)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 124,
+      "options": [],
+      "createdAt": "2025-06-18T05:49:46.292Z",
+      "updatedAt": "2025-06-18T05:57:42.288Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726647247"
+    },
+    {
+      "_id": "6852537bbb68e6599d5a3ebf",
+      "name": "field_1750225787406",
+      "label": "Цена ЦПС*(Дилер)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 125,
+      "options": [],
+      "createdAt": "2025-06-18T05:49:47.557Z",
+      "updatedAt": "2025-06-18T05:57:42.314Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1726647276"
+    },
+    {
+      "_id": "6852537bbb68e6599d5a3ec3",
+      "name": "field_1750225787748",
+      "label": "Количество доставок (Дилер)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 126,
+      "options": [],
+      "createdAt": "2025-06-18T05:49:47.898Z",
+      "updatedAt": "2025-06-18T05:57:42.331Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1713182098653"
+    },
+    {
+      "_id": "6852537bbb68e6599d5a3ec7",
+      "name": "field_1750225787773",
+      "label": "Цена доставки (Дилер)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 127,
+      "options": [],
+      "createdAt": "2025-06-18T05:49:47.923Z",
+      "updatedAt": "2025-06-18T05:57:42.347Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1713182237011"
+    },
+    {
+      "_id": "6852537cbb68e6599d5a3ecb",
+      "name": "field_1750225788561",
+      "label": "Труба кол-во (Дилер)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 128,
+      "options": [],
+      "createdAt": "2025-06-18T05:49:48.716Z",
+      "updatedAt": "2025-06-18T05:57:42.356Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1717331876913"
+    },
+    {
+      "_id": "68525486bb68e6599d5a3fec",
+      "name": "field_1750226054720",
+      "label": "Труба цена (Дилер)",
+      "type": "number",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 129,
+      "options": [],
+      "createdAt": "2025-06-18T05:54:14.876Z",
+      "updatedAt": "2025-06-18T05:57:42.358Z",
+      "__v": 0,
+      "bitrixFieldId": "UF_CRM_1713184844102"
+    },
+    {
+      "_id": "685254b3bb68e6599d5a4004",
+      "name": "section_1750226099594",
+      "label": "Перекуп",
+      "type": "header",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 101,
+      "options": [],
+      "createdAt": "2025-06-18T05:54:59.750Z",
+      "updatedAt": "2025-06-18T05:57:42.107Z",
+      "__v": 0
+    },
+    {
+      "_id": "68528d5dbb68e6599d5a45cf",
+      "name": "field_1750240605134",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 24,
+      "options": [],
+      "createdAt": "2025-06-18T09:56:45.222Z",
+      "updatedAt": "2025-06-18T09:56:45.222Z",
+      "__v": 0
+    },
+    {
+      "_id": "68528d6cbb68e6599d5a45d9",
+      "name": "field_1750240620285",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 25,
+      "options": [],
+      "createdAt": "2025-06-18T09:57:00.368Z",
+      "updatedAt": "2025-06-18T09:57:00.368Z",
+      "__v": 0
+    },
+    {
+      "_id": "68528d6fbb68e6599d5a45dd",
+      "name": "field_1750240623136",
+      "label": "Новое поле",
+      "type": "text",
+      "required": false,
+      "dynamicSource": {
+        "enabled": false
+      },
+      "linkedFields": {
+        "enabled": false,
+        "mappings": []
+      },
+      "order": 26,
+      "options": [],
+      "createdAt": "2025-06-18T09:57:03.224Z",
+      "updatedAt": "2025-06-18T09:57:03.224Z",
+      "__v": 0
+    }
+  ],
+  "forms": [
+    {
+      "_id": "68500269f26c2c7c07952b74",
+      "name": "1",
+      "title": "Заявка",
+      "description": "",
+      "isActive": true,
+      "fields": [
+        "68500273f26c2c7c07952b7c",
+        "6850043bf26c2c7c07952c93",
+        "68501c4635758a8b28b366c5",
+        "6850fcb3c4bfb95e567e3716",
+        "68517f2ebb68e6599d5a327e",
+        "68517f43bb68e6599d5a328e",
+        "68517f5abb68e6599d5a329e",
+        "68517f78bb68e6599d5a32ae",
+        "68500aaa35758a8b28b3664c",
+        "68500ab435758a8b28b36658",
+        "68507f4bc32bec5862f22c9a",
+        "68507f68c32bec5862f22caa",
+        "68507f80c32bec5862f22cba",
+        "6850f7d0c4bfb95e567e34d3",
+        "6850f7e8c4bfb95e567e34e3",
+        "6850f809c4bfb95e567e34f3",
+        "6850f827c4bfb95e567e3503",
+        "6850f83ec4bfb95e567e3517",
+        "68517f9ebb68e6599d5a32ce",
+        "68517fc1bb68e6599d5a32e3",
+        "68517fc1bb68e6599d5a32e6",
+        "68517ff0bb68e6599d5a32fe",
+        "68518008bb68e6599d5a330e",
+        "68518035bb68e6599d5a331e",
+        "6851804cbb68e6599d5a332e",
+        "68518065bb68e6599d5a333e",
+        "6851808ebb68e6599d5a3352",
+        "685180acbb68e6599d5a3362",
+        "685180c4bb68e6599d5a3372",
+        "68518126bb68e6599d5a33ae",
+        "6851813abb68e6599d5a33be",
+        "68518178bb68e6599d5a33ce",
+        "6851818ebb68e6599d5a33de",
+        "685181a9bb68e6599d5a33ee",
+        "685181c0bb68e6599d5a3402",
+        "685181dabb68e6599d5a3412",
+        "685181f6bb68e6599d5a3422",
+        "6851820ebb68e6599d5a3432",
+        "68518225bb68e6599d5a3442",
+        "6851824dbb68e6599d5a3452",
+        "6851826bbb68e6599d5a3466",
+        "68518280bb68e6599d5a3476",
+        "6851a018bb68e6599d5a3625",
+        "6851a019bb68e6599d5a3629",
+        "68501cc235758a8b28b36753",
+        "68501ce835758a8b28b3677f",
+        "6850fa47c4bfb95e567e3615",
+        "6850fa97c4bfb95e567e3635",
+        "6850fb5dc4bfb95e567e3675",
+        "6850fb5dc4bfb95e567e3678",
+        "6850fb8ec4bfb95e567e3690",
+        "6850fbb4c4bfb95e567e36a0",
+        "6850fbd4c4bfb95e567e36b0",
+        "6850fbf3c4bfb95e567e36c0",
+        "68519b85bb68e6599d5a34f3",
+        "68519b2ebb68e6599d5a34d3",
+        "68519b5bbb68e6599d5a34e3",
+        "68519b98bb68e6599d5a34fb",
+        "68519bcebb68e6599d5a350b",
+        "68519bf3bb68e6599d5a351f",
+        "68519c3abb68e6599d5a353f",
+        "68519c55bb68e6599d5a354f",
+        "68519c7dbb68e6599d5a355f",
+        "68519c9bbb68e6599d5a356f",
+        "68519c9cbb68e6599d5a3573",
+        "68519c9cbb68e6599d5a3577",
+        "68519c9dbb68e6599d5a357b",
+        "68519c9dbb68e6599d5a357f",
+        "68519c9ebb68e6599d5a3583",
+        "68519c9ebb68e6599d5a3587",
+        "68519ca0bb68e6599d5a358f",
+        "68519ca0bb68e6599d5a3593",
+        "68519ca0bb68e6599d5a3597",
+        "68519ca0bb68e6599d5a359b",
+        "6851a119bb68e6599d5a3665",
+        "6851a11bbb68e6599d5a3669",
+        "68501cda35758a8b28b3676f",
+        "6850f885c4bfb95e567e353f",
+        "6850f8adc4bfb95e567e3557",
+        "6850f93cc4bfb95e567e357d",
+        "6850f94ec4bfb95e567e358d",
+        "6850f96cc4bfb95e567e359d",
+        "6850f991c4bfb95e567e35ad",
+        "6850f9a7c4bfb95e567e35c5",
+        "68507b95c32bec5862f22b64",
+        "68507ba7c32bec5862f22b74",
+        "68507bcec32bec5862f22b84",
+        "68507bf0c32bec5862f22b94",
+        "68507c39c32bec5862f22bb4",
+        "68507d7ec32bec5862f22bf8",
+        "68507d94c32bec5862f22c08",
+        "68507da4c32bec5862f22c18",
+        "68507db7c32bec5862f22c28",
+        "68508a95fd7ae2e508677b86",
+        "6850fd12c4bfb95e567e374f",
+        "6850fd22c4bfb95e567e375b",
+        "6850fd48c4bfb95e567e376b",
+        "6850fd49c4bfb95e567e376f",
+        "6850fd7ac4bfb95e567e3783",
+        "6850fd92c4bfb95e567e3793",
+        "6850fdaac4bfb95e567e37a3",
+        "6850fdbbc4bfb95e567e37b3",
+        "6850fdcbc4bfb95e567e37c3",
+        "685254b3bb68e6599d5a4004",
+        "68525235bb68e6599d5a3e12",
+        "6852524cbb68e6599d5a3e2c",
+        "6852524cbb68e6599d5a3e2f",
+        "6852526bbb68e6599d5a3e40",
+        "6852526bbb68e6599d5a3e43",
+        "685252ecbb68e6599d5a3e7f",
+        "6852532dbb68e6599d5a3e8f",
+        "6852532ebb68e6599d5a3e93",
+        "6852532ebb68e6599d5a3e97",
+        "6852537abb68e6599d5a3eb7",
+        "6852537abb68e6599d5a3ebb",
+        "6852537bbb68e6599d5a3ebf",
+        "6852537bbb68e6599d5a3ec3",
+        "6852537bbb68e6599d5a3ec7",
+        "6852537cbb68e6599d5a3ecb",
+        "68525486bb68e6599d5a3fec"
+      ],
+      "successMessage": "Спасибо! Ваша заявка успешно отправлена.",
+      "createdAt": "2025-06-16T11:39:21.911Z",
+      "updatedAt": "2025-06-18T10:51:11.510Z",
+      "__v": 1
+    }
+  ]
+}

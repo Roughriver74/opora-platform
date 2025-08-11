@@ -45,8 +45,9 @@ export const validateFormFieldRelation = async (
 		// formId уже в правильном формате UUID
 		req.body.formId = formId
 
-			`✅ Валидация связи: поле будет привязано к форме ${req.body.formId}`
-		)
+		console.log(
+		`✅ Валидация связи: поле будет привязано к форме ${req.body.formId}`
+	)
 		next()
 	} catch (error) {
 		console.error('❌ Ошибка валидации связи:', error)
@@ -98,9 +99,10 @@ export const validateFormFieldUpdateRelation = async (
 		// formId уже в правильном формате UUID
 		req.body.formId = formId
 
-			`✅ Валидация обновления: поле остается привязанным к форме ${req.body.formId}`
-		)
-		next()
+		console.log(
+		`✅ Валидация обновления: поле остается привязанным к форме ${req.body.formId}`
+	)
+	next()
 	} catch (error) {
 		console.error('❌ Ошибка валидации обновления связи:', error)
 		res.status(500).json({

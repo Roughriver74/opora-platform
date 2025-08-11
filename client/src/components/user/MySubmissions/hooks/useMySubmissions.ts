@@ -101,26 +101,31 @@ export const useMySubmissions = () => {
 	// Обработчики событий
 	const handleEditSubmission = async (submission: any) => {
 		try {
-				'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
+			console.log(
+			'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
 				submission.id
 			)
 
 			// Получаем заявку с актуальными данными из Битрикс24
-				'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
+			console.log(
+			'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
 			)
 			const response = await submissionService.getSubmissionForEdit(
 				submission.id
 			)
 
-				'[CLIENT EDIT DEBUG] response.data.preloadedOptions:',
+			console.log(
+			'[CLIENT EDIT DEBUG] response.data.preloadedOptions:',
 				response.data.preloadedOptions
 			)
 
 			if (response.success) {
-					'[CLIENT EDIT DEBUG] Обновленные formData:',
+				console.log(
+				'[CLIENT EDIT DEBUG] Обновленные formData:',
 					response.data.formData
 				)
-					'[CLIENT EDIT DEBUG] Предзагруженные опции:',
+				console.log(
+				'[CLIENT EDIT DEBUG] Предзагруженные опции:',
 					response.data.preloadedOptions
 				)
 
@@ -158,7 +163,8 @@ export const useMySubmissions = () => {
 			)
 
 			// В случае ошибки используем локальные данные
-				'[CLIENT EDIT DEBUG] Используем локальные данные из-за ошибки'
+			console.warn(
+			'[CLIENT EDIT DEBUG] Используем локальные данные из-за ошибки'
 			)
 			localStorage.setItem(
 				'editSubmissionData',

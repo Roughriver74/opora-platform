@@ -1,0 +1,17 @@
+Backup Created: воскресенье, 10 августа 2025 г. 21:42:05 (MSK)
+MongoDB Database: beton_crm
+Application Directory: /var/www/beton-crm
+Backup Type: Full (MongoDB dump + JSON exports + Application files)
+
+Collections backed up:
+- users
+- forms  
+- formfields
+- submissions
+- submissionhistories
+- settings
+
+Files:
+- mongodb/ (MongoDB dump)
+- *.json (Collection exports)
+- app-backup.tar.gz (Current application)

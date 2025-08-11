@@ -169,11 +169,12 @@ export const SubmissionService = {
 			// Проверяем обязательные поля
 			const data = response.data.data
 			if (!data?.id || !data?.formId) {
-					hasDataId: !!data?.id,
-					hasFormId: !!data?.formId,
-					formIdType: typeof data?.formId,
-					data: data
-				})
+					console.log({
+						hasDataId: !!data?.id,
+						hasFormId: !!data?.formId,
+						formIdType: typeof data?.formId,
+						data: data
+					})
 				throw new Error('Получены неполные данные заявки')
 			}
 			

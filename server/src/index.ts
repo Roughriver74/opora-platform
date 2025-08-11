@@ -18,6 +18,7 @@ import userRoutes from './routes/userRoutes'
 import diagnosticRoutes from './routes/diagnosticRoutes'
 import backupRoutes from './routes/backupRoutes'
 import settingsRoutes from './routes/settingsRoutes'
+import syncRoutes from './routes/syncRoutes'
 import { initializeDefaultSettings } from './controllers/settingsController'
 
 // Загрузка переменных окружения
@@ -85,6 +86,7 @@ app.use('/api/users', userRoutes)
 app.use('/api/diagnostic', diagnosticRoutes)
 app.use('/api/backups', backupRoutes)
 app.use('/api/settings', settingsRoutes)
+app.use('/api/sync', syncRoutes)
 
 // Базовый маршрут для проверки работоспособности API
 app.get('/', (req, res) => {

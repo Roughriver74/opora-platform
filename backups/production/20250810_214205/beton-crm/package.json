@@ -1,0 +1,30 @@
+{
+	"name": "beton-crm",
+	"version": "1.0.0",
+	"description": "Система оформления заявок на покупку бетона с интеграцией Битрикс24",
+	"main": "index.js",
+	"scripts": {
+		"install:all": "npm install && cd client && npm install && cd ../server && npm install",
+		"start:server": "cd server && npm run dev",
+		"start:client": "cd client && npm start",
+		"start": "concurrently --kill-others \"npm run start:server\" \"npm run start:client\"",
+		"dev:server": "cd server && npm run dev",
+		"dev:client": "cd client && npm start",
+		"build": "cd client && npm run build && cd ../server && npm run build",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"@hello-pangea/dnd": "^18.0.1",
+		"@types/react-beautiful-dnd": "^13.1.8",
+		"archiver": "^7.0.1",
+		"concurrently": "^8.0.1",
+		"mongodb": "^6.17.0",
+		"react-beautiful-dnd": "^13.1.1"
+	},
+	"devDependencies": {
+		"axios": "^1.10.0",
+		"ts-node-dev": "^2.0.0"
+	}
+}

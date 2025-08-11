@@ -113,9 +113,10 @@ export const groupFieldsByDividers = (
 		(a, b) => (a.order || 0) - (b.order || 0)
 	)
 
-		totalFields: sortedFields.length,
-		fieldTypes: sortedFields.map(f => f.type),
-	})
+		console.log({
+			totalFields: sortedFields.length,
+			fieldTypes: sortedFields.map(f => f.type),
+		})
 
 	for (const field of sortedFields) {
 		if (field.type === 'divider') {
@@ -131,7 +132,8 @@ export const groupFieldsByDividers = (
 					divider: currentDivider,
 				}
 				sections.push(section)
-					`📋 Создана секция "${section.title}" с ${currentFields.length} полями`
+				console.log(
+				`📋 Создана секция "${section.title}" с ${currentFields.length} полями`
 				)
 				sectionIndex++
 			}
@@ -157,16 +159,18 @@ export const groupFieldsByDividers = (
 			divider: currentDivider,
 		}
 		sections.push(section)
+		console.log(
 			`📋 Создана финальная секция "${section.title}" с ${currentFields.length} полями`
-		)
+		);
 	}
 
+	console.log('📊 Статистика создания секций:', {
 		totalSections: sections.length,
 		sectionsInfo: sections.map(s => ({
 			title: s.title,
 			fieldsCount: s.fields.length,
 		})),
-	})
+	});
 
 	return sections
 }

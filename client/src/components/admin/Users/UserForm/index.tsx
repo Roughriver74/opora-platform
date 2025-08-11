@@ -56,11 +56,12 @@ export const UserForm: React.FC<UserFormProps> = ({
 
   const isEditing = Boolean(user);
   
-    open, 
-    isEditing, 
-    formData: formData.email || 'empty',
-    loading 
-  });
+    console.log({
+      open, 
+      isEditing, 
+      formData: formData.email || 'empty',
+      loading 
+    });
 
   // Дополнительное логирование изменений пропов
   useEffect(() => {

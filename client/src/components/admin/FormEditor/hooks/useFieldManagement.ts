@@ -40,6 +40,7 @@ export const useFieldManagement = (
 						_id: updatedField._id, // Убеждаемся что _id сохранен
 					} as FormField
 
+					console.log('Field update debug:', {
 						original: originalField,
 						updates: updatedField,
 						complete: completeField,
@@ -79,7 +80,8 @@ export const useFieldManagement = (
 						(a, b) => (a.order || 0) - (b.order || 0)
 					)
 
-						'🔄 Поля после сохранения:',
+					console.log(
+					'🔄 Поля после сохранения:',
 						sortedFields.map(f => ({
 							name: f.name,
 							type: f.type,
@@ -141,13 +143,14 @@ export const useFieldManagement = (
 			...DEFAULT_FIELD_DATA,
 		}
 
+		console.log('🔧 Создаём поле:', {
 			name: newField.name,
 			order: newField.order,
 			formId: newField.formId,
 			section:
 				Math.floor(newOrder / ORDER_CONSTANTS.SECTION_STEP) *
 				ORDER_CONSTANTS.SECTION_STEP,
-		})
+		});
 
 		// Вместо добавления в состояние, сразу сохраняем в БД
 		handleFieldSave(-1, newField)
@@ -175,11 +178,12 @@ export const useFieldManagement = (
 			},
 		}
 
+		console.log('🔧 Создаём раздел:', {
 			name: newSection.name,
 			label: newSection.label,
 			order: newSection.order,
 			formId: newSection.formId,
-		})
+		});
 
 		// Сразу сохраняем в БД
 		handleFieldSave(-1, newSection)
@@ -198,13 +202,14 @@ export const useFieldManagement = (
 				...DEFAULT_FIELD_DATA,
 			}
 
+			console.log('🔧 Добавляем поле в раздел:', {
 				name: newField.name,
 				order: newField.order,
 				formId: newField.formId,
 				sectionOrder,
-			})
+			});
 
-			handleFieldSave(-1, newField)
+			handleFieldSave(-1, newField);
 		},
 		[state.fields, handleFieldSave, formId]
 	)
@@ -269,11 +274,12 @@ export const useFieldManagement = (
 					newOrder = maxSectionOrder + 1
 				}
 
+				console.log('🔄 Перемещение поля:', {
 					fieldName: fieldToMove.name,
 					oldOrder: fieldToMove.order,
 					newOrder,
 					targetSection: targetSectionOrder,
-				})
+				});
 
 				// Обновляем поле с новым order
 				const updatedField = { ...fieldToMove, order: newOrder }
@@ -295,6 +301,7 @@ export const useFieldManagement = (
 	// Нормализация порядка полей
 	const normalizeOrders = useCallback(async () => {
 		try {
+			console.log('🔄 Нормализация порядка полей');
 
 			// Группируем поля по типам
 			const sections = state.fields
@@ -307,9 +314,10 @@ export const useFieldManagement = (
 
 			// Первый проход: пересчитываем разделы на основе их текущего порядка
 			// НЕ меняем порядок разделов, только нормализуем поля внутри разделов
+			console.log(
 				'📋 Разделы в текущем порядке:',
 				sections.map(s => ({ label: s.label, order: s.order }))
-			)
+			);
 
 			// Переупорядочиваем поля внутри каждого раздела
 			sections.forEach(section => {
@@ -323,15 +331,17 @@ export const useFieldManagement = (
 					})
 					.sort((a, b) => (a.order || 0) - (b.order || 0))
 
+				console.log(
 					`📁 Раздел "${section.label}" (${sectionOrder}): ${sectionFields.length} полей`
-				)
+				);
 
 				// Переупорядочиваем поля: sectionOrder+1, sectionOrder+2, sectionOrder+3...
 				sectionFields.forEach((field, fieldIndex) => {
 					const newOrder = sectionOrder + 1 + fieldIndex
 					if (field.order !== newOrder && field._id) {
+						console.log(
 							`🔹 Поле "${field.label}": ${field.order} → ${newOrder}`
-						)
+						);
 						updates.push(
 							FormFieldService.updateField(field._id, { order: newOrder })
 						)
@@ -361,8 +371,9 @@ export const useFieldManagement = (
 				orphanFields.forEach((field, index) => {
 					const newOrder = index + 1
 					if (field.order !== newOrder && field._id) {
+						console.log(
 							`🔸 Поле без раздела "${field.label}": ${field.order} → ${newOrder}`
-						)
+						);
 						updates.push(
 							FormFieldService.updateField(field._id, { order: newOrder })
 						)
@@ -387,6 +398,7 @@ export const useFieldManagement = (
 					hasChanges: true,
 				}))
 			} else {
+				console.log('✅ Нормализация не требуется - все поля уже упорядочены');
 			}
 		} catch (error) {
 			console.error('❌ Ошибка при нормализации порядка:', error)
