@@ -63,7 +63,7 @@ import {
 } from '../../../services/submissionService'
 import { FormField } from '../../../types'
 import { useAuth } from '../../../contexts/auth'
-import { useNotification } from '../../../contexts/notification'
+import { useNotificationHelpers } from '../../../contexts/notification'
 import api from '../../../services/api'
 import { DEFAULT_STATUS_FILTER } from './constants'
 
@@ -72,7 +72,7 @@ import { DEFAULT_STATUS_FILTER } from './constants'
 const MySubmissions: React.FC = () => {
 	const navigate = useNavigate()
 	const { user } = useAuth()
-	const { showError, showSuccess } = useNotification()
+	const { showError, showSuccess } = useNotificationHelpers()
 	const theme = useTheme()
 	const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 	const isSmallMobile = useMediaQuery('(max-width:480px)')

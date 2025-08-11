@@ -20,14 +20,23 @@ export const useFieldManagement = (
 	const handleFieldSave = useCallback(
 		async (index: number, updatedField: Partial<FormField>) => {
 			try {
+				console.log('🔍 handleFieldSave called with:', {
+					index,
+					updatedField,
+					hasId: !!updatedField._id,
+					hasRegularId: !!updatedField.id,
+					fieldName: updatedField.name,
+					stateFieldsCount: state.fields.length
+				})
 
 				let savedField: FormField
+				const fieldId = updatedField._id || updatedField.id
 
-				if (updatedField._id) {
+				if (fieldId) {
 					// Обновляем существующее поле
 					// Находим оригинальное поле для получения всех данных
 					const originalField = state.fields.find(
-						f => f._id === updatedField._id
+						f => (f._id === fieldId) || (f.id === fieldId)
 					)
 					if (!originalField) {
 						throw new Error('Оригинальное поле не найдено')
@@ -37,31 +46,60 @@ export const useFieldManagement = (
 					const completeField = {
 						...originalField,
 						...updatedField,
-						_id: updatedField._id, // Убеждаемся что _id сохранен
+						_id: originalField._id || originalField.id,
+						id: originalField.id || originalField._id,
+						formId: originalField.formId || formId, // Сохраняем правильный formId
 					} as FormField
 
 					console.log('Field update debug:', {
 						original: originalField,
 						updates: updatedField,
 						complete: completeField,
+						fieldId,
 					})
 
 					savedField = await FormFieldService.updateField(
-						updatedField._id,
+						fieldId,
 						completeField
 					)
 				} else {
 					// Создаем новое поле
-					const fieldToCreate = {
-						...updatedField,
-						order: updatedField.order || state.fields.length + 1,
-						formId: formId,
-					} as Omit<FormField, '_id'>
+					console.log('🆕 Creating new field because no _id found:', {
+						fieldName: updatedField.name,
+						formId,
+						existingFieldsWithSameName: state.fields.filter(f => f.name === updatedField.name)
+					})
 
-					savedField = await FormFieldService.createFormField(
-						formId || '',
-						fieldToCreate
-					)
+					// Проверяем, есть ли уже поле с таким именем в state
+					const existingField = state.fields.find(f => f.name === updatedField.name)
+					const existingFieldId = existingField?._id || existingField?.id
+					if (existingField && existingFieldId) {
+						console.log('🔄 Found existing field with same name, switching to update mode:', existingField)
+						// Переключаемся на режим обновления
+						const completeField = {
+							...existingField,
+							...updatedField,
+							_id: existingField._id || existingField.id,
+							id: existingField.id || existingField._id,
+							formId: existingField.formId || formId, // Сохраняем правильный formId
+						} as FormField
+						
+						savedField = await FormFieldService.updateField(
+							existingFieldId,
+							completeField
+						)
+					} else {
+						const fieldToCreate = {
+							...updatedField,
+							order: updatedField.order || state.fields.length + 1,
+							formId: formId,
+						} as Omit<FormField, '_id'>
+
+						savedField = await FormFieldService.createFormField(
+							formId || '',
+							fieldToCreate
+						)
+					}
 				}
 
 				setState(prev => {

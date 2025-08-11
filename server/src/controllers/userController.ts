@@ -192,6 +192,7 @@ export const updateUser = async (
 	res: Response
 ): Promise<void> => {
 	try {
+		console.log(`🎯 updateUser controller called for ${req.params.id} with body:`, req.body)
 		const { id } = req.params
 		const {
 			email,

@@ -37,6 +37,7 @@ export interface CreateFormFieldDTO {
 }
 
 export interface UpdateFormFieldDTO {
+	name?: string
 	label?: string
 	placeholder?: string
 	required?: boolean
@@ -45,6 +46,8 @@ export interface UpdateFormFieldDTO {
 	bitrixFieldType?: string
 	bitrixEntity?: string
 	sectionId?: string
+	formId?: string
+	_id?: string
 	options?: Array<{ value: string; label: string }>
 	dynamicSource?: {
 		enabled: boolean
@@ -88,8 +91,26 @@ export class FormFieldService extends BaseService<FormField, FormFieldRepository
 			this.throwNotFound('Поле формы', id)
 		}
 
+		// Проверяем и очищаем данные перед обновлением
+		const cleanData = { ...data }
+		
+		// Если formId пустая строка, используем formId из существующего поля
+		if (cleanData.formId === '') {
+			cleanData.formId = field.formId
+		}
+		
+		// Удаляем лишние поля если они есть
+		delete cleanData._id
+
+		console.log('FormField update data:', {
+			id,
+			originalFormId: field.formId,
+			newFormId: cleanData.formId,
+			fieldName: cleanData.name
+		})
+
 		// Обновление поля
-		return this.repository.update(id, data)
+		return this.repository.update(id, cleanData)
 	}
 
 	async findByFormId(formId: string): Promise<FormField[]> {

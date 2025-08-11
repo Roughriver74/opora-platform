@@ -12,7 +12,7 @@ interface AuthUser {
 	isAdmin: boolean
 	isUser: boolean
 	tokenType: 'access'
-	bitrix_id?: string
+	bitrixUserId?: string
 	settings?: {
 		onlyMyCompanies?: boolean
 		[key: string]: any

@@ -92,20 +92,36 @@ export const authMiddleware = async (
 					// Токен пользователя
 					const userId = decoded.id || decoded.userId || decoded.sub
 					
+					console.log(`🔍 JWT decoded:`, {
+						userId,
+						bitrixUserId: decoded.bitrixUserId,
+						role: decoded.role,
+						email: decoded.email
+					})
+					
 					const user = await userService.findById(userId)
 					
 					if (user && user.isActive) {
+						console.log(`👤 User loaded from DB:`, {
+							id: user.id,
+							email: user.email,
+							bitrixUserId: user.bitrixUserId,
+							settings: user.settings
+						})
+						
 						req.user = {
 							id: user.id,
 							role: user.role,
 							isAdmin: user.role === 'admin',
 							isUser: user.role === 'user',
 							tokenType: 'access',
-							bitrixUserId: user.bitrixUserId,
+							// Приоритет: сначала из JWT токена, затем из БД
+							bitrixUserId: decoded.bitrixUserId || user.bitrixUserId,
 							settings: user.settings,
 						}
 						req.isAdmin = user.role === 'admin'
 					} else {
+						console.log(`❌ User not found or not active for userId: ${userId}`)
 						req.isAdmin = false
 						req.user = undefined
 					}

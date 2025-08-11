@@ -200,17 +200,14 @@ export const getCompaniesList = async (
 
 		// Определяем параметры фильтрации
 		let assignedFilter = null
-		// @ts-ignore - bitrix_id добавлен в AuthUser
-		if (user && user.settings?.onlyMyCompanies && user.bitrix_id) {
-			// @ts-ignore
-			assignedFilter = user.bitrix_id
+		if (user && user.settings?.onlyMyCompanies && user.bitrixUserId) {
+			assignedFilter = user.bitrixUserId
 		}
 
 			console.log('Search params:', {
 			query: query as string,
 			userId: user?.id,
-			// @ts-ignore
-			bitrixId: user?.bitrix_id,
+			bitrixId: user?.bitrixUserId,
 			onlyMyCompanies: user?.settings?.onlyMyCompanies,
 			assignedFilter,
 		})
@@ -329,17 +326,14 @@ export const searchCompanies = async (
 
 		// Определяем параметры фильтрации
 		let assignedFilter = null
-		// @ts-ignore - bitrix_id добавлен в AuthUser
-		if (user && user.settings?.onlyMyCompanies && user.bitrix_id) {
-			// @ts-ignore
-			assignedFilter = user.bitrix_id
+		if (user && user.settings?.onlyMyCompanies && user.bitrixUserId) {
+			assignedFilter = user.bitrixUserId
 		}
 
 			console.log('Search params:', {
 			query: query as string,
 			userId: user?.id,
-			// @ts-ignore
-			bitrixId: user?.bitrix_id,
+			bitrixId: user?.bitrixUserId,
 			onlyMyCompanies: user?.settings?.onlyMyCompanies,
 			assignedFilter,
 		})

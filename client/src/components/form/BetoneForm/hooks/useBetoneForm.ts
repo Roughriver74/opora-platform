@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useFormik } from 'formik'
 import { FormField as FormFieldType } from '../../../../types'
 import { SubmitResult } from '../types'
@@ -9,6 +9,7 @@ import {
 } from '../utils/validationHelpers'
 import { useFormSections } from './useFormSections'
 import { useScrollBehavior } from './useScrollBehavior'
+import { useNotificationHelpers } from '../../../../contexts/notification'
 
 /**
  * Основной хук для управления состоянием формы BetoneForm
@@ -32,6 +33,7 @@ export const useBetoneForm = (
 ) => {
 	const [submitting, setSubmitting] = useState(false)
 	const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null)
+	const { showSuccess, showError } = useNotificationHelpers()
 
 	// Инициализация formik с оптимизированными настройками
 	const formik = useFormik({
@@ -67,19 +69,31 @@ export const useBetoneForm = (
 				}
 
 				if (result.success) {
+					const successMessage = (result as any).message ||
+						(editData?.submissionId
+							? 'Заявка успешно обновлена!'
+							: 'Заявка успешно отправлена!')
+
+					// Показываем глобальное уведомление поверх экрана
+					showSuccess(successMessage, {
+						title: editData?.submissionId ? 'Обновлено!' : 'Отправлено!',
+						autoHideDuration: 3000,
+						onAfterHide: () => {
+							// Обновляем страницу только для новых заявок, не для редактирования
+							if (!editData?.submissionId) {
+								window.location.reload()
+							}
+						}
+					})
+
+					// Устанавливаем результат для совместимости с существующими компонентами
 					setSubmitResult({
 						success: true,
-						message:
-							(result as any).message ||
-							(editData?.submissionId
-								? 'Заявка успешно обновлена!'
-								: 'Заявка успешно отправлена!'),
+						message: successMessage,
 					})
-					// Сбрасываем форму только для новых заявок, не для редактирования
-					if (!editData?.submissionId) {
-						formik.resetForm()
-					} else {
-						// Для редактирования - загружаем свежие данные из Битрикс24
+
+					// Для редактирования - загружаем свежие данные из Битрикс24
+					if (editData?.submissionId) {
 						try {
 							const updatedData = await SubmissionService.getSubmissionForEdit(
 								editData.submissionId
@@ -93,20 +107,37 @@ export const useBetoneForm = (
 						}
 					}
 				} else {
+					const errorMessage = (result as any).message ||
+						(editData?.submissionId
+							? 'Произошла ошибка при обновлении заявки.'
+							: 'Произошла ошибка при отправке заявки.')
+
+					// Показываем глобальное уведомление об ошибке
+					showError(errorMessage, {
+						title: 'Ошибка!',
+						autoHideDuration: 5000,
+					})
+
+					// Устанавливаем результат для совместимости с существующими компонентами
 					setSubmitResult({
 						success: false,
-						message:
-							(result as any).message ||
-							(editData?.submissionId
-								? 'Произошла ошибка при обновлении заявки.'
-								: 'Произошла ошибка при отправке заявки.'),
+						message: errorMessage,
 					})
 				}
 			} catch (error) {
 				console.error('Ошибка отправки формы:', error)
+				const errorMessage = 'Произошла ошибка при отправке заявки. Попробуйте еще раз.'
+
+				// Показываем глобальное уведомление об ошибке
+				showError(errorMessage, {
+					title: 'Ошибка!',
+					autoHideDuration: 5000,
+				})
+
+				// Устанавливаем результат для совместимости с существующими компонентами
 				setSubmitResult({
 					success: false,
-					message: 'Произошла ошибка при отправке заявки. Попробуйте еще раз.',
+					message: errorMessage,
 				})
 			} finally {
 				setSubmitting(false)

@@ -80,11 +80,35 @@ export class UserRepository extends BaseRepository<User> {
 	}
 
 	async changePassword(userId: string, newPassword: string): Promise<boolean> {
-		const user = await this.findById(userId)
-		if (!user) return false
+		console.log(`🔐 changePassword called for user ${userId} with password: ${newPassword}`)
+		
+		// Получаем пользователя с паролем
+		const user = await this.repository.createQueryBuilder('user')
+			.where('user.id = :id', { id: userId })
+			.addSelect('user.password')
+			.getOne()
+		
+		if (!user) {
+			console.log(`❌ User ${userId} not found`)
+			return false
+		}
 
-		user.password = newPassword // Хеширование происходит в @BeforeUpdate
-		await this.repository.save(user)
+		console.log(`👤 Found user: ${user.email}`)
+		
+		// Хеширование пароля вручную, так как hooks не всегда срабатывают
+		if (!newPassword.startsWith('$2b$')) {
+			const bcrypt = require('bcrypt')
+			const salt = await bcrypt.genSalt(10)
+			const hashedPassword = await bcrypt.hash(newPassword, salt)
+			user.password = hashedPassword
+			console.log(`🔒 Password hashed: ${hashedPassword.substring(0, 20)}...`)
+		} else {
+			user.password = newPassword
+		}
+		
+		const savedUser = await this.repository.save(user)
+		console.log(`💾 User saved successfully`)
+		
 		await this.invalidateCache(userId)
 		
 		return true

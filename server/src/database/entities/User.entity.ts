@@ -32,7 +32,7 @@ export class User extends BaseEntity {
 	@IsEmail()
 	email: string
 
-	@Column({ type: 'varchar', length: 255, select: true })
+	@Column({ type: 'varchar', length: 255, select: false })
 	@Exclude()
 	password: string
 
@@ -51,7 +51,7 @@ export class User extends BaseEntity {
 	@IsString()
 	phone?: string
 
-	@Column({ type: 'varchar', length: 100, nullable: true })
+	@Column({ type: 'varchar', length: 100, nullable: true, name: 'bitrix_user_id' })
 	@IsOptional()
 	@IsString()
 	bitrixUserId?: string
@@ -130,10 +130,10 @@ export class User extends BaseEntity {
 	toJSON() {
 		const obj: any = super.toJSON()
 		delete obj.password
-		// Преобразуем bitrixUserId в bitrix_id для совместимости с фронтендом
+		// Сохраняем bitrixUserId для backend и добавляем bitrix_id для frontend
 		if (obj.bitrixUserId) {
 			obj.bitrix_id = obj.bitrixUserId
-			delete obj.bitrixUserId
+			// НЕ удаляем bitrixUserId, чтобы он был доступен в backend!
 		}
 		// Синхронизируем status и isActive для фронтенда
 		// Если isActive = false, то status должен быть 'inactive'
@@ -145,10 +145,10 @@ export class User extends BaseEntity {
 
 	toSafeObject() {
 		const { password, ...safeUser } = this
-		// Преобразуем bitrixUserId в bitrix_id для совместимости с фронтендом
+		// Добавляем bitrix_id для совместимости с фронтендом, но сохраняем bitrixUserId
 		if (safeUser.bitrixUserId) {
 			(safeUser as any).bitrix_id = safeUser.bitrixUserId
-			delete (safeUser as any).bitrixUserId
+			// НЕ удаляем bitrixUserId, чтобы он был доступен в backend!
 		}
 		// Синхронизируем status и isActive для фронтенда
 		if (!safeUser.isActive) {
