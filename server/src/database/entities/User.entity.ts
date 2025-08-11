@@ -32,7 +32,7 @@ export class User extends BaseEntity {
 	@IsEmail()
 	email: string
 
-	@Column({ type: 'varchar', length: 255, select: true })
+	@Column({ type: 'varchar', length: 255, select: false })
 	@Exclude()
 	password: string
 

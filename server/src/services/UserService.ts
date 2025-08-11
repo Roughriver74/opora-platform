@@ -24,6 +24,9 @@ export interface UpdateUserDTO {
 	isActive?: boolean
 	settings?: Record<string, any>
 	bitrixUserId?: string
+	password?: string
+	email?: string
+	role?: UserRole
 }
 
 export interface LoginDTO {
@@ -100,11 +103,31 @@ export class UserService extends BaseService<User, UserRepository> {
 	}
 
 	async updateUser(id: string, data: UpdateUserDTO): Promise<User | null> {
+		console.log(`🔄 updateUser called for ${id} with data:`, data)
+		
 		const user = await this.repository.findById(id)
 		if (!user) {
 			this.throwNotFound('Пользователь', id)
 		}
 
+		// Если обновляется пароль, используем специальный метод
+		if (data.password) {
+			console.log(`🔐 Password detected in data: ${data.password}`)
+			const { password, ...otherData } = data
+			await this.repository.changePassword(id, password)
+			
+			// Обновляем остальные данные если есть
+			if (Object.keys(otherData).length > 0) {
+				console.log(`🔄 Updating other data:`, otherData)
+				return this.repository.update(id, otherData)
+			}
+			
+			// Возвращаем обновленного пользователя
+			console.log(`👤 Returning updated user`)
+			return this.repository.findById(id)
+		}
+
+		console.log(`📝 No password, using regular update`)
 		return this.repository.update(id, data)
 	}
 

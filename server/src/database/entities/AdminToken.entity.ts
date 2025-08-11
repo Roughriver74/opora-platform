@@ -100,6 +100,7 @@ export class AdminToken extends BaseEntity {
 		const token = new AdminToken()
 		token.userId = userId
 		token.purpose = purpose
+		token.isActive = true
 		
 		const expirationDate = new Date()
 		expirationDate.setDate(expirationDate.getDate() + expirationDays)
