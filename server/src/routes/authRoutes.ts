@@ -10,6 +10,9 @@ router.post('/admin-login', authController.adminLogin)
 // Авторизация пользователя
 router.post('/user-login', authController.userLogin)
 
+// Универсальный маршрут для авторизации (перенаправляет на user-login)
+router.post('/login', authController.userLogin)
+
 // Проверка текущего состояния авторизации
 router.get('/check', authMiddleware, authController.verifyToken)
 

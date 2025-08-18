@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { FormFieldOption } from '../types';
+import api from '../services/api';
 
 export interface BitrixDataSource {
   type: 'products' | 'companies' | 'contacts' | 'fields';
@@ -28,29 +29,25 @@ const useBitrixOptions = (): UseBitrixOptionsResult => {
       
       switch (source.type) {
         case 'products':
-          response = await fetch('/api/form-fields/bitrix/products');
+          response = await api.get('/api/form-fields/bitrix/products');
           break;
         case 'companies':
-          response = await fetch('/api/form-fields/bitrix/companies');
+          response = await api.get('/api/form-fields/bitrix/companies');
           break;
         case 'contacts':
-          response = await fetch('/api/form-fields/bitrix/contacts');
+          response = await api.get('/api/form-fields/bitrix/contacts');
           break;
         case 'fields':
           if (!source.fieldCode) {
             throw new Error('Не указан код поля для загрузки значений');
           }
-          response = await fetch('/api/form-fields/bitrix/fields');
+          response = await api.get('/api/form-fields/bitrix/fields');
           break;
         default:
           throw new Error('Неизвестный тип источника данных');
       }
 
-      if (!response.ok) {
-        throw new Error(`Ошибка загрузки данных: ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      const data = response.data;
       const formattedOptions = formatBitrixData(data, source);
       setOptions(formattedOptions);
     } catch (err) {

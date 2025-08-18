@@ -168,8 +168,10 @@ class Bitrix24Service {
 		})
 
 		let results = response.data
+		// Fallback поиск только если НЕ установлен фильтр по пользователю
 		if (
 			query &&
+			!assignedToUserId &&
 			results.result &&
 			results.result.length === 0 &&
 			!/^\d+$/.test(query.trim())

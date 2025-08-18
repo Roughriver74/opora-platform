@@ -61,7 +61,6 @@ import {
 	SubmissionFilters,
 	BitrixStage,
 } from '../../../services/submissionService'
-import { FormField } from '../../../types'
 import { useAuth } from '../../../contexts/auth'
 import { useNotificationHelpers } from '../../../contexts/notification'
 import api from '../../../services/api'
@@ -86,6 +85,7 @@ const MySubmissions: React.FC = () => {
 		SubmissionHistory[]
 	>([])
 	const [detailsOpen, setDetailsOpen] = useState(false)
+	const [formFields, setFormFields] = useState<any[]>([])
 	const [bitrixStages, setBitrixStages] = useState<BitrixStage[]>([])
 	const [filters, setFilters] = useState<SubmissionFilters>({
 		status: DEFAULT_STATUS_FILTER,
@@ -93,7 +93,6 @@ const MySubmissions: React.FC = () => {
 	const [page, setPage] = useState(0)
 	const [rowsPerPage, setRowsPerPage] = useState(10)
 	const [total, setTotal] = useState(0)
-	const [formFields] = useState<FormField[]>([])
 	const [users, setUsers] = useState<any[]>([])
 
 	// Настройки системы
@@ -424,6 +423,7 @@ const MySubmissions: React.FC = () => {
 			const response = await SubmissionService.getSubmissionById(submission.id)
 			setSelectedSubmission(response.data.submission)
 			setSubmissionHistory(response.data.history)
+			setFormFields(response.data.formFields || [])
 			setDetailsOpen(true)
 		} catch (err: any) {
 			showError(err.message || 'Ошибка загрузки деталей заявки')
@@ -1029,12 +1029,6 @@ const MySubmissions: React.FC = () => {
 									</Typography>
 									<Stack spacing={2}>
 										<Box>
-											<Typography variant='body2' color='text.secondary'>
-												<strong>Форма:</strong>{' '}
-												{selectedSubmission.formId?.title || 'Форма не найдена'}
-											</Typography>
-										</Box>
-										<Box>
 											<Typography
 												variant='body2'
 												color='text.secondary'
@@ -1078,42 +1072,215 @@ const MySubmissions: React.FC = () => {
 												)}
 											</Typography>
 										</Box>
-										{selectedSubmission.userId && (
-											<Box>
-												<Typography variant='body2' color='text.secondary'>
-													<strong>Клиент:</strong>{' '}
-													{selectedSubmission.userId?.firstName &&
-													selectedSubmission.userId?.lastName
-														? `${selectedSubmission.userId.firstName} ${selectedSubmission.userId.lastName}`
-														: selectedSubmission.userId?.name || 'Не указан'}
-												</Typography>
-											</Box>
-										)}
 									</Stack>
 								</CardContent>
 							</Card>
 
-							{/* Данные заявки */}
-							<Card>
-								<CardContent>
-									<Typography variant='h6' gutterBottom>
-										Название заявки
-									</Typography>
-									<Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-										<Typography variant='body1'>
-											{selectedSubmission.title}
+
+							{/* Заполненные поля формы */}
+							{selectedSubmission.formData && Object.keys(selectedSubmission.formData).length > 0 && (
+								<Card sx={{ backgroundColor: '#f8f9fa' }}>
+									<CardContent>
+										<Typography variant='h6' gutterBottom color='primary'>
+											Данные заявки
 										</Typography>
-									</Box>
-									<Typography
-										variant='body2'
-										color='text.secondary'
-										sx={{ mt: 1 }}
-									>
-										Подробные данные заявки отображаются в Битрикс24. Для полной
-										информации используйте редактирование.
-									</Typography>
-								</CardContent>
-							</Card>
+										<Box sx={{ 
+											mt: 2,
+											maxHeight: '400px',
+											overflowY: 'auto',
+											'&::-webkit-scrollbar': {
+												width: '8px',
+											},
+											'&::-webkit-scrollbar-track': {
+												backgroundColor: 'rgba(0,0,0,0.05)',
+												borderRadius: '4px',
+											},
+											'&::-webkit-scrollbar-thumb': {
+												backgroundColor: 'rgba(0,0,0,0.2)',
+												borderRadius: '4px',
+												'&:hover': {
+													backgroundColor: 'rgba(0,0,0,0.3)',
+												}
+											}
+										}}>
+											{(() => {
+												// Группируем поля по секциям
+												const sections: Record<string, any[]> = {}
+												let currentSection = 'ОСНОВНОЕ' // Начинаем с первой секции
+												
+												formFields.forEach((field: any) => {
+													// Если это заголовок секции
+													if (field.type === 'header') {
+														currentSection = field.label || field.name
+														// Инициализируем секцию если её ещё нет
+														if (!sections[currentSection]) {
+															sections[currentSection] = []
+														}
+														return
+													}
+													
+													// Проверяем, есть ли значение для этого поля
+													const value = selectedSubmission.formData?.[field.name]
+													if (value !== undefined && value !== null && value !== '' && 
+														!(Array.isArray(value) && value.length === 0)) {
+														if (!sections[currentSection]) {
+															sections[currentSection] = []
+														}
+														
+														// Форматируем значение в зависимости от типа поля
+														let displayValue = value
+														if (field.type === 'checkbox') {
+															displayValue = value ? '✓ Да' : '✗ Нет'
+														} else if (field.type === 'date') {
+															try {
+																displayValue = format(new Date(value), 'dd.MM.yyyy', { locale: ru })
+															} catch {
+																displayValue = value
+															}
+														} else if (field.type === 'select' || field.type === 'radio') {
+															// Для select и radio полей ищем соответствующий label в опциях
+															if (field.options && Array.isArray(field.options)) {
+																const option = field.options.find((opt: any) => opt.value === value)
+																displayValue = option ? option.label : value
+															} else {
+																displayValue = value
+															}
+														} else if (field.type === 'autocomplete') {
+															// Для autocomplete полей может быть сохранен ID, но нужно показать название
+															// Сервер может вернуть обогащенные данные с label
+															if (typeof value === 'object' && value !== null) {
+																if (value.label) {
+																	displayValue = value.label
+																} else if (value.TITLE) {
+																	displayValue = value.TITLE
+																} else if (value.NAME) {
+																	displayValue = value.NAME
+																} else {
+																	displayValue = JSON.stringify(value)
+																}
+															} else {
+																// Если это просто ID, попробуем найти в опциях
+																if (field.options && Array.isArray(field.options)) {
+																	const option = field.options.find((opt: any) => opt.value === value)
+																	displayValue = option ? option.label : value
+																} else {
+																	displayValue = value
+																}
+															}
+														} else if (Array.isArray(value)) {
+															displayValue = value.join(', ')
+														} else if (typeof value === 'object' && value !== null) {
+															if (value.label) {
+																displayValue = value.label
+															} else if (value.TITLE) {
+																displayValue = value.TITLE
+															} else if (value.NAME) {
+																displayValue = value.NAME
+															} else {
+																displayValue = JSON.stringify(value)
+															}
+														}
+														
+														sections[currentSection].push({
+															label: field.label || field.name,
+															value: displayValue,
+															type: field.type
+														})
+													}
+												})
+												
+												// Подсчитываем общее количество заполненных полей
+												const totalFields = Object.values(sections).reduce((acc, fields) => acc + fields.length, 0)
+												
+												if (totalFields === 0) {
+													return (
+														<Typography variant='body2' color='text.secondary' sx={{ fontStyle: 'italic' }}>
+															Нет заполненных данных
+														</Typography>
+													)
+												}
+												
+												// Отображаем секции с данными
+												return (
+													<>
+														<Typography variant='caption' color='text.secondary' sx={{ mb: 2, display: 'block' }}>
+															Заполнено полей: {totalFields}
+														</Typography>
+														{Object.entries(sections).map(([sectionName, fields]) => {
+															if (fields.length === 0) return null
+															
+															return (
+																<Box key={sectionName} sx={{ 
+																	mb: 2.5,
+																	pb: 2,
+																	borderBottom: '1px solid rgba(0,0,0,0.08)',
+																	'&:last-child': {
+																		borderBottom: 'none',
+																		pb: 0
+																	}
+																}}>
+																	<Typography 
+																		variant='subtitle2' 
+																		sx={{ 
+																			mb: 1.5, 
+																			fontWeight: 600,
+																			color: '#1976d2',
+																			fontSize: '0.875rem',
+																			textTransform: 'uppercase',
+																			letterSpacing: '0.5px'
+																		}}
+																	>
+																		{sectionName}
+																	</Typography>
+																	<Box sx={{ pl: 1 }}>
+																		{fields.map((field: any, index: number) => (
+																			<Box key={index} sx={{ 
+																				mb: 0.75,
+																				display: 'flex',
+																				alignItems: 'flex-start',
+																				gap: 1
+																			}}>
+																				<Typography 
+																					variant='body2' 
+																					component='span' 
+																					sx={{ 
+																						color: 'text.secondary',
+																						minWidth: '140px',
+																						flexShrink: 0,
+																						fontSize: '0.875rem'
+																					}}
+																				>
+																					{field.label}:
+																				</Typography>
+																				<Typography 
+																					variant='body2' 
+																					component='span'
+																					sx={{ 
+																						fontWeight: field.type === 'header' ? 500 : 400,
+																						color: field.type === 'checkbox' && field.value.startsWith('✓') 
+																							? 'success.main' 
+																							: field.type === 'checkbox' && field.value.startsWith('✗')
+																							? 'text.disabled'
+																							: 'text.primary',
+																						wordBreak: 'break-word',
+																						fontSize: '0.875rem'
+																					}}
+																				>
+																					{field.value}
+																				</Typography>
+																			</Box>
+																		))}
+																	</Box>
+																</Box>
+															)
+														})}
+													</>
+												)
+											})()}
+										</Box>
+									</CardContent>
+								</Card>
+							)}
 						</Stack>
 					)}
 				</DialogContent>

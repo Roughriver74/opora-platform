@@ -271,11 +271,97 @@ export const getSubmissionById = async (req: Request, res: Response) => {
 		// Получаем историю изменений
 		const history = await submissionService.getSubmissionHistory(id)
 
+		// Получаем поля формы для отображения названий полей
+		let formFields = []
+		let enrichedFormData = submission.formData || {}
+		
+		if (submission.formId) {
+			const formService = getFormService()
+			const form = await formService.findById(submission.formId)
+			if (form && form.fields) {
+				formFields = form.fields
+				
+				// Обогащаем formData человекочитаемыми значениями для ID полей
+				try {
+					for (const field of form.fields) {
+						const value = submission.formData?.[field.name]
+						if (value && (field.type === 'autocomplete' || field.type === 'select')) {
+							// Для autocomplete полей, которые связаны с Bitrix24
+							if (field.dynamicSource?.enabled) {
+								if (field.dynamicSource.source === 'companies' && typeof value === 'string') {
+									try {
+										const companyResponse = await bitrix24Service.getCompany(value)
+										if (companyResponse?.result?.TITLE) {
+											enrichedFormData[field.name] = {
+												id: value,
+												label: companyResponse.result.TITLE,
+												originalValue: value
+											}
+										}
+									} catch (error) {
+										console.warn(`Не удалось получить название компании для ID ${value}:`, error)
+									}
+								} else if (field.dynamicSource.source === 'products' && typeof value === 'string') {
+									try {
+										const productResponse = await bitrix24Service.getProduct(value)
+										if (productResponse?.result?.NAME) {
+											enrichedFormData[field.name] = {
+												id: value,
+												label: productResponse.result.NAME,
+												originalValue: value
+											}
+										}
+									} catch (error) {
+										console.warn(`Не удалось получить название продукта для ID ${value}:`, error)
+									}
+								} else if (field.dynamicSource.source === 'contacts' && typeof value === 'string') {
+									try {
+										const contactResponse = await bitrix24Service.getContacts(value, 1)
+										const contact = Array.isArray(contactResponse?.result) 
+											? contactResponse.result[0] 
+											: contactResponse?.result
+										if (contact) {
+											const contactName = `${contact.NAME || ''} ${contact.LAST_NAME || ''}`.trim()
+											if (contactName) {
+												enrichedFormData[field.name] = {
+													id: value,
+													label: contactName,
+													originalValue: value
+												}
+											}
+										}
+									} catch (error) {
+										console.warn(`Не удалось получить название контакта для ID ${value}:`, error)
+									}
+								}
+							} else if (field.options && Array.isArray(field.options)) {
+								// Для обычных select полей ищем в опциях
+								const option = field.options.find((opt: any) => opt.value === value)
+								if (option) {
+									enrichedFormData[field.name] = {
+										id: value,
+										label: option.label,
+										originalValue: value
+									}
+								}
+							}
+						}
+					}
+				} catch (error) {
+					console.warn('Ошибка при обогащении данных формы:', error)
+				}
+			}
+		}
+
 		res.json({
 			success: true,
 			data: {
-				submission,
+				submission: {
+					...submission,
+					formData: enrichedFormData
+				},
 				history,
+				formFields
 			},
 		})
 	} catch (error: any) {

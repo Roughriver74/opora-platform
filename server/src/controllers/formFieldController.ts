@@ -200,17 +200,12 @@ export const getCompaniesList = async (
 
 		// Определяем параметры фильтрации
 		let assignedFilter = null
-		if (user && user.settings?.onlyMyCompanies && user.bitrixUserId) {
+		// Фильтруем для всех НЕ-админов, если у них есть bitrixUserId
+		const isAdmin = req.isAdmin || false
+		
+		if (user && user.bitrixUserId && !isAdmin) {
 			assignedFilter = user.bitrixUserId
 		}
-
-			console.log('Search params:', {
-			query: query as string,
-			userId: user?.id,
-			bitrixId: user?.bitrixUserId,
-			onlyMyCompanies: user?.settings?.onlyMyCompanies,
-			assignedFilter,
-		})
 
 		const companies = await bitrix24Service.getCompanies(
 			query as string,
@@ -326,15 +321,17 @@ export const searchCompanies = async (
 
 		// Определяем параметры фильтрации
 		let assignedFilter = null
-		if (user && user.settings?.onlyMyCompanies && user.bitrixUserId) {
+		// Фильтруем для всех НЕ-админов, если у них есть bitrixUserId
+		const isAdmin = req.isAdmin || false
+		if (user && user.bitrixUserId && !isAdmin) {
 			assignedFilter = user.bitrixUserId
 		}
 
-			console.log('Search params:', {
+		console.log('Companies POST search params:', {
 			query: query as string,
 			userId: user?.id,
 			bitrixId: user?.bitrixUserId,
-			onlyMyCompanies: user?.settings?.onlyMyCompanies,
+			isAdmin: isAdmin,
 			assignedFilter,
 		})
 

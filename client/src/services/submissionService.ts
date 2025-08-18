@@ -31,6 +31,7 @@ export interface Submission {
 	}
 	notes?: string
 	tags: string[]
+	formData?: Record<string, any> // Данные формы
 	createdAt: string
 	updatedAt: string
 }
@@ -90,6 +91,7 @@ export interface SubmissionDetailsResponse {
 	data: {
 		submission: Submission
 		history: SubmissionHistory[]
+		formFields?: any[] // Поля формы для отображения названий
 	}
 }
 
