@@ -20,6 +20,7 @@ const MySubmissions: React.FC = () => {
     
     // Методы
     handleEditSubmission,
+    handleCopySubmission,
     handleStatusChange,
     handleFilterChange,
     handlePageChange,
@@ -76,6 +77,7 @@ const MySubmissions: React.FC = () => {
           submissions={submissions}
           bitrixStages={bitrixStages}
           onEditSubmission={handleEditSubmission}
+          onCopySubmission={handleCopySubmission}
           onStatusChange={handleStatusChange}
           page={page}
           rowsPerPage={rowsPerPage}

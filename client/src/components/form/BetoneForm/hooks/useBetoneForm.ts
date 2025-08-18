@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useFormik } from 'formik'
 import { FormField as FormFieldType } from '../../../../types'
 import { SubmitResult } from '../types'
@@ -144,6 +144,26 @@ export const useBetoneForm = (
 			}
 		},
 	})
+
+	// Обновляем значения формы при изменении editData (для копирования и редактирования)
+	useEffect(() => {
+		if (editData?.formData && Object.keys(editData.formData).length > 0) {
+			console.log('[FORM] Обновление значений формы из editData:', editData.formData)
+			console.log('[FORM] Режим копирования:', editData.isCopy)
+			console.log('[FORM] Текущие значения formik:', formik.values)
+			
+			// Используем setTimeout для обеспечения корректного обновления после рендера
+			setTimeout(() => {
+				// Объединяем текущие значения с новыми данными
+				const newValues = {
+					...formik.values,
+					...editData.formData
+				}
+				console.log('[FORM] Новые значения для установки:', newValues)
+				formik.setValues(newValues)
+			}, 100) // Увеличиваем задержку для корректной инициализации
+		}
+	}, [editData]) // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Подключаем хуки для дополнительной функциональности
 	const sectionsLogic = useFormSections(fields)

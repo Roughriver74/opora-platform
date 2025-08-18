@@ -179,6 +179,57 @@ export const useMySubmissions = () => {
 		}
 	}
 
+	const handleCopySubmission = async (submission: any) => {
+		try {
+			console.log(
+				'[CLIENT COPY] Начало копирования заявки:',
+				submission.id
+			)
+
+			// Получаем данные заявки для копирования (теперь с preloadedOptions)
+			const response = await submissionService.copySubmission(submission.id)
+
+			console.log(
+				'[CLIENT COPY] response.data.preloadedOptions:',
+				response.data.preloadedOptions
+			)
+
+			if (response.success) {
+				console.log(
+					'[CLIENT COPY] Предзагруженные опции:',
+					response.data.preloadedOptions
+				)
+
+				// Сохраняем данные точно как для редактирования, но без submissionId
+				const copyData = {
+					// НЕ передаем submissionId - это новая заявка
+					formId: response.data.formId,
+					formData: response.data.formData,
+					preloadedOptions: response.data.preloadedOptions || {},
+					isCopy: true,
+					originalTitle: response.data.originalTitle,
+					originalSubmissionNumber: response.data.originalSubmissionNumber,
+				}
+
+				sessionStorage.setItem('copyFormData', JSON.stringify(copyData))
+
+				navigate(`/?copy=${submission.id}`)
+			} else {
+				console.warn('[CLIENT COPY] Не удалось получить данные для копирования')
+				setState(prev => ({
+					...prev,
+					error: 'Не удалось получить данные для копирования',
+				}))
+			}
+		} catch (err: any) {
+			console.error('[CLIENT COPY] Ошибка копирования:', err)
+			setState(prev => ({
+				...prev,
+				error: err.message || 'Ошибка копирования заявки',
+			}))
+		}
+	}
+
 	const handleStatusChange = async (
 		submissionId: string,
 		newStatus: string,
@@ -252,6 +303,7 @@ export const useMySubmissions = () => {
 		// Методы
 		loadSubmissions,
 		handleEditSubmission,
+		handleCopySubmission,
 		handleStatusChange,
 		handleFilterChange,
 		handlePageChange,

@@ -13,7 +13,7 @@ export const databaseConfig: DataSourceOptions = {
 	password: process.env.DB_PASSWORD || 'beton_password',
 	database: process.env.DB_NAME || 'beton_crm',
 	entities: [join(__dirname, '../entities/**/*.entity{.ts,.js}')],
-	migrations: [],
+	migrations: [join(__dirname, '../migrations/*{.ts,.js}')],
 	synchronize: false,
 	logging: process.env.NODE_ENV === 'development',
 	ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,

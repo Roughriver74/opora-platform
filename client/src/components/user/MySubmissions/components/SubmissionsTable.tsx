@@ -22,6 +22,7 @@ import {
 	CheckCircle as CheckCircleIcon,
 	Error as ErrorIcon,
 	Pending as PendingIcon,
+	FileCopy as FileCopyIcon,
 } from '@mui/icons-material'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -38,6 +39,7 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 	submissions,
 	bitrixStages,
 	onEditSubmission,
+	onCopySubmission,
 	onStatusChange,
 	page,
 	rowsPerPage,
@@ -151,15 +153,24 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 									})}
 								</TableCell>
 								<TableCell>
-									{!isShipped && (
+									<Stack direction='row' spacing={1}>
+										{!isShipped && (
+											<IconButton
+												onClick={() => onEditSubmission(submission)}
+												color='primary'
+												title='Редактировать заявку'
+											>
+												<EditIcon />
+											</IconButton>
+										)}
 										<IconButton
-											onClick={() => onEditSubmission(submission)}
-											color='primary'
-											title='Редактировать заявку'
+											onClick={() => onCopySubmission(submission)}
+											color='secondary'
+											title='Копировать заявку'
 										>
-											<EditIcon />
+											<FileCopyIcon />
 										</IconButton>
-									)}
+									</Stack>
 								</TableCell>
 							</TableRow>
 						)

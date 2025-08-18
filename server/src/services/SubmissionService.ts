@@ -14,6 +14,7 @@ export interface CreateSubmissionDTO {
 	notes?: string
 	tags?: string[]
 	bitrixDealId?: string
+	formData?: Record<string, any>
 }
 
 export interface UpdateSubmissionDTO {
@@ -65,6 +66,7 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 			tags: data.tags || [],
 			bitrixDealId: data.bitrixDealId,
 			bitrixSyncStatus: data.bitrixDealId ? BitrixSyncStatus.SYNCED : BitrixSyncStatus.PENDING,
+			formData: data.formData || {},
 			// Денормализованные данные
 			formName: form.name,
 			formTitle: form.title,

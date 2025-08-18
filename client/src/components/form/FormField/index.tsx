@@ -32,6 +32,16 @@ const FormField: React.FC<FormFieldProps> = React.memo(({
 	const [forceUpdateKey, setForceUpdateKey] = useState(0)
 	const [lastValue, setLastValue] = useState(value)
 
+	// Отладочные логи для autocomplete полей
+	if (field.type === 'autocomplete') {
+		console.log(`[FormField ${field.name}] Инициализация:`, {
+			fieldName: field.name,
+			value: value,
+			preloadedOptions: preloadedOptions,
+			hasPreloadedOptions: !!preloadedOptions && preloadedOptions.length > 0
+		})
+	}
+
 	const {
 		options,
 		loading,

@@ -74,6 +74,7 @@ export const submitForm = async (req: Request, res: Response) => {
 				userId: req.user?.id,
 				title: dealTitle,
 				notes: 'Заявка создана через форму',
+				formData: formData,
 			}
 
 			submission = await submissionService.createSubmission(submissionData)
@@ -691,9 +692,13 @@ export const checkBitrixField = async (req: Request, res: Response) => {
 
 // Копирование заявки
 export const copySubmission = async (req: Request, res: Response) => {
+	console.log('COPY_TEST_LOG')
+	console.log('====== COPY FUNCTION ENTERED ======')
 	try {
+		console.log('====== COPY SUBMISSION START ======')
 		const { id } = req.params
 		const userId = req.user?.id
+		console.log('Copy submission called with ID:', id, 'User ID:', userId)
 
 		const originalSubmission = await submissionService.findById(id)
 		if (!originalSubmission) {
@@ -719,6 +724,7 @@ export const copySubmission = async (req: Request, res: Response) => {
 		let formDataFromBitrix: Record<string, any> = {}
 		let preloadedOptions: Record<string, { value: any; label: string }[]> = {}
 
+		// Сначала пытаемся получить данные из Битрикс24 (если заявка синхронизирована)
 		if (originalSubmission.bitrixDealId) {
 			try {
 				const dealResponse = await bitrix24Service.getDeal(
@@ -734,9 +740,13 @@ export const copySubmission = async (req: Request, res: Response) => {
 						const bitrixValue = dealData[field.bitrixFieldId]
 						formDataFromBitrix[field.name] = bitrixValue
 
-						if (field.type === 'autocomplete' && bitrixValue) {
+						if (
+							field.type === 'autocomplete' &&
+							field.dynamicSource?.enabled &&
+							bitrixValue
+						) {
 							try {
-								if (field.bitrixEntity === 'product') {
+								if (field.dynamicSource.source === 'products') {
 									const productResponse = await bitrix24Service.getProduct(
 										String(bitrixValue)
 									)
@@ -746,7 +756,17 @@ export const copySubmission = async (req: Request, res: Response) => {
 											{ value: bitrixValue, label: productName },
 										]
 									}
-								} else if (field.bitrixEntity === 'contact') {
+								} else if (field.dynamicSource.source === 'companies') {
+									const companyResponse = await bitrix24Service.getCompany(
+										String(bitrixValue)
+									)
+									const companyName = companyResponse?.result?.TITLE
+									if (companyName) {
+										preloadedOptions[field.name] = [
+											{ value: bitrixValue, label: companyName },
+										]
+									}
+								} else if (field.dynamicSource.source === 'contacts') {
 									const contactResponse = await bitrix24Service.getContacts(
 										String(bitrixValue),
 										1
@@ -762,16 +782,6 @@ export const copySubmission = async (req: Request, res: Response) => {
 											{ value: bitrixValue, label: contactName },
 										]
 									}
-								} else if (field.bitrixEntity === 'company') {
-									const companyResponse = await bitrix24Service.getCompany(
-										String(bitrixValue)
-									)
-									const companyName = companyResponse?.result?.TITLE
-									if (companyName) {
-										preloadedOptions[field.name] = [
-											{ value: bitrixValue, label: companyName },
-										]
-									}
 								}
 							} catch {}
 						}
@@ -780,12 +790,76 @@ export const copySubmission = async (req: Request, res: Response) => {
 			} catch {}
 		}
 
+		// Дополнительно создаем preloadedOptions для всех autocomplete полей на основе данных формы
+		console.log('[COPY] Исходные данные формы:', originalSubmission.formData)
+		console.log('[COPY] Поля формы для обработки:', form.fields.map(f => ({ name: f.name, type: f.type, dynamicSource: f.dynamicSource })))
+		
+		for (const field of form.fields) {
+			if (
+				field.type === 'autocomplete' &&
+				field.dynamicSource?.enabled &&
+				originalSubmission.formData[field.name]
+			) {
+				const fieldValue = originalSubmission.formData[field.name]
+				console.log(`[COPY] Обрабатываем autocomplete поле ${field.name} со значением:`, fieldValue)
+				
+				// Если у нас еще нет preloadedOptions для этого поля
+				if (!preloadedOptions[field.name] && fieldValue) {
+					try {
+						if (field.dynamicSource.source === 'companies') {
+							console.log(`[COPY] Запрашиваем компанию ${fieldValue} из Битрикс24`)
+							const companyResponse = await bitrix24Service.getCompany(String(fieldValue))
+							console.log(`[COPY] Ответ от Битрикс24 для компании:`, companyResponse)
+							const companyName = companyResponse?.result?.TITLE
+							if (companyName) {
+								preloadedOptions[field.name] = [
+									{ value: fieldValue, label: companyName },
+								]
+								console.log(`[COPY] Добавлены preloadedOptions для ${field.name}:`, preloadedOptions[field.name])
+							}
+						} else if (field.dynamicSource.source === 'contacts') {
+							const contactResponse = await bitrix24Service.getContacts(String(fieldValue), 1)
+							const first = Array.isArray(contactResponse?.result)
+								? contactResponse.result[0]
+								: contactResponse?.result
+							const contactName = first
+								? `${first.NAME || ''} ${first.LAST_NAME || ''}`.trim()
+								: ''
+							if (contactName) {
+								preloadedOptions[field.name] = [
+									{ value: fieldValue, label: contactName },
+								]
+							}
+						} else if (field.dynamicSource.source === 'products') {
+							const productResponse = await bitrix24Service.getProduct(String(fieldValue))
+							const productName = productResponse?.result?.NAME
+							if (productName) {
+								preloadedOptions[field.name] = [
+									{ value: fieldValue, label: productName },
+								]
+							}
+						}
+					} catch (error) {
+						console.error(`[COPY] Ошибка получения preloadedOptions для поля ${field.name}:`, error)
+					}
+				}
+			}
+		}
+		
+		console.log('[COPY] Итоговые preloadedOptions:', preloadedOptions)
+
+		// Объединяем исходные данные формы с актуальными данными из Битрикс24
+		const finalFormData = {
+			...originalSubmission.formData,
+			...formDataFromBitrix
+		}
+
 		return res.json({
 			success: true,
 			message: 'Данные заявки получены для копирования',
 			data: {
 				formId: originalSubmission.formId,
-				formData: formDataFromBitrix,
+				formData: finalFormData,
 				preloadedOptions,
 				originalTitle: originalSubmission.title,
 				originalSubmissionNumber: originalSubmission.submissionNumber,
@@ -793,6 +867,9 @@ export const copySubmission = async (req: Request, res: Response) => {
 			},
 		})
 	} catch (error: any) {
+		console.error('====== COPY SUBMISSION ERROR ======')
+		console.error('Error in copySubmission:', error)
+		console.error('Error stack:', error?.stack)
 		return res.status(500).json({
 			success: false,
 			message: 'Ошибка копирования заявки',

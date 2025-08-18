@@ -41,6 +41,7 @@ export interface SubmissionsTableProps {
 	submissions: Submission[]
 	bitrixStages: BitrixStage[]
 	onEditSubmission: (submission: Submission) => void
+	onCopySubmission: (submission: Submission) => void
 	onStatusChange: (submissionId: string, newStatus: string) => void
 	page: number
 	rowsPerPage: number

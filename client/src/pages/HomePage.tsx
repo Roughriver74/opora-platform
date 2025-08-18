@@ -128,6 +128,14 @@ const HomePage: React.FC = () => {
 					{error}
 				</Alert>
 			) : form ? (
+				(() => {
+					console.log('[HomePage] Передаем в BetoneForm:', {
+						editData,
+						preloadedOptions: editData?.preloadedOptions,
+						isCopy: editData?.isCopy
+					})
+					return null
+				})(),
 				<BetoneForm
 					form={form}
 					fields={fields}
