@@ -1104,18 +1104,17 @@ const MySubmissions: React.FC = () => {
 											}
 										}}>
 											{(() => {
-												// Группируем поля по секциям
-												const sections: Record<string, any[]> = {}
-												let currentSection = 'ОСНОВНОЕ' // Начинаем с первой секции
+												// Собираем все заполненные поля без группировки по секциям
+												const filledFields: any[] = []
 												
-												formFields.forEach((field: any) => {
-													// Если это заголовок секции
+												// Сортируем поля по порядку из формы
+												const sortedFields = [...formFields].sort((a, b) => {
+													return (a.order || 0) - (b.order || 0)
+												})
+												
+												sortedFields.forEach((field: any) => {
+													// Пропускаем заголовки секций
 													if (field.type === 'header') {
-														currentSection = field.label || field.name
-														// Инициализируем секцию если её ещё нет
-														if (!sections[currentSection]) {
-															sections[currentSection] = []
-														}
 														return
 													}
 													
@@ -1123,9 +1122,6 @@ const MySubmissions: React.FC = () => {
 													const value = selectedSubmission.formData?.[field.name]
 													if (value !== undefined && value !== null && value !== '' && 
 														!(Array.isArray(value) && value.length === 0)) {
-														if (!sections[currentSection]) {
-															sections[currentSection] = []
-														}
 														
 														// Форматируем значение в зависимости от типа поля
 														let displayValue = value
@@ -1181,7 +1177,7 @@ const MySubmissions: React.FC = () => {
 															}
 														}
 														
-														sections[currentSection].push({
+														filledFields.push({
 															label: field.label || field.name,
 															value: displayValue,
 															type: field.type
@@ -1189,10 +1185,7 @@ const MySubmissions: React.FC = () => {
 													}
 												})
 												
-												// Подсчитываем общее количество заполненных полей
-												const totalFields = Object.values(sections).reduce((acc, fields) => acc + fields.length, 0)
-												
-												if (totalFields === 0) {
+												if (filledFields.length === 0) {
 													return (
 														<Typography variant='body2' color='text.secondary' sx={{ fontStyle: 'italic' }}>
 															Нет заполненных данных
@@ -1200,80 +1193,51 @@ const MySubmissions: React.FC = () => {
 													)
 												}
 												
-												// Отображаем секции с данными
+												// Отображаем все заполненные поля без группировки
 												return (
 													<>
 														<Typography variant='caption' color='text.secondary' sx={{ mb: 2, display: 'block' }}>
-															Заполнено полей: {totalFields}
+															Заполнено полей: {filledFields.length}
 														</Typography>
-														{Object.entries(sections).map(([sectionName, fields]) => {
-															if (fields.length === 0) return null
-															
-															return (
-																<Box key={sectionName} sx={{ 
-																	mb: 2.5,
-																	pb: 2,
-																	borderBottom: '1px solid rgba(0,0,0,0.08)',
-																	'&:last-child': {
-																		borderBottom: 'none',
-																		pb: 0
-																	}
+														<Box>
+															{filledFields.map((field: any, index: number) => (
+																<Box key={index} sx={{ 
+																	mb: 0.75,
+																	display: 'flex',
+																	alignItems: 'flex-start',
+																	gap: 1
 																}}>
 																	<Typography 
-																		variant='subtitle2' 
+																		variant='body2' 
+																		component='span' 
 																		sx={{ 
-																			mb: 1.5, 
-																			fontWeight: 600,
-																			color: '#1976d2',
-																			fontSize: '0.875rem',
-																			textTransform: 'uppercase',
-																			letterSpacing: '0.5px'
+																			color: 'text.secondary',
+																			minWidth: '140px',
+																			flexShrink: 0,
+																			fontSize: '0.875rem'
 																		}}
 																	>
-																		{sectionName}
+																		{field.label}:
 																	</Typography>
-																	<Box sx={{ pl: 1 }}>
-																		{fields.map((field: any, index: number) => (
-																			<Box key={index} sx={{ 
-																				mb: 0.75,
-																				display: 'flex',
-																				alignItems: 'flex-start',
-																				gap: 1
-																			}}>
-																				<Typography 
-																					variant='body2' 
-																					component='span' 
-																					sx={{ 
-																						color: 'text.secondary',
-																						minWidth: '140px',
-																						flexShrink: 0,
-																						fontSize: '0.875rem'
-																					}}
-																				>
-																					{field.label}:
-																				</Typography>
-																				<Typography 
-																					variant='body2' 
-																					component='span'
-																					sx={{ 
-																						fontWeight: field.type === 'header' ? 500 : 400,
-																						color: field.type === 'checkbox' && field.value.startsWith('✓') 
-																							? 'success.main' 
-																							: field.type === 'checkbox' && field.value.startsWith('✗')
-																							? 'text.disabled'
-																							: 'text.primary',
-																						wordBreak: 'break-word',
-																						fontSize: '0.875rem'
-																					}}
-																				>
-																					{field.value}
-																				</Typography>
-																			</Box>
-																		))}
-																	</Box>
+																	<Typography 
+																		variant='body2' 
+																		component='span'
+																		sx={{ 
+																			fontWeight: field.type === 'header' ? 500 : 400,
+																			color: field.type === 'checkbox' && field.value.startsWith('✓') 
+																				? 'success.main' 
+																				: field.type === 'checkbox' && field.value.startsWith('✗')
+																				? 'text.disabled'
+																				: 'text.primary',
+																			wordBreak: 'break-word',
+																			fontSize: '0.875rem'
+																		}}
+																	>
+																		{field.value}
+																	</Typography>
 																</Box>
-															)
-														})}
+															))}
+														</Box>
 													</>
 												)
 											})()}

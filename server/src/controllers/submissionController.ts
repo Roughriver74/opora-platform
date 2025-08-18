@@ -250,26 +250,35 @@ export const getSubmissionById = async (req: Request, res: Response) => {
 		const { id } = req.params
 		const userId = req.user?.id
 		const isAdmin = req.isAdmin
+		
+		console.log(`[GET_SUBMISSION] Starting getSubmissionById for ID: ${id}`)
 
 		const submission = await submissionService.findById(id)
 
 		if (!submission) {
+			console.log(`[GET_SUBMISSION] Submission not found for ID: ${id}`)
 			return res.status(404).json({
 				success: false,
 				message: 'Заявка не найдена',
 			})
 		}
 
+		console.log(`[GET_SUBMISSION] Found submission: ${submission.submissionNumber}, bitrixDealId: ${submission.bitrixDealId}`)
+
 		// Проверяем права доступа
 		if (!isAdmin && submission.userId !== userId) {
+			console.log(`[GET_SUBMISSION] Access denied for user ${userId} to submission ${id}`)
 			return res.status(403).json({
 				success: false,
 				message: 'Нет прав для просмотра этой заявки',
 			})
 		}
 
+		console.log(`[GET_SUBMISSION] Access granted, starting data enrichment`)
+
 		// Получаем историю изменений
 		const history = await submissionService.getSubmissionHistory(id)
+		console.log(`[GET_SUBMISSION] History loaded, entries: ${history?.length || 0}`)
 
 		// Получаем поля формы для отображения названий полей
 		let formFields = []
@@ -282,40 +291,57 @@ export const getSubmissionById = async (req: Request, res: Response) => {
 				formFields = form.fields
 				
 				// Обогащаем formData человекочитаемыми значениями для ID полей
+				console.log(`[GET_SUBMISSION] Starting form data enrichment, form fields count: ${form.fields.length}`)
 				try {
 					for (const field of form.fields) {
 						const value = submission.formData?.[field.name]
 						if (value && (field.type === 'autocomplete' || field.type === 'select')) {
+							console.log(`[GET_SUBMISSION] Processing field ${field.name}, type: ${field.type}, value: ${value}`)
 							// Для autocomplete полей, которые связаны с Bitrix24
 							if (field.dynamicSource?.enabled) {
-								if (field.dynamicSource.source === 'companies' && typeof value === 'string') {
+								console.log(`[GET_SUBMISSION] Field has dynamic source: ${field.dynamicSource.source}`)
+								if (field.dynamicSource.source === 'catalog' && typeof value === 'string') {
 									try {
-										const companyResponse = await bitrix24Service.getCompany(value)
-										if (companyResponse?.result?.TITLE) {
-											enrichedFormData[field.name] = {
-												id: value,
-												label: companyResponse.result.TITLE,
-												originalValue: value
-											}
+										console.log(`[GET_SUBMISSION] Fetching product from catalog for ID: ${value}`)
+										const productResponse = await bitrix24Service.getProduct(value)
+										if (productResponse?.result?.NAME) {
+											enrichedFormData[field.name] = productResponse.result.NAME
+											console.log(`[GET_SUBMISSION] Catalog product enriched: ${field.name} = ${productResponse.result.NAME}`)
+										} else {
+											console.log(`[GET_SUBMISSION] No catalog product name found for ID ${value}`)
 										}
 									} catch (error) {
-										console.warn(`Не удалось получить название компании для ID ${value}:`, error)
+										console.error(`[GET_SUBMISSION] Error getting catalog product for ID ${value}:`, error.message)
+									}
+								} else if (field.dynamicSource.source === 'companies' && typeof value === 'string') {
+									try {
+										console.log(`[GET_SUBMISSION] Fetching company for ID: ${value}`)
+										const companyResponse = await bitrix24Service.getCompany(value)
+										if (companyResponse?.result?.TITLE) {
+											enrichedFormData[field.name] = companyResponse.result.TITLE
+											console.log(`[GET_SUBMISSION] Company enriched: ${field.name} = ${companyResponse.result.TITLE}`)
+										} else {
+											console.log(`[GET_SUBMISSION] No company title found for ID ${value}`)
+										}
+									} catch (error) {
+										console.error(`[GET_SUBMISSION] Error getting company for ID ${value}:`, error.message)
 									}
 								} else if (field.dynamicSource.source === 'products' && typeof value === 'string') {
 									try {
+										console.log(`[GET_SUBMISSION] Fetching product for ID: ${value}`)
 										const productResponse = await bitrix24Service.getProduct(value)
 										if (productResponse?.result?.NAME) {
-											enrichedFormData[field.name] = {
-												id: value,
-												label: productResponse.result.NAME,
-												originalValue: value
-											}
+											enrichedFormData[field.name] = productResponse.result.NAME
+											console.log(`[GET_SUBMISSION] Product enriched: ${field.name} = ${productResponse.result.NAME}`)
+										} else {
+											console.log(`[GET_SUBMISSION] No product name found for ID ${value}`)
 										}
 									} catch (error) {
-										console.warn(`Не удалось получить название продукта для ID ${value}:`, error)
+										console.error(`[GET_SUBMISSION] Error getting product for ID ${value}:`, error.message)
 									}
 								} else if (field.dynamicSource.source === 'contacts' && typeof value === 'string') {
 									try {
+										console.log(`[GET_SUBMISSION] Fetching contact for ID: ${value}`)
 										const contactResponse = await bitrix24Service.getContacts(value, 1)
 										const contact = Array.isArray(contactResponse?.result) 
 											? contactResponse.result[0] 
@@ -323,36 +349,33 @@ export const getSubmissionById = async (req: Request, res: Response) => {
 										if (contact) {
 											const contactName = `${contact.NAME || ''} ${contact.LAST_NAME || ''}`.trim()
 											if (contactName) {
-												enrichedFormData[field.name] = {
-													id: value,
-													label: contactName,
-													originalValue: value
-												}
+												enrichedFormData[field.name] = contactName
+												console.log(`[GET_SUBMISSION] Contact enriched: ${field.name} = ${contactName}`)
 											}
+										} else {
+											console.log(`[GET_SUBMISSION] No contact found for ID ${value}`)
 										}
 									} catch (error) {
-										console.warn(`Не удалось получить название контакта для ID ${value}:`, error)
+										console.error(`[GET_SUBMISSION] Error getting contact for ID ${value}:`, error.message)
 									}
 								}
 							} else if (field.options && Array.isArray(field.options)) {
 								// Для обычных select полей ищем в опциях
 								const option = field.options.find((opt: any) => opt.value === value)
 								if (option) {
-									enrichedFormData[field.name] = {
-										id: value,
-										label: option.label,
-										originalValue: value
-									}
+									enrichedFormData[field.name] = option.label
+									console.log(`[GET_SUBMISSION] Select option enriched: ${field.name} = ${option.label}`)
 								}
 							}
 						}
 					}
 				} catch (error) {
-					console.warn('Ошибка при обогащении данных формы:', error)
+					console.error('[GET_SUBMISSION] Critical error during form data enrichment:', error)
 				}
 			}
 		}
 
+		console.log(`[GET_SUBMISSION] Enrichment completed, responding with success`)
 		res.json({
 			success: true,
 			data: {
@@ -365,7 +388,7 @@ export const getSubmissionById = async (req: Request, res: Response) => {
 			},
 		})
 	} catch (error: any) {
-		console.error('Ошибка получения заявки:', error)
+		console.error('[GET_SUBMISSION] Critical error in getSubmissionById:', error)
 		res.status(500).json({
 			success: false,
 			message: 'Ошибка получения заявки',
