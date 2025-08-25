@@ -227,9 +227,12 @@ export const SubmissionService = {
 		}
 		
 		// Проверяем валидные статусы
-		const validStatuses = ['new', 'in_progress', 'completed', 'cancelled', 'on_hold']
-		if (!validStatuses.includes(status)) {
-			throw new Error(`Недопустимый статус: ${status}. Разрешены: ${validStatuses.join(', ')}`)
+		// Разрешаем как внутренние статусы, так и статусы Битрикс24 (формат C{categoryId}:{statusCode})
+		const validInternalStatuses = ['new', 'in_progress', 'completed', 'cancelled', 'on_hold']
+		const isBitrixStatus = /^C\d+:[A-Z0-9_]+$/.test(status) // Проверка формата статуса Битрикс24
+		
+		if (!validInternalStatuses.includes(status) && !isBitrixStatus) {
+			throw new Error(`Недопустимый статус: ${status}. Разрешены внутренние статусы: ${validInternalStatuses.join(', ')} или статусы Битрикс24 (формат C{categoryId}:{statusCode})`)
 		}
 		
 		try {

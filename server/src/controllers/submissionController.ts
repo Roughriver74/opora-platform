@@ -282,7 +282,8 @@ export const getSubmissionById = async (req: Request, res: Response) => {
 
 		// Получаем поля формы для отображения названий полей
 		let formFields = []
-		let enrichedFormData = submission.formData || {}
+		// Копируем все исходные данные формы, затем обогащаем только нужные поля
+		let enrichedFormData = { ...(submission.formData || {}) }
 		
 		if (submission.formId) {
 			const formService = getFormService()
@@ -515,6 +516,16 @@ export const getSubmissionWithBitrixData = async (
 											if (companyName) {
 												preloadedOptions[field.name] = [
 													{ value: bitrixValue, label: companyName },
+												]
+											}
+										} else if (field.dynamicSource.source === 'catalog') {
+											const productResponse = await bitrix24Service.getProduct(
+												String(bitrixValue)
+											)
+											const productName = productResponse?.result?.NAME
+											if (productName) {
+												preloadedOptions[field.name] = [
+													{ value: bitrixValue, label: productName },
 												]
 											}
 										}
@@ -889,6 +900,16 @@ export const copySubmission = async (req: Request, res: Response) => {
 									if (contactName) {
 										preloadedOptions[field.name] = [
 											{ value: bitrixValue, label: contactName },
+										]
+									}
+								} else if (field.dynamicSource.source === 'catalog') {
+									const productResponse = await bitrix24Service.getProduct(
+										String(bitrixValue)
+									)
+									const productName = productResponse?.result?.NAME
+									if (productName) {
+										preloadedOptions[field.name] = [
+											{ value: bitrixValue, label: productName },
 										]
 									}
 								}

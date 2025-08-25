@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
 	TextField,
 	Box,
@@ -9,7 +9,18 @@ import {
 	FormHelperText,
 	useMediaQuery,
 	useTheme,
+	Button,
+	ButtonGroup,
+	Chip,
+	ListSubheader,
+	Typography,
+	InputAdornment,
+	IconButton,
 } from '@mui/material'
+import AccessTimeIcon from '@mui/icons-material/AccessTime'
+import WbSunnyIcon from '@mui/icons-material/WbSunny'
+import Brightness5Icon from '@mui/icons-material/Brightness5'
+import Brightness3Icon from '@mui/icons-material/Brightness3'
 import { FieldInputProps } from '../../types'
 import { getFieldStyles } from '../../utils/fieldStyles'
 
@@ -56,6 +67,19 @@ export const DateInput: React.FC<FieldInputProps> = ({
 	const { date, time } = parseValue(value || '')
 	const [selectedTime, setSelectedTime] = useState(time)
 
+	// Загрузка сохраненных предпочтений времени
+	useEffect(() => {
+		const savedTime = localStorage.getItem('preferredDeliveryTime')
+		if (savedTime && !value) {
+			setSelectedTime(savedTime)
+		}
+	}, [value])
+
+	// Сохранение предпочтений времени
+	const saveTimePreference = (timeStr: string) => {
+		localStorage.setItem('preferredDeliveryTime', timeStr)
+	}
+
 	// Комбинируем дату и время
 	const combineDateTime = (dateStr: string, timeStr: string) => {
 		if (!dateStr) return ''
@@ -68,84 +92,83 @@ export const DateInput: React.FC<FieldInputProps> = ({
 		}
 	}
 
-	// Генерируем опции времени (каждые 15 минут в рабочее время, каждый час в остальное)
+	// Генерируем опции времени с группировкой по времени суток
 	const generateTimeOptions = () => {
-		const options = []
+		const groups = {
+			morning: { label: 'Утро (6:00 - 12:00)', icon: '🌅', times: [] as any[] },
+			afternoon: { label: 'День (12:00 - 18:00)', icon: '☀️', times: [] as any[] },
+			evening: { label: 'Вечер (18:00 - 22:00)', icon: '🌆', times: [] as any[] },
+			night: { label: 'Ночь (22:00 - 6:00)', icon: '🌙', times: [] as any[] }
+		}
 
-		// Популярные варианты времени для доставки (каждые 15 минут с 8:00 до 18:00)
-		const popularTimes = [
-			'08:00',
-			'08:15',
-			'08:30',
-			'08:45',
-			'09:00',
-			'09:15',
-			'09:30',
-			'09:45',
-			'10:00',
-			'10:15',
-			'10:30',
-			'10:45',
-			'11:00',
-			'11:15',
-			'11:30',
-			'11:45',
-			'12:00',
-			'12:15',
-			'12:30',
-			'12:45',
-			'13:00',
-			'13:15',
-			'13:30',
-			'13:45',
-			'14:00',
-			'14:15',
-			'14:30',
-			'14:45',
-			'15:00',
-			'15:15',
-			'15:30',
-			'15:45',
-			'16:00',
-			'16:15',
-			'16:30',
-			'16:45',
-			'17:00',
-			'17:15',
-			'17:30',
-			'17:45',
-			'18:00',
-		]
-
-		// Добавляем популярные времена
-		popularTimes.forEach(time => {
-			options.push({ value: time, label: time })
-		})
-
-		// Добавляем остальные часы (менее популярные)
-		for (let hour = 0; hour < 24; hour++) {
-			const h = String(hour).padStart(2, '0')
-			const timeValue = `${h}:00`
-
-			// Добавляем только если еще нет в популярных
-			if (!popularTimes.includes(timeValue)) {
-				options.push({ value: timeValue, label: timeValue })
+		// Генерируем времена с шагом 15 минут для рабочего времени
+		for (let hour = 6; hour <= 18; hour++) {
+			for (let minute = 0; minute < 60; minute += 15) {
+				const h = String(hour).padStart(2, '0')
+				const m = String(minute).padStart(2, '0')
+				const timeValue = `${h}:${m}`
+				
+				if (hour < 12) {
+					groups.morning.times.push({ value: timeValue, label: timeValue })
+				} else if (hour < 18 || (hour === 18 && minute === 0)) {
+					groups.afternoon.times.push({ value: timeValue, label: timeValue })
+				}
 			}
 		}
 
-		// Сортируем по времени
-		return options.sort((a, b) => a.value.localeCompare(b.value))
+		// Вечернее время с шагом 30 минут
+		for (let hour = 18; hour <= 22; hour++) {
+			for (let minute = hour === 18 ? 30 : 0; minute < 60; minute += 30) {
+				if (hour === 22 && minute > 0) break
+				const h = String(hour).padStart(2, '0')
+				const m = String(minute).padStart(2, '0')
+				const timeValue = `${h}:${m}`
+				groups.evening.times.push({ value: timeValue, label: timeValue })
+			}
+		}
+
+		// Ночное время - только целые часы
+		for (let hour = 22; hour < 24; hour++) {
+			const h = String(hour).padStart(2, '0')
+			groups.night.times.push({ value: `${h}:00`, label: `${h}:00` })
+		}
+		for (let hour = 0; hour < 6; hour++) {
+			const h = String(hour).padStart(2, '0')
+			groups.night.times.push({ value: `${h}:00`, label: `${h}:00` })
+		}
+
+		return groups
 	}
 
-	if (isMobile && includeTime) {
-		// На мобильных устройствах для полей с временем показываем отдельные поля
+	// Кнопки быстрого выбора времени
+	const quickTimeButtons = [
+		{ label: 'Утром', value: '09:00', icon: <WbSunnyIcon fontSize="small" /> },
+		{ label: 'Днем', value: '14:00', icon: <Brightness5Icon fontSize="small" /> },
+		{ label: 'Вечером', value: '18:00', icon: <Brightness3Icon fontSize="small" /> },
+	]
+
+	// Обработчик быстрого выбора времени
+	const handleQuickTimeSelect = (timeValue: string) => {
+		setSelectedTime(timeValue)
+		saveTimePreference(timeValue)
+		if (date) {
+			const newValue = combineDateTime(date, timeValue)
+			onChange(field.name, newValue)
+		}
+	}
+
+	// Используем раздельные поля для всех устройств при включенном времени
+	if (includeTime) {
+		const timeGroups = generateTimeOptions()
+		
 		return (
-			<Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+			<Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
+				{/* Поле даты */}
 				<TextField
 					fullWidth
 					id={`${field.name}_date`}
 					name={`${field.name}_date`}
-					label={`${field.label} (дата)`}
+					label={field.label ? `${field.label} - Дата` : 'Дата'}
 					type='date'
 					margin={compact ? 'dense' : 'normal'}
 					value={date}
@@ -160,82 +183,132 @@ export const DateInput: React.FC<FieldInputProps> = ({
 						shrink: true,
 					}}
 					inputProps={{
-						// Отключаем автозаполнение
 						autoComplete: 'off',
-						// Минимальная дата - сегодня
 						min: new Date().toISOString().split('T')[0],
 					}}
 					sx={styles.textField}
 				/>
 
+		 		{/* Кнопки быстрого выбора времени */}
+		{/*		<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+					<Typography variant="body2" color="text.secondary">
+						Быстрый выбор:
+					</Typography>
+					<ButtonGroup size="small" variant="outlined">
+						{quickTimeButtons.map(btn => (
+							<Button
+								key={btn.value}
+								onClick={() => handleQuickTimeSelect(btn.value)}
+								startIcon={btn.icon}
+								variant={selectedTime === btn.value ? 'contained' : 'outlined'}
+								color={selectedTime === btn.value ? 'primary' : 'inherit'}
+							>
+								{btn.label}
+							</Button>
+						))}
+					</ButtonGroup>
+				</Box>*/}
+
+				{/* Поле времени с группировкой */}
 				<FormControl
 					fullWidth
 					margin={compact ? 'dense' : 'normal'}
 					size={compact ? 'small' : 'medium'}
 					error={!!error}
 				>
-					<InputLabel shrink>{`${field.label} (время)`}</InputLabel>
+					<InputLabel shrink id={`${field.name}_time_label`}>
+						Время доставки
+					</InputLabel>
 					<Select
+						labelId={`${field.name}_time_label`}
 						value={selectedTime}
 						onChange={e => {
 							const newTime = e.target.value as string
 							setSelectedTime(newTime)
+							saveTimePreference(newTime)
 							if (date) {
 								const newValue = combineDateTime(date, newTime)
 								onChange(field.name, newValue)
 							}
 						}}
 						displayEmpty
+						startAdornment={
+							<InputAdornment position="start">
+								<AccessTimeIcon fontSize="small" color="action" />
+							</InputAdornment>
+						}
 						MenuProps={{
 							PaperProps: {
 								style: {
-									maxHeight: 200,
+									maxHeight: 400,
 								},
 							},
 						}}
 					>
-						{generateTimeOptions().map(option => (
-							<MenuItem key={option.value} value={option.value}>
+						{/* Группа "Утро" */}
+						<ListSubheader sx={{ backgroundColor: 'background.paper', lineHeight: '36px' }}>
+							{timeGroups.morning.icon} {timeGroups.morning.label}
+						</ListSubheader>
+						{timeGroups.morning.times.map(option => (
+							<MenuItem key={`morning-${option.value}`} value={option.value} sx={{ pl: 4 }}>
+								{option.label}
+							</MenuItem>
+						))}
+						
+						{/* Группа "День" */}
+						<ListSubheader sx={{ backgroundColor: 'background.paper', lineHeight: '36px' }}>
+							{timeGroups.afternoon.icon} {timeGroups.afternoon.label}
+						</ListSubheader>
+						{timeGroups.afternoon.times.map(option => (
+							<MenuItem key={`afternoon-${option.value}`} value={option.value} sx={{ pl: 4 }}>
+								{option.label}
+							</MenuItem>
+						))}
+						
+						{/* Группа "Вечер" */}
+						<ListSubheader sx={{ backgroundColor: 'background.paper', lineHeight: '36px' }}>
+							{timeGroups.evening.icon} {timeGroups.evening.label}
+						</ListSubheader>
+						{timeGroups.evening.times.map(option => (
+							<MenuItem key={`evening-${option.value}`} value={option.value} sx={{ pl: 4 }}>
+								{option.label}
+							</MenuItem>
+						))}
+						
+						{/* Группа "Ночь" */}
+						<ListSubheader sx={{ backgroundColor: 'background.paper', lineHeight: '36px' }}>
+							{timeGroups.night.icon} {timeGroups.night.label}
+						</ListSubheader>
+						{timeGroups.night.times.map(option => (
+							<MenuItem key={`night-${option.value}`} value={option.value} sx={{ pl: 4 }}>
 								{option.label}
 							</MenuItem>
 						))}
 					</Select>
 					{error && <FormHelperText>{error}</FormHelperText>}
+					{selectedTime && (
+						<FormHelperText>
+							Выбрано время: {selectedTime}
+						</FormHelperText>
+					)}
 				</FormControl>
 			</Box>
 		)
 	}
 
-	// Для десктопа или полей только с датой
+	// Для полей только с датой (без времени)
 	return (
 		<TextField
 			fullWidth
 			id={field.name}
 			name={field.name}
 			label={field.label}
-			type={includeTime ? 'datetime-local' : 'date'}
+			type='date'
 			margin={compact ? 'dense' : 'normal'}
-			value={
-				includeTime
-					? date && selectedTime
-						? `${date}T${selectedTime}`
-						: ''
-					: date
-			}
+			value={date}
 			onChange={e => {
-				if (includeTime) {
-					// datetime-local
-					if (e.target.value) {
-						const date = new Date(e.target.value)
-						onChange(field.name, date.toISOString())
-					} else {
-						onChange(field.name, '')
-					}
-				} else {
-					// date only
-					const newValue = combineDateTime(e.target.value, '12:00')
-					onChange(field.name, newValue)
-				}
+				const newValue = combineDateTime(e.target.value, '12:00')
+				onChange(field.name, newValue)
 			}}
 			required={field.required}
 			error={!!error}
@@ -245,10 +318,7 @@ export const DateInput: React.FC<FieldInputProps> = ({
 				shrink: true,
 			}}
 			inputProps={{
-				step: includeTime ? 30 : undefined,
-				// Отключаем автозаполнение для лучшего контроля
 				autoComplete: 'off',
-				// Минимальная дата - сегодня
 				min: new Date().toISOString().split('T')[0],
 			}}
 			sx={styles.textField}
