@@ -197,7 +197,7 @@ export class Submission extends BaseEntity {
 	}
 
 	isStatusCompleted(): boolean {
-		return ['WON', 'LOSE', 'COMPLETED', 'CLOSED'].includes(this.status)
+		return ['WON', 'LOSE', 'COMPLETED', 'CLOSED', 'C1:WON', 'C1:LOSE'].includes(this.status)
 	}
 
 	isHighPriority(): boolean {

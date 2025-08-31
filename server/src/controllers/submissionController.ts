@@ -699,6 +699,11 @@ export const getBitrixStages = async (req: Request, res: Response) => {
 				name: 'Отгружено',
 				sort: 30,
 			},
+			{
+				id: 'C1:LOSE',
+				name: 'Отменено',
+				sort: 40,
+			},
 		]
 
 		res.json({
@@ -809,6 +814,85 @@ export const checkBitrixField = async (req: Request, res: Response) => {
 			success: false,
 			message: 'Ошибка получения данных из Битрикс24',
 			error: error.message,
+		})
+	}
+}
+
+// Отмена заявки
+export const cancelSubmission = async (req: Request, res: Response) => {
+	try {
+		const { id } = req.params
+		const { comment } = req.body
+		const userId = req.user?.id
+		const isAdmin = req.isAdmin
+
+		const submission = await submissionService.findById(id)
+		if (!submission) {
+			return res.status(404).json({
+				success: false,
+				message: 'Заявка не найдена',
+			})
+		}
+
+		// Проверяем права доступа - только владелец заявки или админ могут отменить
+		if (!isAdmin && submission.userId !== userId) {
+			return res.status(403).json({
+				success: false,
+				message: 'Нет прав для отмены этой заявки',
+			})
+		}
+
+		// Проверяем, можно ли отменить заявку (только NEW и UC_GJLIZP статусы)
+		if (!['C1:NEW', 'C1:UC_GJLIZP'].includes(submission.status)) {
+			return res.status(400).json({
+				success: false,
+				message: 'Заявку в данном статусе нельзя отменить',
+			})
+		}
+
+		// Обновляем статус на отменено
+		await submissionService.updateStatus(id, 'C1:LOSE', userId)
+
+		// Добавляем комментарий с причиной отмены
+		const cancelComment = comment ? `Причина отмены: ${comment}` : 'Заявка отменена пользователем'
+		await submissionService.addComment(id, cancelComment, userId)
+
+		// Синхронизируем с Bitrix24 если есть dealId
+		if (submission.bitrixDealId) {
+			try {
+				await bitrix24Service.updateDealStatus(
+					submission.bitrixDealId,
+					'C1:LOSE',
+					submission.bitrixCategoryId || '1'
+				)
+				await submissionService.updateSyncStatus(id, BitrixSyncStatus.SYNCED)
+			} catch (bitrixError: any) {
+				console.warn('Ошибка синхронизации отмены с Bitrix24:', bitrixError.message)
+				await submissionService.updateSyncStatus(
+					id,
+					BitrixSyncStatus.FAILED,
+					undefined,
+					bitrixError.message
+				)
+				// Не прерываем выполнение, заявка все равно отменена локально
+			}
+		}
+
+		res.json({
+			success: true,
+			message: 'Заявка успешно отменена',
+			data: {
+				id: submission.id,
+				submissionNumber: submission.submissionNumber,
+				status: 'C1:LOSE',
+			},
+		})
+	} catch (error: any) {
+		console.error('Ошибка отмены заявки:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка отмены заявки',
+			error: error?.message,
 		})
 	}
 }

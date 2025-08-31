@@ -284,6 +284,17 @@ export const SubmissionService = {
 		const response = await api.delete(`/api/submissions/${id}`)
 		return response.data
 	},
+
+	// Отмена заявки
+	cancelSubmission: async (
+		id: string,
+		comment?: string
+	): Promise<{ success: boolean; message: string; data: any }> => {
+		const response = await api.post(`/api/submissions/${id}/cancel`, {
+			comment,
+		})
+		return response.data
+	},
 }
 
 // Экспорт по умолчанию для обратной совместимости

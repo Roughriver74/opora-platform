@@ -52,6 +52,11 @@ router.post('/:id/copy', requireAuth, (req: Request, res: Response) => {
 	submissionController.copySubmission(req, res)
 })
 
+// Отмена заявки
+router.post('/:id/cancel', requireAuth, (req: Request, res: Response) => {
+	submissionController.cancelSubmission(req, res)
+})
+
 // Обновление статуса заявки
 router.patch('/:id/status', requireAuth, (req: Request, res: Response) => {
 	submissionController.updateSubmissionStatus(req, res)

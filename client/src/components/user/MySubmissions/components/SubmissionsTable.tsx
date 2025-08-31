@@ -23,6 +23,7 @@ import {
 	Error as ErrorIcon,
 	Pending as PendingIcon,
 	FileCopy as FileCopyIcon,
+	Cancel as CancelIcon,
 } from '@mui/icons-material'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -40,6 +41,7 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 	bitrixStages,
 	onEditSubmission,
 	onCopySubmission,
+	onCancelSubmission,
 	onStatusChange,
 	page,
 	rowsPerPage,
@@ -75,13 +77,28 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 				</TableHead>
 				<TableBody>
 					{submissions.map(submission => {
-						// Проверяем, является ли статус "Отгружено" (C1:WON)
-						const isShipped = submission.status === 'C1:WON'
+						// Проверяем, является ли статус завершенным (Отгружено или Отменено)
+						const isCompleted = ['C1:WON', 'C1:LOSE'].includes(submission.status)
+						const isCancelled = submission.status === 'C1:LOSE'
+						const canCancel = ['C1:NEW', 'C1:UC_GJLIZP'].includes(submission.status)
+
+						// Отладочный вывод
+						console.log(`Submission ${submission.id}: status=${submission.status}, canCancel=${canCancel}, isCompleted=${isCompleted}`)
 
 						return (
-							<TableRow key={submission.id}>
+							<TableRow key={submission.id} sx={{
+								backgroundColor: isCancelled ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
+								opacity: isCancelled ? 0.7 : 1,
+							}}>
 								<TableCell>
-									<Typography variant='body2' fontWeight='bold'>
+									<Typography 
+										variant='body2' 
+										fontWeight='bold'
+										sx={{
+											textDecoration: isCancelled ? 'line-through' : 'none',
+											color: isCancelled ? 'text.secondary' : 'inherit',
+										}}
+									>
 										{submission.bitrixDealId || 'Не указан'}
 									</Typography>
 								</TableCell>
@@ -109,6 +126,8 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 														return 'Отправлено'
 													case 'C1:WON':
 														return 'Отгружено'
+													case 'C1:LOSE':
+														return 'Отменено'
 													default:
 														const statusName = getStatusName(
 															submission.status,
@@ -154,7 +173,7 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 								</TableCell>
 								<TableCell>
 									<Stack direction='row' spacing={1}>
-										{!isShipped && (
+										{!isCompleted && (
 											<IconButton
 												onClick={() => onEditSubmission(submission)}
 												color='primary'
@@ -163,6 +182,27 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 												<EditIcon />
 											</IconButton>
 										)}
+										{canCancel && (
+											<IconButton
+												onClick={() => onCancelSubmission(submission)}
+												color='error'
+												title='Отменить заявку'
+											>
+												<CancelIcon />
+											</IconButton>
+										)}
+										{/* Временная кнопка для тестирования - всегда видна */}
+										<IconButton
+											onClick={() => {
+												console.log('Cancel button clicked for submission:', submission.id)
+												onCancelSubmission(submission)
+											}}
+											color='warning'
+											title='ТЕСТ Отменить заявку'
+											size='small'
+										>
+											<CancelIcon />
+										</IconButton>
 										<IconButton
 											onClick={() => onCopySubmission(submission)}
 											color='secondary'

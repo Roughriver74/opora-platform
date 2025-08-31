@@ -250,6 +250,54 @@ export const useMySubmissions = () => {
 		}
 	}
 
+	const handleCancelSubmission = async (
+		submission: any,
+		comment?: string
+	) => {
+		try {
+			console.log('[CLIENT CANCEL] Начало отмены заявки:', submission.id)
+			
+			// Подтверждение отмены
+			const confirmCancel = window.confirm(
+				`Вы действительно хотите отменить заявку ${submission.submissionNumber || submission.id}?`
+			)
+			
+			if (!confirmCancel) {
+				return
+			}
+
+			// Запрос комментария для причины отмены
+			let cancelComment = comment
+			if (!cancelComment) {
+				cancelComment = window.prompt(
+					'Укажите причину отмены заявки (необязательно):'
+				) || undefined
+			}
+
+			const response = await submissionService.cancelSubmission(
+				submission.id,
+				cancelComment
+			)
+
+			if (response.success) {
+				console.log('[CLIENT CANCEL] Заявка успешно отменена:', response.data)
+				// Перезагружаем список заявок
+				loadSubmissions()
+			} else {
+				setState(prev => ({
+					...prev,
+					error: 'Не удалось отменить заявку',
+				}))
+			}
+		} catch (err: any) {
+			console.error('[CLIENT CANCEL] Ошибка отмены заявки:', err)
+			setState(prev => ({
+				...prev,
+				error: err.message || 'Ошибка отмены заявки',
+			}))
+		}
+	}
+
 	const handleFilterChange = (newFilters: Partial<SubmissionFilters>) => {
 		setState(prev => ({
 			...prev,
@@ -304,6 +352,7 @@ export const useMySubmissions = () => {
 		loadSubmissions,
 		handleEditSubmission,
 		handleCopySubmission,
+		handleCancelSubmission,
 		handleStatusChange,
 		handleFilterChange,
 		handlePageChange,
