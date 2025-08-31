@@ -24,6 +24,7 @@ export interface UpdateSubmissionDTO {
 	assignedToId?: string
 	notes?: string
 	tags?: string[]
+	formData?: Record<string, any>
 }
 
 export interface SubmissionSearchParams extends SubmissionFilters, PaginationOptions {}
@@ -97,6 +98,7 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 			status: submission.status,
 			priority: submission.priority,
 			assignedToId: submission.assignedToId,
+			formData: submission.formData,
 		}
 
 		// Обновление заявки
@@ -131,9 +133,18 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 			)
 		}
 
+		// Специальная обработка для formData
+		if (data.formData && JSON.stringify(data.formData) !== JSON.stringify(oldValues.formData)) {
+			changes.push({
+				field: 'formData',
+				oldValue: oldValues.formData,
+				newValue: data.formData,
+			})
+		}
+
 		// Общее обновление для остальных полей
 		Object.keys(data).forEach(key => {
-			if (key !== 'status' && key !== 'assignedToId' && (data as any)[key] !== (oldValues as any)[key]) {
+			if (key !== 'status' && key !== 'assignedToId' && key !== 'formData' && (data as any)[key] !== (oldValues as any)[key]) {
 				changes.push({
 					field: key,
 					oldValue: (oldValues as any)[key],

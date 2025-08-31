@@ -170,139 +170,24 @@ export const FormSection: React.FC<FormSectionProps> = React.memo(({
 			)}
 
 			{/* Поля секции */}
-			{(() => {
-				const groupedElements: React.ReactNode[] = []
-				const fields = section.fields || []
-				let i = 0
-
-				while (i < fields.length) {
-					const currentField = fields[i]
-
-					// Проверяем, является ли поле числовым
-					if (currentField.type === 'number') {
-						// Собираем все подряд идущие числовые поля
-						const numberFields = []
-						let j = i
-						while (j < fields.length && fields[j].type === 'number') {
-							numberFields.push(fields[j])
-							j++
-						}
-
-						// Группируем числовые поля по 2 в ряд только на десктопе
-						if (!isMobile && numberFields.length > 1) {
-							for (let k = 0; k < numberFields.length; k += 2) {
-								const field1 = numberFields[k]
-								const field2 = numberFields[k + 1]
-
-								if (field2) {
-									// Пара числовых полей
-									groupedElements.push(
-										<Box
-											key={`${field1._id}-${field2._id}`}
-											sx={{
-												display: 'flex',
-												gap: 2,
-												mb: fieldSpacing,
-											}}
-										>
-											<Box sx={{ flex: 1 }}>
-												<FormField
-													field={field1}
-													value={values[field1.name]}
-													onChange={onFieldChange}
-													error={getFieldError(field1.name)}
-													compact={true}
-													isMobile={isMobile}
-													preloadedOptions={preloadedOptions?.[field1.name]}
-												/>
-											</Box>
-											<Box sx={{ flex: 1 }}>
-												<FormField
-													field={field2}
-													value={values[field2.name]}
-													onChange={onFieldChange}
-													error={getFieldError(field2.name)}
-													compact={true}
-													isMobile={isMobile}
-													preloadedOptions={preloadedOptions?.[field2.name]}
-												/>
-											</Box>
-										</Box>
-									)
-								} else {
-									// Одиночное числовое поле
-									groupedElements.push(
-										<Box
-											key={field1._id || field1.name}
-											sx={{
-												mb: fieldSpacing,
-												maxWidth: isMobile ? '100%' : '300px',
-											}}
-										>
-											<FormField
-												field={field1}
-												value={values[field1.name]}
-												onChange={onFieldChange}
-												error={getFieldError(field1.name)}
-												compact={true}
-												isMobile={isMobile}
-												preloadedOptions={preloadedOptions?.[field1.name]}
-											/>
-										</Box>
-									)
-								}
-							}
-						} else {
-							// На мобильных все поля в одну колонку
-							numberFields.forEach(field => {
-								groupedElements.push(
-									<Box
-										key={field._id || field.name}
-										sx={{
-											mb: fieldSpacing,
-											maxWidth: isMobile ? '100%' : '300px',
-										}}
-									>
-										<FormField
-											field={field}
-											value={values[field.name]}
-											onChange={onFieldChange}
-											error={getFieldError(field.name)}
-											compact={true}
-											isMobile={isMobile}
-											preloadedOptions={preloadedOptions?.[field.name]}
-										/>
-									</Box>
-								)
-							})
-						}
-
-						// Переходим к следующему не-числовому полю
-						i = j
-					} else {
-						// Обычное не-числовое поле
-						groupedElements.push(
-							<Box
-								key={currentField._id || currentField.name}
-								sx={{ mb: fieldSpacing }}
-							>
-								<FormField
-									field={currentField}
-									value={values[currentField.name]}
-									onChange={onFieldChange}
-									error={getFieldError(currentField.name)}
-									compact={compact}
-									isMobile={isMobile}
-									preloadedOptions={preloadedOptions?.[currentField.name]}
-								/>
-							</Box>
-						)
-						i += 1
-					}
-				}
-
-				return groupedElements
-			})()}
+			{section.fields?.map((field) => (
+				<Box
+					key={field._id || field.name}
+					sx={{ 
+						mb: fieldSpacing
+					}}
+				>
+					<FormField
+						field={field}
+						value={values[field.name]}
+						onChange={onFieldChange}
+						error={getFieldError(field.name)}
+						compact={compact || isMobile}
+						isMobile={isMobile}
+						preloadedOptions={preloadedOptions?.[field.name]}
+					/>
+				</Box>
+			))}
 		</Box>
 	)
 }, (prevProps, nextProps) => {

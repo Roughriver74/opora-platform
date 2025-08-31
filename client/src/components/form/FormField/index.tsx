@@ -158,7 +158,7 @@ const FormField: React.FC<FormFieldProps> = React.memo(({
 	const styles = getFieldStyles(compact, isMobile)
 
 	// Определяем правильные отступы в зависимости от типа поля и режима
-	const getFieldMargin = useMemo(() => {
+	 const getFieldMargin = useMemo(() => {
 		// Для мобильных устройств используем пиксельные значения
 		if (isMobile) {
 			if (
@@ -197,7 +197,7 @@ const FormField: React.FC<FormFieldProps> = React.memo(({
 			? FIELD_CONSTANTS.COMPACT_FIELD_MARGIN
 			: FIELD_CONSTANTS.FORM_FIELD_MARGIN
 	}, [isMobile, compact, field.type])
-
+ 
 	// For divider and header fields, use minimal styling
 	if (field.type === FIELD_TYPES.DIVIDER || field.type === FIELD_TYPES.HEADER) {
 		return (

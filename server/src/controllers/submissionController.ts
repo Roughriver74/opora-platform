@@ -611,7 +611,10 @@ export const updateSubmission = async (req: Request, res: Response) => {
 
 			await bitrix24Service.updateDeal(submission.bitrixDealId!, dealData)
 
-			await submissionService.updateSubmission(id, { title: newTitle }, userId)
+			await submissionService.updateSubmission(id, { 
+				title: newTitle,
+				formData: updateData 
+			}, userId)
 			await submissionService.updateSyncStatus(id, BitrixSyncStatus.SYNCED)
 
 			return res.json({

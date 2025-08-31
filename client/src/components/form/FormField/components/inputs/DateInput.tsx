@@ -65,7 +65,7 @@ export const DateInput: React.FC<FieldInputProps> = ({
 	}
 
 	const { date, time } = parseValue(value || '')
-	const [selectedTime, setSelectedTime] = useState(time)
+	const [selectedTime, setSelectedTime] = useState(time || (includeTime ? '12:00' : '12:00'))
 
 	// Загрузка сохраненных предпочтений времени
 	useEffect(() => {
@@ -176,7 +176,7 @@ export const DateInput: React.FC<FieldInputProps> = ({
 						const newValue = combineDateTime(e.target.value, selectedTime)
 						onChange(field.name, newValue)
 					}}
-					required={field.required}
+					required={false}
 					error={!!error}
 					size={compact ? 'small' : 'medium'}
 					InputLabelProps={{
@@ -185,6 +185,7 @@ export const DateInput: React.FC<FieldInputProps> = ({
 					inputProps={{
 						autoComplete: 'off',
 						min: new Date().toISOString().split('T')[0],
+						form: 'no-validation',
 					}}
 					sx={styles.textField}
 				/>
@@ -215,12 +216,15 @@ export const DateInput: React.FC<FieldInputProps> = ({
 					margin={compact ? 'dense' : 'normal'}
 					size={compact ? 'small' : 'medium'}
 					error={!!error}
+					required={field.required}
 				>
 					<InputLabel shrink id={`${field.name}_time_label`}>
 						Время доставки
 					</InputLabel>
 					<Select
 						labelId={`${field.name}_time_label`}
+						id={`${field.name}_time`}
+						name={`${field.name}_time`}
 						value={selectedTime}
 						onChange={e => {
 							const newTime = e.target.value as string
@@ -231,6 +235,7 @@ export const DateInput: React.FC<FieldInputProps> = ({
 								onChange(field.name, newValue)
 							}
 						}}
+						required={field.required}
 						displayEmpty
 						startAdornment={
 							<InputAdornment position="start">
@@ -320,6 +325,7 @@ export const DateInput: React.FC<FieldInputProps> = ({
 			inputProps={{
 				autoComplete: 'off',
 				min: new Date().toISOString().split('T')[0],
+				form: 'no-validation',
 			}}
 			sx={styles.textField}
 		/>
