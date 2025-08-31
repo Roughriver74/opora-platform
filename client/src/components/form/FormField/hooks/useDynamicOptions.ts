@@ -74,6 +74,7 @@ export const useDynamicOptions = (
 									phone: company.PHONE,
 									email: company.EMAIL,
 									type: company.COMPANY_TYPE,
+									requisites: company.REQUISITES,
 								},
 							}))
 
@@ -86,18 +87,30 @@ export const useDynamicOptions = (
 								{} as Record<string, number>
 							)
 
-							// Создаем финальные опции с умными label
-							dataOptions = baseOptions.map((option: any) => ({
-								value: option.value,
-								label:
-									titleCounts[option.title] > 1
-										? `${option.title} (ID: ${option.value})`
-										: option.title,
-								metadata: {
-									...option.metadata,
-									originalTitle: option.title,
-								},
-							}))
+							// Создаем финальные опции с умными label, включая ИНН
+							dataOptions = baseOptions.map((option: any) => {
+								const hasInn = option.metadata?.requisites?.RQ_INN
+								let label = option.title
+
+								// Если есть дублирующиеся названия, добавляем ID
+								if (titleCounts[option.title] > 1) {
+									label = `${option.title} (ID: ${option.value})`
+								}
+
+								// Если есть ИНН, добавляем его к названию
+								if (hasInn) {
+									label = `${label}, ${option.metadata.requisites.RQ_INN}`
+								}
+
+								return {
+									value: option.value,
+									label,
+									metadata: {
+										...option.metadata,
+										originalTitle: option.title,
+									},
+								}
+							})
 						}
 						break
 

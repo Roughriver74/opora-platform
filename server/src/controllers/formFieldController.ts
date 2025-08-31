@@ -210,7 +210,8 @@ export const getCompaniesList = async (
 		const companies = await bitrix24Service.getCompanies(
 			query as string,
 			50,
-			assignedFilter
+			assignedFilter,
+			true // включаем загрузку реквизитов
 		)
 		res.status(200).json(companies)
 	} catch (error: any) {
@@ -338,7 +339,8 @@ export const searchCompanies = async (
 		const companies = await bitrix24Service.getCompanies(
 			query as string,
 			50,
-			assignedFilter
+			assignedFilter,
+			true // включаем загрузку реквизитов
 		)
 		res.status(200).json(companies)
 	} catch (error: any) {

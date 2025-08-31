@@ -135,11 +135,12 @@ class Bitrix24Service {
 	async getCompanies(
 		query = '',
 		limit = 50,
-		assignedToUserId: string | null = null
+		assignedToUserId: string | null = null,
+		includeRequisites = false
 	) {
 		const filterKey = `${query || 'all'}_${
 			assignedToUserId || 'nouser'
-		}_${limit}`
+		}_${limit}_${includeRequisites ? 'withReq' : 'noReq'}`
 		const cached = await bitrixCache.getDynamicOptions('companies', filterKey)
 		if (cached) return { result: cached, total: cached.length }
 
@@ -208,6 +209,35 @@ class Bitrix24Service {
 			}
 		}
 
+		// Загружаем реквизиты для каждой компании, если требуется
+		if (includeRequisites && results?.result) {
+			const companiesWithRequisites = await Promise.all(
+				results.result.map(async (company: any) => {
+					try {
+						const requisites = await this.getCompanyRequisites(company.ID)
+						// Берем первый набор реквизитов (обычно у компании один)
+						const firstRequisite = requisites?.result?.[0]
+						return {
+							...company,
+							REQUISITES: firstRequisite ? {
+								RQ_INN: firstRequisite.RQ_INN || null,
+								RQ_KPP: firstRequisite.RQ_KPP || null,
+								RQ_COMPANY_FULL_NAME: firstRequisite.RQ_COMPANY_FULL_NAME || null,
+								RQ_COMPANY_NAME: firstRequisite.RQ_COMPANY_NAME || null,
+							} : null
+						}
+					} catch (error) {
+						console.warn(`Ошибка загрузки реквизитов для компании ${company.ID}:`, error)
+						return company
+					}
+				})
+			)
+			results = {
+				...results,
+				result: companiesWithRequisites
+			}
+		}
+
 		if (results?.result) {
 			await bitrixCache.setDynamicOptions(
 				'companies',
@@ -223,6 +253,28 @@ class Bitrix24Service {
 			id: companyId,
 		})
 		return response.data
+	}
+
+	async getCompanyRequisites(companyId: string) {
+		try {
+			const response = await axios.post(`${this.webhookUrl}crm.requisite.list`, {
+				filter: {
+					ENTITY_TYPE_ID: 4, // 4 = Company
+					ENTITY_ID: companyId,
+				},
+				select: [
+					'ID',
+					'RQ_INN',
+					'RQ_KPP', 
+					'RQ_COMPANY_FULL_NAME',
+					'RQ_COMPANY_NAME',
+				],
+			})
+			return response.data
+		} catch (error) {
+			console.warn(`Не удалось получить реквизиты компании ${companyId}:`, error)
+			return { result: [] }
+		}
 	}
 
 	async getContacts(query = '', limit = 50) {
