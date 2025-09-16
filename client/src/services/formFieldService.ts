@@ -18,10 +18,10 @@ export const FormFieldService = {
 	// Создание нового поля
 	async createField(fieldData: Omit<FormField, '_id'>) {
 		try {
-				console.log(
-					'Отправка данных на сервер:',
-					JSON.stringify(fieldData, null, 2)
-				)
+			console.log(
+				'Отправка данных на сервер:',
+				JSON.stringify(fieldData, null, 2)
+			)
 			const response = await api.post('/api/form-fields', fieldData)
 			return response.data
 		} catch (error: any) {
@@ -60,7 +60,7 @@ export const FormFieldService = {
 		try {
 			// Запрашиваем поля формы через правильный эндпоинт
 			const response = await api.get('/api/form-fields', {
-				params: { formId }
+				params: { formId },
 			})
 			// Возвращаем массив полей
 			return response.data || []
@@ -137,22 +137,31 @@ export const FormFieldService = {
 	},
 
 	async getProducts(query: string = '') {
-		const response = await api.get('/api/form-fields/bitrix/products', {
-			params: { query },
+		// Используем новый Elasticsearch API для более точного поиска
+		const response = await api.post('/api/search/products', {
+			query,
+			limit: 20,
+			offset: 0,
 		})
 		return response.data
 	},
 
 	async getCompanies(query: string = '') {
-		const response = await api.get('/api/form-fields/bitrix/companies', {
-			params: { query },
+		// Используем новый Elasticsearch API для более точного поиска
+		const response = await api.post('/api/search/companies', {
+			query,
+			limit: 20,
+			offset: 0,
 		})
 		return response.data
 	},
 
 	async getContacts(query: string = '') {
-		const response = await api.get('/api/form-fields/bitrix/contacts', {
-			params: { query },
+		// Используем новый Elasticsearch API для более точного поиска
+		const response = await api.post('/api/search/contacts', {
+			query,
+			limit: 20,
+			offset: 0,
 		})
 		return response.data
 	},
@@ -189,7 +198,9 @@ export const FormFieldService = {
 
 	// Получение значений для конкретного поля типа enumeration
 	async getEnumFieldValues(fieldId: string) {
-		const response = await api.get(`/api/form-fields/bitrix/enumvalues/${fieldId}`)
+		const response = await api.get(
+			`/api/form-fields/bitrix/enumvalues/${fieldId}`
+		)
 		return response.data
 	},
 

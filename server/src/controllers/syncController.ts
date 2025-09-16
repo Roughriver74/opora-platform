@@ -1,126 +1,145 @@
 import { Request, Response } from 'express'
-import bitrix24Service from '../services/bitrix24Service'
-import { getUserService } from '../services/UserService'
-import { UserRole } from '../database/entities/User.entity'
+import { syncScheduler } from '../services/syncScheduler'
+import { elasticsearchService } from '../services/elasticsearchService'
+import { logger } from '../utils/logger'
 
-const userService = getUserService()
+export class SyncController {
+	/**
+	 * Получение статуса синхронизации
+	 */
+	async getStatus(req: Request, res: Response): Promise<void> {
+		try {
+			const status = syncScheduler.getStatus()
+			const indexStats = await elasticsearchService.getIndexStats()
 
-// Синхронизация пользователей из Bitrix24
-export const syncUsers = async (req: Request, res: Response): Promise<void> => {
-	try {
-		console.log('Начинаем синхронизацию пользователей из Bitrix24...')
-		
-		// Получаем всех активных пользователей из Bitrix24
-		const bitrixUsers = await bitrix24Service.getAllActiveUsers()
-		
-		if (!bitrixUsers.result || bitrixUsers.result.length === 0) {
-			res.status(200).json({
+			res.json({
 				success: true,
-				message: 'Пользователи в Bitrix24 не найдены',
-				data: { synced: 0, total: 0 }
-			})
-			return
-		}
-
-		let syncedCount = 0
-		let skippedCount = 0
-		const errors: string[] = []
-
-		// Синхронизируем каждого пользователя
-		for (const bitrixUser of bitrixUsers.result) {
-			try {
-				// Проверяем обязательные поля
-				if (!bitrixUser.EMAIL || !bitrixUser.ID) {
-					skippedCount++
-					continue
-				}
-
-				// Проверяем, существует ли пользователь с таким email
-				const existingUser = await userService.findByEmail(bitrixUser.EMAIL)
-				
-				if (!existingUser) {
-					// Создаем нового пользователя
-					const userData = {
-						email: bitrixUser.EMAIL,
-						password: `bitrix_${bitrixUser.ID}`, // Временный пароль
-						firstName: bitrixUser.NAME || '',
-						lastName: bitrixUser.LAST_NAME || '',
-						role: UserRole.USER,
-						bitrixUserId: bitrixUser.ID,
-						phone: bitrixUser.PERSONAL_MOBILE || bitrixUser.PERSONAL_PHONE || ''
-					}
-
-					await userService.createUser(userData)
-					syncedCount++
-					console.log(`Создан пользователь: ${bitrixUser.EMAIL}`)
-				} else {
-					// Обновляем данные существующего пользователя
-					const updateData = {
-						firstName: bitrixUser.NAME || existingUser.firstName,
-						lastName: bitrixUser.LAST_NAME || existingUser.lastName,
-						bitrixUserId: bitrixUser.ID,
-						isActive: true, // По умолчанию активные пользователи
-						phone: bitrixUser.PERSONAL_MOBILE || bitrixUser.PERSONAL_PHONE || existingUser.phone
-					}
-
-					await userService.updateUser(existingUser.id, updateData)
-					syncedCount++
-					console.log(`Обновлен пользователь: ${bitrixUser.EMAIL}`)
-				}
-			} catch (error: any) {
-				console.error(`Ошибка синхронизации пользователя ${bitrixUser.EMAIL}:`, error)
-				errors.push(`${bitrixUser.EMAIL}: ${error.message}`)
-			}
-		}
-
-		res.status(200).json({
-			success: true,
-			message: `Синхронизация завершена: ${syncedCount} пользователей синхронизировано, ${skippedCount} пропущено`,
-			data: {
-				synced: syncedCount,
-				skipped: skippedCount,
-				total: bitrixUsers.result.length,
-				errors: errors.length > 0 ? errors : undefined
-			}
-		})
-
-	} catch (error: any) {
-		console.error('Ошибка синхронизации пользователей:', error)
-		res.status(500).json({
-			success: false,
-			message: error.message || 'Ошибка синхронизации пользователей'
-		})
-	}
-}
-
-// Получить статистику пользователей
-export const getUsersStats = async (req: Request, res: Response): Promise<void> => {
-	try {
-		// Локальные пользователи
-		const localUsers = await userService.findAll()
-		
-		// Пользователи из Bitrix24
-		const bitrixUsers = await bitrix24Service.getAllActiveUsers()
-		
-		res.status(200).json({
-			success: true,
-			data: {
-				local: {
-					total: localUsers.length,
-					active: localUsers.filter(u => u.isActive).length,
-					withBitrixId: localUsers.filter(u => u.bitrixUserId).length
+				data: {
+					syncStatus: status,
+					indexStats: indexStats,
+					availableSchedules: syncScheduler.getAvailableSchedules(),
 				},
-				bitrix24: {
-					total: bitrixUsers.total,
-					active: bitrixUsers.result?.filter((u: any) => u.ACTIVE === 'Y').length || 0
-				}
+			})
+		} catch (error) {
+			logger.error('Ошибка при получении статуса синхронизации:', error)
+			res.status(500).json({
+				success: false,
+				message: 'Ошибка при получении статуса синхронизации',
+				error: error instanceof Error ? error.message : String(error),
+			})
+		}
+	}
+
+	/**
+	 * Запуск синхронизации вручную
+	 */
+	async startSync(req: Request, res: Response): Promise<void> {
+		try {
+			const { force = false } = req.body
+
+			logger.info(`🔄 Запуск ручной синхронизации (force: ${force})`)
+
+			// Запускаем синхронизацию в фоне
+			syncScheduler
+				.performSync(force)
+				.then(() => {
+					logger.info('✅ Ручная синхронизация завершена')
+				})
+				.catch(error => {
+					logger.error('❌ Ошибка при ручной синхронизации:', error)
+				})
+
+			res.json({
+				success: true,
+				message: 'Синхронизация запущена',
+			})
+		} catch (error) {
+			logger.error('Ошибка при запуске синхронизации:', error)
+			res.status(500).json({
+				success: false,
+				message: 'Ошибка при запуске синхронизации',
+				error: error instanceof Error ? error.message : String(error),
+			})
+		}
+	}
+
+	/**
+	 * Установка расписания синхронизации
+	 */
+	async setSchedule(req: Request, res: Response): Promise<void> {
+		try {
+			const { schedule } = req.body
+
+			if (!schedule) {
+				// Отключаем планировщик
+				syncScheduler.stopScheduler()
+				logger.info('🛑 Планировщик синхронизации отключен')
+			} else {
+				// Устанавливаем новое расписание
+				syncScheduler.setSchedule(schedule)
+				logger.info(`🕐 Установлено новое расписание: ${schedule}`)
 			}
-		})
-	} catch (error: any) {
-		console.error('Ошибка получения статистики пользователей:', error)
-		res.status(500).json({
-			success: false,
-			message: error.message || 'Ошибка получения статистики'
-		})
+
+			res.json({
+				success: true,
+				message: 'Расписание обновлено',
+			})
+		} catch (error) {
+			logger.error('Ошибка при установке расписания:', error)
+			res.status(500).json({
+				success: false,
+				message: 'Ошибка при установке расписания',
+				error: error instanceof Error ? error.message : String(error),
+			})
+		}
+	}
+
+	/**
+	 * Очистка данных Elasticsearch
+	 */
+	async clearData(req: Request, res: Response): Promise<void> {
+		try {
+			logger.info('🧹 Запуск очистки данных Elasticsearch...')
+
+			await elasticsearchService.clearIndex()
+
+			res.json({
+				success: true,
+				message: 'Данные очищены',
+			})
+		} catch (error) {
+			logger.error('Ошибка при очистке данных:', error)
+			res.status(500).json({
+				success: false,
+				message: 'Ошибка при очистке данных',
+				error: error instanceof Error ? error.message : String(error),
+			})
+		}
+	}
+
+	/**
+	 * Получение статистики Elasticsearch
+	 */
+	async getStats(req: Request, res: Response): Promise<void> {
+		try {
+			const stats = await elasticsearchService.getIndexStats()
+
+			res.json({
+				success: true,
+				data: {
+					stats,
+					timestamp: new Date().toISOString(),
+				},
+			})
+		} catch (error) {
+			logger.error('Ошибка при получении статистики:', error)
+			res.status(500).json({
+				success: false,
+				message: 'Ошибка при получении статистики',
+				error: error instanceof Error ? error.message : String(error),
+			})
+		}
 	}
 }
+
+export const syncController = new SyncController()

@@ -60,33 +60,39 @@ export const AutocompleteInput = forwardRef<
 		)
 
 		// Оптимизированные обработчики
-		const handleInputChange = useCallback((event: any, newInputValue: string, reason: string) => {
-			if (reason === 'reset' && isSelectingRef.current) {
-				isSelectingRef.current = false
-				return
-			}
+		const handleInputChange = useCallback(
+			(event: any, newInputValue: string, reason: string) => {
+				if (reason === 'reset' && isSelectingRef.current) {
+					isSelectingRef.current = false
+					return
+				}
 
-			setInputValue(newInputValue || '')
+				setInputValue(newInputValue || '')
 
-			if (reason === 'input') {
-				onSearchChange?.(newInputValue || '')
-			}
-		}, [onSearchChange])
+				if (reason === 'input') {
+					onSearchChange?.(newInputValue || '')
+				}
+			},
+			[onSearchChange]
+		)
 
-		const handleChange = useCallback((event: any, newValue: any) => {
-			isSelectingRef.current = true
-			onChange(field.name, newValue ? newValue.value : '')
+		const handleChange = useCallback(
+			(event: any, newValue: any) => {
+				isSelectingRef.current = true
+				onChange(field.name, newValue ? newValue.value : '')
 
-			if (newValue) {
-				setInputValue(newValue.label)
-			} else {
-				setInputValue('')
-			}
+				if (newValue) {
+					setInputValue(newValue.label)
+				} else {
+					setInputValue('')
+				}
 
-			setTimeout(() => {
-				isSelectingRef.current = false
-			}, 100)
-		}, [onChange, field.name])
+				setTimeout(() => {
+					isSelectingRef.current = false
+				}, 100)
+			},
+			[onChange, field.name]
+		)
 
 		// Синхронизируем inputValue с выбранным значением
 		useEffect(() => {
@@ -103,11 +109,28 @@ export const AutocompleteInput = forwardRef<
 				lastValueRef.current = value
 
 				if (value && !selectedOption && !isSelectingRef.current) {
-					setInputValue(String(value))
-					onSearchChange?.(String(value))
+					const stringValue = String(value)
+					setInputValue(stringValue)
+					// Запускаем поиск для вставленного значения
+					onSearchChange?.(stringValue)
 				}
 			}
 		}, [value, selectedOption, onSearchChange])
+
+		// Обработка вставки текста через буфер обмена
+		const handlePaste = useCallback(
+			(event: React.ClipboardEvent) => {
+				const pastedText = event.clipboardData.getData('text')
+				if (pastedText.trim()) {
+					// Небольшая задержка для обработки вставки
+					setTimeout(() => {
+						setInputValue(pastedText)
+						onSearchChange?.(pastedText)
+					}, 100)
+				}
+			},
+			[onSearchChange]
+		)
 
 		return (
 			<FormControl fullWidth margin={compact ? 'dense' : 'normal'}>
@@ -130,6 +153,7 @@ export const AutocompleteInput = forwardRef<
 							helperText={error}
 							required={field.required}
 							size={compact ? 'small' : 'medium'}
+							onPaste={handlePaste}
 							InputProps={{
 								...params.InputProps,
 								endAdornment: (

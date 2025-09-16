@@ -89,7 +89,7 @@ const priorityLabels = {
 	urgent: 'Срочный',
 }
 
-const SubmissionManagement: React.FC = () => {
+const SubmissionManagement = () => {
 	const [submissions, setSubmissions] = useState<Submission[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
@@ -253,7 +253,9 @@ const SubmissionManagement: React.FC = () => {
 					<TextField
 						label='Поиск'
 						value={filters.search || ''}
-						onChange={e => handleFilterChange({ search: e.target.value })}
+						onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+							handleFilterChange({ search: e.target.value })
+						}
 						InputProps={{
 							startAdornment: <SearchIcon />,
 						}}
@@ -263,7 +265,9 @@ const SubmissionManagement: React.FC = () => {
 						<InputLabel>Статус</InputLabel>
 						<Select
 							value={filters.status || ''}
-							onChange={e => handleFilterChange({ status: e.target.value })}
+							onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+								handleFilterChange({ status: e.target.value })
+							}
 						>
 							<MenuItem value=''>Все</MenuItem>
 							{bitrixStages.map(stage => (
@@ -277,7 +281,9 @@ const SubmissionManagement: React.FC = () => {
 						<InputLabel>Приоритет</InputLabel>
 						<Select
 							value={filters.priority || ''}
-							onChange={e => handleFilterChange({ priority: e.target.value })}
+							onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+								handleFilterChange({ priority: e.target.value })
+							}
 						>
 							<MenuItem value=''>Все</MenuItem>
 							{Object.entries(priorityLabels).map(([value, label]) => (
@@ -319,7 +325,7 @@ const SubmissionManagement: React.FC = () => {
 								<TableCell>{submission.formId.title}</TableCell>
 								<TableCell>
 									{submission.userId
-										? `${submission.userId.firstName} ${submission.userId.lastName}`
+										? `${submission.userId.first_name} ${submission.userId.last_name}`
 										: 'Анонимная заявка'}
 								</TableCell>
 								<TableCell>
@@ -396,9 +402,15 @@ const SubmissionManagement: React.FC = () => {
 					onPageChange={handleChangePage}
 					onRowsPerPageChange={handleChangeRowsPerPage}
 					labelRowsPerPage='Строк на странице:'
-					labelDisplayedRows={({ from, to, count }) =>
-						`${from}-${to} из ${count}`
-					}
+					labelDisplayedRows={({
+						from,
+						to,
+						count,
+					}: {
+						from: number
+						to: number
+						count: number
+					}) => `${from}-${to} из ${count}`}
 				/>
 			</TableContainer>
 
@@ -458,7 +470,9 @@ const SubmissionManagement: React.FC = () => {
 													<InputLabel>Изменить статус</InputLabel>
 													<Select
 														value=''
-														onChange={e => {
+														onChange={(
+															e: React.ChangeEvent<HTMLInputElement>
+														) => {
 															if (e.target.value) {
 																handleStatusChange(
 																	selectedSubmission.id,
@@ -486,7 +500,9 @@ const SubmissionManagement: React.FC = () => {
 													size='small'
 													placeholder='Комментарий к изменению статуса'
 													value={statusComment}
-													onChange={e => setStatusComment(e.target.value)}
+													onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+														setStatusComment(e.target.value)
+													}
 													sx={{ flexGrow: 1 }}
 												/>
 											</Box>
@@ -527,7 +543,9 @@ const SubmissionManagement: React.FC = () => {
 												color='textSecondary'
 												gutterBottom
 											>
-												<strong>Интеграция с Битрикс24:</strong>
+												<Typography component='strong'>
+													Интеграция с Битрикс24:
+												</Typography>
 											</Typography>
 											<Stack direction='row' spacing={1} alignItems='center'>
 												{selectedSubmission.bitrixDealId ? (
@@ -595,7 +613,7 @@ const SubmissionManagement: React.FC = () => {
 										</Typography>
 										<List>
 											{submissionHistory.map((historyItem, index) => (
-												<React.Fragment key={historyItem.id}>
+												<Box key={historyItem.id}>
 													<ListItem>
 														<ListItemIcon>
 															<Avatar sx={{ width: 32, height: 32 }}>
@@ -626,10 +644,10 @@ const SubmissionManagement: React.FC = () => {
 																	)}
 																	{historyItem.comment && (
 																		<>
-																			<br />
-																			<em>
+																			<Typography component='br' />
+																			<Typography component='em'>
 																				Комментарий: {historyItem.comment}
-																			</em>
+																			</Typography>
 																		</>
 																	)}
 																</>
@@ -637,7 +655,7 @@ const SubmissionManagement: React.FC = () => {
 														/>
 													</ListItem>
 													{index < submissionHistory.length - 1 && <Divider />}
-												</React.Fragment>
+												</Box>
 											))}
 										</List>
 									</CardContent>

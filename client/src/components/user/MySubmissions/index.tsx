@@ -68,7 +68,7 @@ import { DEFAULT_STATUS_FILTER } from './constants'
 
 // Константы перенесены в отдельный файл
 
-const MySubmissions: React.FC = () => {
+const MySubmissions = () => {
 	const navigate = useNavigate()
 	const { user } = useAuth()
 	const { showError, showSuccess } = useNotificationHelpers()
@@ -81,9 +81,7 @@ const MySubmissions: React.FC = () => {
 	const [loading, setLoading] = useState(true)
 	const [selectedSubmission, setSelectedSubmission] =
 		useState<Submission | null>(null)
-	const [, setSubmissionHistory] = useState<
-		SubmissionHistory[]
-	>([])
+	const [, setSubmissionHistory] = useState<SubmissionHistory[]>([])
 	const [detailsOpen, setDetailsOpen] = useState(false)
 	const [formFields, setFormFields] = useState<any[]>([])
 	const [bitrixStages, setBitrixStages] = useState<BitrixStage[]>([])
@@ -211,38 +209,39 @@ const MySubmissions: React.FC = () => {
 	// Функция для редактирования заявки - НОВАЯ ЛОГИКА
 	const handleEditSubmission = async (submission: Submission) => {
 		try {
-				console.log(
-					'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
-					submission.id
-				)
+			console.log(
+				'[CLIENT EDIT DEBUG] Начало редактирования заявки:',
+				submission.id
+			)
 
 			// Получаем заявку с актуальными данными из Битрикс24
-				console.log(
-					'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
-				)
+			console.log(
+				'[CLIENT EDIT DEBUG] Запрос актуальных данных из Битрикс24...'
+			)
 			const response = await SubmissionService.getSubmissionForEdit(
 				submission.id
 			)
 
 			console.log(
-			'[CLIENT EDIT DEBUG] response.data.preloadedOptions:',
+				'[CLIENT EDIT DEBUG] response.data.preloadedOptions:',
 				response.data.preloadedOptions
 			)
 
 			if (response.success) {
 				console.log(
-				'[CLIENT EDIT DEBUG] Обновленные formData:',
+					'[CLIENT EDIT DEBUG] Обновленные formData:',
 					response.data.formData
 				)
 				console.log(
-				'[CLIENT EDIT DEBUG] Предзагруженные опции:',
+					'[CLIENT EDIT DEBUG] Предзагруженные опции:',
 					response.data.preloadedOptions
 				)
 
 				// Сохраняем актуальные данные для редактирования
 				const editData = {
 					submissionId: response.data.id,
-					formId: response.data.formId || submission.formId?.id || submission.formId,
+					formId:
+						response.data.formId || submission.formId?.id || submission.formId,
 					formData: response.data.formData,
 					preloadedOptions: response.data.preloadedOptions || {},
 				}
@@ -283,18 +282,17 @@ const MySubmissions: React.FC = () => {
 	// Копирование заявки - точно как редактирование
 	const handleCopySubmission = async (submission: Submission) => {
 		try {
-
 			// Получаем данные заявки для копирования (теперь с preloadedOptions)
 			const response = await SubmissionService.copySubmission(submission.id)
 
 			console.log(
-			'[CLIENT COPY] response.data.preloadedOptions:',
+				'[CLIENT COPY] response.data.preloadedOptions:',
 				response.data.preloadedOptions
 			)
 
 			if (response.success) {
 				console.log(
-				'[CLIENT COPY] Предзагруженные опции:',
+					'[CLIENT COPY] Предзагруженные опции:',
 					response.data.preloadedOptions
 				)
 
@@ -434,9 +432,7 @@ const MySubmissions: React.FC = () => {
 	// Функция больше не нужна, так как formData убрано
 
 	// Мобильная карточка заявки
-	const SubmissionCard: React.FC<{ submission: Submission }> = ({
-		submission,
-	}) => {
+	const SubmissionCard = ({ submission }: { submission: Submission }) => {
 		// Проверяем, является ли статус "Отгружено" (C1:WON)
 		const isShipped = submission.status === 'C1:WON'
 
@@ -472,7 +468,7 @@ const MySubmissions: React.FC = () => {
 							</Typography>
 							<Typography variant='body2' color='text.secondary'>
 								User:{' '}
-								{submission.userId?.firstName && submission.userId?.lastName
+								{submission.userId?.first_name && submission.userId?.last_name
 									? `${submission.userId.firstName} ${submission.userId.lastName}`
 									: submission.userId?.name || 'Анонимная заявка'}
 							</Typography>
@@ -590,11 +586,11 @@ const MySubmissions: React.FC = () => {
 							<FormControl size='small' sx={{ minWidth: 120 }}>
 								<Select
 									value={submission.status}
-									onChange={e =>
+									onChange={(e: any) =>
 										handleStatusChange(submission.id, e.target.value)
 									}
 									displayEmpty
-									renderValue={value => {
+									renderValue={(value: any) => {
 										const statusName = getStatusName(submission.status)
 										return statusName || 'Не указан'
 									}}
@@ -679,7 +675,9 @@ const MySubmissions: React.FC = () => {
 								size='small'
 								placeholder='Поиск по номеру заявки...'
 								value={filters.search || ''}
-								onChange={e => handleFilterChange({ search: e.target.value })}
+								onChange={(e: any) =>
+									handleFilterChange({ search: e.target.value })
+								}
 								InputProps={{
 									startAdornment: (
 										<SearchIcon sx={{ mr: 1, color: 'action.active' }} />
@@ -695,11 +693,11 @@ const MySubmissions: React.FC = () => {
 								>
 									<InputLabel>Клиент</InputLabel>
 									<Select
-										value={filters.userId || ''}
-										label='Клиент'
-										onChange={e =>
-											handleFilterChange({ userId: e.target.value })
-										}
+									value={filters.userId || ''}
+									label='Клиент'
+									onChange={(e: any) =>
+										handleFilterChange({ userId: e.target.value })
+									}
 									>
 										<MenuItem value=''>Все клиенты</MenuItem>
 										{users.map(user => (
@@ -719,9 +717,11 @@ const MySubmissions: React.FC = () => {
 							>
 								<InputLabel>Статус</InputLabel>
 								<Select
-									value={filters.status || ''}
-									label='Статус'
-									onChange={e => handleFilterChange({ status: e.target.value })}
+								value={filters.status || ''}
+								label='Статус'
+								onChange={(e: any) =>
+									handleFilterChange({ status: e.target.value })
+								}
 								>
 									<MenuItem value=''>Все статусы</MenuItem>
 									{bitrixStages.map(stage => (
@@ -825,9 +825,9 @@ const MySubmissions: React.FC = () => {
 												<TableCell>
 													{submission.userId && (
 														<Typography variant='body2'>
-															{submission.userId.firstName &&
-															submission.userId.lastName
-																? `${submission.userId.firstName} ${submission.userId.lastName}`
+															{submission.userId.first_name &&
+															submission.userId.last_name
+																? `${submission.userId.first_name} ${submission.userId.last_name}`
 																: submission.userId.name || 'Не указан'}
 														</Typography>
 													)}
@@ -841,14 +841,16 @@ const MySubmissions: React.FC = () => {
 													<FormControl size='small' sx={{ minWidth: 120 }}>
 														<Select
 															value={getCleanStatus(submission.status)}
-															onChange={e =>
+															onChange={(
+																e: React.ChangeEvent<HTMLInputElement>
+															) =>
 																handleStatusChange(
 																	submission.id,
 																	e.target.value
 																)
 															}
 															displayEmpty
-															renderValue={value => {
+															renderValue={(value: any) => {
 																const statusName = getStatusName(
 																	submission.status
 																)
@@ -969,7 +971,7 @@ const MySubmissions: React.FC = () => {
 							<Pagination
 								count={Math.ceil(total / rowsPerPage)}
 								page={page + 1}
-								onChange={(_, newPage) => setPage(newPage - 1)}
+								onChange={(_: any, newPage: number) => setPage(newPage - 1)}
 								color='primary'
 								size='small'
 								showFirstButton
@@ -985,9 +987,15 @@ const MySubmissions: React.FC = () => {
 								onPageChange={handleChangePage}
 								onRowsPerPageChange={handleChangeRowsPerPage}
 								labelRowsPerPage='Строк на странице:'
-								labelDisplayedRows={({ from, to, count }) =>
-									`${from}-${to} из ${count}`
-								}
+								labelDisplayedRows={({
+									from,
+									to,
+									count,
+								}: {
+									from: number
+									to: number
+									count: number
+								}) => `${from}-${to} из ${count}`}
 							/>
 						)}
 					</Box>
@@ -1035,19 +1043,19 @@ const MySubmissions: React.FC = () => {
 												component='span'
 												sx={{ mb: 1, display: 'block' }}
 											>
-												<strong>Статус:</strong>
+												<Typography component='strong'>Статус:</Typography>
 											</Typography>
 											<FormControl size='small' sx={{ minWidth: 200 }}>
 												<Select
 													value={getCleanStatus(selectedSubmission.status)}
-													onChange={e =>
+													onChange={(e: any) =>
 														handleStatusChange(
 															selectedSubmission.id,
 															e.target.value
 														)
 													}
 													displayEmpty
-													renderValue={value => {
+													renderValue={(value: any) => {
 														const statusName = getStatusName(
 															selectedSubmission.status
 														)
@@ -1064,7 +1072,7 @@ const MySubmissions: React.FC = () => {
 										</Box>
 										<Box>
 											<Typography variant='body2' color='text.secondary'>
-												<strong>Создано:</strong>{' '}
+												<Typography component='strong'>Создано:</Typography>{' '}
 												{format(
 													new Date(selectedSubmission.createdAt),
 													'dd.MM.yyyy HH:mm',
@@ -1076,75 +1084,125 @@ const MySubmissions: React.FC = () => {
 								</CardContent>
 							</Card>
 
-
 							{/* Заполненные поля формы */}
-							{selectedSubmission.formData && Object.keys(selectedSubmission.formData).length > 0 && (
-								<Card sx={{ backgroundColor: '#f8f9fa' }}>
-									<CardContent>
-										<Typography variant='h6' gutterBottom color='primary'>
-											Данные заявки
-										</Typography>
-										<Box sx={{ 
-											mt: 2,
-											maxHeight: '400px',
-											overflowY: 'auto',
-											'&::-webkit-scrollbar': {
-												width: '8px',
-											},
-											'&::-webkit-scrollbar-track': {
-												backgroundColor: 'rgba(0,0,0,0.05)',
-												borderRadius: '4px',
-											},
-											'&::-webkit-scrollbar-thumb': {
-												backgroundColor: 'rgba(0,0,0,0.2)',
-												borderRadius: '4px',
-												'&:hover': {
-													backgroundColor: 'rgba(0,0,0,0.3)',
-												}
-											}
-										}}>
-											{(() => {
-												// Собираем все заполненные поля без группировки по секциям
-												const filledFields: any[] = []
-												
-												// Сортируем поля по порядку из формы
-												const sortedFields = [...formFields].sort((a, b) => {
-													return (a.order || 0) - (b.order || 0)
-												})
-												
-												sortedFields.forEach((field: any) => {
-													// Пропускаем заголовки секций
-													if (field.type === 'header') {
-														return
-													}
-													
-													// Проверяем, есть ли значение для этого поля
-													const value = selectedSubmission.formData?.[field.name]
-													if (value !== undefined && value !== null && value !== '' && 
-														!(Array.isArray(value) && value.length === 0)) {
-														
-														// Форматируем значение в зависимости от типа поля
-														let displayValue = value
-														if (field.type === 'checkbox') {
-															displayValue = value ? '✓ Да' : '✗ Нет'
-														} else if (field.type === 'date') {
-															try {
-																displayValue = format(new Date(value), 'dd.MM.yyyy', { locale: ru })
-															} catch {
-																displayValue = value
-															}
-														} else if (field.type === 'select' || field.type === 'radio') {
-															// Для select и radio полей ищем соответствующий label в опциях
-															if (field.options && Array.isArray(field.options)) {
-																const option = field.options.find((opt: any) => opt.value === value)
-																displayValue = option ? option.label : value
-															} else {
-																displayValue = value
-															}
-														} else if (field.type === 'autocomplete') {
-															// Для autocomplete полей может быть сохранен ID, но нужно показать название
-															// Сервер может вернуть обогащенные данные с label
-															if (typeof value === 'object' && value !== null) {
+							{selectedSubmission.formData &&
+								Object.keys(selectedSubmission.formData).length > 0 && (
+									<Card sx={{ backgroundColor: '#f8f9fa' }}>
+										<CardContent>
+											<Typography variant='h6' gutterBottom color='primary'>
+												Данные заявки
+											</Typography>
+											<Box
+												sx={{
+													mt: 2,
+													maxHeight: '400px',
+													overflowY: 'auto',
+													'&::-webkit-scrollbar': {
+														width: '8px',
+													},
+													'&::-webkit-scrollbar-track': {
+														backgroundColor: 'rgba(0,0,0,0.05)',
+														borderRadius: '4px',
+													},
+													'&::-webkit-scrollbar-thumb': {
+														backgroundColor: 'rgba(0,0,0,0.2)',
+														borderRadius: '4px',
+														'&:hover': {
+															backgroundColor: 'rgba(0,0,0,0.3)',
+														},
+													},
+												}}
+											>
+												{(() => {
+													// Собираем все заполненные поля без группировки по секциям
+													const filledFields: any[] = []
+
+													// Сортируем поля по порядку из формы
+													const sortedFields = [...formFields].sort((a, b) => {
+														return (a.order || 0) - (b.order || 0)
+													})
+
+													sortedFields.forEach((field: any) => {
+														// Пропускаем заголовки секций
+														if (field.type === 'header') {
+															return
+														}
+
+														// Проверяем, есть ли значение для этого поля
+														const value =
+															selectedSubmission.formData?.[field.name]
+														if (
+															value !== undefined &&
+															value !== null &&
+															value !== '' &&
+															!(Array.isArray(value) && value.length === 0)
+														) {
+															// Форматируем значение в зависимости от типа поля
+															let displayValue = value
+															if (field.type === 'checkbox') {
+																displayValue = value ? '✓ Да' : '✗ Нет'
+															} else if (field.type === 'date') {
+																try {
+																	displayValue = format(
+																		new Date(value),
+																		'dd.MM.yyyy',
+																		{ locale: ru }
+																	)
+																} catch {
+																	displayValue = value
+																}
+															} else if (
+																field.type === 'select' ||
+																field.type === 'radio'
+															) {
+																// Для select и radio полей ищем соответствующий label в опциях
+																if (
+																	field.options &&
+																	Array.isArray(field.options)
+																) {
+																	const option = field.options.find(
+																		(opt: any) => opt.value === value
+																	)
+																	displayValue = option ? option.label : value
+																} else {
+																	displayValue = value
+																}
+															} else if (field.type === 'autocomplete') {
+																// Для autocomplete полей может быть сохранен ID, но нужно показать название
+																// Сервер может вернуть обогащенные данные с label
+																if (
+																	typeof value === 'object' &&
+																	value !== null
+																) {
+																	if (value.label) {
+																		displayValue = value.label
+																	} else if (value.TITLE) {
+																		displayValue = value.TITLE
+																	} else if (value.NAME) {
+																		displayValue = value.NAME
+																	} else {
+																		displayValue = JSON.stringify(value)
+																	}
+																} else {
+																	// Если это просто ID, попробуем найти в опциях
+																	if (
+																		field.options &&
+																		Array.isArray(field.options)
+																	) {
+																		const option = field.options.find(
+																			(opt: any) => opt.value === value
+																		)
+																		displayValue = option ? option.label : value
+																	} else {
+																		displayValue = value
+																	}
+																}
+															} else if (Array.isArray(value)) {
+																displayValue = value.join(', ')
+															} else if (
+																typeof value === 'object' &&
+																value !== null
+															) {
 																if (value.label) {
 																	displayValue = value.label
 																} else if (value.TITLE) {
@@ -1154,97 +1212,93 @@ const MySubmissions: React.FC = () => {
 																} else {
 																	displayValue = JSON.stringify(value)
 																}
-															} else {
-																// Если это просто ID, попробуем найти в опциях
-																if (field.options && Array.isArray(field.options)) {
-																	const option = field.options.find((opt: any) => opt.value === value)
-																	displayValue = option ? option.label : value
-																} else {
-																	displayValue = value
-																}
 															}
-														} else if (Array.isArray(value)) {
-															displayValue = value.join(', ')
-														} else if (typeof value === 'object' && value !== null) {
-															if (value.label) {
-																displayValue = value.label
-															} else if (value.TITLE) {
-																displayValue = value.TITLE
-															} else if (value.NAME) {
-																displayValue = value.NAME
-															} else {
-																displayValue = JSON.stringify(value)
-															}
+
+															filledFields.push({
+																label: field.label || field.name,
+																value: displayValue,
+																type: field.type,
+															})
 														}
-														
-														filledFields.push({
-															label: field.label || field.name,
-															value: displayValue,
-															type: field.type
-														})
+													})
+
+													if (filledFields.length === 0) {
+														return (
+															<Typography
+																variant='body2'
+																color='text.secondary'
+																sx={{ fontStyle: 'italic' }}
+															>
+																Нет заполненных данных
+															</Typography>
+														)
 													}
-												})
-												
-												if (filledFields.length === 0) {
+
+													// Отображаем все заполненные поля без группировки
 													return (
-														<Typography variant='body2' color='text.secondary' sx={{ fontStyle: 'italic' }}>
-															Нет заполненных данных
-														</Typography>
+														<>
+															<Typography
+																variant='caption'
+																color='text.secondary'
+																sx={{ mb: 2, display: 'block' }}
+															>
+																Заполнено полей: {filledFields.length}
+															</Typography>
+															<Box>
+																{filledFields.map(
+																	(field: any, index: number) => (
+																		<Box
+																			key={index}
+																			sx={{
+																				mb: 0.75,
+																				display: 'flex',
+																				alignItems: 'flex-start',
+																				gap: 1,
+																			}}
+																		>
+																			<Typography
+																				variant='body2'
+																				component='span'
+																				sx={{
+																					color: 'text.secondary',
+																					minWidth: '140px',
+																					flexShrink: 0,
+																					fontSize: '0.875rem',
+																				}}
+																			>
+																				{field.label}:
+																			</Typography>
+																			<Typography
+																				variant='body2'
+																				component='span'
+																				sx={{
+																					fontWeight:
+																						field.type === 'header' ? 500 : 400,
+																					color:
+																						field.type === 'checkbox' &&
+																						field.value.startsWith('✓')
+																							? 'success.main'
+																							: field.type === 'checkbox' &&
+																							  field.value.startsWith('✗')
+																							? 'text.disabled'
+																							: 'text.primary',
+																					wordBreak: 'break-word',
+																					fontSize: '0.875rem',
+																				}}
+																			>
+																				{field.value}
+																			</Typography>
+																		</Box>
+																	)
+																)}
+															</Box>
+														</>
 													)
-												}
-												
-												// Отображаем все заполненные поля без группировки
-												return (
-													<>
-														<Typography variant='caption' color='text.secondary' sx={{ mb: 2, display: 'block' }}>
-															Заполнено полей: {filledFields.length}
-														</Typography>
-														<Box>
-															{filledFields.map((field: any, index: number) => (
-																<Box key={index} sx={{ 
-																	mb: 0.75,
-																	display: 'flex',
-																	alignItems: 'flex-start',
-																	gap: 1
-																}}>
-																	<Typography 
-																		variant='body2' 
-																		component='span' 
-																		sx={{ 
-																			color: 'text.secondary',
-																			minWidth: '140px',
-																			flexShrink: 0,
-																			fontSize: '0.875rem'
-																		}}
-																	>
-																		{field.label}:
-																	</Typography>
-																	<Typography 
-																		variant='body2' 
-																		component='span'
-																		sx={{ 
-																			fontWeight: field.type === 'header' ? 500 : 400,
-																			color: field.type === 'checkbox' && field.value.startsWith('✓') 
-																				? 'success.main' 
-																				: field.type === 'checkbox' && field.value.startsWith('✗')
-																				? 'text.disabled'
-																				: 'text.primary',
-																			wordBreak: 'break-word',
-																			fontSize: '0.875rem'
-																		}}
-																	>
-																		{field.value}
-																	</Typography>
-																</Box>
-															))}
-														</Box>
-													</>
-												)
-											})()}
-										</Box>
-									</CardContent>
-								</Card>
-							)}
+												})()}
+											</Box>
+										</CardContent>
+									</Card>
+								)}
 						</Stack>
 					)}
 				</DialogContent>

@@ -36,7 +36,7 @@ import {
 	getStatusName,
 } from '../utils/statusUtils'
 
-export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
+export const SubmissionsTable = ({
 	submissions,
 	bitrixStages,
 	onEditSubmission,
@@ -48,7 +48,7 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 	total,
 	onPageChange,
 	onRowsPerPageChange,
-}) => {
+}: SubmissionsTableProps) => {
 	const getSyncIcon = (status: string) => {
 		switch (status) {
 			case 'synced':
@@ -78,21 +78,32 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 				<TableBody>
 					{submissions.map(submission => {
 						// Проверяем, является ли статус завершенным (Отгружено или Отменено)
-						const isCompleted = ['C1:WON', 'C1:LOSE'].includes(submission.status)
+						const isCompleted = ['C1:WON', 'C1:LOSE'].includes(
+							submission.status
+						)
 						const isCancelled = submission.status === 'C1:LOSE'
-						const canCancel = ['C1:NEW', 'C1:UC_GJLIZP'].includes(submission.status)
+						const canCancel = ['C1:NEW', 'C1:UC_GJLIZP'].includes(
+							submission.status
+						)
 
 						// Отладочный вывод
-						console.log(`Submission ${submission.id}: status=${submission.status}, canCancel=${canCancel}, isCompleted=${isCompleted}`)
+						console.log(
+							`Submission ${submission.id}: status=${submission.status}, canCancel=${canCancel}, isCompleted=${isCompleted}`
+						)
 
 						return (
-							<TableRow key={submission.id} sx={{
-								backgroundColor: isCancelled ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
-								opacity: isCancelled ? 0.7 : 1,
-							}}>
+							<TableRow
+								key={submission.id}
+								sx={{
+									backgroundColor: isCancelled
+										? 'rgba(0, 0, 0, 0.04)'
+										: 'inherit',
+									opacity: isCancelled ? 0.7 : 1,
+								}}
+							>
 								<TableCell>
-									<Typography 
-										variant='body2' 
+									<Typography
+										variant='body2'
 										fontWeight='bold'
 										sx={{
 											textDecoration: isCancelled ? 'line-through' : 'none',
@@ -113,11 +124,11 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 									<FormControl size='small' sx={{ minWidth: 120 }}>
 										<Select
 											value={getCleanStatus(submission.status)}
-											onChange={e =>
+											onChange={(e: { target: { value: string } }) =>
 												onStatusChange(submission.id, e.target.value)
 											}
 											displayEmpty
-											renderValue={value => {
+											renderValue={() => {
 												// Используем fallback для отображения понятного текста
 												switch (submission.status) {
 													case 'C1:NEW':
@@ -194,7 +205,10 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 										{/* Временная кнопка для тестирования - всегда видна */}
 										<IconButton
 											onClick={() => {
-												console.log('Cancel button clicked for submission:', submission.id)
+												console.log(
+													'Cancel button clicked for submission:',
+													submission.id
+												)
 												onCancelSubmission(submission)
 											}}
 											color='warning'
@@ -226,7 +240,7 @@ export const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
 				onPageChange={onPageChange}
 				onRowsPerPageChange={onRowsPerPageChange}
 				labelRowsPerPage='Строк на странице:'
-				labelDisplayedRows={({ from, to, count }) =>
+				labelDisplayedRows={({ from, to, count }: { from: number; to: number; count: number }) =>
 					`${from}-${to} из ${count}`
 				}
 			/>

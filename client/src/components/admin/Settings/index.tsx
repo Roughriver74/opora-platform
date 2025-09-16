@@ -28,6 +28,7 @@ import {
 	Setting,
 	SettingUpdate,
 } from '../../../services/settingsService'
+import SyncManager from '../SyncManager'
 
 interface CategorySettings {
 	[key: string]: Setting[]
@@ -40,6 +41,7 @@ const categoryNames: { [key: string]: string } = {
 	integrations: 'Интеграции',
 	ui: 'Интерфейс',
 	system: 'Система',
+	sync: 'Синхронизация',
 }
 
 const Settings: React.FC = () => {
@@ -90,6 +92,11 @@ const Settings: React.FC = () => {
 				}
 				grouped[setting.category].push(setting)
 			})
+
+			// Добавляем категорию синхронизации, даже если в ней нет настроек
+			if (!grouped['sync']) {
+				grouped['sync'] = []
+			}
 
 			setSettings(grouped)
 		} catch (error) {
@@ -312,57 +319,61 @@ const Settings: React.FC = () => {
 						</Typography>
 					</AccordionSummary>
 					<AccordionDetails>
-						<Box
-							sx={{
-								display: 'grid',
-								gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-								gap: 3,
-							}}
-						>
-							{categorySettings.map(setting => (
-								<Paper key={setting._id} sx={{ p: 2 }}>
-									<Box
-										sx={{
-											display: 'flex',
-											justifyContent: 'space-between',
-											alignItems: 'flex-start',
-											mb: 2,
-										}}
-									>
-										<Box>
-											<Typography
-												variant='subtitle2'
-												sx={{ fontWeight: 'bold' }}
-											>
-												{setting.key}
-											</Typography>
-											<Chip
-												label={setting.type}
-												size='small'
-												variant='outlined'
-												sx={{ mt: 0.5 }}
-											/>
+						{category === 'sync' ? (
+							<SyncManager />
+						) : (
+							<Box
+								sx={{
+									display: 'grid',
+									gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+									gap: 3,
+								}}
+							>
+								{categorySettings.map(setting => (
+									<Paper key={setting._id} sx={{ p: 2 }}>
+										<Box
+											sx={{
+												display: 'flex',
+												justifyContent: 'space-between',
+												alignItems: 'flex-start',
+												mb: 2,
+											}}
+										>
+											<Box>
+												<Typography
+													variant='subtitle2'
+													sx={{ fontWeight: 'bold' }}
+												>
+													{setting.key}
+												</Typography>
+												<Chip
+													label={setting.type}
+													size='small'
+													variant='outlined'
+													sx={{ mt: 0.5 }}
+												/>
+											</Box>
+											<Box>
+												<IconButton
+													size='small'
+													onClick={() => handleEditSetting(setting)}
+												>
+													<EditIcon />
+												</IconButton>
+												<IconButton
+													size='small'
+													onClick={() => handleDeleteSetting(setting)}
+													color='error'
+												>
+													<DeleteIcon />
+												</IconButton>
+											</Box>
 										</Box>
-										<Box>
-											<IconButton
-												size='small'
-												onClick={() => handleEditSetting(setting)}
-											>
-												<EditIcon />
-											</IconButton>
-											<IconButton
-												size='small'
-												onClick={() => handleDeleteSetting(setting)}
-												color='error'
-											>
-												<DeleteIcon />
-											</IconButton>
-										</Box>
-									</Box>
-									{renderSettingInput(setting)}
-								</Paper>
-							))}
-						</Box>
+										{renderSettingInput(setting)}
+									</Paper>
+								))}
+							</Box>
+						)}
 					</AccordionDetails>
 				</Accordion>
 			))}

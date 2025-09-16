@@ -15,13 +15,13 @@ import {
 } from '@mui/icons-material'
 import { SubmissionsFiltersProps } from '../types'
 
-export const SubmissionsFilters: React.FC<SubmissionsFiltersProps> = ({
+export const SubmissionsFilters = ({
 	filters,
 	onFilterChange,
 	bitrixStages,
 	users,
 	isAdmin,
-}) => {
+}: SubmissionsFiltersProps) => {
 	const handleResetFilters = () => {
 		onFilterChange({})
 	}

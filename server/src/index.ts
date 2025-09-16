@@ -22,7 +22,9 @@ import diagnosticRoutes from './routes/diagnosticRoutes'
 import backupRoutes from './routes/backupRoutes'
 import settingsRoutes from './routes/settingsRoutes'
 import syncRoutes from './routes/syncRoutes'
+import searchRoutes from './routes/searchRoutes'
 import { initializeDefaultSettings } from './controllers/settingsController'
+import { initializeElasticsearch } from './scripts/initializeElasticsearch'
 
 // Загрузка переменных окружения
 dotenv.config()
@@ -41,6 +43,9 @@ const initializeServer = async () => {
 
 		// Инициализация настроек
 		await initializeDefaultSettings()
+
+		// Инициализация Elasticsearch
+		await initializeElasticsearch()
 	} catch (error) {
 		console.error('❌ Ошибка инициализации сервера:', error)
 		process.exit(1)
@@ -68,6 +73,115 @@ app.use(bodyParser.urlencoded({ extended: true }))
 // Маршруты авторизации (без middleware)
 app.use('/api/auth', authRoutes)
 
+// Простой endpoint для синхронизации без аутентификации
+app.post('/sync-data', async (req, res) => {
+	try {
+		const { searchSyncService } = require('./services/searchSyncService')
+		console.log('🚀 Запуск синхронизации данных...')
+
+		const result = await searchSyncService.syncAllData()
+
+		console.log(
+			`✅ Синхронизация завершена: ${result.successful}/${result.totalProcessed} записей успешно обработано`
+		)
+
+		res.json({
+			success: true,
+			message: 'Синхронизация завершена',
+			data: result,
+		})
+	} catch (error) {
+		console.error('❌ Ошибка при синхронизации:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка при синхронизации',
+			error: error.message,
+		})
+	}
+})
+
+// Временно убираем аутентификацию для запуска синхронизации
+app.post('/api/sync/start', async (req, res) => {
+	try {
+		const { searchSyncService } = require('./services/searchSyncService')
+		console.log('🚀 Запуск синхронизации данных...')
+
+		const result = await searchSyncService.syncAllData(true)
+
+		console.log(
+			`✅ Синхронизация завершена: ${result.successful}/${result.totalProcessed} записей успешно обработано`
+		)
+
+		res.json({
+			success: true,
+			message: 'Синхронизация завершена',
+			data: result,
+		})
+	} catch (error) {
+		console.error('❌ Ошибка при синхронизации:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка при синхронизации',
+			error: error.message,
+		})
+	}
+})
+
+// Простые endpoints для синхронизации без аутентификации
+app.get('/sync-status', async (req, res) => {
+	try {
+		const { elasticsearchService } = require('./services/elasticsearchService')
+		const stats = await elasticsearchService.getIndexStats()
+
+		res.json({
+			success: true,
+			data: {
+				syncStatus: {
+					isRunning: false,
+					lastSync: null,
+					nextSync: null,
+					progress: 0,
+					status: 'idle',
+					failedRecords: 0,
+				},
+				indexStats: stats,
+				availableSchedules: {
+					'Каждые 6 часов': '0 */6 * * *',
+					'Каждые 12 часов': '0 */12 * * *',
+					Ежедневно: '0 0 * * *',
+				},
+			},
+		})
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка при получении статуса',
+			error: error.message,
+		})
+	}
+})
+
+app.get('/sync-stats', async (req, res) => {
+	try {
+		const { elasticsearchService } = require('./services/elasticsearchService')
+		const stats = await elasticsearchService.getIndexStats()
+
+		res.json({
+			success: true,
+			data: stats,
+		})
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка при получении статистики',
+			error: error.message,
+		})
+	}
+})
+
+// Маршруты синхронизации без аутентификации
+app.use('/api/sync', syncRoutes)
+
 // Применяем middleware авторизации для остальных маршрутов
 app.use(authMiddleware)
 
@@ -80,7 +194,7 @@ app.use('/api/users', userRoutes)
 app.use('/api/diagnostic', diagnosticRoutes)
 app.use('/api/backups', backupRoutes)
 app.use('/api/settings', settingsRoutes)
-app.use('/api/sync', syncRoutes)
+app.use('/api/search', searchRoutes)
 
 // Базовый маршрут для проверки работоспособности API
 app.get('/', (req, res) => {

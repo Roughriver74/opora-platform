@@ -11,6 +11,7 @@ export interface Submission {
 		title: string
 	}
 	userId?: {
+		[x: string]: any
 		id: string
 		name: string
 		email: string

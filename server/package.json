@@ -14,13 +14,15 @@
 		"migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/config/database.config.ts",
 		"db:check": "ts-node --transpile-only src/database/migrations/scripts/check-tables.ts",
 		"db:clean": "ts-node --transpile-only src/database/migrations/scripts/clean-db.ts",
-		"db:verify": "ts-node --transpile-only src/database/migrations/scripts/verify-import.ts"
+		"db:verify": "ts-node --transpile-only src/database/migrations/scripts/verify-import.ts",
+		"test:elasticsearch": "ts-node --transpile-only src/scripts/testElasticsearch.ts"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
 	"description": "",
 	"dependencies": {
+		"@elastic/elasticsearch": "^8.11.0",
 		"@types/bcrypt": "^5.0.2",
 		"@types/bcryptjs": "^2.4.6",
 		"axios": "^1.9.0",
@@ -30,6 +32,7 @@
 		"class-transformer": "^0.5.1",
 		"class-validator": "^0.14.2",
 		"cors": "^2.8.5",
+		"node-cron": "^3.0.3",
 		"dotenv": "^16.5.0",
 		"express": "^5.1.0",
 		"jsonwebtoken": "^9.0.2",

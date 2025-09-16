@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { FormFieldOption } from '../../../../types'
 import { FormFieldService } from '../../../../services/formFieldService'
 import { FIELD_CONSTANTS } from '../constants'
@@ -15,16 +15,17 @@ export const useDynamicOptions = (
 	const [selectedOption, setSelectedOption] = useState<FormFieldOption | null>(
 		null
 	)
-	const [allOptions, setAllOptions] = useState<FormFieldOption[]>([])
-	const [lastQuery, setLastQuery] = useState<string>('')
-	const [hasResults, setHasResults] = useState<boolean>(false)
-	const [failedAttempts, setFailedAttempts] = useState<number>(0)
-	const abortControllerRef = useRef<AbortController | null>(null)
-	const { smartSearch } = useSmartSearch()
+	const [allOptions, setAllOptions] = useState<FormFieldOption[]>([]) // Кэш всех опций для умного поиска
+	const [lastQuery, setLastQuery] = useState<string>('') // Отслеживаем последний запрос
+	const { smartSearch, debouncedSearch } = useSmartSearch()
 
-	// Initialize preloaded options (без лишних логов)
+	// Initialize preloaded options
 	useEffect(() => {
 		if (preloadedOptions && preloadedOptions.length > 0) {
+			console.log(
+				'🔧 [useDynamicOptions] Устанавливаем предзагруженные опции:',
+				preloadedOptions
+			)
 			setOptions(preloadedOptions)
 			setAllOptions(preloadedOptions)
 		}
@@ -100,45 +101,21 @@ export const useDynamicOptions = (
 		}
 	}, [dynamicSource, allOptions.length])
 
-	// Функция для фильтрации неподходящих результатов
-	const filterRelevantResults = useCallback(
-		(options: FormFieldOption[], query: string): FormFieldOption[] => {
-			if (!query.trim()) return options
-
-			const queryLower = query.toLowerCase()
-
-			return options.filter(option => {
-				const labelLower = option.label.toLowerCase()
-
-				// Проверяем различные критерии релевантности
-				const hasExactMatch = labelLower.includes(queryLower)
-				const hasWordMatch = labelLower
-					.split(/\s+/)
-					.some(
-						word => word.startsWith(queryLower) || word.includes(queryLower)
-					)
-				const hasPartialMatch = queryLower
-					.split('')
-					.every(char => labelLower.includes(char))
-
-				// Возвращаем только если есть хотя бы одно совпадение
-				return hasExactMatch || hasWordMatch || hasPartialMatch
-			})
-		},
-		[]
-	)
-
 	// Функция для умного поиска по кэшированным опциям
 	const smartSearchOptions = useCallback(
 		(query: string) => {
-			if (!query.trim() || allOptions.length === 0) {
+			if (!query.trim()) {
+				return []
+			}
+
+			if (allOptions.length === 0) {
 				return []
 			}
 
 			const smartResults = smartSearch(query, allOptions)
-			return filterRelevantResults(smartResults, query)
+			return smartResults
 		},
-		[allOptions, smartSearch, filterRelevantResults]
+		[allOptions, smartSearch]
 	)
 
 	const loadDynamicOptions = useCallback(
@@ -149,18 +126,11 @@ export const useDynamicOptions = (
 
 			const trimmedQuery = query.trim()
 
-			// Отменяем предыдущий запрос
-			if (abortControllerRef.current) {
-				abortControllerRef.current.abort()
-			}
-
 			// Если запрос пустой, очищаем опции
 			if (!trimmedQuery) {
 				setOptions([])
 				setLoading(false)
 				setLastQuery('')
-				setHasResults(false)
-				setFailedAttempts(0) // Сбрасываем счетчик неудачных попыток
 				return
 			}
 
@@ -169,34 +139,13 @@ export const useDynamicOptions = (
 				return
 			}
 
-			// Если это тот же запрос, что и последний, и у нас уже есть результаты, не делаем новый запрос
-			if (trimmedQuery === lastQuery && hasResults && !loading) {
-				return
-			}
-
-			// Защита от спама: если было много неудачных попыток для этого запроса, не делаем новый запрос
-			if (trimmedQuery === lastQuery && failedAttempts >= 15) {
-				// Increased limit from 5 to 15
-				console.log(
-					`🚫 useDynamicOptions: Слишком много неудачных попыток для "${trimmedQuery}", пропускаем запрос`
-				)
+			// Если это тот же запрос, что и последний, не делаем новый запрос
+			if (trimmedQuery === lastQuery) {
 				return
 			}
 
 			setLastQuery(trimmedQuery)
 			setLoading(true)
-
-			// Если это новый запрос (не тот же самый), сбрасываем счетчик неудачных попыток
-			if (trimmedQuery !== lastQuery) {
-				setFailedAttempts(0)
-				console.log(
-					`🔄 useDynamicOptions: Счетчик неудачных попыток сброшен для нового запроса "${trimmedQuery}"`
-				)
-			}
-
-			// Создаем новый AbortController для этого запроса
-			const abortController = new AbortController()
-			abortControllerRef.current = abortController
 
 			try {
 				let dataOptions: FormFieldOption[] = []
@@ -204,12 +153,15 @@ export const useDynamicOptions = (
 				// Сначала пробуем умный поиск по кэшированным опциям
 				if (allOptions.length > 0) {
 					dataOptions = smartSearchOptions(trimmedQuery)
+					console.log(
+						`🧠 useDynamicOptions: Умный поиск для "${trimmedQuery}":`,
+						dataOptions.length,
+						'результатов'
+					)
 
 					// Если умный поиск дал результаты, используем их
 					if (dataOptions.length > 0) {
 						setOptions(dataOptions)
-						setHasResults(true)
-						setFailedAttempts(0) // Сбрасываем счетчик неудачных попыток
 						setLoading(false)
 						return
 					}
@@ -220,7 +172,7 @@ export const useDynamicOptions = (
 
 				switch (dynamicSource.source) {
 					case 'catalog':
-						response = await FormFieldService.getProducts(trimmedQuery)
+						response = await FormFieldService.getProducts(query)
 						if (response?.result) {
 							dataOptions = response.result.map((product: any) => ({
 								value: product.ID,
@@ -236,8 +188,9 @@ export const useDynamicOptions = (
 						break
 
 					case 'companies':
-						response = await FormFieldService.getCompanies(trimmedQuery)
+						response = await FormFieldService.getCompanies(query)
 						if (response?.result) {
+							// Сначала создаем базовые опции
 							const baseOptions = response.result.map((company: any) => ({
 								value: company.ID,
 								title: company.TITLE,
@@ -249,6 +202,7 @@ export const useDynamicOptions = (
 								},
 							}))
 
+							// Находим дублирующиеся названия
 							const titleCounts = baseOptions.reduce(
 								(acc: Record<string, number>, option: any) => {
 									acc[option.title] = (acc[option.title] || 0) + 1
@@ -257,14 +211,17 @@ export const useDynamicOptions = (
 								{} as Record<string, number>
 							)
 
+							// Создаем финальные опции с умными label, включая ИНН
 							dataOptions = baseOptions.map((option: any) => {
 								const hasInn = option.metadata?.requisites?.RQ_INN
 								let label = option.title
 
+								// Если есть дублирующиеся названия, добавляем ID
 								if (titleCounts[option.title] > 1) {
 									label = `${option.title} (ID: ${option.value})`
 								}
 
+								// Если есть ИНН, добавляем его к названию
 								if (hasInn) {
 									label = `${label}, ${option.metadata.requisites.RQ_INN}`
 								}
@@ -282,7 +239,7 @@ export const useDynamicOptions = (
 						break
 
 					case 'contacts':
-						response = await FormFieldService.getContacts(trimmedQuery)
+						response = await FormFieldService.getContacts(query)
 						if (response?.result) {
 							dataOptions = response.result.map((contact: any) => ({
 								value: contact.ID,
@@ -306,15 +263,11 @@ export const useDynamicOptions = (
 						break
 				}
 
-				// Проверяем, не был ли запрос отменен
-				if (abortController.signal.aborted) {
-					return
-				}
-
 				// Обновляем кэш всех опций
 				if (dataOptions.length > 0) {
 					setAllOptions(prev => {
 						const newOptions = [...prev, ...dataOptions]
+						// Удаляем дубликаты
 						return newOptions.filter(
 							(option, index, self) =>
 								index === self.findIndex(opt => opt.value === option.value)
@@ -328,87 +281,72 @@ export const useDynamicOptions = (
 						index === self.findIndex(opt => opt.value === option.value)
 				)
 
-				// Фильтруем неподходящие результаты
-				const relevantOptions = filterRelevantResults(
-					uniqueOptions,
-					trimmedQuery
-				)
-
 				// Сохраняем выбранную опцию в новом списке, если её нет
 				if (
 					selectedOption &&
-					!relevantOptions.some(
+					!uniqueOptions.some(
 						(opt: FormFieldOption) => opt.value === selectedOption.value
 					)
 				) {
-					relevantOptions.unshift(selectedOption)
+					uniqueOptions.unshift(selectedOption)
 				}
 
-				// Логи только для отладки (можно включить при необходимости)
-				// console.log(`🔍 useDynamicOptions: Загружены опции для "${trimmedQuery}":`, relevantOptions.length, `штук (отфильтровано из ${uniqueOptions.length})`)
-				setOptions(relevantOptions)
-				setHasResults(relevantOptions.length > 0)
+				dataOptions = uniqueOptions
 
-				// Обновляем счетчик неудачных попыток
-				if (relevantOptions.length > 0) {
-					setFailedAttempts(0) // Сбрасываем при успехе
-				} else {
-					setFailedAttempts(prev => prev + 1) // Увеличиваем при неудаче
-				}
+				console.log(
+					`🔍 useDynamicOptions: Загружены опции для "${query}":`,
+					dataOptions.length,
+					'штук'
+				)
+				setOptions(dataOptions)
 
 				// Улучшенная логика автоматического выбора
-				if (trimmedQuery && relevantOptions.length > 0) {
-					let exactMatch = relevantOptions.find(
-						opt => opt.value === trimmedQuery
-					)
+				if (query && dataOptions.length > 0) {
+					// 1. Сначала ищем точное совпадение по value
+					let exactMatch = dataOptions.find(opt => opt.value === query)
 
+					// 2. Если не нашли по value, ищем по label (для вставленного текста)
 					if (!exactMatch) {
-						exactMatch = relevantOptions.find(
+						exactMatch = dataOptions.find(
 							opt =>
-								opt.label.toLowerCase().includes(trimmedQuery.toLowerCase()) ||
-								opt.label.toLowerCase() === trimmedQuery.toLowerCase()
+								opt.label.toLowerCase().includes(query.toLowerCase()) ||
+								opt.label.toLowerCase() === query.toLowerCase()
 						)
 					}
 
+					// 3. Если не нашли по label, ищем по частичному совпадению
 					if (!exactMatch) {
-						exactMatch = relevantOptions.find(opt =>
-							opt.label.toLowerCase().includes(trimmedQuery.toLowerCase())
+						exactMatch = dataOptions.find(opt =>
+							opt.label.toLowerCase().includes(query.toLowerCase())
 						)
 					}
 
 					if (exactMatch) {
+						console.log(
+							`✅ useDynamicOptions: Автоматически выбираем найденное совпадение:`,
+							exactMatch
+						)
 						setSelectedOption(exactMatch)
-					} else if (autoSelectFirst && relevantOptions.length === 1) {
-						setSelectedOption(relevantOptions[0])
+					} else if (autoSelectFirst && dataOptions.length === 1) {
+						// Если был запрос на автоматический выбор и найдена только одна опция
+						console.log(
+							`✅ useDynamicOptions: Автоматически выбираем единственную найденную опцию:`,
+							dataOptions[0]
+						)
+						setSelectedOption(dataOptions[0])
 					}
 				}
-			} catch (error: any) {
-				if (error.name !== 'AbortError') {
-					console.error(
-						`Ошибка при загрузке данных из ${dynamicSource.source}:`,
-						error
-					)
-					setOptions([])
-					setHasResults(false)
-					setFailedAttempts(prev => prev + 1) // Увеличиваем счетчик неудачных попыток
-				}
+			} catch (error) {
+				console.error(
+					`Ошибка при загрузке данных из ${dynamicSource.source}:`,
+					error
+				)
+				setOptions([])
 			} finally {
-				if (!abortController.signal.aborted) {
-					setLoading(false)
-				}
+				setLoading(false)
 			}
 		},
-		[
-			dynamicSource,
-			selectedOption,
-			allOptions,
-			smartSearchOptions,
-			lastQuery,
-			loading,
-			hasResults,
-			failedAttempts,
-			filterRelevantResults,
-		]
+		[dynamicSource, selectedOption, allOptions, smartSearchOptions, lastQuery]
 	)
 
 	// Функция для принудительной синхронизации с опциями
@@ -417,6 +355,10 @@ export const useDynamicOptions = (
 			if (value && options.length > 0) {
 				const foundOption = options.find(opt => opt.value === value)
 				if (foundOption) {
+					console.log(
+						`🔄 useDynamicOptions: Принудительная синхронизация с опцией:`,
+						foundOption
+					)
 					setSelectedOption(foundOption)
 					return foundOption
 				}
@@ -425,21 +367,6 @@ export const useDynamicOptions = (
 		},
 		[options]
 	)
-
-	// Функция для сброса счетчика неудачных попыток
-	const resetFailedAttempts = useCallback(() => {
-		setFailedAttempts(0)
-		console.log('🔄 useDynamicOptions: Счетчик неудачных попыток сброшен')
-	}, [])
-
-	// Очистка при размонтировании
-	useEffect(() => {
-		return () => {
-			if (abortControllerRef.current) {
-				abortControllerRef.current.abort()
-			}
-		}
-	}, [])
 
 	return {
 		options,
@@ -452,7 +379,5 @@ export const useDynamicOptions = (
 		loadAllOptions,
 		smartSearchOptions,
 		allOptions,
-		resetFailedAttempts,
-		failedAttempts,
 	}
 }
