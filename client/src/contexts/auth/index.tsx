@@ -151,36 +151,62 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
 	// Функция для проверки аутентификации
 	const checkAuth = async (): Promise<boolean> => {
+		console.log('🔵 checkAuth called')
 		try {
 			const token = localStorage.getItem('token')
 			const userStr = localStorage.getItem('user')
 
+			console.log(
+				'🔵 checkAuth: token exists:',
+				!!token,
+				'user exists:',
+				!!userStr
+			)
+
 			if (!token || !userStr) {
 				// Если нет токена, просто устанавливаем isLoading в false
+				console.log(
+					'🔵 checkAuth: no token or user, setting isLoading to false'
+				)
 				dispatch({ type: 'SET_LOADING', payload: false })
 				return false
 			}
 
 			// Если токен есть, начинаем проверку
 			const user = JSON.parse(userStr)
-			const isValid = await authService.validateToken(token)
 
-			if (isValid) {
-				dispatch({
-					type: 'AUTH_SUCCESS',
-					payload: { user, token },
-				})
-				return true
-			} else {
-				// Токен недействителен - очищаем данные
+			// Проверяем токен только если он не истек (базовая проверка)
+			const tokenExp = JSON.parse(atob(token.split('.')[1])).exp
+			const now = Date.now() / 1000
+
+			console.log(
+				'🔵 checkAuth: token exp:',
+				tokenExp,
+				'now:',
+				now,
+				'valid:',
+				tokenExp >= now
+			)
+
+			if (tokenExp < now) {
+				// Токен истек - очищаем данные
+				console.log('🔵 checkAuth: token expired, clearing data')
 				localStorage.removeItem('user')
 				localStorage.removeItem('token')
 				localStorage.removeItem('refreshToken')
 				dispatch({ type: 'AUTH_LOGOUT' })
 				return false
 			}
+
+			// Токен валиден - устанавливаем пользователя
+			console.log('🔵 checkAuth: token valid, setting user:', user.email)
+			dispatch({
+				type: 'AUTH_SUCCESS',
+				payload: { user, token },
+			})
+			return true
 		} catch (error) {
-			console.error('Ошибка проверки авторизации:', error)
+			console.error('🔵 checkAuth error:', error)
 			// При ошибке очищаем данные
 			localStorage.removeItem('user')
 			localStorage.removeItem('token')
@@ -188,6 +214,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 			dispatch({ type: 'AUTH_LOGOUT' })
 			return false
 		} finally {
+			console.log('🔵 checkAuth: setting isLoading to false')
 			dispatch({ type: 'SET_LOADING', payload: false })
 		}
 	}

@@ -1,13 +1,9 @@
 import React, { useEffect } from 'react'
-import {
-	BrowserRouter as Router,
-	Routes,
-	Route,
-	Navigate,
-} from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { Box, CircularProgress } from '@mui/material'
 import { useAuth } from '../../../contexts/auth'
 import { LoginForm } from '../LoginForm'
+import { ProtectedRoute } from '../ProtectedRoute'
 import Layout from '../../layout/Layout'
 import HomePage from '../../../pages/HomePage'
 import AdminPage from '../../../pages/admin/AdminPage'
@@ -56,18 +52,32 @@ export const PrivateApp: React.FC = () => {
 	}
 
 	// Пользователь авторизован - показываем основное приложение
+	console.log(
+		'🔵 PrivateApp: rendering routes for authenticated user:',
+		user?.email
+	)
 	return (
-		<Router>
-			<Layout>
-				<Routes>
-					<Route path='/' element={<HomePage />} />
-					<Route path='/my-submissions' element={<MySubmissions />} />
-					{user?.role === 'admin' && (
-						<Route path='/admin' element={<AdminPage />} />
-					)}
-					<Route path='*' element={<Navigate to='/' replace />} />
-				</Routes>
-			</Layout>
-		</Router>
+		<Layout>
+			<Routes>
+				<Route path='/' element={<HomePage />} />
+				<Route
+					path='/my-submissions'
+					element={
+						<ProtectedRoute>
+							<MySubmissions />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
+					path='/admin'
+					element={
+						<ProtectedRoute requiredRole='admin'>
+							<AdminPage />
+						</ProtectedRoute>
+					}
+				/>
+				<Route path='*' element={<Navigate to='/' replace />} />
+			</Routes>
+		</Layout>
 	)
 }

@@ -34,6 +34,9 @@ export interface CreateSubmissionDTO {
 	tags?: string[]
 	bitrixDealId?: string
 	formData?: Record<string, any>
+	// Денормализованные данные пользователя (для случаев, когда пользователь не авторизован)
+	userName?: string
+	userEmail?: string
 }
 
 export interface UpdateSubmissionDTO {
@@ -97,8 +100,9 @@ export class SubmissionService extends BaseService<
 			// Денормализованные данные
 			formName: form.name,
 			formTitle: form.title,
-			userEmail: userData?.userEmail,
-			userName: userData?.userName,
+			// Приоритет: сначала из переданных данных, затем из БД пользователя
+			userEmail: data.userEmail || userData?.userEmail,
+			userName: data.userName || userData?.userName,
 		})
 
 		// Создание записи в истории

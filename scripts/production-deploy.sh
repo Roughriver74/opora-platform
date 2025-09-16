@@ -98,7 +98,9 @@ tar -czf "$ARCHIVE_NAME" \
     docker-compose.yml \
     ecosystem.config.js \
     .env.production \
-    scripts/setup-server.sh
+    scripts/setup-server.sh \
+    scripts/index-submissions-production.sh \
+    scripts/index-submissions-server.sh
 
 echo -e "${GREEN}✓ Архив $ARCHIVE_NAME создан${NC}"
 
@@ -231,3 +233,16 @@ echo -e "${YELLOW}Приложение доступно по адресам:${NC
 echo -e "  Frontend: ${BLUE}https://$SERVER_IP:3000${NC} (или http://$SERVER_IP:3000)"
 echo -e "  Backend API: ${BLUE}https://$SERVER_IP:5001/api${NC} (или http://$SERVER_IP:5001/api)"
 echo -e "${YELLOW}Для просмотра логов: ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && docker-compose logs -f'${NC}"
+
+echo ""
+echo -e "${YELLOW}⚠️  ВАЖНО: После деплоя необходимо запустить индексацию submissions в Elasticsearch!${NC}"
+echo -e "${BLUE}Для запуска индексации используйте один из способов:${NC}"
+echo ""
+echo -e "${GREEN}Способ 1 (рекомендуемый):${NC}"
+echo -e "  ${BLUE}./scripts/index-submissions-production.sh${NC}"
+echo ""
+echo -e "${GREEN}Способ 2 (на сервере):${NC}"
+echo -e "  ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && ./scripts/index-submissions-server.sh'${NC}"
+echo ""
+echo -e "${GREEN}Способ 3 (прямо в Docker):${NC}"
+echo -e "  ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && docker-compose exec -T backend node scripts/index-submissions-to-elasticsearch.js'${NC}"

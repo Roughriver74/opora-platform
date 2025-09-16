@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import {
 	AppBar,
 	Box,
@@ -18,7 +18,7 @@ import {
 	useMediaQuery,
 	useTheme,
 } from '@mui/material'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import HomeIcon from '@mui/icons-material/Home'
 import AssignmentIcon from '@mui/icons-material/Assignment'
@@ -31,30 +31,64 @@ import Logo from '../common/Logo'
 const Navbar: React.FC = () => {
 	const { user, logout, isAuthenticated } = useAuth()
 	const navigate = useNavigate()
+	const location = useLocation()
 	const theme = useTheme()
 	const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+
+	// Логируем изменения location
+	React.useEffect(() => {
+		console.log('🔵 Navbar: location changed to:', location.pathname)
+	}, [location.pathname])
 
 	const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
 	const [mobileOpen, setMobileOpen] = React.useState(false)
 
-	const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
+	const handleMenu = useCallback((event: React.MouseEvent<HTMLElement>) => {
+		console.log('🔵 handleMenu called')
 		setAnchorEl(event.currentTarget)
-	}
+	}, [])
 
-	const handleClose = () => {
+	const handleClose = useCallback(() => {
 		setAnchorEl(null)
-	}
+	}, [])
 
-	const handleMobileToggle = () => {
-		setMobileOpen(!mobileOpen)
-	}
+	const handleMobileToggle = useCallback(() => {
+		console.log('🔵 handleMobileToggle called')
+		setMobileOpen(prev => !prev)
+	}, [])
 
-	const handleLogout = async () => {
+	const handleLogout = useCallback(async () => {
 		await logout()
 		handleClose()
 		setMobileOpen(false)
-		navigate('/login')
-	}
+		navigate('/')
+	}, [logout, handleClose, navigate])
+
+	// Обработчик клика по навигационным элементам
+	const handleNavClick = useCallback(
+		(path: string) => {
+			console.log('🔵 handleNavClick called with path:', path)
+			console.log('🔵 Current location:', location.pathname)
+			console.log('🔵 Navigate function:', typeof navigate)
+			// Закрываем мобильное меню
+			setMobileOpen(false)
+
+			// Попробуем принудительную навигацию
+			console.log('🔵 Trying navigate...')
+			navigate(path)
+			console.log('🔵 Navigate called')
+
+			// Если navigate не работает, попробуем window.location
+			setTimeout(() => {
+				console.log('🔵 Location after navigate:', location.pathname)
+				if (location.pathname !== path) {
+					console.log('🔵 Navigate failed, trying window.location')
+					window.location.href = path
+				}
+			}, 100)
+		},
+		[navigate, location.pathname]
+	)
 
 	const menuItems = [
 		{ text: 'Главная', icon: <HomeIcon />, path: '/' },
@@ -86,10 +120,25 @@ const Navbar: React.FC = () => {
 				{menuItems.map(item => (
 					<ListItem
 						key={item.text}
-						component={RouterLink}
-						to={item.path}
-						onClick={() => setMobileOpen(false)}
-						sx={{ textDecoration: 'none', color: 'inherit' }}
+						component='div'
+						onClick={() => {
+							console.log('🔵 Mobile menu item clicked:', item.text, item.path)
+							setMobileOpen(false)
+							handleNavClick(item.path)
+						}}
+						sx={{
+							textDecoration: 'none',
+							color: 'inherit',
+							cursor: 'pointer',
+							// Подсвечиваем активную страницу
+							backgroundColor:
+								location.pathname === item.path
+									? 'rgba(0,0,0,0.1)'
+									: 'transparent',
+							'&:hover': {
+								backgroundColor: 'rgba(0,0,0,0.1)',
+							},
+						}}
 					>
 						<ListItemIcon>{item.icon}</ListItemIcon>
 						<ListItemText primary={item.text} />
@@ -108,14 +157,17 @@ const Navbar: React.FC = () => {
 	// Если пользователь не авторизован, показываем минимальную навигацию
 	if (!isAuthenticated) {
 		return (
-			<AppBar position='static'>
+			<AppBar position='static' sx={{ zIndex: 1100 }}>
 				<Container maxWidth='xl'>
 					<Toolbar disableGutters>
 						<Typography
 							variant='h6'
 							noWrap
-							component={RouterLink}
-							to='/'
+							component='div'
+							onClick={() => {
+								console.log('🔵 Logo clicked, navigating to /')
+								navigate('/')
+							}}
 							sx={{
 								mr: 2,
 								display: 'flex',
@@ -126,6 +178,7 @@ const Navbar: React.FC = () => {
 								textDecoration: 'none',
 								alignItems: 'center',
 								flexGrow: 1,
+								cursor: 'pointer',
 							}}
 						>
 							<Logo size={isMobile ? 32 : 40} variant='white' />
@@ -138,14 +191,17 @@ const Navbar: React.FC = () => {
 
 	return (
 		<>
-			<AppBar position='static'>
+			<AppBar position='static' sx={{ zIndex: 1100 }}>
 				<Container maxWidth='xl'>
 					<Toolbar disableGutters>
 						<Typography
 							variant='h6'
 							noWrap
-							component={RouterLink}
-							to='/'
+							component='div'
+							onClick={() => {
+								console.log('🔵 Logo clicked, navigating to /')
+								navigate('/')
+							}}
 							sx={{
 								mr: 2,
 								display: 'flex',
@@ -156,6 +212,7 @@ const Navbar: React.FC = () => {
 								textDecoration: 'none',
 								alignItems: 'center',
 								flexGrow: isMobile ? 1 : 0,
+								cursor: 'pointer',
 							}}
 						>
 							<Logo size={isMobile ? 32 : 40} variant='white' />
@@ -177,11 +234,29 @@ const Navbar: React.FC = () => {
 								{menuItems.map(item => (
 									<Button
 										key={item.text}
-										component={RouterLink}
-										to={item.path}
 										color='inherit'
 										startIcon={item.icon}
-										sx={{ my: 2, display: 'flex', mx: 1 }}
+										onClick={() => {
+											console.log(
+												'🔵 Desktop button clicked:',
+												item.text,
+												item.path
+											)
+											handleNavClick(item.path)
+										}}
+										sx={{
+											my: 2,
+											display: 'flex',
+											mx: 1,
+											// Подсвечиваем активную страницу
+											backgroundColor:
+												location.pathname === item.path
+													? 'rgba(255,255,255,0.1)'
+													: 'transparent',
+											'&:hover': {
+												backgroundColor: 'rgba(255,255,255,0.1)',
+											},
+										}}
 									>
 										{item.text}
 									</Button>
@@ -237,6 +312,7 @@ const Navbar: React.FC = () => {
 				anchor='right'
 				open={mobileOpen}
 				onClose={handleMobileToggle}
+				sx={{ zIndex: 1200 }}
 				ModalProps={{
 					keepMounted: true, // Better open performance on mobile.
 				}}

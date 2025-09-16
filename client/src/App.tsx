@@ -1,4 +1,5 @@
 import React from 'react'
+import { BrowserRouter as Router } from 'react-router-dom'
 import { ThemeProvider, createTheme } from '@mui/material'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './contexts/auth'
@@ -30,7 +31,9 @@ function App() {
 			<ThemeProvider theme={theme}>
 				<NotificationProvider>
 					<AuthProvider>
-						<PrivateApp />
+						<Router>
+							<PrivateApp />
+						</Router>
 					</AuthProvider>
 				</NotificationProvider>
 			</ThemeProvider>

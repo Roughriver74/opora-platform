@@ -13,6 +13,7 @@ import { FormService } from '../services/formService'
 import { useAuth } from '../contexts/auth'
 
 const HomePage: React.FC = () => {
+	console.log('🔵 HomePage: rendering')
 	const [searchParams] = useSearchParams()
 	const { user } = useAuth()
 	const [form, setForm] = useState<Form | null>(null)
@@ -128,14 +129,6 @@ const HomePage: React.FC = () => {
 					{error}
 				</Alert>
 			) : form ? (
-				(() => {
-					console.log('[HomePage] Передаем в BetoneForm:', {
-						editData,
-						preloadedOptions: editData?.preloadedOptions,
-						isCopy: editData?.isCopy
-					})
-					return null
-				})(),
 				<BetoneForm
 					form={form}
 					fields={fields}

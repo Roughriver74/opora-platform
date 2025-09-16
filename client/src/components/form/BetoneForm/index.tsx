@@ -392,7 +392,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 										</AccordionSummary>
 										<AccordionDetails>
 											{/* Кнопка копирования для текущей секции */}
-											{fieldSections.length > 1 && (
+											{fieldSections.length > 0 && (
 												<Box sx={{ mb: 2 }}>
 													<LinkedFields
 														sections={fieldSections}
