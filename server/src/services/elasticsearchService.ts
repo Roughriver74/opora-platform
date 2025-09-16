@@ -12,6 +12,7 @@ export interface SearchDocument {
 	phone?: string
 	email?: string
 	address?: string
+	bitrixId?: string // Bitrix ID для прямого поиска
 	createdAt: string
 	updatedAt: string
 	// Дополнительные поля для поиска
@@ -40,6 +41,7 @@ export interface SearchResult {
 	phone?: string
 	email?: string
 	address?: string
+	bitrixId?: string // Bitrix ID для прямого поиска
 	score: number
 	highlight?: {
 		name?: string[]
@@ -132,6 +134,15 @@ class ElasticsearchService {
 								address: {
 									type: 'text',
 									analyzer: 'russian',
+								},
+								bitrixId: {
+									type: 'keyword',
+									fields: {
+										text: {
+											type: 'text',
+											analyzer: 'keyword',
+										},
+									},
 								},
 								createdAt: { type: 'date' },
 								updatedAt: { type: 'date' },
@@ -311,6 +322,29 @@ class ElasticsearchService {
 	}
 
 	/**
+	 * Удаление всего индекса
+	 */
+	async deleteIndex(): Promise<void> {
+		try {
+			const exists = await this.client.indices.exists({
+				index: this.indexName,
+			})
+
+			if (exists) {
+				await this.client.indices.delete({
+					index: this.indexName,
+				})
+				logger.info(`Index ${this.indexName} deleted successfully`)
+			} else {
+				logger.info(`Index ${this.indexName} does not exist`)
+			}
+		} catch (error) {
+			logger.error('Failed to delete index:', error)
+			throw error
+		}
+	}
+
+	/**
 	 * Поиск документов
 	 */
 	async search(options: SearchOptions): Promise<SearchResult[]> {
@@ -351,88 +385,110 @@ class ElasticsearchService {
 			if (query.trim()) {
 				const trimmedQuery = query.trim()
 
-				// Основной поиск с multi_match
-				const mainSearchQuery = {
-					multi_match: {
-						query: trimmedQuery,
-						fields: [
-							'name^3', // Название имеет больший вес
-							'description^2', // Описание имеет средний вес
-							'searchableText^1', // Общий текст имеет базовый вес
-							'industry^1.5', // Отрасль имеет повышенный вес
-							'address^1',
-							// Поля для submissions
-							'submissionNumber^3', // Номер заявки имеет больший вес
-							'userName^2.5', // Имя пользователя имеет повышенный вес
-							'formName^2', // Название формы имеет средний вес
-							'formTitle^2', // Заголовок формы имеет средний вес
-							'notes^1.5', // Заметки имеют повышенный вес
-						],
-						type: 'best_fields',
-						fuzziness: fuzzy ? 'AUTO' : 0,
-						prefix_length: 2,
-					},
-				}
+				// Проверяем, является ли запрос числовым Bitrix ID
+				const isNumericBitrixId = /^\d+$/.test(trimmedQuery)
 
-				// Дополнительный поиск по частичным словам с regexp
-				const regexpQuery = {
-					bool: {
-						should: [
-							{ regexp: { name: { value: `.*${trimmedQuery}.*`, boost: 2 } } },
-							{
-								regexp: {
-									description: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
-								},
-							},
-							{
-								regexp: {
-									searchableText: { value: `.*${trimmedQuery}.*`, boost: 1 },
-								},
-							},
-							{
-								regexp: {
-									industry: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
-								},
-							},
-							{
-								regexp: { address: { value: `.*${trimmedQuery}.*`, boost: 1 } },
-							},
-							// Поля для submissions
-							{
-								regexp: {
-									submissionNumber: { value: `.*${trimmedQuery}.*`, boost: 2 },
-								},
-							},
-							{
-								regexp: {
-									userName: { value: `.*${trimmedQuery}.*`, boost: 2 },
-								},
-							},
-							{
-								regexp: {
-									formName: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
-								},
-							},
-							{
-								regexp: {
-									formTitle: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
-								},
-							},
-							{
-								regexp: { notes: { value: `.*${trimmedQuery}.*`, boost: 1.5 } },
-							},
-						],
-						minimum_should_match: 1,
-					},
-				}
+				if (isNumericBitrixId) {
+					// Для числовых ID ищем точное совпадение в поле bitrixId
+					console.log(`🔍 Elasticsearch: Поиск по Bitrix ID "${trimmedQuery}"`)
+					searchBody.query.bool.must.push({
+						term: {
+							bitrixId: trimmedQuery,
+						},
+					})
+				} else {
+					// Основной поиск с multi_match для текстовых запросов
+					const mainSearchQuery = {
+						multi_match: {
+							query: trimmedQuery,
+							fields: [
+								'name^3', // Название имеет больший вес
+								'description^2', // Описание имеет средний вес
+								'searchableText^1', // Общий текст имеет базовый вес
+								'industry^1.5', // Отрасль имеет повышенный вес
+								'address^1',
+								// Поля для submissions
+								'submissionNumber^3', // Номер заявки имеет больший вес
+								'userName^2.5', // Имя пользователя имеет повышенный вес
+								'formName^2', // Название формы имеет средний вес
+								'formTitle^2', // Заголовок формы имеет средний вес
+								'notes^1.5', // Заметки имеют повышенный вес
+							],
+							type: 'best_fields',
+							fuzziness: fuzzy ? 'AUTO' : 0,
+							prefix_length: 2,
+						},
+					}
 
-				// Объединяем основной поиск и regexp поиск
-				searchBody.query.bool.must.push({
-					bool: {
-						should: [mainSearchQuery, regexpQuery],
-						minimum_should_match: 1,
-					},
-				})
+					// Дополнительный поиск по частичным словам с regexp
+					const regexpQuery = {
+						bool: {
+							should: [
+								{
+									regexp: { name: { value: `.*${trimmedQuery}.*`, boost: 2 } },
+								},
+								{
+									regexp: {
+										description: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+									},
+								},
+								{
+									regexp: {
+										searchableText: { value: `.*${trimmedQuery}.*`, boost: 1 },
+									},
+								},
+								{
+									regexp: {
+										industry: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+									},
+								},
+								{
+									regexp: {
+										address: { value: `.*${trimmedQuery}.*`, boost: 1 },
+									},
+								},
+								// Поля для submissions
+								{
+									regexp: {
+										submissionNumber: {
+											value: `.*${trimmedQuery}.*`,
+											boost: 2,
+										},
+									},
+								},
+								{
+									regexp: {
+										userName: { value: `.*${trimmedQuery}.*`, boost: 2 },
+									},
+								},
+								{
+									regexp: {
+										formName: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+									},
+								},
+								{
+									regexp: {
+										formTitle: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+									},
+								},
+								{
+									regexp: {
+										notes: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+									},
+								},
+							],
+							minimum_should_match: 1,
+						},
+					}
+
+					// Объединяем основной поиск и regexp поиск
+					searchBody.query.bool.must.push({
+						bool: {
+							should: [mainSearchQuery, regexpQuery],
+							minimum_should_match: 1,
+						},
+					})
+				}
 			} else {
 				// Если запрос пустой, возвращаем все документы
 				searchBody.query.bool.must.push({ match_all: {} })
@@ -472,6 +528,7 @@ class ElasticsearchService {
 				phone: hit._source.phone,
 				email: hit._source.email,
 				address: hit._source.address,
+				bitrixId: hit._source.bitrixId, // Добавляем Bitrix ID в результаты
 				score: hit._score,
 				highlight: hit.highlight,
 				// Поля для submissions

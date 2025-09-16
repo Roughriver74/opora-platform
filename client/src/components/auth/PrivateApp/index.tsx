@@ -52,10 +52,6 @@ export const PrivateApp: React.FC = () => {
 	}
 
 	// Пользователь авторизован - показываем основное приложение
-	console.log(
-		'🔵 PrivateApp: rendering routes for authenticated user:',
-		user?.email
-	)
 	return (
 		<Layout>
 			<Routes>

@@ -4,6 +4,7 @@ import { ReactNode } from 'react'
 export interface FormFieldOption {
 	value: string
 	label: string
+	metadata?: Record<string, any> // Дополнительные метаданные для опций
 }
 
 export interface DynamicSource {

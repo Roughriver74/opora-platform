@@ -69,7 +69,6 @@ import { DEFAULT_STATUS_FILTER } from './constants'
 // Константы перенесены в отдельный файл
 
 const MySubmissions = () => {
-	console.log('🔵 MySubmissions: rendering')
 	const navigate = useNavigate()
 	const { user } = useAuth()
 	const { showError, showSuccess } = useNotificationHelpers()

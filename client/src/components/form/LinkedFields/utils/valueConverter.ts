@@ -3,6 +3,7 @@ import {
 	copyAutocompleteValue,
 	areAutocompleteFieldsCompatible,
 	AutocompleteValue,
+	createTemporaryOption,
 } from './autocompleteHandler'
 
 /**
@@ -74,11 +75,7 @@ export const convertFieldValueAdvanced = async (
 			return {
 				value: String(textValue),
 				needsOptionsUpdate: true,
-				newOption: {
-					value: String(textValue),
-					label: String(textValue),
-					id: String(textValue),
-				},
+				newOption: createTemporaryOption(String(textValue)),
 			}
 		}
 	}

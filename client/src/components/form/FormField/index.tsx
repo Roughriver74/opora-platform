@@ -72,8 +72,19 @@ const FormField: React.FC<FormFieldProps> = React.memo(
 		// Initialize selected option (только если есть реальное значение)
 		useEffect(() => {
 			if (value && value.toString().trim() && !isValueSelected) {
-				syncWithOptions(value)
-				setIsValueSelected(true)
+				// Проверяем, является ли значение числовым Bitrix ID
+				const isNumericId = /^\d+$/.test(value.toString())
+
+				if (isNumericId) {
+					// Для числовых ID запускаем поиск в Elastic
+					console.log(`🔍 FormField: Поиск в Elastic для Bitrix ID "${value}"`)
+					setSearchQuery(value.toString())
+					setIsValueSelected(true)
+				} else {
+					// Для обычных значений используем стандартную синхронизацию
+					syncWithOptions(value)
+					setIsValueSelected(true)
+				}
 			}
 		}, [value, syncWithOptions, isValueSelected])
 

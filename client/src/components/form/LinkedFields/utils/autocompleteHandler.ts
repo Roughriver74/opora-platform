@@ -8,6 +8,7 @@ export interface AutocompleteValue {
 	value: string
 	label: string
 	id?: string
+	isBitrixId?: boolean // Флаг для Bitrix ID, чтобы предотвратить поиск в Elastic
 }
 
 /**
@@ -60,27 +61,34 @@ const handleBitrixAutocomplete = (
 ): AutocompleteValue | null => {
 	if (!field.bitrixFieldId || !value) return null
 
+	// Проверяем, является ли значение числовым ID (Bitrix ID)
+	const isNumericId = /^\d+$/.test(String(value))
+
 	// Для разных типов Битрикс полей
 	switch (field.bitrixFieldId) {
 		case 'COMPANY_ID':
 			return {
 				value: String(value),
-				label: `Компания ${value}`, // Можно будет загрузить полное название
+				label: isNumericId ? `Компания #${value}` : String(value),
 				id: String(value),
+				// Добавляем флаг, что это Bitrix ID для предотвращения поиска
+				isBitrixId: isNumericId,
 			}
 
 		case 'CONTACT_ID':
 			return {
 				value: String(value),
-				label: `Контакт ${value}`,
+				label: isNumericId ? `Контакт #${value}` : String(value),
 				id: String(value),
+				isBitrixId: isNumericId,
 			}
 
 		case 'UF_CRM_PRODUCT':
 			return {
 				value: String(value),
-				label: `Продукт ${value}`,
+				label: isNumericId ? `Продукт #${value}` : String(value),
 				id: String(value),
+				isBitrixId: isNumericId,
 			}
 
 		default:
@@ -88,6 +96,7 @@ const handleBitrixAutocomplete = (
 				value: String(value),
 				label: String(value),
 				id: String(value),
+				isBitrixId: isNumericId,
 			}
 	}
 }
@@ -168,6 +177,7 @@ export const copyAutocompleteValue = async (
 			value: sourceOption.value,
 			label: sourceOption.label,
 			id: sourceOption.id || sourceOption.value,
+			isBitrixId: sourceOption.isBitrixId, // Сохраняем флаг Bitrix ID
 		},
 	}
 }
@@ -259,9 +269,11 @@ export const createTemporaryOption = (
 	value: string,
 	label?: string
 ): AutocompleteValue => {
+	const isNumericId = /^\d+$/.test(value)
 	return {
 		value,
 		label: label || value,
 		id: value,
+		isBitrixId: isNumericId, // Автоматически определяем Bitrix ID
 	}
 }

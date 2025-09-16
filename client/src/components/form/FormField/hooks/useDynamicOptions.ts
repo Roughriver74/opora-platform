@@ -68,6 +68,7 @@ export const useDynamicOptions = (
 								email: company.EMAIL,
 								type: company.COMPANY_TYPE,
 								requisites: company.REQUISITES,
+								bitrixId: company.bitrixId || company.ID, // Добавляем Bitrix ID
 							},
 						}))
 					}
@@ -169,6 +170,16 @@ export const useDynamicOptions = (
 				return
 			}
 
+			// Проверяем, является ли запрос числовым Bitrix ID
+			// Если да, запускаем поиск в Elastic по Bitrix ID
+			const isNumericBitrixId = /^\d+$/.test(trimmedQuery)
+			if (isNumericBitrixId) {
+				console.log(
+					`🔍 useDynamicOptions: Поиск по Bitrix ID "${trimmedQuery}" в Elastic`
+				)
+				// Продолжаем с обычным поиском - Elastic теперь поддерживает поиск по Bitrix ID
+			}
+
 			// Если это тот же запрос, что и последний, и у нас уже есть результаты, не делаем новый запрос
 			if (trimmedQuery === lastQuery && hasResults && !loading) {
 				return
@@ -237,6 +248,10 @@ export const useDynamicOptions = (
 
 					case 'companies':
 						response = await FormFieldService.getCompanies(trimmedQuery)
+						console.log(
+							`🔍 useDynamicOptions: Результат поиска компаний для "${trimmedQuery}":`,
+							response?.result
+						)
 						if (response?.result) {
 							const baseOptions = response.result.map((company: any) => ({
 								value: company.ID,
@@ -246,8 +261,13 @@ export const useDynamicOptions = (
 									email: company.EMAIL,
 									type: company.COMPANY_TYPE,
 									requisites: company.REQUISITES,
+									bitrixId: company.bitrixId || company.ID, // Добавляем Bitrix ID
 								},
 							}))
+							console.log(
+								`🔍 useDynamicOptions: Обработанные опции компаний:`,
+								baseOptions
+							)
 
 							const titleCounts = baseOptions.reduce(
 								(acc: Record<string, number>, option: any) => {
@@ -362,6 +382,31 @@ export const useDynamicOptions = (
 						opt => opt.value === trimmedQuery
 					)
 
+					// Для Bitrix ID ищем по metadata.bitrixId если есть
+					if (!exactMatch && isNumericBitrixId) {
+						console.log(
+							`🔍 useDynamicOptions: Поиск по Bitrix ID "${trimmedQuery}" в опциях:`,
+							relevantOptions.map(opt => ({
+								value: opt.value,
+								label: opt.label,
+								bitrixId: opt.metadata?.bitrixId,
+							}))
+						)
+						exactMatch = relevantOptions.find(
+							opt => opt.metadata?.bitrixId === trimmedQuery
+						)
+						if (exactMatch) {
+							console.log(
+								`✅ useDynamicOptions: Найдено совпадение по Bitrix ID:`,
+								exactMatch
+							)
+						} else {
+							console.log(
+								`❌ useDynamicOptions: Совпадение по Bitrix ID не найдено`
+							)
+						}
+					}
+
 					if (!exactMatch) {
 						exactMatch = relevantOptions.find(
 							opt =>
@@ -377,8 +422,16 @@ export const useDynamicOptions = (
 					}
 
 					if (exactMatch) {
+						console.log(
+							`✅ useDynamicOptions: Автоматически выбрана опция для Bitrix ID "${trimmedQuery}":`,
+							exactMatch.label
+						)
 						setSelectedOption(exactMatch)
 					} else if (autoSelectFirst && relevantOptions.length === 1) {
+						console.log(
+							`✅ useDynamicOptions: Автоматически выбрана единственная опция для "${trimmedQuery}":`,
+							relevantOptions[0].label
+						)
 						setSelectedOption(relevantOptions[0])
 					}
 				}

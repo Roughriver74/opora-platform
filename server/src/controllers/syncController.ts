@@ -140,6 +140,84 @@ export class SyncController {
 			})
 		}
 	}
+
+	/**
+	 * Синхронизация данных из Bitrix24 в Elasticsearch (с поддержкой Bitrix ID)
+	 */
+	async syncBitrixToElastic(req: Request, res: Response): Promise<void> {
+		try {
+			logger.info('🔄 Starting Bitrix24 to Elasticsearch sync via API')
+
+			// Импортируем функцию синхронизации
+			const { syncBitrixToElasticsearch } = await import(
+				'../scripts/syncBitrixToElasticsearch'
+			)
+			await syncBitrixToElasticsearch()
+
+			logger.info('✅ Bitrix24 to Elasticsearch sync completed successfully')
+			res.json({
+				success: true,
+				message: 'Синхронизация данных завершена успешно',
+				timestamp: new Date().toISOString(),
+			})
+		} catch (error: any) {
+			logger.error('❌ Bitrix24 to Elasticsearch sync failed:', error)
+			res.status(500).json({
+				success: false,
+				message: 'Ошибка при синхронизации данных',
+				error: error.message,
+				timestamp: new Date().toISOString(),
+			})
+		}
+	}
+
+	/**
+	 * Переиндексация с поддержкой Bitrix ID
+	 */
+	async reindexWithBitrixId(req: Request, res: Response): Promise<void> {
+		try {
+			logger.info('🔄 Starting reindex with Bitrix ID support via API')
+
+			// 1. Check Elasticsearch connection
+			const isConnected = await elasticsearchService.healthCheck()
+			if (!isConnected) {
+				throw new Error('Elasticsearch is not connected')
+			}
+
+			// 2. Delete existing index (if any)
+			logger.info('🗑️ Deleting existing index...')
+			await elasticsearchService.deleteIndex()
+			logger.info('✅ Index deleted successfully')
+
+			// 3. Initialize index with new mapping
+			logger.info('📝 Initializing new index with Bitrix ID mapping...')
+			await elasticsearchService.initializeIndex()
+			logger.info('✅ New index initialized successfully')
+
+			// 4. Run full sync from Bitrix24 to populate the new index
+			logger.info('📦 Running full Bitrix24 to Elasticsearch sync...')
+			const { syncBitrixToElasticsearch } = await import(
+				'../scripts/syncBitrixToElasticsearch'
+			)
+			await syncBitrixToElasticsearch()
+			logger.info('✅ Full sync completed successfully')
+
+			logger.info('🎉 Reindex with Bitrix ID completed successfully')
+			res.json({
+				success: true,
+				message: 'Переиндексация с поддержкой Bitrix ID завершена успешно',
+				timestamp: new Date().toISOString(),
+			})
+		} catch (error: any) {
+			logger.error('❌ Reindex with Bitrix ID failed:', error)
+			res.status(500).json({
+				success: false,
+				message: 'Ошибка при переиндексации',
+				error: error.message,
+				timestamp: new Date().toISOString(),
+			})
+		}
+	}
 }
 
 export const syncController = new SyncController()

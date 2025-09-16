@@ -6,8 +6,8 @@ import { logger } from '../utils/logger'
 
 dotenv.config()
 
-const syncBitrixToElasticsearch = async () => {
-	console.log('🚀 Starting Bitrix24 to Elasticsearch sync...')
+const reindexWithBitrixId = async () => {
+	console.log('🚀 Starting reindexing with Bitrix ID support...')
 
 	try {
 		// 1. Check Elasticsearch connection
@@ -17,12 +17,23 @@ const syncBitrixToElasticsearch = async () => {
 			return
 		}
 
-		// 2. Initialize index
-		await elasticsearchService.initializeIndex()
+		// 2. Delete existing index to recreate with new mapping
+		console.log('🗑️ Deleting existing index...')
+		try {
+			await elasticsearchService.deleteIndex()
+			console.log('✅ Index deleted successfully')
+		} catch (error) {
+			console.log('ℹ️ Index does not exist or already deleted')
+		}
 
-		// 3. Sync products
-		console.log('📦 Syncing products...')
-		const products = await bitrix24Service.getProducts('', 1000) // Get all products
+		// 3. Initialize index with new mapping (includes bitrixId field)
+		console.log('📝 Creating index with new mapping...')
+		await elasticsearchService.initializeIndex()
+		console.log('✅ Index created with new mapping')
+
+		// 4. Re-sync all data with Bitrix ID
+		console.log('📦 Re-syncing products with Bitrix ID...')
+		const products = await bitrix24Service.getProducts('', 1000)
 		if (products?.result) {
 			console.log(`Found ${products.result.length} products`)
 
@@ -35,7 +46,7 @@ const syncBitrixToElasticsearch = async () => {
 					price: product.PRICE ? parseFloat(product.PRICE) : null,
 					currency: product.CURRENCY_ID || 'RUB',
 					industry: 'строительство',
-					bitrixId: product.ID, // Добавляем Bitrix ID
+					bitrixId: product.ID, // Bitrix ID
 					createdAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),
 					searchableText: `${product.NAME} ${
@@ -43,11 +54,11 @@ const syncBitrixToElasticsearch = async () => {
 					}`.toLowerCase(),
 				})
 			}
-			console.log(`✅ Synced ${products.result.length} products`)
+			console.log(`✅ Re-synced ${products.result.length} products`)
 		}
 
-		// 4. Sync companies
-		console.log('🏢 Syncing companies...')
+		// 5. Re-sync companies with Bitrix ID
+		console.log('🏢 Re-syncing companies with Bitrix ID...')
 		const companies = await bitrix24Service.getCompanies('', 1000, null, true)
 		if (companies?.result) {
 			console.log(`Found ${companies.result.length} companies`)
@@ -62,7 +73,7 @@ const syncBitrixToElasticsearch = async () => {
 					address: company.ADDRESS || '',
 					phone: company.PHONE?.[0]?.VALUE || '',
 					email: company.EMAIL?.[0]?.VALUE || '',
-					bitrixId: company.ID, // Добавляем Bitrix ID
+					bitrixId: company.ID, // Bitrix ID
 					createdAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),
 					searchableText: `${company.TITLE} ${company.INDUSTRY || ''} ${
@@ -70,11 +81,11 @@ const syncBitrixToElasticsearch = async () => {
 					}`.toLowerCase(),
 				})
 			}
-			console.log(`✅ Synced ${companies.result.length} companies`)
+			console.log(`✅ Re-synced ${companies.result.length} companies`)
 		}
 
-		// 5. Sync contacts
-		console.log('👥 Syncing contacts...')
+		// 6. Re-sync contacts with Bitrix ID
+		console.log('👥 Re-syncing contacts with Bitrix ID...')
 		const contacts = await bitrix24Service.getContacts('', 1000)
 		if (contacts?.result) {
 			console.log(`Found ${contacts.result.length} contacts`)
@@ -87,7 +98,7 @@ const syncBitrixToElasticsearch = async () => {
 					type: 'contact',
 					phone: contact.PHONE?.[0]?.VALUE || '',
 					email: contact.EMAIL?.[0]?.VALUE || '',
-					bitrixId: contact.ID, // Добавляем Bitrix ID
+					bitrixId: contact.ID, // Bitrix ID
 					createdAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),
 					searchableText: `${contact.NAME} ${contact.LAST_NAME} ${
@@ -95,30 +106,55 @@ const syncBitrixToElasticsearch = async () => {
 					} ${contact.PHONE?.[0]?.VALUE || ''}`.toLowerCase(),
 				})
 			}
-			console.log(`✅ Synced ${contacts.result.length} contacts`)
+			console.log(`✅ Re-synced ${contacts.result.length} contacts`)
 		}
 
-		console.log('🎉 Sync completed successfully!')
+		console.log('🎉 Reindexing completed successfully!')
 
-		// 6. Test search
-		console.log('\n🔍 Testing search...')
-		const searchResults = await elasticsearchService.search({
-			query: 'м300',
-			type: 'product',
+		// 7. Test search by Bitrix ID
+		console.log('\n🔍 Testing Bitrix ID search...')
+
+		// Test company search by ID
+		const companySearchResults = await elasticsearchService.search({
+			query: '4880', // Пример Bitrix ID
+			type: 'company',
 			limit: 5,
 		})
-		console.log(`Found ${searchResults.length} products matching "м300"`)
-		searchResults.forEach((result, index) => {
-			console.log(`${index + 1}. ${result.name} (score: ${result.score})`)
+		console.log(
+			`Found ${companySearchResults.length} companies matching Bitrix ID "4880"`
+		)
+		companySearchResults.forEach((result, index) => {
+			console.log(
+				`${index + 1}. ${result.name} (Bitrix ID: ${result.bitrixId}, score: ${
+					result.score
+				})`
+			)
+		})
+
+		// Test contact search by ID
+		const contactSearchResults = await elasticsearchService.search({
+			query: '4880', // Пример Bitrix ID
+			type: 'contact',
+			limit: 5,
+		})
+		console.log(
+			`Found ${contactSearchResults.length} contacts matching Bitrix ID "4880"`
+		)
+		contactSearchResults.forEach((result, index) => {
+			console.log(
+				`${index + 1}. ${result.name} (Bitrix ID: ${result.bitrixId}, score: ${
+					result.score
+				})`
+			)
 		})
 	} catch (error) {
-		console.error('❌ Sync failed:', error)
+		console.error('❌ Reindexing failed:', error)
 	}
 }
 
 // Run if called directly
 if (require.main === module) {
-	syncBitrixToElasticsearch()
+	reindexWithBitrixId()
 		.then(() => process.exit(0))
 		.catch(error => {
 			console.error('Script failed:', error)
@@ -126,4 +162,4 @@ if (require.main === module) {
 		})
 }
 
-export { syncBitrixToElasticsearch }
+export { reindexWithBitrixId }

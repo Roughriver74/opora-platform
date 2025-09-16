@@ -110,7 +110,7 @@ export const searchProducts = async (
 		// Если есть результаты в Elasticsearch, возвращаем их
 		if (elasticResults.length > 0) {
 			const formattedResults = elasticResults.map(result => ({
-				ID: result.id.replace('product_', ''),
+				ID: result.bitrixId || result.id.replace('product_', ''), // Используем Bitrix ID если есть
 				NAME: result.name,
 				DESCRIPTION: result.description,
 				PRICE: result.price?.toString() || '',
@@ -194,7 +194,7 @@ export const searchCompanies = async (
 		// Если есть результаты в Elasticsearch, возвращаем их
 		if (elasticResults.length > 0) {
 			const formattedResults = elasticResults.map(result => ({
-				ID: result.id.replace('company_', ''),
+				ID: result.bitrixId || result.id.replace('company_', ''), // Используем Bitrix ID если есть
 				TITLE: result.name,
 				COMMENTS: result.description,
 				INDUSTRY: result.industry,
@@ -203,6 +203,7 @@ export const searchCompanies = async (
 				ADDRESS: result.address,
 				_score: result.score,
 				highlight: result.highlight,
+				bitrixId: result.bitrixId, // Добавляем Bitrix ID в результат
 			}))
 
 			logger.info('Companies Elasticsearch search params:', {
@@ -296,7 +297,7 @@ export const searchContacts = async (
 		// Если есть результаты в Elasticsearch, возвращаем их
 		if (elasticResults.length > 0) {
 			const formattedResults = elasticResults.map(result => ({
-				ID: result.id.replace('contact_', ''),
+				ID: result.bitrixId || result.id.replace('contact_', ''), // Используем Bitrix ID если есть
 				NAME: result.name.split(' ')[0] || '',
 				LAST_NAME: result.name.split(' ').slice(1).join(' ') || '',
 				COMMENTS: result.description,

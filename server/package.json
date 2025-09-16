@@ -15,7 +15,11 @@
 		"db:check": "ts-node --transpile-only src/database/migrations/scripts/check-tables.ts",
 		"db:clean": "ts-node --transpile-only src/database/migrations/scripts/clean-db.ts",
 		"db:verify": "ts-node --transpile-only src/database/migrations/scripts/verify-import.ts",
-		"test:elasticsearch": "ts-node --transpile-only src/scripts/testElasticsearch.ts"
+		"test:elasticsearch": "ts-node --transpile-only src/scripts/testElasticsearch.ts",
+		"sync:bitrix": "ts-node --transpile-only src/scripts/syncBitrixToElasticsearch.ts",
+		"sync:bitrix:prod": "node dist/scripts/syncBitrixToElasticsearch.js",
+		"reindex:bitrix": "ts-node --transpile-only src/scripts/reindexWithBitrixId.ts",
+		"reindex:bitrix:prod": "node dist/scripts/reindexWithBitrixId.js"
 	},
 	"keywords": [],
 	"author": "",

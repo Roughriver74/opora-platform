@@ -35,16 +35,10 @@ const Navbar: React.FC = () => {
 	const theme = useTheme()
 	const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 
-	// Логируем изменения location
-	React.useEffect(() => {
-		console.log('🔵 Navbar: location changed to:', location.pathname)
-	}, [location.pathname])
-
 	const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
 	const [mobileOpen, setMobileOpen] = React.useState(false)
 
 	const handleMenu = useCallback((event: React.MouseEvent<HTMLElement>) => {
-		console.log('🔵 handleMenu called')
 		setAnchorEl(event.currentTarget)
 	}, [])
 
@@ -53,7 +47,6 @@ const Navbar: React.FC = () => {
 	}, [])
 
 	const handleMobileToggle = useCallback(() => {
-		console.log('🔵 handleMobileToggle called')
 		setMobileOpen(prev => !prev)
 	}, [])
 
@@ -67,22 +60,15 @@ const Navbar: React.FC = () => {
 	// Обработчик клика по навигационным элементам
 	const handleNavClick = useCallback(
 		(path: string) => {
-			console.log('🔵 handleNavClick called with path:', path)
-			console.log('🔵 Current location:', location.pathname)
-			console.log('🔵 Navigate function:', typeof navigate)
 			// Закрываем мобильное меню
 			setMobileOpen(false)
 
-			// Попробуем принудительную навигацию
-			console.log('🔵 Trying navigate...')
+			// Попробуем обычную навигацию
 			navigate(path)
-			console.log('🔵 Navigate called')
 
-			// Если navigate не работает, попробуем window.location
+			// Если navigate не работает, используем window.location как fallback
 			setTimeout(() => {
-				console.log('🔵 Location after navigate:', location.pathname)
 				if (location.pathname !== path) {
-					console.log('🔵 Navigate failed, trying window.location')
 					window.location.href = path
 				}
 			}, 100)
@@ -122,7 +108,6 @@ const Navbar: React.FC = () => {
 						key={item.text}
 						component='div'
 						onClick={() => {
-							console.log('🔵 Mobile menu item clicked:', item.text, item.path)
 							setMobileOpen(false)
 							handleNavClick(item.path)
 						}}
@@ -164,10 +149,7 @@ const Navbar: React.FC = () => {
 							variant='h6'
 							noWrap
 							component='div'
-							onClick={() => {
-								console.log('🔵 Logo clicked, navigating to /')
-								navigate('/')
-							}}
+							onClick={() => navigate('/')}
 							sx={{
 								mr: 2,
 								display: 'flex',
@@ -198,10 +180,7 @@ const Navbar: React.FC = () => {
 							variant='h6'
 							noWrap
 							component='div'
-							onClick={() => {
-								console.log('🔵 Logo clicked, navigating to /')
-								navigate('/')
-							}}
+							onClick={() => navigate('/')}
 							sx={{
 								mr: 2,
 								display: 'flex',
@@ -236,14 +215,7 @@ const Navbar: React.FC = () => {
 										key={item.text}
 										color='inherit'
 										startIcon={item.icon}
-										onClick={() => {
-											console.log(
-												'🔵 Desktop button clicked:',
-												item.text,
-												item.path
-											)
-											handleNavClick(item.path)
-										}}
+										onClick={() => handleNavClick(item.path)}
 										sx={{
 											my: 2,
 											display: 'flex',

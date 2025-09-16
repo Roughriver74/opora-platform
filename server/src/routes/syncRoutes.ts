@@ -15,6 +15,13 @@ router.post('/schedule', syncController.setSchedule.bind(syncController))
 router.post('/clear', syncController.clearData.bind(syncController))
 router.get('/stats', syncController.getStats.bind(syncController))
 
+// Новые маршруты для синхронизации с поддержкой Bitrix ID
+router.post('/bitrix', syncController.syncBitrixToElastic.bind(syncController))
+router.post(
+	'/reindex-bitrix',
+	syncController.reindexWithBitrixId.bind(syncController)
+)
+
 /**
  * Все маршруты синхронизации временно без аутентификации для тестирования
  */

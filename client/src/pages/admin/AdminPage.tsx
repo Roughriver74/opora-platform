@@ -50,7 +50,6 @@ const a11yProps = (index: number) => {
 }
 
 const AdminPage: React.FC = () => {
-	console.log('🔵 AdminPage: rendering')
 	const [tabValue, setTabValue] = useState(0)
 	const [forms, setForms] = useState<Form[]>([])
 	const [currentForm, setCurrentForm] = useState<Form | undefined>(undefined)

@@ -13,7 +13,6 @@ import { FormService } from '../services/formService'
 import { useAuth } from '../contexts/auth'
 
 const HomePage: React.FC = () => {
-	console.log('🔵 HomePage: rendering')
 	const [searchParams] = useSearchParams()
 	const { user } = useAuth()
 	const [form, setForm] = useState<Form | null>(null)
