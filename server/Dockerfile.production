@@ -14,6 +14,8 @@ RUN npm ci
 # Копируем исходный код
 COPY src ./src
 
+# Скрипты уже включены в src и компилируются в dist
+
 # Компилируем TypeScript
 RUN npm run build
 
@@ -30,6 +32,8 @@ RUN npm ci --only=production
 
 # Копируем собранный код из стадии builder
 COPY --from=builder /app/dist ./dist
+
+# Скрипты уже включены в dist
 
 # Создаем пользователя для безопасности
 RUN addgroup -g 1001 -S nodejs && \

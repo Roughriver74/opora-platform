@@ -3,6 +3,7 @@ import { getFormService } from '../services/FormService'
 import { getSubmissionService } from '../services/SubmissionService'
 import { getUserService } from '../services/UserService'
 import bitrix24Service from '../services/bitrix24Service'
+import { elasticsearchService } from '../services/elasticsearchService'
 import {
 	BitrixSyncStatus,
 	SubmissionPriority,
@@ -110,6 +111,54 @@ export const submitForm = async (req: Request, res: Response) => {
 				BitrixSyncStatus.SYNCED,
 				dealResponse.result?.toString?.()
 			)
+
+			// Автоматическая индексация заявки в Elasticsearch
+			try {
+				// Очищаем formData от пустых значений
+				const cleanedFormData = submission.formData
+					? Object.fromEntries(
+							Object.entries(submission.formData).filter(
+								([key, value]) =>
+									value !== null && value !== undefined && value !== ''
+							)
+					  )
+					: {}
+
+				const submissionData = {
+					id: `submission_${submission.id}`,
+					name: submission.title || `Заявка #${submission.submissionNumber}`,
+					description: submission.notes || '',
+					type: 'submission' as const,
+					status: submission.status,
+					priority: submission.priority,
+					tags: submission.tags || [],
+					formData: cleanedFormData,
+					submissionNumber: submission.submissionNumber,
+					userName: submission.userName,
+					userEmail: submission.userEmail,
+					formName: form.name,
+					formTitle: form.title,
+					assignedToName: submission.assignedToName,
+					createdAt: submission.createdAt.toISOString(),
+					updatedAt: submission.updatedAt.toISOString(),
+					searchableText: `${submission.title || ''} ${
+						submission.notes || ''
+					} ${submission.submissionNumber || ''} ${submission.userName || ''} ${
+						form.name || ''
+					}`.toLowerCase(),
+				}
+
+				await elasticsearchService.indexDocument(submissionData)
+				console.log(
+					`✅ Заявка ${submission.submissionNumber} автоматически проиндексирована в Elasticsearch`
+				)
+			} catch (indexError) {
+				console.error(
+					`❌ Ошибка при автоматической индексации заявки ${submission.submissionNumber}:`,
+					indexError
+				)
+				// Не прерываем выполнение, если индексация не удалась
+			}
 
 			return res.status(200).json({
 				success: true,
@@ -728,6 +777,59 @@ export const updateSubmission = async (req: Request, res: Response) => {
 				userId
 			)
 			await submissionService.updateSyncStatus(id, BitrixSyncStatus.SYNCED)
+
+			// Автоматическая переиндексация заявки в Elasticsearch
+			try {
+				const updatedSubmission = await submissionService.findById(id)
+				if (updatedSubmission) {
+					// Очищаем formData от пустых значений
+					const cleanedFormData = updatedSubmission.formData
+						? Object.fromEntries(
+								Object.entries(updatedSubmission.formData).filter(
+									([key, value]) =>
+										value !== null && value !== undefined && value !== ''
+								)
+						  )
+						: {}
+
+					const submissionData = {
+						id: `submission_${updatedSubmission.id}`,
+						name:
+							updatedSubmission.title ||
+							`Заявка #${updatedSubmission.submissionNumber}`,
+						description: updatedSubmission.notes || '',
+						type: 'submission' as const,
+						status: updatedSubmission.status,
+						priority: updatedSubmission.priority,
+						tags: updatedSubmission.tags || [],
+						formData: cleanedFormData,
+						submissionNumber: updatedSubmission.submissionNumber,
+						userName: updatedSubmission.userName,
+						userEmail: updatedSubmission.userEmail,
+						formName: form.name,
+						formTitle: form.title,
+						assignedToName: updatedSubmission.assignedToName,
+						createdAt: updatedSubmission.createdAt.toISOString(),
+						updatedAt: updatedSubmission.updatedAt.toISOString(),
+						searchableText: `${updatedSubmission.title || ''} ${
+							updatedSubmission.notes || ''
+						} ${updatedSubmission.submissionNumber || ''} ${
+							updatedSubmission.userName || ''
+						} ${form.name || ''}`.toLowerCase(),
+					}
+
+					await elasticsearchService.indexDocument(submissionData)
+					console.log(
+						`✅ Заявка ${updatedSubmission.submissionNumber} автоматически переиндексирована в Elasticsearch`
+					)
+				}
+			} catch (indexError) {
+				console.error(
+					`❌ Ошибка при автоматической переиндексации заявки ${submission.submissionNumber}:`,
+					indexError
+				)
+				// Не прерываем выполнение, если индексация не удалась
+			}
 
 			return res.json({
 				success: true,

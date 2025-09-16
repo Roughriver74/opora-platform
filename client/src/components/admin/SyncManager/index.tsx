@@ -146,6 +146,31 @@ const SyncManager = () => {
 		}
 	}
 
+	const handleSyncBitrix = async () => {
+		try {
+			setLoading(true)
+			setError(null)
+			setSuccess(null)
+
+			const response = await syncService.syncBitrixToElastic()
+
+			if (response.success) {
+				setSuccess('Синхронизация с Bitrix24 завершена успешно')
+				// Обновляем данные через 3 секунды
+				setTimeout(() => {
+					loadData()
+				}, 3000)
+			} else {
+				setError(response.message || 'Ошибка синхронизации с Bitrix24')
+			}
+		} catch (err) {
+			console.warn('API синхронизации недоступен:', err)
+			setError('API синхронизации недоступен. Попробуйте позже.')
+		} finally {
+			setLoading(false)
+		}
+	}
+
 	const handleSetSchedule = async (schedule: string) => {
 		try {
 			setLoading(true)
@@ -235,7 +260,6 @@ const SyncManager = () => {
 
 			<Grid container spacing={3}>
 				{/* Статус синхронизации */}
-				
 
 				{/* Статистика индекса */}
 				<Grid size={{ xs: 12, md: 6 }}>

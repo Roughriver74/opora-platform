@@ -98,9 +98,7 @@ tar -czf "$ARCHIVE_NAME" \
     docker-compose.yml \
     ecosystem.config.js \
     .env.production \
-    scripts/setup-server.sh \
-    scripts/index-submissions-production.sh \
-    scripts/index-submissions-server.sh
+    scripts/
 
 echo -e "${GREEN}✓ Архив $ARCHIVE_NAME создан${NC}"
 
@@ -163,6 +161,12 @@ if [ -f ".env.production" ]; then
     echo "✅ Переменные окружения загружены"
 fi
 
+# Установка прав на выполнение для скриптов
+if [ -d "scripts" ]; then
+    chmod +x scripts/*.sh
+    echo "✅ Права на выполнение установлены для скриптов"
+fi
+
 echo "Docker версии:"
 docker --version
 docker-compose --version
@@ -184,7 +188,19 @@ docker builder prune -f 2>/dev/null || true
 # Запуск новых контейнеров БЕЗ КЭША для обновления оптимизаций
 echo "Запуск Docker контейнеров (пересборка без кэша)..."
 docker-compose build --no-cache
+
+# Попытка запуска с повторными попытками
+echo "Запуск контейнеров..."
 docker-compose up -d
+
+# Проверяем статус запуска
+sleep 10
+if ! docker-compose ps | grep -q "Up"; then
+    echo "⚠️  Первая попытка запуска не удалась, пробуем еще раз..."
+    docker-compose down
+    sleep 5
+    docker-compose up -d
+fi
 
 # Ожидание запуска сервисов
 echo "Ожидание запуска сервисов..."
@@ -203,6 +219,7 @@ echo "Синхронизация данных с Bitrix в Elasticsearch..."
 sleep 10  # Даем время Elasticsearch полностью запуститься
 
 # Проверяем, что Elasticsearch доступен
+echo "Проверка доступности Elasticsearch..."
 ELASTICSEARCH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9200/_cluster/health 2>/dev/null || echo "000")
 
 if [ "$ELASTICSEARCH_CHECK" = "200" ]; then
@@ -213,11 +230,23 @@ if [ "$ELASTICSEARCH_CHECK" = "200" ]; then
     
     if [ $? -eq 0 ]; then
         echo "✅ Синхронизация данных завершена успешно"
+        
+        # Дополнительно запускаем индексацию заявок через локальный скрипт на сервере
+        echo "📋 Запуск индексации заявок на сервере..."
+        ./scripts/index-submissions-server.sh
+        
+        if [ $? -eq 0 ]; then
+            echo "✅ Индексация заявок завершена успешно"
+        else
+            echo "⚠️  Ошибка при индексации заявок, но приложение продолжает работать"
+        fi
     else
         echo "⚠️  Ошибка при синхронизации данных, но приложение продолжает работать"
     fi
 else
-    echo "⚠️  Elasticsearch недоступен, пропускаем синхронизацию"
+    echo "⚠️  Elasticsearch недоступен (код: $ELASTICSEARCH_CHECK), пропускаем синхронизацию"
+    echo "Проверяем логи Elasticsearch:"
+    docker-compose logs elasticsearch | tail -10
 fi
 
 echo "Деплой в Docker завершен!"
@@ -260,11 +289,11 @@ echo ""
 echo -e "${YELLOW}⚠️  ВАЖНО: После деплоя необходимо запустить индексацию submissions в Elasticsearch!${NC}"
 echo -e "${BLUE}Для запуска индексации используйте один из способов:${NC}"
 echo ""
-echo -e "${GREEN}Способ 1 (рекомендуемый):${NC}"
+echo -e "${GREEN}Способ 1 (рекомендуемый - запуск с локальной машины):${NC}"
 echo -e "  ${BLUE}./scripts/index-submissions-production.sh${NC}"
 echo ""
-echo -e "${GREEN}Способ 2 (на сервере):${NC}"
+echo -e "${GREEN}Способ 2 (на сервере напрямую):${NC}"
 echo -e "  ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && ./scripts/index-submissions-server.sh'${NC}"
 echo ""
-echo -e "${GREEN}Способ 3 (прямо в Docker):${NC}"
-echo -e "  ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && docker-compose exec -T backend node scripts/index-submissions-to-elasticsearch.js'${NC}"
+echo -e "${GREEN}Способ 3 (через Docker контейнер):${NC}"
+echo -e "  ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && docker-compose exec -T backend node dist/scripts/index-submissions-to-elasticsearch.js'${NC}"

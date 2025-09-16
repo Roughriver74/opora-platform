@@ -209,6 +209,9 @@ export const useDynamicOptions = (
 				setLastQuery('')
 				setHasResults(false)
 				setFailedAttempts(0) // Сбрасываем счетчик неудачных попыток
+				console.log(
+					'🔄 useDynamicOptions: Поле очищено, сбрасываем все состояния'
+				)
 				return
 			}
 
@@ -233,8 +236,8 @@ export const useDynamicOptions = (
 			}
 
 			// Защита от спама: если было много неудачных попыток для этого запроса, не делаем новый запрос
-			if (trimmedQuery === lastQuery && failedAttempts >= 15) {
-				// Increased limit from 5 to 15
+			// Но только если это тот же запрос и у нас уже есть результаты
+			if (trimmedQuery === lastQuery && failedAttempts >= 15 && hasResults) {
 				console.log(
 					`🚫 useDynamicOptions: Слишком много неудачных попыток для "${trimmedQuery}", пропускаем запрос`
 				)
@@ -250,6 +253,13 @@ export const useDynamicOptions = (
 				console.log(
 					`🔄 useDynamicOptions: Счетчик неудачных попыток сброшен для нового запроса "${trimmedQuery}"`
 				)
+				// Сбрасываем также hasResults только если предыдущий запрос был пустым (полное очищение поля)
+				if (lastQuery === '') {
+					setHasResults(false)
+					console.log(
+						'🔄 useDynamicOptions: Поле было полностью очищено, сбрасываем результаты'
+					)
+				}
 			}
 
 			// Создаем новый AbortController для этого запроса

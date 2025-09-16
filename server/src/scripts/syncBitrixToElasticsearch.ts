@@ -3,6 +3,8 @@ import dotenv from 'dotenv'
 import { elasticsearchService } from '../services/elasticsearchService'
 import bitrix24Service from '../services/bitrix24Service'
 import { logger } from '../utils/logger'
+import { AppDataSource } from '../database/config/database.config'
+import { Submission } from '../database/entities/Submission.entity'
 
 dotenv.config()
 
@@ -101,9 +103,88 @@ const syncBitrixToElasticsearch = async () => {
 			console.log(`✅ Synced ${contacts.result.length} contacts`)
 		}
 
+		// 6. Sync submissions (заявки)
+		console.log('📋 Syncing submissions...')
+		try {
+			if (!AppDataSource.isInitialized) {
+				await AppDataSource.initialize()
+			}
+			const submissionRepository = AppDataSource.getRepository(Submission)
+
+			const submissions = await submissionRepository.find({
+				relations: ['user', 'form', 'assignedTo'],
+			})
+
+			console.log(`Found ${submissions.length} submissions`)
+
+			let indexedCount = 0
+			let errorCount = 0
+
+			for (const submission of submissions) {
+				try {
+					// Очищаем formData от пустых значений
+					const cleanedFormData = submission.formData
+						? Object.fromEntries(
+								Object.entries(submission.formData).filter(
+									([key, value]) =>
+										value !== null && value !== undefined && value !== ''
+								)
+						  )
+						: {}
+
+					const submissionData = {
+						id: `submission_${submission.id}`,
+						name: submission.title || `Заявка #${submission.submissionNumber}`,
+						description: submission.notes || '',
+						type: 'submission' as const,
+						status: submission.status,
+						priority: submission.priority,
+						tags: submission.tags || [],
+						formData: cleanedFormData,
+						submissionNumber: submission.submissionNumber,
+						userName: submission.userName,
+						userEmail: submission.userEmail,
+						formName: submission.formName,
+						formTitle: submission.formTitle,
+						assignedToName: submission.assignedToName,
+						createdAt: submission.createdAt.toISOString(),
+						updatedAt: submission.updatedAt.toISOString(),
+						searchableText: `${submission.title || ''} ${
+							submission.notes || ''
+						} ${submission.submissionNumber || ''} ${
+							submission.userName || ''
+						} ${submission.formName || ''}`.toLowerCase(),
+					}
+
+					await elasticsearchService.indexDocument(submissionData)
+					indexedCount++
+
+					if (indexedCount % 10 === 0) {
+						console.log(`Проиндексировано ${indexedCount} заявок...`)
+					}
+				} catch (error) {
+					console.error(
+						`Ошибка при индексации заявки ${submission.submissionNumber}:`,
+						error.message
+					)
+					errorCount++
+				}
+			}
+
+			console.log(
+				`✅ Synced ${indexedCount} submissions (errors: ${errorCount})`
+			)
+
+			if (AppDataSource.isInitialized) {
+				await AppDataSource.destroy()
+			}
+		} catch (error) {
+			console.error('❌ Error syncing submissions:', error.message)
+		}
+
 		console.log('🎉 Sync completed successfully!')
 
-		// 6. Test search
+		// 7. Test search
 		console.log('\n🔍 Testing search...')
 		const searchResults = await elasticsearchService.search({
 			query: 'м300',

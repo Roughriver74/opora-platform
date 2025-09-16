@@ -47,13 +47,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Запуск индексации через локальный скрипт на сервере
-echo -e "${BLUE}3. Запуск индексации submissions в Elasticsearch на сервере...${NC}"
+# Запуск индексации через Docker контейнер
+echo -e "${BLUE}3. Запуск индексации submissions в Elasticsearch...${NC}"
 ssh $SERVER_USER@$SERVER_IP << 'ENDSSH'
 cd /var/www/beton-crm
 
-echo "Запуск индексации через локальный скрипт на сервере..."
-./scripts/index-submissions-server.sh
+echo "Запуск индексации через Docker контейнер..."
+docker-compose exec -T backend node dist/scripts/index-submissions-to-elasticsearch.js
 
 echo "Индексация завершена!"
 ENDSSH

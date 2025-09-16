@@ -81,6 +81,22 @@ class SyncService {
 	}
 
 	/**
+	 * Синхронизация с Bitrix24 в Elasticsearch
+	 */
+	async syncBitrixToElastic(): Promise<{ success: boolean; message: string }> {
+		const response = await api.post('/api/sync/bitrix-to-elastic')
+		return response.data
+	}
+
+	/**
+	 * Переиндексация с поддержкой Bitrix ID
+	 */
+	async reindexWithBitrixId(): Promise<{ success: boolean; message: string }> {
+		const response = await api.post('/api/sync/reindex-bitrix')
+		return response.data
+	}
+
+	/**
 	 * Получение статистики Elasticsearch
 	 */
 	async getStats(): Promise<StatsResponse> {

@@ -283,6 +283,16 @@ class ElasticsearchService {
 				.filter(Boolean)
 				.join(' ')
 
+			// Очищаем formData от пустых значений
+			const cleanedFormData = submission.formData
+				? Object.fromEntries(
+						Object.entries(submission.formData).filter(
+							([key, value]) =>
+								value !== null && value !== undefined && value !== ''
+						)
+				  )
+				: {}
+
 			const document: SearchDocument = {
 				id: submission.id,
 				name: submission.title || submission.submissionNumber,
@@ -301,7 +311,7 @@ class ElasticsearchService {
 				status: submission.status,
 				priority: submission.priority,
 				notes: submission.notes,
-				formData: submission.formData,
+				formData: cleanedFormData,
 			}
 
 			await this.indexDocument(document)
