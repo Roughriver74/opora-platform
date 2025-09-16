@@ -9,7 +9,7 @@ const API_URL =
 
 const api = axios.create({
 	baseURL: API_URL,
-	timeout: 30000, // Увеличиваем timeout до 30 секунд для Bitrix24 запросов
+	timeout: 60000, // Увеличиваем timeout до 60 секунд для синхронизации
 	headers: {
 		'Content-Type': 'application/json',
 	},
@@ -71,10 +71,10 @@ api.interceptors.response.use(
 			try {
 				// Пытаемся обновить токен
 				const newToken = await refreshAccessToken()
-				
+
 				// Обновляем заголовок авторизации
 				originalRequest.headers.Authorization = `Bearer ${newToken}`
-				
+
 				// Повторяем оригинальный запрос
 				return api(originalRequest)
 			} catch (refreshError) {

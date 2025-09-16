@@ -1,10 +1,29 @@
 import { BaseService } from './base/BaseService'
-import { Submission, SubmissionPriority, BitrixSyncStatus } from '../database/entities/Submission.entity'
-import { SubmissionRepository, SubmissionFilters, SubmissionStatistics } from '../database/repositories/SubmissionRepository'
-import { getSubmissionRepository, getUserRepository, getFormRepository } from '../database/repositories'
-import { PaginationOptions, PaginatedResult } from '../database/repositories/base/BaseRepository'
-import { SubmissionHistory, HistoryActionType } from '../database/entities/SubmissionHistory.entity'
+import {
+	Submission,
+	SubmissionPriority,
+	BitrixSyncStatus,
+} from '../database/entities/Submission.entity'
+import {
+	SubmissionRepository,
+	SubmissionFilters,
+	SubmissionStatistics,
+} from '../database/repositories/SubmissionRepository'
+import {
+	getSubmissionRepository,
+	getUserRepository,
+	getFormRepository,
+} from '../database/repositories'
+import {
+	PaginationOptions,
+	PaginatedResult,
+} from '../database/repositories/base/BaseRepository'
+import {
+	SubmissionHistory,
+	HistoryActionType,
+} from '../database/entities/SubmissionHistory.entity'
 import { AppDataSource } from '../database/config/database.config'
+import { ElasticsearchService } from './elasticsearchService'
 
 export interface CreateSubmissionDTO {
 	formId: string
@@ -27,9 +46,14 @@ export interface UpdateSubmissionDTO {
 	formData?: Record<string, any>
 }
 
-export interface SubmissionSearchParams extends SubmissionFilters, PaginationOptions {}
+export interface SubmissionSearchParams
+	extends SubmissionFilters,
+		PaginationOptions {}
 
-export class SubmissionService extends BaseService<Submission, SubmissionRepository> {
+export class SubmissionService extends BaseService<
+	Submission,
+	SubmissionRepository
+> {
 	constructor() {
 		super(getSubmissionRepository())
 	}
@@ -66,7 +90,9 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 			notes: data.notes,
 			tags: data.tags || [],
 			bitrixDealId: data.bitrixDealId,
-			bitrixSyncStatus: data.bitrixDealId ? BitrixSyncStatus.SYNCED : BitrixSyncStatus.PENDING,
+			bitrixSyncStatus: data.bitrixDealId
+				? BitrixSyncStatus.SYNCED
+				: BitrixSyncStatus.PENDING,
 			formData: data.formData || {},
 			// Денормализованные данные
 			formName: form.name,
@@ -83,10 +109,23 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 			data.userId
 		)
 
+		// Индексация в Elasticsearch
+		try {
+			const elasticsearchService = new ElasticsearchService()
+			await elasticsearchService.indexSubmission(submission)
+		} catch (error) {
+			console.error('Ошибка при индексации заявки в Elasticsearch:', error)
+			// Не прерываем создание заявки из-за ошибки индексации
+		}
+
 		return submission
 	}
 
-	async updateSubmission(id: string, data: UpdateSubmissionDTO, updatedBy?: string): Promise<Submission | null> {
+	async updateSubmission(
+		id: string,
+		data: UpdateSubmissionDTO,
+		updatedBy?: string
+	): Promise<Submission | null> {
 		const submission = await this.repository.findById(id)
 		if (!submission) {
 			this.throwNotFound('Заявка', id)
@@ -107,7 +146,7 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 
 		// Создание записей в истории для изменений
 		const changes: any[] = []
-		
+
 		if (data.status && data.status !== oldValues.status) {
 			await this.createHistoryEntry(
 				id,
@@ -118,23 +157,37 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 			)
 		}
 
-		if (data.assignedToId !== undefined && data.assignedToId !== oldValues.assignedToId) {
+		if (
+			data.assignedToId !== undefined &&
+			data.assignedToId !== oldValues.assignedToId
+		) {
 			const userRepository = getUserRepository()
-			const newAssignee = data.assignedToId ? await userRepository.findById(data.assignedToId) : null
-			
+			const newAssignee = data.assignedToId
+				? await userRepository.findById(data.assignedToId)
+				: null
+
 			await this.createHistoryEntry(
 				id,
 				HistoryActionType.ASSIGN,
-				newAssignee 
+				newAssignee
 					? `Заявка назначена на ${newAssignee.fullName}`
 					: 'Назначение заявки снято',
 				updatedBy,
-				[{ field: 'assignedToId', oldValue: oldValues.assignedToId, newValue: data.assignedToId }]
+				[
+					{
+						field: 'assignedToId',
+						oldValue: oldValues.assignedToId,
+						newValue: data.assignedToId,
+					},
+				]
 			)
 		}
 
 		// Специальная обработка для formData
-		if (data.formData && JSON.stringify(data.formData) !== JSON.stringify(oldValues.formData)) {
+		if (
+			data.formData &&
+			JSON.stringify(data.formData) !== JSON.stringify(oldValues.formData)
+		) {
 			changes.push({
 				field: 'formData',
 				oldValue: oldValues.formData,
@@ -144,7 +197,12 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 
 		// Общее обновление для остальных полей
 		Object.keys(data).forEach(key => {
-			if (key !== 'status' && key !== 'assignedToId' && key !== 'formData' && (data as any)[key] !== (oldValues as any)[key]) {
+			if (
+				key !== 'status' &&
+				key !== 'assignedToId' &&
+				key !== 'formData' &&
+				(data as any)[key] !== (oldValues as any)[key]
+			) {
 				changes.push({
 					field: key,
 					oldValue: (oldValues as any)[key],
@@ -163,14 +221,87 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 			)
 		}
 
+		// Индексация обновленной заявки в Elasticsearch
+		try {
+			const elasticsearchService = new ElasticsearchService()
+			await elasticsearchService.indexSubmission(updated)
+		} catch (error) {
+			console.error(
+				'Ошибка при индексации обновленной заявки в Elasticsearch:',
+				error
+			)
+			// Не прерываем обновление заявки из-за ошибки индексации
+		}
+
 		return updated
 	}
 
-	async findBySubmissionNumber(submissionNumber: string): Promise<Submission | null> {
+	async findBySubmissionNumber(
+		submissionNumber: string
+	): Promise<Submission | null> {
 		return this.repository.findBySubmissionNumber(submissionNumber)
 	}
 
-	async searchSubmissions(params: SubmissionSearchParams): Promise<PaginatedResult<Submission>> {
+	async searchSubmissions(
+		params: SubmissionSearchParams
+	): Promise<PaginatedResult<Submission>> {
+		// Если есть поисковый запрос, используем Elasticsearch
+		if (params.search && params.search.trim()) {
+			try {
+				const elasticsearchService = new ElasticsearchService()
+				const searchResults = await elasticsearchService.search({
+					query: params.search.trim(),
+					type: 'submission',
+					limit: params.limit || 20,
+					offset: ((params.page || 1) - 1) * (params.limit || 20),
+					includeHighlights: false,
+					fuzzy: true,
+				})
+
+				// Получаем полные данные submissions по ID из Elasticsearch
+				const submissionIds = searchResults.map(result => result.id)
+				if (submissionIds.length === 0) {
+					return {
+						data: [],
+						total: 0,
+						page: params.page || 1,
+						limit: params.limit || 20,
+						totalPages: 0,
+						hasNext: false,
+						hasPrev: false,
+					}
+				}
+
+				const submissions = await this.repository.findByIds(submissionIds, {
+					relations: ['user', 'form', 'assignedTo'],
+				})
+
+				// Сортируем по порядку из Elasticsearch результатов
+				const sortedSubmissions = submissionIds
+					.map(id => submissions.find(s => s.id === id))
+					.filter(Boolean) as Submission[]
+
+				const page = params.page || 1
+				const limit = params.limit || 20
+				const totalPages = Math.ceil(searchResults.length / limit)
+
+				return {
+					data: sortedSubmissions,
+					total: searchResults.length,
+					page,
+					limit,
+					totalPages,
+					hasNext: page < totalPages,
+					hasPrev: page > 1,
+				}
+			} catch (error) {
+				console.error('Ошибка поиска через Elasticsearch:', error)
+				// Fallback к обычному поиску
+				return this.repository.findWithFilters(params, params)
+			}
+		}
+
+		// Обычный поиск без Elasticsearch
 		return this.repository.findWithFilters(params, params)
 	}
 
@@ -188,8 +319,13 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		bitrixDealId?: string,
 		error?: string
 	): Promise<boolean> {
-		const result = await this.repository.updateSyncStatus(submissionId, status, bitrixDealId, error)
-		
+		const result = await this.repository.updateSyncStatus(
+			submissionId,
+			status,
+			bitrixDealId,
+			error
+		)
+
 		if (result) {
 			await this.createHistoryEntry(
 				submissionId,
@@ -206,18 +342,22 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		return result
 	}
 
-	async assignToUser(submissionId: string, userId: string | null, assignedBy?: string): Promise<boolean> {
+	async assignToUser(
+		submissionId: string,
+		userId: string | null,
+		assignedBy?: string
+	): Promise<boolean> {
 		const submission = await this.repository.findById(submissionId)
 		if (!submission) {
 			this.throwNotFound('Заявка', submissionId)
 		}
 
 		const result = await this.repository.assignToUser(submissionId, userId)
-		
+
 		if (result && userId) {
 			const userRepository = getUserRepository()
 			const user = await userRepository.findById(userId)
-			
+
 			await this.createHistoryEntry(
 				submissionId,
 				HistoryActionType.ASSIGN,
@@ -229,7 +369,11 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		return result
 	}
 
-	async updateStatus(submissionId: string, status: string, updatedBy?: string): Promise<boolean> {
+	async updateStatus(
+		submissionId: string,
+		status: string,
+		updatedBy?: string
+	): Promise<boolean> {
 		const submission = await this.repository.findById(submissionId)
 		if (!submission) {
 			this.throwNotFound('Заявка', submissionId)
@@ -237,7 +381,7 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 
 		const oldStatus = submission.status
 		const result = await this.repository.updateStatus(submissionId, status)
-		
+
 		if (result) {
 			await this.createHistoryEntry(
 				submissionId,
@@ -251,9 +395,13 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		return result
 	}
 
-	async addTags(submissionId: string, tags: string[], updatedBy?: string): Promise<boolean> {
+	async addTags(
+		submissionId: string,
+		tags: string[],
+		updatedBy?: string
+	): Promise<boolean> {
 		const result = await this.repository.addTags(submissionId, tags)
-		
+
 		if (result) {
 			await this.createHistoryEntry(
 				submissionId,
@@ -266,9 +414,13 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		return result
 	}
 
-	async removeTags(submissionId: string, tags: string[], updatedBy?: string): Promise<boolean> {
+	async removeTags(
+		submissionId: string,
+		tags: string[],
+		updatedBy?: string
+	): Promise<boolean> {
 		const result = await this.repository.removeTags(submissionId, tags)
-		
+
 		if (result) {
 			await this.createHistoryEntry(
 				submissionId,
@@ -281,7 +433,11 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		return result
 	}
 
-	async addComment(submissionId: string, comment: string, userId?: string): Promise<boolean> {
+	async addComment(
+		submissionId: string,
+		comment: string,
+		userId?: string
+	): Promise<boolean> {
 		const submission = await this.repository.findById(submissionId)
 		if (!submission) {
 			this.throwNotFound('Заявка', submissionId)
@@ -297,7 +453,9 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		return true
 	}
 
-	async getStatistics(filters?: SubmissionFilters): Promise<SubmissionStatistics> {
+	async getStatistics(
+		filters?: SubmissionFilters
+	): Promise<SubmissionStatistics> {
 		return this.repository.getStatistics(filters)
 	}
 
@@ -309,9 +467,11 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		return this.repository.getOverdueSubmissions(daysOverdue)
 	}
 
-	async getSubmissionHistory(submissionId: string): Promise<SubmissionHistory[]> {
+	async getSubmissionHistory(
+		submissionId: string
+	): Promise<SubmissionHistory[]> {
 		const historyRepository = AppDataSource.getRepository(SubmissionHistory)
-		
+
 		return historyRepository.find({
 			where: { submissionId },
 			relations: ['user'],
@@ -328,7 +488,7 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		metadata?: Record<string, any>
 	): Promise<void> {
 		const historyRepository = AppDataSource.getRepository(SubmissionHistory)
-		
+
 		const entry = SubmissionHistory.createEntry(
 			submissionId,
 			actionType,
@@ -341,21 +501,31 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		await historyRepository.save(entry)
 	}
 
-	async getUserSubmissions(userId: string, filters?: SubmissionFilters): Promise<PaginatedResult<Submission>> {
+	async getUserSubmissions(
+		userId: string,
+		filters?: SubmissionFilters
+	): Promise<PaginatedResult<Submission>> {
 		return this.repository.findWithFilters(
 			{ ...filters, userId },
 			{ page: 1, limit: 20, sortBy: 'createdAt', sortOrder: 'DESC' }
 		)
 	}
 
-	async getAssignedSubmissions(assignedToId: string, filters?: SubmissionFilters): Promise<PaginatedResult<Submission>> {
+	async getAssignedSubmissions(
+		assignedToId: string,
+		filters?: SubmissionFilters
+	): Promise<PaginatedResult<Submission>> {
 		return this.repository.findWithFilters(
 			{ ...filters, assignedToId },
 			{ page: 1, limit: 20, sortBy: 'createdAt', sortOrder: 'DESC' }
 		)
 	}
 
-	async createFromFormData(formId: string, formData: Record<string, any>, userId?: string): Promise<Submission> {
+	async createFromFormData(
+		formId: string,
+		formData: Record<string, any>,
+		userId?: string
+	): Promise<Submission> {
 		// Получение формы
 		const formRepository = getFormRepository()
 		const form = await formRepository.findWithFields(formId)
@@ -375,12 +545,15 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		})
 	}
 
-	private generateSubmissionTitle(formTitle: string, formData: Record<string, any>): string {
+	private generateSubmissionTitle(
+		formTitle: string,
+		formData: Record<string, any>
+	): string {
 		// Попытка найти имя или email в данных формы
 		const name = formData.name || formData.firstName || formData.fullName
 		const email = formData.email
 		const phone = formData.phone
-		
+
 		if (name) {
 			return `${formTitle} - ${name}`
 		} else if (email) {
@@ -388,7 +561,7 @@ export class SubmissionService extends BaseService<Submission, SubmissionReposit
 		} else if (phone) {
 			return `${formTitle} - ${phone}`
 		}
-		
+
 		return `${formTitle} - ${new Date().toLocaleString('ru-RU')}`
 	}
 }

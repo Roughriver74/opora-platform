@@ -114,11 +114,7 @@ export const SubmissionsTable = ({
 									</Typography>
 								</TableCell>
 								<TableCell>
-									{submission.userId
-										? submission.userId.firstName && submission.userId.lastName
-											? `${submission.userId.firstName} ${submission.userId.lastName}`
-											: submission.userId.name || 'Не указан'
-										: 'Анонимная заявка'}
+									{submission.userName || 'Анонимная заявка'}
 								</TableCell>
 								<TableCell>
 									<FormControl size='small' sx={{ minWidth: 120 }}>
@@ -240,9 +236,15 @@ export const SubmissionsTable = ({
 				onPageChange={onPageChange}
 				onRowsPerPageChange={onRowsPerPageChange}
 				labelRowsPerPage='Строк на странице:'
-				labelDisplayedRows={({ from, to, count }: { from: number; to: number; count: number }) =>
-					`${from}-${to} из ${count}`
-				}
+				labelDisplayedRows={({
+					from,
+					to,
+					count,
+				}: {
+					from: number
+					to: number
+					count: number
+				}) => `${from}-${to} из ${count}`}
 			/>
 		</TableContainer>
 	)

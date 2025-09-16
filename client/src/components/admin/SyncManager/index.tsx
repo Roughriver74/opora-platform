@@ -395,9 +395,7 @@ const SyncManager = () => {
 										<Select
 											value={selectedSchedule}
 											label='Расписание'
-											onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-												handleSetSchedule(e.target.value)
-											}
+											onChange={(e: any) => handleSetSchedule(e.target.value)}
 											disabled={loading}
 										>
 											{Object.entries(syncService.getAvailableSchedules()).map(

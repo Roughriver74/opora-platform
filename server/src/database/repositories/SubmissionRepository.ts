@@ -1,5 +1,13 @@
-import { BaseRepository, PaginationOptions, PaginatedResult } from './base/BaseRepository'
-import { Submission, SubmissionPriority, BitrixSyncStatus } from '../entities/Submission.entity'
+import {
+	BaseRepository,
+	PaginationOptions,
+	PaginatedResult,
+} from './base/BaseRepository'
+import {
+	Submission,
+	SubmissionPriority,
+	BitrixSyncStatus,
+} from '../entities/Submission.entity'
 import { Between, In, IsNull, Not } from 'typeorm'
 
 export interface SubmissionFilters {
@@ -32,10 +40,22 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 		this.cacheTTL = 300 // 5 минут для заявок
 	}
 
-	async findBySubmissionNumber(submissionNumber: string): Promise<Submission | null> {
+	async findBySubmissionNumber(
+		submissionNumber: string
+	): Promise<Submission | null> {
 		return this.repository.findOne({
 			where: { submissionNumber },
 			relations: ['user', 'form', 'assignedTo'],
+		})
+	}
+
+	async findByIds(
+		ids: string[],
+		options?: { relations?: string[] }
+	): Promise<Submission[]> {
+		return this.repository.find({
+			where: { id: In(ids) },
+			relations: options?.relations || ['user', 'form', 'assignedTo'],
 		})
 	}
 
@@ -51,65 +71,68 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 		// Применение фильтров
 		if (filters.status) {
 			if (Array.isArray(filters.status)) {
-				queryBuilder.andWhere('submission.status IN (:...statuses)', { 
-					statuses: filters.status 
+				queryBuilder.andWhere('submission.status IN (:...statuses)', {
+					statuses: filters.status,
 				})
 			} else {
-				queryBuilder.andWhere('submission.status = :status', { 
-					status: filters.status 
+				queryBuilder.andWhere('submission.status = :status', {
+					status: filters.status,
 				})
 			}
 		}
 
 		if (filters.priority) {
-			queryBuilder.andWhere('submission.priority = :priority', { 
-				priority: filters.priority 
+			queryBuilder.andWhere('submission.priority = :priority', {
+				priority: filters.priority,
 			})
 		}
 
 		if (filters.userId) {
-			queryBuilder.andWhere('submission.userId = :userId', { 
-				userId: filters.userId 
+			queryBuilder.andWhere('submission.userId = :userId', {
+				userId: filters.userId,
 			})
 		}
 
 		if (filters.assignedToId) {
-			queryBuilder.andWhere('submission.assignedToId = :assignedToId', { 
-				assignedToId: filters.assignedToId 
+			queryBuilder.andWhere('submission.assignedToId = :assignedToId', {
+				assignedToId: filters.assignedToId,
 			})
 		}
 
 		if (filters.formId) {
-			queryBuilder.andWhere('submission.formId = :formId', { 
-				formId: filters.formId 
+			queryBuilder.andWhere('submission.formId = :formId', {
+				formId: filters.formId,
 			})
 		}
 
 		if (filters.bitrixSyncStatus) {
-			queryBuilder.andWhere('submission.bitrixSyncStatus = :syncStatus', { 
-				syncStatus: filters.bitrixSyncStatus 
+			queryBuilder.andWhere('submission.bitrixSyncStatus = :syncStatus', {
+				syncStatus: filters.bitrixSyncStatus,
 			})
 		}
 
 		if (filters.tags && filters.tags.length > 0) {
-			queryBuilder.andWhere('submission.tags && :tags', { 
-				tags: filters.tags 
+			queryBuilder.andWhere('submission.tags && :tags', {
+				tags: filters.tags,
 			})
 		}
 
 		if (filters.dateFrom && filters.dateTo) {
-			queryBuilder.andWhere('submission.createdAt BETWEEN :dateFrom AND :dateTo', {
-				dateFrom: filters.dateFrom,
-				dateTo: filters.dateTo,
-			})
+			queryBuilder.andWhere(
+				'submission.createdAt BETWEEN :dateFrom AND :dateTo',
+				{
+					dateFrom: filters.dateFrom,
+					dateTo: filters.dateTo,
+				}
+			)
 		}
 
 		if (filters.search) {
 			queryBuilder.andWhere(
 				'(submission.submissionNumber LIKE :search OR ' +
-				'submission.title LIKE :search OR ' +
-				'submission.userEmail LIKE :search OR ' +
-				'submission.userName LIKE :search)',
+					'submission.title LIKE :search OR ' +
+					'submission.userEmail LIKE :search OR ' +
+					'submission.userName LIKE :search)',
 				{ search: `%${filters.search}%` }
 			)
 		}
@@ -181,12 +204,16 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 
 		const result = await this.repository.update(submissionId, updateData)
 		await this.invalidateCache(submissionId)
-		
+
 		return result.affected ? result.affected > 0 : false
 	}
 
-	async getStatistics(filters?: SubmissionFilters): Promise<SubmissionStatistics> {
-		const cacheKey = `${this.cachePrefix}:stats:${JSON.stringify(filters || {})}`
+	async getStatistics(
+		filters?: SubmissionFilters
+	): Promise<SubmissionStatistics> {
+		const cacheKey = `${this.cachePrefix}:stats:${JSON.stringify(
+			filters || {}
+		)}`
 		const cached = await this.cacheGet<SubmissionStatistics>(cacheKey)
 		if (cached) return cached
 
@@ -194,10 +221,14 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 
 		// Применение базовых фильтров
 		if (filters?.userId) {
-			queryBuilder.where('submission.userId = :userId', { userId: filters.userId })
+			queryBuilder.where('submission.userId = :userId', {
+				userId: filters.userId,
+			})
 		}
 		if (filters?.formId) {
-			queryBuilder.andWhere('submission.formId = :formId', { formId: filters.formId })
+			queryBuilder.andWhere('submission.formId = :formId', {
+				formId: filters.formId,
+			})
 		}
 
 		// Общее количество
@@ -236,7 +267,11 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 
 		// Подсчеты за периоды
 		const now = new Date()
-		const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+		const todayStart = new Date(
+			now.getFullYear(),
+			now.getMonth(),
+			now.getDate()
+		)
 		const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 		const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
@@ -278,16 +313,19 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 		return statistics
 	}
 
-	async assignToUser(submissionId: string, userId: string | null): Promise<boolean> {
+	async assignToUser(
+		submissionId: string,
+		userId: string | null
+	): Promise<boolean> {
 		const submission = await this.findById(submissionId)
 		if (!submission) return false
 
 		submission.assignedToId = userId || undefined
-		
+
 		// Обновление денормализованного поля будет выполнено в @BeforeUpdate
 		await this.repository.save(submission)
 		await this.invalidateCache(submissionId)
-		
+
 		return true
 	}
 
@@ -296,11 +334,11 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 		if (!submission) return false
 
 		submission.status = status
-		
+
 		// Обновление времени обработки будет выполнено в @BeforeUpdate
 		await this.repository.save(submission)
 		await this.invalidateCache(submissionId)
-		
+
 		return true
 	}
 
@@ -311,7 +349,7 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 		submission.tags = [...new Set([...submission.tags, ...tags])]
 		await this.repository.save(submission)
 		await this.invalidateCache(submissionId)
-		
+
 		return true
 	}
 
@@ -322,7 +360,7 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 		submission.tags = submission.tags.filter(tag => !tags.includes(tag))
 		await this.repository.save(submission)
 		await this.invalidateCache(submissionId)
-		
+
 		return true
 	}
 

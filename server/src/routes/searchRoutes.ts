@@ -19,6 +19,16 @@ router.post('/companies', authMiddleware, searchController.searchCompanies)
 // Поиск контактов через Elasticsearch
 router.post('/contacts', searchController.searchContacts)
 
+// Поиск submissions через Elasticsearch
+router.post(
+	'/submissions',
+	(req, res, next) => {
+		console.log('Route /submissions called with:', req.body)
+		next()
+	},
+	searchController.searchSubmissions
+)
+
 // Синхронизация данных с Elasticsearch (временно без проверки прав для тестирования)
 router.post('/sync', searchController.syncData)
 

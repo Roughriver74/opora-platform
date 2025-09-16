@@ -5,7 +5,7 @@ export interface SearchDocument {
 	id: string
 	name: string
 	description?: string
-	type: 'product' | 'company' | 'contact'
+	type: 'product' | 'company' | 'contact' | 'submission'
 	price?: number
 	currency?: string
 	industry?: string
@@ -17,13 +17,23 @@ export interface SearchDocument {
 	// Дополнительные поля для поиска
 	searchableText: string
 	tags?: string[]
+	// Поля для submissions
+	submissionNumber?: string
+	userName?: string
+	userEmail?: string
+	formName?: string
+	formTitle?: string
+	status?: string
+	priority?: string
+	notes?: string
+	formData?: Record<string, any>
 }
 
 export interface SearchResult {
 	id: string
 	name: string
 	description?: string
-	type: 'product' | 'company' | 'contact'
+	type: 'product' | 'company' | 'contact' | 'submission'
 	price?: number
 	currency?: string
 	industry?: string
@@ -35,12 +45,26 @@ export interface SearchResult {
 		name?: string[]
 		description?: string[]
 		searchableText?: string[]
+		submissionNumber?: string[]
+		userName?: string[]
+		formName?: string[]
+		notes?: string[]
 	}
+	// Поля для submissions
+	submissionNumber?: string
+	userName?: string
+	userEmail?: string
+	formName?: string
+	formTitle?: string
+	status?: string
+	priority?: string
+	notes?: string
+	formData?: Record<string, any>
 }
 
 export interface SearchOptions {
 	query: string
-	type?: 'product' | 'company' | 'contact'
+	type?: 'product' | 'company' | 'contact' | 'submission'
 	limit?: number
 	offset?: number
 	includeHighlights?: boolean
@@ -57,7 +81,7 @@ class ElasticsearchService {
 
 		this.client = new Client({
 			node: `http://${host}:${port}`,
-			requestTimeout: 30000,
+			requestTimeout: 1300000,
 			maxRetries: 3,
 		})
 	}
@@ -116,6 +140,40 @@ class ElasticsearchService {
 									analyzer: 'russian',
 								},
 								tags: { type: 'keyword' },
+								// Поля для submissions
+								submissionNumber: {
+									type: 'text',
+									analyzer: 'russian',
+									fields: {
+										keyword: { type: 'keyword' },
+									},
+								},
+								userName: {
+									type: 'text',
+									analyzer: 'russian',
+									fields: {
+										keyword: { type: 'keyword' },
+									},
+								},
+								userEmail: { type: 'keyword' },
+								formName: {
+									type: 'text',
+									analyzer: 'russian',
+									fields: {
+										keyword: { type: 'keyword' },
+									},
+								},
+								formTitle: {
+									type: 'text',
+									analyzer: 'russian',
+								},
+								status: { type: 'keyword' },
+								priority: { type: 'keyword' },
+								notes: {
+									type: 'text',
+									analyzer: 'russian',
+								},
+								formData: { type: 'object' },
 							},
 						},
 						settings: {
@@ -167,6 +225,59 @@ class ElasticsearchService {
 	}
 
 	/**
+	 * Индексация submission для поиска
+	 */
+	async indexSubmission(submission: any): Promise<void> {
+		try {
+			const searchableText = [
+				submission.submissionNumber,
+				submission.userName,
+				submission.userEmail,
+				submission.formName,
+				submission.formTitle,
+				submission.title,
+				submission.notes,
+				submission.status,
+				submission.priority,
+				// Добавляем данные формы в поисковый текст
+				...(submission.formData
+					? Object.values(submission.formData).filter(
+							v => typeof v === 'string'
+					  )
+					: []),
+			]
+				.filter(Boolean)
+				.join(' ')
+
+			const document: SearchDocument = {
+				id: submission.id,
+				name: submission.title || submission.submissionNumber,
+				description: submission.notes,
+				type: 'submission',
+				createdAt: submission.createdAt,
+				updatedAt: submission.updatedAt,
+				searchableText,
+				tags: submission.tags || [],
+				// Поля для submissions
+				submissionNumber: submission.submissionNumber,
+				userName: submission.userName,
+				userEmail: submission.userEmail,
+				formName: submission.formName,
+				formTitle: submission.formTitle,
+				status: submission.status,
+				priority: submission.priority,
+				notes: submission.notes,
+				formData: submission.formData,
+			}
+
+			await this.indexDocument(document)
+		} catch (error) {
+			logger.error('Failed to index submission:', error)
+			throw error
+		}
+	}
+
+	/**
 	 * Массовая индексация документов
 	 */
 	async bulkIndex(documents: SearchDocument[]): Promise<void> {
@@ -207,11 +318,18 @@ class ElasticsearchService {
 			const {
 				query,
 				type,
-				limit = 20,
+				limit = 30,
 				offset = 0,
 				includeHighlights = true,
 				fuzzy = true,
 			} = options
+
+			console.log('Elasticsearch search called with:', {
+				query,
+				type,
+				limit,
+				offset,
+			})
 
 			const searchBody: any = {
 				query: {
@@ -231,15 +349,24 @@ class ElasticsearchService {
 
 			// Поисковый запрос
 			if (query.trim()) {
-				const searchQuery = {
+				const trimmedQuery = query.trim()
+
+				// Основной поиск с multi_match
+				const mainSearchQuery = {
 					multi_match: {
-						query: query.trim(),
+						query: trimmedQuery,
 						fields: [
 							'name^3', // Название имеет больший вес
 							'description^2', // Описание имеет средний вес
 							'searchableText^1', // Общий текст имеет базовый вес
 							'industry^1.5', // Отрасль имеет повышенный вес
 							'address^1',
+							// Поля для submissions
+							'submissionNumber^3', // Номер заявки имеет больший вес
+							'userName^2.5', // Имя пользователя имеет повышенный вес
+							'formName^2', // Название формы имеет средний вес
+							'formTitle^2', // Заголовок формы имеет средний вес
+							'notes^1.5', // Заметки имеют повышенный вес
 						],
 						type: 'best_fields',
 						fuzziness: fuzzy ? 'AUTO' : 0,
@@ -247,7 +374,65 @@ class ElasticsearchService {
 					},
 				}
 
-				searchBody.query.bool.must.push(searchQuery)
+				// Дополнительный поиск по частичным словам с regexp
+				const regexpQuery = {
+					bool: {
+						should: [
+							{ regexp: { name: { value: `.*${trimmedQuery}.*`, boost: 2 } } },
+							{
+								regexp: {
+									description: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+								},
+							},
+							{
+								regexp: {
+									searchableText: { value: `.*${trimmedQuery}.*`, boost: 1 },
+								},
+							},
+							{
+								regexp: {
+									industry: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+								},
+							},
+							{
+								regexp: { address: { value: `.*${trimmedQuery}.*`, boost: 1 } },
+							},
+							// Поля для submissions
+							{
+								regexp: {
+									submissionNumber: { value: `.*${trimmedQuery}.*`, boost: 2 },
+								},
+							},
+							{
+								regexp: {
+									userName: { value: `.*${trimmedQuery}.*`, boost: 2 },
+								},
+							},
+							{
+								regexp: {
+									formName: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+								},
+							},
+							{
+								regexp: {
+									formTitle: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+								},
+							},
+							{
+								regexp: { notes: { value: `.*${trimmedQuery}.*`, boost: 1.5 } },
+							},
+						],
+						minimum_should_match: 1,
+					},
+				}
+
+				// Объединяем основной поиск и regexp поиск
+				searchBody.query.bool.must.push({
+					bool: {
+						should: [mainSearchQuery, regexpQuery],
+						minimum_should_match: 1,
+					},
+				})
 			} else {
 				// Если запрос пустой, возвращаем все документы
 				searchBody.query.bool.must.push({ match_all: {} })
@@ -260,6 +445,11 @@ class ElasticsearchService {
 						name: { fragment_size: 150 },
 						description: { fragment_size: 150 },
 						searchableText: { fragment_size: 150 },
+						// Поля для submissions
+						submissionNumber: { fragment_size: 150 },
+						userName: { fragment_size: 150 },
+						formName: { fragment_size: 150 },
+						notes: { fragment_size: 150 },
 					},
 					pre_tags: ['<mark>'],
 					post_tags: ['</mark>'],
@@ -284,6 +474,16 @@ class ElasticsearchService {
 				address: hit._source.address,
 				score: hit._score,
 				highlight: hit.highlight,
+				// Поля для submissions
+				submissionNumber: hit._source.submissionNumber,
+				userName: hit._source.userName,
+				userEmail: hit._source.userEmail,
+				formName: hit._source.formName,
+				formTitle: hit._source.formTitle,
+				status: hit._source.status,
+				priority: hit._source.priority,
+				notes: hit._source.notes,
+				formData: hit._source.formData,
 			}))
 		} catch (error) {
 			logger.error('Search failed:', error)
@@ -413,4 +613,5 @@ class ElasticsearchService {
 	}
 }
 
+export { ElasticsearchService }
 export const elasticsearchService = new ElasticsearchService()

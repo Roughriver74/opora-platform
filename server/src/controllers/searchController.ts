@@ -434,3 +434,50 @@ export const getAggregations = async (
 		})
 	}
 }
+
+/**
+ * Поиск submissions через Elasticsearch
+ */
+export const searchSubmissions = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
+	try {
+		const {
+			query = '',
+			limit = 20,
+			offset = 0,
+			includeHighlights = true,
+			fuzzy = true,
+		} = req.body
+
+		console.log('searchSubmissions called with:', { query, limit, offset })
+
+		const results = await elasticsearchService.search({
+			query,
+			type: 'submission',
+			limit: Math.min(limit, 100), // Максимум 100 результатов
+			offset,
+			includeHighlights,
+			fuzzy,
+		})
+
+		res.status(200).json({
+			success: true,
+			data: {
+				results,
+				total: results.length,
+				query,
+				limit,
+				offset,
+			},
+		})
+	} catch (error) {
+		logger.error('Ошибка поиска submissions:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка поиска заявок',
+			error: error.message,
+		})
+	}
+}

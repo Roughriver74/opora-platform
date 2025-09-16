@@ -10,14 +10,9 @@ export interface Submission {
 		name: string
 		title: string
 	}
-	userId?: {
-		[x: string]: any
-		id: string
-		name: string
-		email: string
-		firstName?: string
-		lastName?: string
-	}
+	userId?: string
+	userName?: string
+	userEmail?: string
 	title: string // Название заявки из Битрикс24
 	status: string
 	priority: 'low' | 'medium' | 'high' | 'urgent'
@@ -156,31 +151,33 @@ export const SubmissionService = {
 		if (!id || typeof id !== 'string') {
 			throw new Error('ID заявки обязателен и должен быть строкой')
 		}
-		
+
 		try {
 			const response = await api.get(`/api/submissions/${id}/edit`)
-			
+
 			// Валидация ответа
 			if (!response.data || typeof response.data !== 'object') {
 				throw new Error('Неверный формат ответа от сервера')
 			}
-			
+
 			if (!response.data.success) {
-				throw new Error(response.data.message || 'Не удалось получить данные заявки')
+				throw new Error(
+					response.data.message || 'Не удалось получить данные заявки'
+				)
 			}
-			
+
 			// Проверяем обязательные поля
 			const data = response.data.data
 			if (!data?.id || !data?.formId) {
-					console.log({
-						hasDataId: !!data?.id,
-						hasFormId: !!data?.formId,
-						formIdType: typeof data?.formId,
-						data: data
-					})
+				console.log({
+					hasDataId: !!data?.id,
+					hasFormId: !!data?.formId,
+					formIdType: typeof data?.formId,
+					data: data,
+				})
 				throw new Error('Получены неполные данные заявки')
 			}
-			
+
 			return response.data
 		} catch (error: any) {
 			// Улучшенная обработка ошибок
@@ -189,7 +186,7 @@ export const SubmissionService = {
 			} else if (error.response?.status === 403) {
 				throw new Error('Нет доступа к данной заявке')
 			}
-			
+
 			throw error
 		}
 	},
@@ -222,30 +219,40 @@ export const SubmissionService = {
 		if (!id || typeof id !== 'string') {
 			throw new Error('ID заявки обязателен и должен быть строкой')
 		}
-		
+
 		if (!status || typeof status !== 'string') {
 			throw new Error('Статус обязателен и должен быть строкой')
 		}
-		
+
 		// Проверяем валидные статусы
 		// Разрешаем как внутренние статусы, так и статусы Битрикс24 (формат C{categoryId}:{statusCode})
-		const validInternalStatuses = ['new', 'in_progress', 'completed', 'cancelled', 'on_hold']
+		const validInternalStatuses = [
+			'new',
+			'in_progress',
+			'completed',
+			'cancelled',
+			'on_hold',
+		]
 		const isBitrixStatus = /^C\d+:[A-Z0-9_]+$/.test(status) // Проверка формата статуса Битрикс24
-		
+
 		if (!validInternalStatuses.includes(status) && !isBitrixStatus) {
-			throw new Error(`Недопустимый статус: ${status}. Разрешены внутренние статусы: ${validInternalStatuses.join(', ')} или статусы Битрикс24 (формат C{categoryId}:{statusCode})`)
+			throw new Error(
+				`Недопустимый статус: ${status}. Разрешены внутренние статусы: ${validInternalStatuses.join(
+					', '
+				)} или статусы Битрикс24 (формат C{categoryId}:{statusCode})`
+			)
 		}
-		
+
 		try {
 			const response = await api.patch(`/api/submissions/${id}/status`, {
 				status,
 				comment: comment || '',
 			})
-			
+
 			if (!response.data || typeof response.data.success !== 'boolean') {
 				throw new Error('Неверный формат ответа от сервера')
 			}
-			
+
 			return response.data
 		} catch (error: any) {
 			// Улучшенная обработка ошибок
@@ -254,9 +261,11 @@ export const SubmissionService = {
 			} else if (error.response?.status === 403) {
 				throw new Error('Нет доступа к изменению статуса данной заявки')
 			} else if (error.response?.status === 400) {
-				throw new Error(error.response.data?.message || 'Неверные данные запроса')
+				throw new Error(
+					error.response.data?.message || 'Неверные данные запроса'
+				)
 			}
-			
+
 			throw error
 		}
 	},

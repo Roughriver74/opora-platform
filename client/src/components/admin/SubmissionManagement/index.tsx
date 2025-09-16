@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
 	Box,
 	Paper,
@@ -108,6 +108,40 @@ const SubmissionManagement = () => {
 	const [bitrixStages, setBitrixStages] = useState<
 		{ id: string; name: string }[]
 	>([])
+	const [searchValue, setSearchValue] = useState('')
+	const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(
+		null
+	)
+
+	// Применение фильтров
+	const handleFilterChange = useCallback(
+		(newFilters: Partial<SubmissionFilters>) => {
+			setFilters(prevFilters => ({ ...prevFilters, ...newFilters }))
+			setPage(0)
+		},
+		[]
+	)
+
+	// Обработчик изменения поиска с debounce
+	const handleSearchChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const value = e.target.value
+			setSearchValue(value)
+
+			// Очищаем предыдущий timeout
+			if (searchTimeout) {
+				clearTimeout(searchTimeout)
+			}
+
+			// Устанавливаем новый timeout
+			const timeout = setTimeout(() => {
+				handleFilterChange({ search: value })
+			}, 500)
+
+			setSearchTimeout(timeout)
+		},
+		[searchTimeout, handleFilterChange]
+	)
 
 	// Загрузка статусов из Битрикс24
 	const loadBitrixStages = async () => {
@@ -147,6 +181,15 @@ const SubmissionManagement = () => {
 	useEffect(() => {
 		loadSubmissions()
 	}, [page, rowsPerPage, filters])
+
+	// Cleanup timeout при размонтировании
+	useEffect(() => {
+		return () => {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout)
+			}
+		}
+	}, [searchTimeout])
 
 	// Открытие деталей заявки
 	const handleViewDetails = async (submission: Submission) => {
@@ -202,12 +245,6 @@ const SubmissionManagement = () => {
 		return stage?.name || status
 	}
 
-	// Применение фильтров
-	const handleFilterChange = (newFilters: Partial<SubmissionFilters>) => {
-		setFilters({ ...filters, ...newFilters })
-		setPage(0)
-	}
-
 	const handleChangePage = (event: unknown, newPage: number) => {
 		setPage(newPage)
 	}
@@ -243,29 +280,32 @@ const SubmissionManagement = () => {
 				Редактирование заявок доступно пользователям в разделе "Мои заявки".
 			</Typography>
 
-			{/* Фильтры */}
+			{/* Поиск - всегда активен */}
+			<Paper sx={{ p: 2, mb: 2 }}>
+				<TextField
+					fullWidth
+					label='Поиск по заявкам'
+					placeholder='Поиск по номеру заявки, клиенту, названию или содержимому...'
+					value={searchValue}
+					onChange={handleSearchChange}
+					InputProps={{
+						startAdornment: <SearchIcon />,
+					}}
+				/>
+			</Paper>
+
+			{/* Дополнительные фильтры */}
 			<Paper sx={{ p: 2, mb: 2 }}>
 				<Stack
 					direction={{ xs: 'column', sm: 'row' }}
 					spacing={2}
 					alignItems='center'
 				>
-					<TextField
-						label='Поиск'
-						value={filters.search || ''}
-						onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-							handleFilterChange({ search: e.target.value })
-						}
-						InputProps={{
-							startAdornment: <SearchIcon />,
-						}}
-						sx={{ minWidth: 200 }}
-					/>
 					<FormControl sx={{ minWidth: 120 }}>
 						<InputLabel>Статус</InputLabel>
 						<Select
 							value={filters.status || ''}
-							onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+							onChange={(e: any) =>
 								handleFilterChange({ status: e.target.value })
 							}
 						>
@@ -281,7 +321,7 @@ const SubmissionManagement = () => {
 						<InputLabel>Приоритет</InputLabel>
 						<Select
 							value={filters.priority || ''}
-							onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+							onChange={(e: any) =>
 								handleFilterChange({ priority: e.target.value })
 							}
 						>
@@ -324,9 +364,7 @@ const SubmissionManagement = () => {
 								<TableCell>{submission.submissionNumber}</TableCell>
 								<TableCell>{submission.formId.title}</TableCell>
 								<TableCell>
-									{submission.userId
-										? `${submission.userId.first_name} ${submission.userId.last_name}`
-										: 'Анонимная заявка'}
+									{submission.userName || 'Анонимная заявка'}
 								</TableCell>
 								<TableCell>
 									<Typography variant='body2'>
@@ -470,9 +508,7 @@ const SubmissionManagement = () => {
 													<InputLabel>Изменить статус</InputLabel>
 													<Select
 														value=''
-														onChange={(
-															e: React.ChangeEvent<HTMLInputElement>
-														) => {
+														onChange={(e: any) => {
 															if (e.target.value) {
 																handleStatusChange(
 																	selectedSubmission.id,
@@ -500,7 +536,7 @@ const SubmissionManagement = () => {
 													size='small'
 													placeholder='Комментарий к изменению статуса'
 													value={statusComment}
-													onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+													onChange={(e: any) =>
 														setStatusComment(e.target.value)
 													}
 													sx={{ flexGrow: 1 }}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
 	Box,
 	Paper,
@@ -101,9 +101,43 @@ const MySubmissions = () => {
 		copyButtonText: 'Копировать заявку',
 	})
 	const [filtersExpanded, setFiltersExpanded] = useState(false)
+	const [searchValue, setSearchValue] = useState('')
+	const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(
+		null
+	)
 
 	// Проверяем, является ли пользователь администратором
 	const isAdmin = user?.role === 'admin'
+
+	// Применение фильтров
+	const handleFilterChange = useCallback(
+		(newFilters: Partial<SubmissionFilters>) => {
+			setFilters(prevFilters => ({ ...prevFilters, ...newFilters }))
+			setPage(0)
+		},
+		[]
+	)
+
+	// Обработчик изменения поиска с debounce
+	const handleSearchChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const value = e.target.value
+			setSearchValue(value)
+
+			// Очищаем предыдущий timeout
+			if (searchTimeout) {
+				clearTimeout(searchTimeout)
+			}
+
+			// Устанавливаем новый timeout
+			const timeout = setTimeout(() => {
+				handleFilterChange({ search: value })
+			}, 500)
+
+			setSearchTimeout(timeout)
+		},
+		[searchTimeout, handleFilterChange]
+	)
 
 	// Загрузка настроек системы
 	const loadSettings = async () => {
@@ -205,6 +239,15 @@ const MySubmissions = () => {
 		loadUsers()
 		loadSubmissions()
 	}, [page, rowsPerPage, filters, isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Cleanup timeout при размонтировании
+	useEffect(() => {
+		return () => {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout)
+			}
+		}
+	}, [searchTimeout])
 
 	// Функция для редактирования заявки - НОВАЯ ЛОГИКА
 	const handleEditSubmission = async (submission: Submission) => {
@@ -389,9 +432,7 @@ const MySubmissions = () => {
 		setPage(newPage)
 	}
 
-	const handleChangeRowsPerPage = (
-		event: React.ChangeEvent<HTMLInputElement>
-	) => {
+	const handleChangeRowsPerPage = (event: any) => {
 		setRowsPerPage(parseInt(event.target.value, 10))
 		setPage(0)
 	}
@@ -407,12 +448,6 @@ const MySubmissions = () => {
 				<Typography>Загрузка ваших заявок...</Typography>
 			</Box>
 		)
-	}
-
-	// Применение фильтров
-	const handleFilterChange = (newFilters: Partial<SubmissionFilters>) => {
-		setFilters({ ...filters, ...newFilters })
-		setPage(0)
 	}
 
 	// Отображение подробностей заявки
@@ -467,10 +502,7 @@ const MySubmissions = () => {
 								Bitrix ID: {submission.bitrixDealId || 'Не указан'}
 							</Typography>
 							<Typography variant='body2' color='text.secondary'>
-								User:{' '}
-								{submission.userId?.first_name && submission.userId?.last_name
-									? `${submission.userId.firstName} ${submission.userId.lastName}`
-									: submission.userId?.name || 'Анонимная заявка'}
+								User: {submission.userName || 'Анонимная заявка'}
 							</Typography>
 						</Box>
 						<Chip
@@ -637,7 +669,23 @@ const MySubmissions = () => {
 				</Typography>
 			</Box>
 
-			{/* Фильтры */}
+			{/* Поиск - всегда активен */}
+			<Paper sx={{ mb: 2, p: 2 }}>
+				<TextField
+					fullWidth
+					size='small'
+					placeholder='Поиск по номеру заявки, названию или содержимому...'
+					value={searchValue}
+					onChange={handleSearchChange}
+					InputProps={{
+						startAdornment: (
+							<SearchIcon sx={{ mr: 1, color: 'action.active' }} />
+						),
+					}}
+				/>
+			</Paper>
+
+			{/* Дополнительные фильтры */}
 			<Paper sx={{ mb: 3, overflow: 'hidden' }}>
 				<Box
 					sx={{
@@ -653,7 +701,7 @@ const MySubmissions = () => {
 						sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
 					>
 						<FilterIcon />
-						Фильтры
+						Дополнительные фильтры
 					</Typography>
 					<IconButton
 						onClick={() => setFiltersExpanded(!filtersExpanded)}
@@ -671,21 +719,6 @@ const MySubmissions = () => {
 							alignItems='center'
 							flexWrap='wrap'
 						>
-							<TextField
-								size='small'
-								placeholder='Поиск по номеру заявки...'
-								value={filters.search || ''}
-								onChange={(e: any) =>
-									handleFilterChange({ search: e.target.value })
-								}
-								InputProps={{
-									startAdornment: (
-										<SearchIcon sx={{ mr: 1, color: 'action.active' }} />
-									),
-								}}
-								sx={{ minWidth: { xs: '100%', sm: '200px' } }}
-							/>
-
 							{isAdmin && (
 								<FormControl
 									size='small'
@@ -693,11 +726,11 @@ const MySubmissions = () => {
 								>
 									<InputLabel>Клиент</InputLabel>
 									<Select
-									value={filters.userId || ''}
-									label='Клиент'
-									onChange={(e: any) =>
-										handleFilterChange({ userId: e.target.value })
-									}
+										value={filters.userId || ''}
+										label='Клиент'
+										onChange={(e: any) =>
+											handleFilterChange({ userId: e.target.value })
+										}
 									>
 										<MenuItem value=''>Все клиенты</MenuItem>
 										{users.map(user => (
@@ -717,11 +750,11 @@ const MySubmissions = () => {
 							>
 								<InputLabel>Статус</InputLabel>
 								<Select
-								value={filters.status || ''}
-								label='Статус'
-								onChange={(e: any) =>
-									handleFilterChange({ status: e.target.value })
-								}
+									value={filters.status || ''}
+									label='Статус'
+									onChange={(e: any) =>
+										handleFilterChange({ status: e.target.value })
+									}
 								>
 									<MenuItem value=''>Все статусы</MenuItem>
 									{bitrixStages.map(stage => (
@@ -823,27 +856,15 @@ const MySubmissions = () => {
 													</Typography>
 												</TableCell>
 												<TableCell>
-													{submission.userId && (
-														<Typography variant='body2'>
-															{submission.userId.first_name &&
-															submission.userId.last_name
-																? `${submission.userId.first_name} ${submission.userId.last_name}`
-																: submission.userId.name || 'Не указан'}
-														</Typography>
-													)}
-													{!submission.userId && (
-														<Typography variant='body2' color='text.secondary'>
-															Анонимная заявка
-														</Typography>
-													)}
+													<Typography variant='body2'>
+														{submission.userName || 'Анонимная заявка'}
+													</Typography>
 												</TableCell>
 												<TableCell>
 													<FormControl size='small' sx={{ minWidth: 120 }}>
 														<Select
 															value={getCleanStatus(submission.status)}
-															onChange={(
-																e: React.ChangeEvent<HTMLInputElement>
-															) =>
+															onChange={(e: any) =>
 																handleStatusChange(
 																	submission.id,
 																	e.target.value

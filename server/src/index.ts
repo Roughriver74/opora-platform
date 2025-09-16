@@ -25,6 +25,7 @@ import syncRoutes from './routes/syncRoutes'
 import searchRoutes from './routes/searchRoutes'
 import { initializeDefaultSettings } from './controllers/settingsController'
 import { initializeElasticsearch } from './scripts/initializeElasticsearch'
+import { syncScheduler } from './services/syncScheduler'
 
 // Загрузка переменных окружения
 dotenv.config()
@@ -46,6 +47,11 @@ const initializeServer = async () => {
 
 		// Инициализация Elasticsearch
 		await initializeElasticsearch()
+
+		// Инициализация планировщика синхронизации
+		console.log('🕐 Инициализация планировщика синхронизации...')
+		// Планировщик автоматически запускается в конструкторе
+		console.log('✅ Планировщик синхронизации инициализирован')
 	} catch (error) {
 		console.error('❌ Ошибка инициализации сервера:', error)
 		process.exit(1)
