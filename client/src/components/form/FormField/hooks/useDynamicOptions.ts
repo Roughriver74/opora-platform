@@ -53,6 +53,9 @@ export const useDynamicOptions = (
 									  })`
 									: ''
 							}`,
+							metadata: {
+								bitrixId: product.bitrixId || product.ID, // Добавляем Bitrix ID
+							},
 						}))
 					}
 					break
@@ -60,17 +63,50 @@ export const useDynamicOptions = (
 				case 'companies':
 					response = await FormFieldService.getCompanies('')
 					if (response?.result) {
-						dataOptions = response.result.map((company: any) => ({
+						const baseOptions = response.result.map((company: any) => ({
 							value: company.ID,
-							label: company.TITLE,
+							title: company.TITLE,
 							metadata: {
 								phone: company.PHONE,
 								email: company.EMAIL,
 								type: company.COMPANY_TYPE,
 								requisites: company.REQUISITES,
 								bitrixId: company.bitrixId || company.ID, // Добавляем Bitrix ID
+								rqInn: company.RQ_INN, // Добавляем ИНН напрямую из API
 							},
 						}))
+
+						// Подсчитываем количество компаний с одинаковыми названиями
+						const titleCounts = baseOptions.reduce(
+							(acc: Record<string, number>, option: any) => {
+								acc[option.title] = (acc[option.title] || 0) + 1
+								return acc
+							},
+							{} as Record<string, number>
+						)
+
+						// Формируем финальные опции с ИНН
+						dataOptions = baseOptions.map((option: any) => {
+							const hasInn = option.metadata?.rqInn
+							let label = option.title
+
+							if (titleCounts[option.title] > 1) {
+								label = `${option.title} (ID: ${option.value})`
+							}
+
+							if (hasInn) {
+								label = `${label}, ${option.metadata.rqInn}`
+							}
+
+							return {
+								value: option.value,
+								label,
+								metadata: {
+									...option.metadata,
+									originalTitle: option.title,
+								},
+							}
+						})
 					}
 					break
 
@@ -107,6 +143,17 @@ export const useDynamicOptions = (
 			if (!query.trim()) return options
 
 			const queryLower = query.toLowerCase()
+
+			// Проверяем, является ли запрос числовым Bitrix ID
+			const isNumericBitrixId = /^\d+$/.test(query.trim())
+
+			// Для числовых ID не применяем фильтрацию по тексту - возвращаем все результаты
+			if (isNumericBitrixId) {
+				console.log(
+					`🔍 filterRelevantResults: Пропускаем фильтрацию для числового ID "${query}"`
+				)
+				return options
+			}
 
 			return options.filter(option => {
 				const labelLower = option.label.toLowerCase()
@@ -242,16 +289,15 @@ export const useDynamicOptions = (
 										  })`
 										: ''
 								}`,
+								metadata: {
+									bitrixId: product.bitrixId || product.ID, // Добавляем Bitrix ID
+								},
 							}))
 						}
 						break
 
 					case 'companies':
 						response = await FormFieldService.getCompanies(trimmedQuery)
-						console.log(
-							`🔍 useDynamicOptions: Результат поиска компаний для "${trimmedQuery}":`,
-							response?.result
-						)
 						if (response?.result) {
 							const baseOptions = response.result.map((company: any) => ({
 								value: company.ID,
@@ -262,12 +308,9 @@ export const useDynamicOptions = (
 									type: company.COMPANY_TYPE,
 									requisites: company.REQUISITES,
 									bitrixId: company.bitrixId || company.ID, // Добавляем Bitrix ID
+									rqInn: company.RQ_INN, // Добавляем ИНН напрямую из API
 								},
 							}))
-							console.log(
-								`🔍 useDynamicOptions: Обработанные опции компаний:`,
-								baseOptions
-							)
 
 							const titleCounts = baseOptions.reduce(
 								(acc: Record<string, number>, option: any) => {
@@ -278,7 +321,8 @@ export const useDynamicOptions = (
 							)
 
 							dataOptions = baseOptions.map((option: any) => {
-								const hasInn = option.metadata?.requisites?.RQ_INN
+								// Получаем ИНН из RQ_INN поля компании
+								const hasInn = option.metadata?.rqInn
 								let label = option.title
 
 								if (titleCounts[option.title] > 1) {
@@ -286,7 +330,7 @@ export const useDynamicOptions = (
 								}
 
 								if (hasInn) {
-									label = `${label}, ${option.metadata.requisites.RQ_INN}`
+									label = `${label}, ${option.metadata.rqInn}`
 								}
 
 								return {

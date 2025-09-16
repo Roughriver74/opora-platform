@@ -12,7 +12,9 @@ export interface SearchDocument {
 	phone?: string
 	email?: string
 	address?: string
+	inn?: string // ИНН компании
 	bitrixId?: string // Bitrix ID для прямого поиска
+	assignedById?: string // ID ответственного пользователя
 	createdAt: string
 	updatedAt: string
 	// Дополнительные поля для поиска
@@ -41,7 +43,9 @@ export interface SearchResult {
 	phone?: string
 	email?: string
 	address?: string
+	inn?: string // ИНН компании
 	bitrixId?: string // Bitrix ID для прямого поиска
+	assignedById?: string // ID ответственного пользователя
 	score: number
 	highlight?: {
 		name?: string[]
@@ -71,6 +75,7 @@ export interface SearchOptions {
 	offset?: number
 	includeHighlights?: boolean
 	fuzzy?: boolean
+	assignedById?: string // Фильтр по ответственному пользователю
 }
 
 class ElasticsearchService {
@@ -135,7 +140,25 @@ class ElasticsearchService {
 									type: 'text',
 									analyzer: 'russian',
 								},
+								inn: {
+									type: 'keyword',
+									fields: {
+										text: {
+											type: 'text',
+											analyzer: 'keyword',
+										},
+									},
+								},
 								bitrixId: {
+									type: 'keyword',
+									fields: {
+										text: {
+											type: 'text',
+											analyzer: 'keyword',
+										},
+									},
+								},
+								assignedById: {
 									type: 'keyword',
 									fields: {
 										text: {
@@ -356,6 +379,7 @@ class ElasticsearchService {
 				offset = 0,
 				includeHighlights = true,
 				fuzzy = true,
+				assignedById,
 			} = options
 
 			console.log('Elasticsearch search called with:', {
@@ -381,6 +405,16 @@ class ElasticsearchService {
 				searchBody.query.bool.filter = [{ term: { type } }]
 			}
 
+			// Фильтр по ответственному пользователю (только для компаний)
+			if (assignedById && type === 'company') {
+				if (!searchBody.query.bool.filter) {
+					searchBody.query.bool.filter = []
+				}
+				searchBody.query.bool.filter.push({
+					term: { assignedById },
+				})
+			}
+
 			// Поисковый запрос
 			if (query.trim()) {
 				const trimmedQuery = query.trim()
@@ -389,11 +423,25 @@ class ElasticsearchService {
 				const isNumericBitrixId = /^\d+$/.test(trimmedQuery)
 
 				if (isNumericBitrixId) {
-					// Для числовых ID ищем точное совпадение в поле bitrixId
-					console.log(`🔍 Elasticsearch: Поиск по Bitrix ID "${trimmedQuery}"`)
+					// Для числовых ID ищем точное совпадение в поле bitrixId или inn
+					console.log(
+						`🔍 Elasticsearch: Поиск по Bitrix ID или ИНН "${trimmedQuery}"`
+					)
 					searchBody.query.bool.must.push({
-						term: {
-							bitrixId: trimmedQuery,
+						bool: {
+							should: [
+								{
+									term: {
+										bitrixId: trimmedQuery,
+									},
+								},
+								{
+									term: {
+										inn: trimmedQuery,
+									},
+								},
+							],
+							minimum_should_match: 1,
 						},
 					})
 				} else {
@@ -407,6 +455,7 @@ class ElasticsearchService {
 								'searchableText^1', // Общий текст имеет базовый вес
 								'industry^1.5', // Отрасль имеет повышенный вес
 								'address^1',
+								'inn^2.5', // ИНН имеет повышенный вес
 								// Поля для submissions
 								'submissionNumber^3', // Номер заявки имеет больший вес
 								'userName^2.5', // Имя пользователя имеет повышенный вес
@@ -528,7 +577,9 @@ class ElasticsearchService {
 				phone: hit._source.phone,
 				email: hit._source.email,
 				address: hit._source.address,
+				inn: hit._source.inn, // Добавляем ИНН
 				bitrixId: hit._source.bitrixId, // Добавляем Bitrix ID в результаты
+				assignedById: hit._source.assignedById, // Добавляем ответственного пользователя
 				score: hit._score,
 				highlight: hit.highlight,
 				// Поля для submissions

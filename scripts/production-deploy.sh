@@ -198,6 +198,28 @@ docker-compose ps
 echo "Запуск миграций базы данных..."
 docker-compose exec -T backend npm run migration:run:prod
 
+# Синхронизация данных с Bitrix в Elasticsearch
+echo "Синхронизация данных с Bitrix в Elasticsearch..."
+sleep 10  # Даем время Elasticsearch полностью запуститься
+
+# Проверяем, что Elasticsearch доступен
+ELASTICSEARCH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9200/_cluster/health 2>/dev/null || echo "000")
+
+if [ "$ELASTICSEARCH_CHECK" = "200" ]; then
+    echo "✅ Elasticsearch доступен, запускаем синхронизацию..."
+    
+    # Запускаем синхронизацию через Docker (используем продакшн версию)
+    docker-compose exec -T backend npm run sync:bitrix:prod
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Синхронизация данных завершена успешно"
+    else
+        echo "⚠️  Ошибка при синхронизации данных, но приложение продолжает работать"
+    fi
+else
+    echo "⚠️  Elasticsearch недоступен, пропускаем синхронизацию"
+fi
+
 echo "Деплой в Docker завершен!"
 ENDSSH
 

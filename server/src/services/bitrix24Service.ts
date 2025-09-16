@@ -112,7 +112,7 @@ class Bitrix24Service {
 				const response = await axios.post(
 					`${this.webhookUrl}crm.product.list`,
 					{
-						filter: { ID: trimmedQuery },
+						filter: { ID: trimmedQuery, ACTIVE: 'Y' },
 						select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
 						start: 0,
 						limit: parseInt(limit.toString()),
@@ -129,7 +129,7 @@ class Bitrix24Service {
 				const exactResponse = await axios.post(
 					`${this.webhookUrl}crm.product.list`,
 					{
-						filter: { NAME: trimmedQuery },
+						filter: { NAME: trimmedQuery, ACTIVE: 'Y' },
 						select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
 						start: 0,
 						limit: parseInt(limit.toString()),
@@ -146,7 +146,7 @@ class Bitrix24Service {
 				const partialResponse = await axios.post(
 					`${this.webhookUrl}crm.product.list`,
 					{
-						filter: { NAME: `%${trimmedQuery}%` },
+						filter: { NAME: `%${trimmedQuery}%`, ACTIVE: 'Y' },
 						select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
 						start: 0,
 						limit: parseInt(limit.toString()),
@@ -163,7 +163,7 @@ class Bitrix24Service {
 				const descResponse = await axios.post(
 					`${this.webhookUrl}crm.product.list`,
 					{
-						filter: { DESCRIPTION: `%${trimmedQuery}%` },
+						filter: { DESCRIPTION: `%${trimmedQuery}%`, ACTIVE: 'Y' },
 						select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
 						start: 0,
 						limit: parseInt(limit.toString()),
@@ -182,11 +182,11 @@ class Bitrix24Service {
 					.split(/\s+/)
 					.filter(word => word.length > 2)
 				if (words.length > 0) {
-					// Получаем все товары и фильтруем на клиенте
+					// Получаем все активные товары и фильтруем на клиенте
 					const allResponse = await axios.post(
 						`${this.webhookUrl}crm.product.list`,
 						{
-							filter: {},
+							filter: { ACTIVE: 'Y' },
 							select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
 							start: 0,
 							limit: 200, // Больше лимит для нечеткого поиска
@@ -208,9 +208,9 @@ class Bitrix24Service {
 				}
 			}
 		} else {
-			// Если запрос пустой, возвращаем все товары
+			// Если запрос пустой, возвращаем все активные товары
 			const response = await axios.post(`${this.webhookUrl}crm.product.list`, {
-				filter: {},
+				filter: { ACTIVE: 'Y' },
 				select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
 				start: 0,
 				limit: parseInt(limit.toString()),
@@ -233,6 +233,40 @@ class Bitrix24Service {
 			id: productId,
 		})
 		return response.data
+	}
+
+	async getAllProducts(): Promise<any[]> {
+		const allProducts: any[] = []
+		let start = 0
+		const limit = 50
+		let hasMore = true
+
+		while (hasMore) {
+			const response = await axios.post(`${this.webhookUrl}crm.product.list`, {
+				filter: { ACTIVE: 'Y' },
+				select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
+				start: start,
+				limit: limit,
+				order: { NAME: 'ASC' },
+			})
+
+			if (response.data?.result && response.data.result.length > 0) {
+				allProducts.push(...response.data.result)
+				logger.info(`Загружено товаров: ${allProducts.length}`)
+
+				if (response.data.result.length < limit) {
+					hasMore = false
+				} else {
+					start += limit
+					// Небольшая задержка между запросами
+					await new Promise(resolve => setTimeout(resolve, 100))
+				}
+			} else {
+				hasMore = false
+			}
+		}
+
+		return allProducts
 	}
 
 	async getCompanies(
@@ -269,6 +303,7 @@ class Bitrix24Service {
 							'REVENUE',
 							'PHONE',
 							'EMAIL',
+							'RQ_INN',
 						],
 						start: 0,
 						limit: parseInt(limit.toString()),
@@ -297,6 +332,7 @@ class Bitrix24Service {
 							'REVENUE',
 							'PHONE',
 							'EMAIL',
+							'RQ_INN',
 						],
 						start: 0,
 						limit: parseInt(limit.toString()),
@@ -325,6 +361,7 @@ class Bitrix24Service {
 							'REVENUE',
 							'PHONE',
 							'EMAIL',
+							'RQ_INN',
 						],
 						start: 0,
 						limit: parseInt(limit.toString()),
@@ -359,6 +396,7 @@ class Bitrix24Service {
 								'REVENUE',
 								'PHONE',
 								'EMAIL',
+								'RQ_INN',
 							],
 							start: 0,
 							limit: 200, // Больше лимит для нечеткого поиска
@@ -394,6 +432,7 @@ class Bitrix24Service {
 					'REVENUE',
 					'PHONE',
 					'EMAIL',
+					'RQ_INN',
 				],
 				start: 0,
 				limit: parseInt(limit.toString()),
@@ -409,7 +448,7 @@ class Bitrix24Service {
 					try {
 						const requisites = await this.getCompanyRequisites(company.ID)
 						// Берем первый набор реквизитов (обычно у компании один)
-						const firstRequisite = requisites?.result?.[0]
+						const firstRequisite = requisites?.[0]
 						return {
 							...company,
 							REQUISITES: firstRequisite
@@ -447,34 +486,6 @@ class Bitrix24Service {
 			id: companyId,
 		})
 		return response.data
-	}
-
-	async getCompanyRequisites(companyId: string) {
-		try {
-			const response = await axios.post(
-				`${this.webhookUrl}crm.requisite.list`,
-				{
-					filter: {
-						ENTITY_TYPE_ID: 4, // 4 = Company
-						ENTITY_ID: companyId,
-					},
-					select: [
-						'ID',
-						'RQ_INN',
-						'RQ_KPP',
-						'RQ_COMPANY_FULL_NAME',
-						'RQ_COMPANY_NAME',
-					],
-				}
-			)
-			return response.data
-		} catch (error) {
-			console.warn(
-				`Не удалось получить реквизиты компании ${companyId}:`,
-				error
-			)
-			return { result: [] }
-		}
 	}
 
 	async getContacts(query = '', limit = 50) {
@@ -800,51 +811,6 @@ class Bitrix24Service {
 	}
 
 	/**
-	 * Получение всех продуктов из Bitrix24 (пагинация)
-	 */
-	async getAllProducts(): Promise<any[]> {
-		const allProducts: any[] = []
-		let start = 0
-		const limit = 50 // Размер страницы
-		let hasMore = true
-
-		try {
-			while (hasMore) {
-				const response = await retryRequest(() =>
-					axios.post(
-						`${this.webhookUrl}crm.product.list`,
-						{
-							select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
-							start,
-							limit,
-							order: { NAME: 'ASC' },
-						},
-						{ timeout: 15000 }
-					)
-				)
-
-				const products = response.data?.result || []
-				allProducts.push(...products)
-
-				// Если получили меньше записей, чем запрашивали, значит это последняя страница
-				if (products.length < limit) {
-					hasMore = false
-				} else {
-					start += limit
-				}
-
-				logger.info(`Загружено продуктов: ${allProducts.length}`)
-			}
-
-			logger.info(`Всего загружено продуктов: ${allProducts.length}`)
-			return allProducts
-		} catch (error) {
-			logger.error('Ошибка загрузки всех продуктов:', error)
-			throw error
-		}
-	}
-
-	/**
 	 * Получение всех компаний из Bitrix24 (пагинация)
 	 */
 	async getAllCompanies(): Promise<any[]> {
@@ -869,6 +835,8 @@ class Bitrix24Service {
 								'EMAIL',
 								'ADDRESS',
 								'COMMENTS',
+								'RQ_INN',
+								'ASSIGNED_BY_ID', // Ответственный пользователь
 							],
 							start,
 							limit,
@@ -895,6 +863,121 @@ class Bitrix24Service {
 			return allCompanies
 		} catch (error) {
 			logger.error('Ошибка загрузки всех компаний:', error)
+			throw error
+		}
+	}
+
+	async getCompanyRequisites(companyId: string): Promise<any[]> {
+		try {
+			const response = await axios.post(
+				`${this.webhookUrl}crm.requisite.list`,
+				{
+					filter: {
+						ENTITY_TYPE_ID: 4, // 4 = Company
+						ENTITY_ID: companyId,
+					},
+					select: [
+						'ID',
+						'ENTITY_TYPE_ID',
+						'ENTITY_ID',
+						'NAME',
+						'RQ_INN',
+						'RQ_KPP',
+						'RQ_OGRN',
+						'RQ_OKPO',
+						'RQ_OKVED',
+						'ACTIVE',
+					],
+					start: 0,
+					limit: 50,
+				}
+			)
+
+			return response.data?.result || []
+		} catch (error) {
+			logger.error(
+				`Ошибка получения реквизитов для компании ${companyId}:`,
+				error
+			)
+			return []
+		}
+	}
+
+	async getAllCompaniesWithRequisites(): Promise<any[]> {
+		try {
+			// Сначала получаем все компании
+			const companies = await this.getAllCompanies()
+
+			// Получаем все реквизиты с пагинацией
+			const allRequisites: any[] = []
+			let start = 0
+			const limit = 50
+			let hasMore = true
+
+			while (hasMore) {
+				const response = await axios.post(
+					`${this.webhookUrl}crm.requisite.list`,
+					{
+						filter: {
+							ENTITY_TYPE_ID: 4, // 4 = Company
+						},
+						select: [
+							'ID',
+							'ENTITY_TYPE_ID',
+							'ENTITY_ID',
+							'NAME',
+							'RQ_INN',
+							'RQ_KPP',
+							'RQ_OGRN',
+							'RQ_OKPO',
+							'RQ_OKVED',
+							'ACTIVE',
+						],
+						start,
+						limit,
+					}
+				)
+
+				const requisites = response.data?.result || []
+				allRequisites.push(...requisites)
+
+				// Если получили меньше записей, чем запрашивали, значит это последняя страница
+				if (requisites.length < limit) {
+					hasMore = false
+				} else {
+					start += limit
+				}
+
+				logger.info(`Загружено реквизитов: ${allRequisites.length}`)
+			}
+
+			logger.info(`Всего загружено реквизитов: ${allRequisites.length}`)
+
+			// Создаем карту реквизитов по ID компании
+			const requisitesMap = new Map()
+			allRequisites.forEach(req => {
+				if (!requisitesMap.has(req.ENTITY_ID)) {
+					requisitesMap.set(req.ENTITY_ID, [])
+				}
+				requisitesMap.get(req.ENTITY_ID).push(req)
+			})
+
+			// Добавляем реквизиты к компаниям
+			const companiesWithRequisites = companies.map(company => {
+				const requisites = requisitesMap.get(company.ID) || []
+
+				return {
+					...company,
+					requisites: requisites,
+					// Берем первый активный реквизит с ИНН
+					RQ_INN:
+						requisites.find(r => r.ACTIVE === 'Y' && r.RQ_INN)?.RQ_INN || '',
+				}
+			})
+
+			return companiesWithRequisites
+		} catch (error) {
+			logger.error('Ошибка загрузки компаний с реквизитами:', error)
 			throw error
 		}
 	}

@@ -189,22 +189,34 @@ export const searchCompanies = async (
 			offset,
 			includeHighlights: true,
 			fuzzy: true,
+			assignedById: assignedFilter, // Передаем фильтр по ответственному пользователю
 		})
 
 		// Если есть результаты в Elasticsearch, возвращаем их
 		if (elasticResults.length > 0) {
-			const formattedResults = elasticResults.map(result => ({
-				ID: result.bitrixId || result.id.replace('company_', ''), // Используем Bitrix ID если есть
-				TITLE: result.name,
-				COMMENTS: result.description,
-				INDUSTRY: result.industry,
-				PHONE: result.phone ? [{ VALUE: result.phone }] : [],
-				EMAIL: result.email ? [{ VALUE: result.email }] : [],
-				ADDRESS: result.address,
-				_score: result.score,
-				highlight: result.highlight,
-				bitrixId: result.bitrixId, // Добавляем Bitrix ID в результат
-			}))
+			const formattedResults = elasticResults.map(result => {
+				console.log('🔍 Elasticsearch result:', {
+					id: result.id,
+					name: result.name,
+					inn: result.inn,
+					innType: typeof result.inn,
+					innValue: JSON.stringify(result.inn),
+				})
+
+				return {
+					ID: result.bitrixId || result.id.replace('company_', ''), // Используем Bitrix ID если есть
+					TITLE: result.name,
+					COMMENTS: result.description,
+					INDUSTRY: result.industry,
+					PHONE: result.phone ? [{ VALUE: result.phone }] : [],
+					EMAIL: result.email ? [{ VALUE: result.email }] : [],
+					ADDRESS: result.address,
+					RQ_INN: result.inn, // Добавляем ИНН
+					_score: result.score,
+					highlight: result.highlight,
+					bitrixId: result.bitrixId, // Добавляем Bitrix ID в результат
+				}
+			})
 
 			logger.info('Companies Elasticsearch search params:', {
 				query,

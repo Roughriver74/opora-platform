@@ -22,37 +22,38 @@ const syncBitrixToElasticsearch = async () => {
 
 		// 3. Sync products
 		console.log('📦 Syncing products...')
-		const products = await bitrix24Service.getProducts('', 1000) // Get all products
-		if (products?.result) {
-			console.log(`Found ${products.result.length} products`)
 
-			for (const product of products.result) {
-				await elasticsearchService.indexDocument({
-					id: `product_${product.ID}`,
-					name: product.NAME,
-					description: product.DESCRIPTION || '',
-					type: 'product',
-					price: product.PRICE ? parseFloat(product.PRICE) : null,
-					currency: product.CURRENCY_ID || 'RUB',
-					industry: 'строительство',
-					bitrixId: product.ID, // Добавляем Bitrix ID
-					createdAt: new Date().toISOString(),
-					updatedAt: new Date().toISOString(),
-					searchableText: `${product.NAME} ${
-						product.DESCRIPTION || ''
-					}`.toLowerCase(),
-				})
-			}
-			console.log(`✅ Synced ${products.result.length} products`)
+		// Получаем ВСЕ товары с пагинацией
+		const allProducts = await bitrix24Service.getAllProducts()
+		console.log(`Found ${allProducts.length} products`)
+
+		for (const product of allProducts) {
+			await elasticsearchService.indexDocument({
+				id: `product_${product.ID}`,
+				name: product.NAME,
+				description: product.DESCRIPTION || '',
+				type: 'product',
+				price: product.PRICE ? parseFloat(product.PRICE) : null,
+				currency: product.CURRENCY_ID || 'RUB',
+				industry: 'строительство',
+				bitrixId: product.ID, // Добавляем Bitrix ID
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				searchableText: `${product.NAME} ${
+					product.DESCRIPTION || ''
+				}`.toLowerCase(),
+			})
 		}
+		console.log(`✅ Synced ${allProducts.length} products`)
 
 		// 4. Sync companies
 		console.log('🏢 Syncing companies...')
-		const companies = await bitrix24Service.getCompanies('', 1000, null, true)
-		if (companies?.result) {
-			console.log(`Found ${companies.result.length} companies`)
+		// Получаем ВСЕ компании с реквизитами
+		const companies = await bitrix24Service.getAllCompaniesWithRequisites()
+		if (companies && companies.length > 0) {
+			console.log(`Found ${companies.length} companies`)
 
-			for (const company of companies.result) {
+			for (const company of companies) {
 				await elasticsearchService.indexDocument({
 					id: `company_${company.ID}`,
 					name: company.TITLE,
@@ -62,15 +63,17 @@ const syncBitrixToElasticsearch = async () => {
 					address: company.ADDRESS || '',
 					phone: company.PHONE?.[0]?.VALUE || '',
 					email: company.EMAIL?.[0]?.VALUE || '',
+					inn: company.RQ_INN || '', // Добавляем ИНН
 					bitrixId: company.ID, // Добавляем Bitrix ID
+					assignedById: company.ASSIGNED_BY_ID || '', // Добавляем ответственного пользователя
 					createdAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),
 					searchableText: `${company.TITLE} ${company.INDUSTRY || ''} ${
 						company.ADDRESS || ''
-					}`.toLowerCase(),
+					} ${company.RQ_INN || ''}`.toLowerCase(),
 				})
 			}
-			console.log(`✅ Synced ${companies.result.length} companies`)
+			console.log(`✅ Synced ${companies.length} companies`)
 		}
 
 		// 5. Sync contacts
