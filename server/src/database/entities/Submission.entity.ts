@@ -153,7 +153,7 @@ export class Submission extends BaseEntity {
 	@IsNumber()
 	processingTimeMinutes?: number
 	
-	@Column({ type: 'jsonb' })
+	@Column({ type: 'jsonb', name: 'form_data' })
 	formData: any
 
 	// Override the base class validation to ensure submission number is generated first

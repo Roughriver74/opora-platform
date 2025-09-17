@@ -88,6 +88,7 @@ class SearchSyncService {
 				type: 'product' as const,
 				price: product.PRICE ? parseFloat(product.PRICE) : undefined,
 				currency: product.CURRENCY_ID || 'RUB',
+				bitrixId: product.ID, // Добавляем Bitrix ID
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				searchableText: this.buildSearchableText(product),
@@ -138,6 +139,9 @@ class SearchSyncService {
 				phone: company.PHONE?.[0]?.VALUE || '',
 				email: company.EMAIL?.[0]?.VALUE || '',
 				address: company.ADDRESS || '',
+				inn: company.RQ_INN || '', // Исправляем маппинг ИНН
+				bitrixId: company.ID, // Добавляем Bitrix ID
+				assignedById: company.ASSIGNED_BY_ID, // Добавляем ответственного пользователя
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				searchableText: this.buildSearchableText(company),
@@ -186,6 +190,7 @@ class SearchSyncService {
 				type: 'contact' as const,
 				phone: contact.PHONE?.[0]?.VALUE || '',
 				email: contact.EMAIL?.[0]?.VALUE || '',
+				bitrixId: contact.ID, // Добавляем Bitrix ID
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				searchableText: this.buildSearchableText(contact),

@@ -137,31 +137,34 @@ export const FormFieldService = {
 	},
 
 	async getProducts(query: string = '') {
-		// Используем новый Elasticsearch API для более точного поиска
+		// Используем новый Elasticsearch API с оптимизациями
 		const response = await api.post('/api/search/products', {
 			query,
 			limit: 20,
 			offset: 0,
+			fuzzy: true, // Включаем обработку опечаток
 		})
 		return response.data
 	},
 
 	async getCompanies(query: string = '') {
-		// Используем новый Elasticsearch API для более точного поиска
+		// Используем новый Elasticsearch API с оптимизациями
 		const response = await api.post('/api/search/companies', {
 			query,
 			limit: 20,
 			offset: 0,
+			fuzzy: true, // Включаем обработку опечаток
 		})
 		return response.data
 	},
 
 	async getContacts(query: string = '') {
-		// Используем новый Elasticsearch API для более точного поиска
+		// Используем новый Elasticsearch API с оптимизациями
 		const response = await api.post('/api/search/contacts', {
 			query,
 			limit: 20,
 			offset: 0,
+			fuzzy: true, // Включаем обработку опечаток
 		})
 		return response.data
 	},

@@ -339,7 +339,8 @@ export const useDynamicOptions = (
 									label = `${option.title} (ID: ${option.value})`
 								}
 
-								if (hasInn) {
+								// Добавляем ИНН через запятую, если он есть
+								if (hasInn && hasInn.trim()) {
 									label = `${label}, ${option.metadata.rqInn}`
 								}
 

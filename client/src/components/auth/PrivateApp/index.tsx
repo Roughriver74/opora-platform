@@ -7,6 +7,7 @@ import { ProtectedRoute } from '../ProtectedRoute'
 import Layout from '../../layout/Layout'
 import HomePage from '../../../pages/HomePage'
 import AdminPage from '../../../pages/admin/AdminPage'
+import DashboardPage from '../../../pages/DashboardPage'
 import MySubmissions from '../../user/MySubmissions'
 import AnimatedLogo from '../../common/AnimatedLogo'
 
@@ -69,6 +70,14 @@ export const PrivateApp: React.FC = () => {
 					element={
 						<ProtectedRoute requiredRole='admin'>
 							<AdminPage />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
+					path='/dashboard'
+					element={
+						<ProtectedRoute requiredRole='admin'>
+							<DashboardPage />
 						</ProtectedRoute>
 					}
 				/>

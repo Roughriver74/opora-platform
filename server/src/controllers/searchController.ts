@@ -4,6 +4,42 @@ import { searchSyncService } from '../services/searchSyncService'
 import bitrix24Service from '../services/bitrix24Service'
 import { logger } from '../utils/logger'
 
+// Простое кэширование в памяти
+const searchCache = new Map<string, { data: any; timestamp: number }>()
+const CACHE_TTL = 5 * 60 * 1000 // 5 минут
+
+function getCacheKey(
+	query: string,
+	type?: string,
+	limit?: number,
+	offset?: number
+): string {
+	return `${query}_${type || 'all'}_${limit || 20}_${offset || 0}`
+}
+
+function getCachedResult(key: string): any | null {
+	const cached = searchCache.get(key)
+	if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+		return cached.data
+	}
+	searchCache.delete(key)
+	return null
+}
+
+function setCachedResult(key: string, data: any): void {
+	searchCache.set(key, { data, timestamp: Date.now() })
+
+	// Очищаем старые записи (простая очистка)
+	if (searchCache.size > 1000) {
+		const now = Date.now()
+		for (const [k, v] of searchCache.entries()) {
+			if (now - v.timestamp > CACHE_TTL) {
+				searchCache.delete(k)
+			}
+		}
+	}
+}
+
 /**
  * Универсальный поиск через Elasticsearch
  */
@@ -86,7 +122,14 @@ export const searchProducts = async (
 ): Promise<void> => {
 	try {
 		const { query = '', limit = 20, offset = 0 } = req.body
-		logger.info(`🔍 Поиск продуктов: "${query}", limit: ${limit}`)
+
+		// Проверяем кэш
+		const cacheKey = getCacheKey(query, 'product', limit, offset)
+		const cachedResult = getCachedResult(cacheKey)
+		if (cachedResult) {
+			res.status(200).json(cachedResult)
+			return
+		}
 
 		// Сначала пробуем поиск через Elasticsearch
 		let elasticResults: any[] = []
@@ -99,18 +142,17 @@ export const searchProducts = async (
 				includeHighlights: true,
 				fuzzy: true,
 			})
-			logger.info(
-				`Elasticsearch поиск продуктов "${query}": найдено ${elasticResults.length} результатов`
-			)
 		} catch (error) {
 			logger.error(`Ошибка Elasticsearch поиска продуктов "${query}":`, error)
 			// Продолжаем с fallback
 		}
 
+		let result: any
+
 		// Если есть результаты в Elasticsearch, возвращаем их
 		if (elasticResults.length > 0) {
 			const formattedResults = elasticResults.map(result => ({
-				ID: result.bitrixId || result.id.replace('product_', ''), // Используем Bitrix ID если есть
+				ID: result.bitrixId || result.id.replace('product_', ''),
 				NAME: result.name,
 				DESCRIPTION: result.description,
 				PRICE: result.price?.toString() || '',
@@ -119,40 +161,41 @@ export const searchProducts = async (
 				highlight: result.highlight,
 			}))
 
-			res.status(200).json({
+			result = {
 				result: formattedResults,
 				total: formattedResults.length,
 				query,
 				searchEngine: 'elasticsearch',
-			})
-			return
+			}
+		} else {
+			// Fallback: если нет результатов в Elasticsearch, ищем через Bitrix24 API
+			const bitrixResults = await bitrix24Service.searchProducts(query, limit)
+
+			// Преобразуем результаты Bitrix24 в нужный формат
+			const formattedBitrixResults = bitrixResults.map((product: any) => ({
+				ID: product.ID,
+				NAME: product.NAME,
+				DESCRIPTION: product.DESCRIPTION || '',
+				PRICE: product.PRICE || '0',
+				CURRENCY_ID: product.CURRENCY_ID || 'RUB',
+				_score: 1.0,
+				highlight: {
+					name: [product.NAME],
+					description: [product.DESCRIPTION || ''],
+				},
+			}))
+
+			result = {
+				result: formattedBitrixResults,
+				total: formattedBitrixResults.length,
+				query,
+				searchEngine: 'bitrix24_fallback',
+			}
 		}
 
-		// Fallback: если нет результатов в Elasticsearch, ищем через Bitrix24 API
-		logger.info(`Fallback: поиск продуктов "${query}" через Bitrix24 API`)
-
-		const bitrixResults = await bitrix24Service.searchProducts(query, limit)
-
-		// Преобразуем результаты Bitrix24 в нужный формат
-		const formattedBitrixResults = bitrixResults.map((product: any) => ({
-			ID: product.ID,
-			NAME: product.NAME,
-			DESCRIPTION: product.DESCRIPTION || '',
-			PRICE: product.PRICE || '0',
-			CURRENCY_ID: product.CURRENCY_ID || 'RUB',
-			_score: 1.0, // Низкий score для результатов из Bitrix24
-			highlight: {
-				name: [product.NAME],
-				description: [product.DESCRIPTION || ''],
-			},
-		}))
-
-		res.status(200).json({
-			result: formattedBitrixResults,
-			total: formattedBitrixResults.length,
-			query,
-			searchEngine: 'bitrix24_fallback',
-		})
+		// Кэшируем результат
+		setCachedResult(cacheKey, result)
+		res.status(200).json(result)
 	} catch (error: any) {
 		logger.error('Product search failed:', error)
 		res.status(500).json({

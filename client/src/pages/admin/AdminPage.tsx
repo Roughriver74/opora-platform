@@ -16,6 +16,7 @@ import BackupManagement from '../../components/admin/BackupManagement'
 import Settings from '../../components/admin/Settings'
 import { SimpleDatabase } from '../../components/admin/SimpleDatabase'
 import { UsersPage } from './UsersPage'
+import { useNavigate } from 'react-router-dom'
 import { Form } from '../../types'
 import { FormService } from '../../services/formService'
 import { useAuth } from '../../contexts/auth'
@@ -57,6 +58,7 @@ const AdminPage: React.FC = () => {
 	const [loadingForm, setLoadingForm] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const { user, logout } = useAuth()
+	const navigate = useNavigate()
 
 	// Загрузка всех форм
 	const loadForms = async () => {
@@ -155,6 +157,14 @@ const AdminPage: React.FC = () => {
 						Добро пожаловать,{' '}
 						{user?.firstName || user?.fullName || 'Администратор'}
 					</Typography>
+					<Button
+						variant='contained'
+						color='primary'
+						onClick={() => navigate('/dashboard')}
+						sx={{ mr: 1 }}
+					>
+						Дашборд
+					</Button>
 					<Button variant='outlined' color='secondary' onClick={logout}>
 						Выйти
 					</Button>

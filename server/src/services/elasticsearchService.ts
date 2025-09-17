@@ -111,9 +111,17 @@ class ElasticsearchService {
 								id: { type: 'keyword' },
 								name: {
 									type: 'text',
-									analyzer: 'russian',
+									analyzer: 'product_search',
 									fields: {
 										keyword: { type: 'keyword' },
+										exact: {
+											type: 'text',
+											analyzer: 'exact_match',
+										},
+										autocomplete: {
+											type: 'text',
+											analyzer: 'autocomplete',
+										},
 										suggest: {
 											type: 'completion',
 											analyzer: 'simple',
@@ -122,14 +130,17 @@ class ElasticsearchService {
 								},
 								description: {
 									type: 'text',
-									analyzer: 'russian',
+									analyzer: 'product_search',
+									fields: {
+										keyword: { type: 'keyword' },
+									},
 								},
 								type: { type: 'keyword' },
 								price: { type: 'float' },
 								currency: { type: 'keyword' },
 								industry: {
 									type: 'text',
-									analyzer: 'russian',
+									analyzer: 'product_search',
 									fields: {
 										keyword: { type: 'keyword' },
 									},
@@ -138,7 +149,10 @@ class ElasticsearchService {
 								email: { type: 'keyword' },
 								address: {
 									type: 'text',
-									analyzer: 'russian',
+									analyzer: 'product_search',
+									fields: {
+										keyword: { type: 'keyword' },
+									},
 								},
 								inn: {
 									type: 'keyword',
@@ -171,20 +185,23 @@ class ElasticsearchService {
 								updatedAt: { type: 'date' },
 								searchableText: {
 									type: 'text',
-									analyzer: 'russian',
+									analyzer: 'product_search',
+									fields: {
+										keyword: { type: 'keyword' },
+									},
 								},
 								tags: { type: 'keyword' },
 								// Поля для submissions
 								submissionNumber: {
 									type: 'text',
-									analyzer: 'russian',
+									analyzer: 'product_search',
 									fields: {
 										keyword: { type: 'keyword' },
 									},
 								},
 								userName: {
 									type: 'text',
-									analyzer: 'russian',
+									analyzer: 'product_search',
 									fields: {
 										keyword: { type: 'keyword' },
 									},
@@ -192,20 +209,26 @@ class ElasticsearchService {
 								userEmail: { type: 'keyword' },
 								formName: {
 									type: 'text',
-									analyzer: 'russian',
+									analyzer: 'product_search',
 									fields: {
 										keyword: { type: 'keyword' },
 									},
 								},
 								formTitle: {
 									type: 'text',
-									analyzer: 'russian',
+									analyzer: 'product_search',
+									fields: {
+										keyword: { type: 'keyword' },
+									},
 								},
 								status: { type: 'keyword' },
 								priority: { type: 'keyword' },
 								notes: {
 									type: 'text',
-									analyzer: 'russian',
+									analyzer: 'product_search',
+									fields: {
+										keyword: { type: 'keyword' },
+									},
 								},
 								formData: { type: 'object' },
 							},
@@ -218,6 +241,30 @@ class ElasticsearchService {
 										tokenizer: 'standard',
 										filter: ['lowercase', 'russian_stop', 'russian_stemmer'],
 									},
+									// Улучшенный анализатор для поиска товаров
+									product_search: {
+										type: 'custom',
+										tokenizer: 'standard',
+										filter: [
+											'lowercase',
+											'russian_stop',
+											'russian_stemmer',
+											'product_synonyms',
+											'product_edge_ngram',
+										],
+									},
+									// Анализатор для автокомплита
+									autocomplete: {
+										type: 'custom',
+										tokenizer: 'keyword',
+										filter: ['lowercase', 'autocomplete_edge_ngram'],
+									},
+									// Анализатор для точного поиска
+									exact_match: {
+										type: 'custom',
+										tokenizer: 'keyword',
+										filter: ['lowercase'],
+									},
 								},
 								filter: {
 									russian_stop: {
@@ -227,6 +274,34 @@ class ElasticsearchService {
 									russian_stemmer: {
 										type: 'stemmer',
 										language: 'russian',
+									},
+									// Синонимы для товаров
+									product_synonyms: {
+										type: 'synonym',
+										synonyms: [
+											'бетон,цемент,раствор',
+											'песок,песчаный,песчаная',
+											'щебень,гравий,камень',
+											'арматура,металл,сталь',
+											'доставка,транспорт,перевозка',
+											'м300,м-300,марка 300',
+											'м400,м-400,марка 400',
+											'м500,м-500,марка 500',
+											'фундамент,основание,база',
+											'строительство,стройка,возведение',
+										],
+									},
+									// Edge n-gram для поиска товаров
+									product_edge_ngram: {
+										type: 'edge_ngram',
+										min_gram: 2,
+										max_gram: 20,
+									},
+									// Edge n-gram для автокомплита
+									autocomplete_edge_ngram: {
+										type: 'edge_ngram',
+										min_gram: 1,
+										max_gram: 15,
 									},
 								},
 							},
@@ -378,7 +453,18 @@ class ElasticsearchService {
 	}
 
 	/**
-	 * Поиск документов
+	 * Нормализация поискового запроса
+	 */
+	private normalizeQuery(query: string): string {
+		return query
+			.trim()
+			.replace(/\s+/g, ' ') // Заменяем множественные пробелы на один
+			.replace(/[^\w\s\u0400-\u04FF]/g, '') // Убираем спецсимволы, оставляем буквы, цифры, пробелы и кириллицу
+			.toLowerCase()
+	}
+
+	/**
+	 * Поиск документов - оптимизированная версия
 	 */
 	async search(options: SearchOptions): Promise<SearchResult[]> {
 		try {
@@ -392,17 +478,42 @@ class ElasticsearchService {
 				assignedById,
 			} = options
 
-			console.log('Elasticsearch search called with:', {
-				query,
-				type,
-				limit,
-				offset,
-			})
-
 			const searchBody: any = {
 				query: {
-					bool: {
-						must: [],
+					function_score: {
+						query: {
+							bool: {
+								must: [],
+								filter: [],
+								should: [],
+							},
+						},
+						functions: [
+							// Бустинг для новых документов
+							{
+								filter: {
+									range: {
+										createdAt: {
+											gte: 'now-30d',
+										},
+									},
+								},
+								weight: 1.2,
+							},
+							// Бустинг для обновленных документов
+							{
+								filter: {
+									range: {
+										updatedAt: {
+											gte: 'now-7d',
+										},
+									},
+								},
+								weight: 1.1,
+							},
+						],
+						score_mode: 'multiply',
+						boost_mode: 'multiply',
 					},
 				},
 				size: limit,
@@ -412,127 +523,126 @@ class ElasticsearchService {
 
 			// Фильтр по типу
 			if (type) {
-				searchBody.query.bool.filter = [{ term: { type } }]
+				searchBody.query.function_score.query.bool.filter.push({
+					term: { type },
+				})
 			}
 
 			// Фильтр по ответственному пользователю (только для компаний)
 			if (assignedById && type === 'company') {
-				if (!searchBody.query.bool.filter) {
-					searchBody.query.bool.filter = []
-				}
-				searchBody.query.bool.filter.push({
+				searchBody.query.function_score.query.bool.filter.push({
 					term: { assignedById },
 				})
 			}
 
 			// Поисковый запрос
 			if (query.trim()) {
-				const trimmedQuery = query.trim()
+				const originalQuery = query.trim()
+				const normalizedQuery = this.normalizeQuery(query)
 
 				// Проверяем, является ли запрос числовым Bitrix ID
-				const isNumericBitrixId = /^\d+$/.test(trimmedQuery)
+				const isNumericBitrixId = /^\d+$/.test(originalQuery)
 
 				if (isNumericBitrixId) {
 					// Для числовых ID ищем точное совпадение в поле bitrixId или inn
-					console.log(
-						`🔍 Elasticsearch: Поиск по Bitrix ID или ИНН "${trimmedQuery}"`
-					)
-					searchBody.query.bool.must.push({
+					searchBody.query.function_score.query.bool.must.push({
 						bool: {
 							should: [
-								{
-									term: {
-										bitrixId: trimmedQuery,
-									},
-								},
-								{
-									term: {
-										inn: trimmedQuery,
-									},
-								},
+								{ term: { bitrixId: originalQuery } },
+								{ term: { inn: originalQuery } },
 							],
 							minimum_should_match: 1,
 						},
 					})
 				} else {
-					// Основной поиск с multi_match для текстовых запросов
-					const mainSearchQuery = {
-						multi_match: {
-							query: trimmedQuery,
-							fields: [
-								'name^3', // Название имеет больший вес
-								'description^2', // Описание имеет средний вес
-								'searchableText^1', // Общий текст имеет базовый вес
-								'industry^1.5', // Отрасль имеет повышенный вес
-								'address^1',
-								'inn^2.5', // ИНН имеет повышенный вес
-								// Поля для submissions
-								'submissionNumber^3', // Номер заявки имеет больший вес
-								'userName^2.5', // Имя пользователя имеет повышенный вес
-								'formName^2', // Название формы имеет средний вес
-								'formTitle^2', // Заголовок формы имеет средний вес
-								'notes^1.5', // Заметки имеют повышенный вес
-							],
-							type: 'best_fields',
-							fuzziness: fuzzy ? 'AUTO' : 0,
-							prefix_length: 2,
-						},
-					}
+					// Создаем несколько вариантов поиска для лучшего покрытия
+					const searchVariants = [
+						originalQuery, // Оригинальный запрос
+						normalizedQuery, // Нормализованный запрос
+						originalQuery.replace(/\s+/g, ''), // Без пробелов
+						originalQuery.replace(/\s+/g, ' '), // С одним пробелом
+					].filter((variant, index, array) => array.indexOf(variant) === index) // Убираем дубликаты
 
-					// Дополнительный поиск по частичным словам с regexp
-					const regexpQuery = {
+					const searchQuery = {
 						bool: {
 							should: [
+								// Точное совпадение в названии (высокий приоритет)
 								{
-									regexp: { name: { value: `.*${trimmedQuery}.*`, boost: 2 } },
-								},
-								{
-									regexp: {
-										description: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+									match_phrase: {
+										name: {
+											query: originalQuery,
+											boost: 5,
+										},
 									},
 								},
+								// Точное совпадение с использованием exact анализатора
 								{
-									regexp: {
-										searchableText: { value: `.*${trimmedQuery}.*`, boost: 1 },
+									match: {
+										'name.exact': {
+											query: originalQuery,
+											boost: 4.5,
+										},
 									},
 								},
+								// Автокомплит поиск
 								{
-									regexp: {
-										industry: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+									match: {
+										'name.autocomplete': {
+											query: originalQuery,
+											boost: 4,
+										},
 									},
 								},
-								{
-									regexp: {
-										address: { value: `.*${trimmedQuery}.*`, boost: 1 },
+								// Multi-match по всем полям с разными вариантами и улучшенной обработкой опечаток
+								...searchVariants.map(variant => ({
+									multi_match: {
+										query: variant,
+										fields: [
+											'name^4',
+											'name.autocomplete^3.5',
+											'description^2.5',
+											'searchableText^2',
+											'industry^2',
+											'address^1.5',
+											'inn^3',
+											'submissionNumber^3.5',
+											'userName^3',
+											'formName^2.5',
+											'formTitle^2.5',
+											'notes^2',
+										],
+										type: 'best_fields',
+										fuzziness: fuzzy ? 'AUTO' : 0,
+										fuzzy_transpositions: true,
+										prefix_length: 1,
+										max_expansions: 50,
+										boost: variant === originalQuery ? 1 : 0.8,
 									},
-								},
-								// Поля для submissions
+								})),
+								// Wildcard поиск для частичных совпадений
 								{
-									regexp: {
-										submissionNumber: {
-											value: `.*${trimmedQuery}.*`,
-											boost: 2,
+									wildcard: {
+										name: {
+											value: `*${normalizedQuery}*`,
+											boost: 1.5,
 										},
 									},
 								},
 								{
-									regexp: {
-										userName: { value: `.*${trimmedQuery}.*`, boost: 2 },
+									wildcard: {
+										searchableText: {
+											value: `*${normalizedQuery}*`,
+											boost: 1,
+										},
 									},
 								},
+								// Поиск без пробелов для случаев типа "бств12"
 								{
-									regexp: {
-										formName: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
-									},
-								},
-								{
-									regexp: {
-										formTitle: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
-									},
-								},
-								{
-									regexp: {
-										notes: { value: `.*${trimmedQuery}.*`, boost: 1.5 },
+									wildcard: {
+										name: {
+											value: `*${originalQuery.replace(/\s+/g, '')}*`,
+											boost: 1.2,
+										},
 									},
 								},
 							],
@@ -540,17 +650,11 @@ class ElasticsearchService {
 						},
 					}
 
-					// Объединяем основной поиск и regexp поиск
-					searchBody.query.bool.must.push({
-						bool: {
-							should: [mainSearchQuery, regexpQuery],
-							minimum_should_match: 1,
-						},
-					})
+					searchBody.query.function_score.query.bool.must.push(searchQuery)
 				}
 			} else {
 				// Если запрос пустой, возвращаем все документы
-				searchBody.query.bool.must.push({ match_all: {} })
+				searchBody.query.function_score.query.bool.must.push({ match_all: {} })
 			}
 
 			// Подсветка результатов
@@ -558,16 +662,20 @@ class ElasticsearchService {
 				searchBody.highlight = {
 					fields: {
 						name: { fragment_size: 150 },
+						'name.autocomplete': { fragment_size: 150 },
 						description: { fragment_size: 150 },
 						searchableText: { fragment_size: 150 },
-						// Поля для submissions
+						industry: { fragment_size: 150 },
+						address: { fragment_size: 150 },
 						submissionNumber: { fragment_size: 150 },
 						userName: { fragment_size: 150 },
 						formName: { fragment_size: 150 },
+						formTitle: { fragment_size: 150 },
 						notes: { fragment_size: 150 },
 					},
 					pre_tags: ['<mark>'],
 					post_tags: ['</mark>'],
+					number_of_fragments: 3,
 				}
 			}
 
@@ -587,12 +695,11 @@ class ElasticsearchService {
 				phone: hit._source.phone,
 				email: hit._source.email,
 				address: hit._source.address,
-				inn: hit._source.inn, // Добавляем ИНН
-				bitrixId: hit._source.bitrixId, // Добавляем Bitrix ID в результаты
-				assignedById: hit._source.assignedById, // Добавляем ответственного пользователя
+				inn: hit._source.inn,
+				bitrixId: hit._source.bitrixId,
+				assignedById: hit._source.assignedById,
 				score: hit._score,
 				highlight: hit.highlight,
-				// Поля для submissions
 				submissionNumber: hit._source.submissionNumber,
 				userName: hit._source.userName,
 				userEmail: hit._source.userEmail,
@@ -604,41 +711,73 @@ class ElasticsearchService {
 				formData: hit._source.formData,
 			}))
 		} catch (error) {
-			logger.error('Search failed:', error)
+			logger.error('Elasticsearch search error:', {
+				query: options.query,
+				type: options.type,
+				error: error.message,
+				stack: error.stack,
+			})
+
+			// Если это временная ошибка, пробуем еще раз
+			if (
+				error.status === 429 ||
+				error.status === 503 ||
+				error.status === 504
+			) {
+				logger.warn('Retrying Elasticsearch search due to temporary error...')
+				await new Promise(resolve => setTimeout(resolve, 1000)) // Ждем 1 секунду
+				return this.search(options) // Рекурсивный вызов
+			}
+
 			throw error
 		}
 	}
 
 	/**
-	 * Автодополнение
+	 * Автодополнение - улучшенная версия
 	 */
 	async suggest(query: string, type?: string): Promise<string[]> {
 		try {
-			const suggestBody: any = {
-				suggest: {
-					name_suggest: {
-						prefix: query,
-						completion: {
-							field: 'name.suggest',
-							size: 10,
-						},
+			// Используем обычный поиск с автокомплит полем для лучших результатов
+			const searchBody: any = {
+				query: {
+					bool: {
+						must: [
+							{
+								match: {
+									'name.autocomplete': {
+										query: query,
+										boost: 1,
+									},
+								},
+							},
+						],
+						filter: [],
 					},
 				},
+				size: 10,
+				_source: ['name'],
+				sort: [{ _score: { order: 'desc' } }],
 			}
 
 			if (type) {
-				suggestBody.suggest.name_suggest.completion.contexts = {
-					type: [type],
-				}
+				searchBody.query.bool.filter.push({ term: { type } })
 			}
 
 			const response = await this.client.search({
 				index: this.indexName,
-				body: suggestBody,
+				body: searchBody,
 			})
 
-			const suggestions = response.suggest.name_suggest[0] as any
-			return suggestions.options.map((option: any) => option.text)
+			// Извлекаем уникальные названия
+			const suggestions = new Set<string>()
+			response.hits.hits.forEach((hit: any) => {
+				if (hit._source.name) {
+					suggestions.add(hit._source.name)
+				}
+			})
+
+			return Array.from(suggestions).slice(0, 10)
 		} catch (error) {
 			logger.error('Suggest failed:', error)
 			return []

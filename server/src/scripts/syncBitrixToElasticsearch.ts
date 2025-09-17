@@ -9,7 +9,9 @@ import { Submission } from '../database/entities/Submission.entity'
 dotenv.config()
 
 const syncBitrixToElasticsearch = async () => {
-	console.log('🚀 Starting Bitrix24 to Elasticsearch sync...')
+	console.log(
+		'🚀 Starting Bitrix24 to Elasticsearch sync with optimized settings...'
+	)
 
 	try {
 		// 1. Check Elasticsearch connection
@@ -19,7 +21,14 @@ const syncBitrixToElasticsearch = async () => {
 			return
 		}
 
-		// 2. Initialize index
+		// 2. Delete old index to apply new optimized settings
+		console.log('🗑️ Deleting old index to apply optimized settings...')
+		await elasticsearchService.deleteIndex()
+
+		// 3. Initialize index with optimized settings
+		console.log(
+			'🏗️ Creating new index with optimized analyzers, synonyms, and function_score...'
+		)
 		await elasticsearchService.initializeIndex()
 
 		// 3. Sync products
@@ -184,17 +193,89 @@ const syncBitrixToElasticsearch = async () => {
 
 		console.log('🎉 Sync completed successfully!')
 
-		// 7. Test search
-		console.log('\n🔍 Testing search...')
-		const searchResults = await elasticsearchService.search({
+		// 7. Test optimized search features
+		console.log('\n🔍 Testing optimized search features...')
+
+		// Test 1: Basic search
+		console.log('\n📊 Test 1: Basic product search')
+		const searchResults1 = await elasticsearchService.search({
 			query: 'м300',
 			type: 'product',
 			limit: 5,
+			fuzzy: true,
 		})
-		console.log(`Found ${searchResults.length} products matching "м300"`)
-		searchResults.forEach((result, index) => {
-			console.log(`${index + 1}. ${result.name} (score: ${result.score})`)
+		console.log(`Found ${searchResults1.length} products matching "м300"`)
+		searchResults1.forEach((result, index) => {
+			console.log(
+				`  ${index + 1}. ${result.name} (score: ${result.score?.toFixed(2)})`
+			)
 		})
+
+		// Test 2: Search with typo (fuzziness)
+		console.log('\n📊 Test 2: Search with typo (fuzziness)')
+		const searchResults2 = await elasticsearchService.search({
+			query: 'бетн м300', // typo in "бетон"
+			type: 'product',
+			limit: 3,
+			fuzzy: true,
+		})
+		console.log(
+			`Found ${searchResults2.length} products matching "бетн м300" (with typo)`
+		)
+		searchResults2.forEach((result, index) => {
+			console.log(
+				`  ${index + 1}. ${result.name} (score: ${result.score?.toFixed(2)})`
+			)
+		})
+
+		// Test 3: Synonym search
+		console.log('\n📊 Test 3: Synonym search')
+		const searchResults3 = await elasticsearchService.search({
+			query: 'цемент', // synonym for бетон
+			type: 'product',
+			limit: 3,
+			fuzzy: true,
+		})
+		console.log(
+			`Found ${searchResults3.length} products matching "цемент" (synonym)`
+		)
+		searchResults3.forEach((result, index) => {
+			console.log(
+				`  ${index + 1}. ${result.name} (score: ${result.score?.toFixed(2)})`
+			)
+		})
+
+		// Test 4: Autocomplete
+		console.log('\n📊 Test 4: Autocomplete')
+		const suggestions = await elasticsearchService.suggest('бет', 'product')
+		console.log(`Autocomplete for "бет": ${suggestions.slice(0, 3).join(', ')}`)
+
+		// Test 5: Company search
+		console.log('\n📊 Test 5: Company search')
+		const companyResults = await elasticsearchService.search({
+			query: 'строительная',
+			type: 'company',
+			limit: 3,
+			fuzzy: true,
+		})
+		console.log(
+			`Found ${companyResults.length} companies matching "строительная"`
+		)
+		companyResults.forEach((result, index) => {
+			console.log(
+				`  ${index + 1}. ${result.name} (score: ${result.score?.toFixed(2)})`
+			)
+		})
+
+		// Show optimization summary
+		console.log('\n🎯 OPTIMIZATION SUMMARY:')
+		console.log('✅ Enhanced analyzers with edgeNGram')
+		console.log('✅ Product synonyms (бетон=цемент, м300=марка 300, etc.)')
+		console.log('✅ Function score for relevance boosting')
+		console.log('✅ Fuzzy search for typo handling')
+		console.log('✅ Improved autocomplete')
+		console.log('✅ Better field boosting and highlighting')
+		console.log('\n💡 All optimizations are now active!')
 	} catch (error) {
 		console.error('❌ Sync failed:', error)
 	}

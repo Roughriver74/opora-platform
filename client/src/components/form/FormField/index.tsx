@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { FormFieldProps } from './types'
 import { FIELD_CONSTANTS, FIELD_TYPES } from './constants'
-import { useDynamicOptions } from './hooks/useDynamicOptions'
+import { useOptimizedSearch } from './hooks/useOptimizedSearch'
 import { getFieldStyles } from './utils/fieldStyles'
 
 // Import input components
@@ -43,7 +43,7 @@ const FormField: React.FC<FormFieldProps> = React.memo(
 			syncWithOptions,
 			resetFailedAttempts,
 			failedAttempts,
-		} = useDynamicOptions(field.dynamicSource, preloadedOptions)
+		} = useOptimizedSearch(field.dynamicSource, preloadedOptions)
 
 		// Отладочные логи для autocomplete полей (только при активном взаимодействии)
 		if (field.type === 'autocomplete' && searchQuery) {

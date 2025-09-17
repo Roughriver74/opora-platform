@@ -20,6 +20,7 @@ import {
 } from '@mui/material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import DashboardIcon from '@mui/icons-material/Dashboard'
 import HomeIcon from '@mui/icons-material/Home'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
@@ -82,6 +83,11 @@ const Navbar: React.FC = () => {
 	]
 
 	if (user?.role === 'admin') {
+		menuItems.push({
+			text: 'Дашборд',
+			icon: <DashboardIcon />,
+			path: '/dashboard',
+		})
 		menuItems.push({
 			text: 'Администрирование',
 			icon: <AdminPanelSettingsIcon />,
