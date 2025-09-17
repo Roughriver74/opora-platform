@@ -489,6 +489,32 @@ export class OptimizedSubmissionService {
 	}
 
 	/**
+	 * Получение списка полей с товарами из form_fields
+	 */
+	private async getProductFieldsFromDatabase(): Promise<Set<string>> {
+		try {
+			// Используем прямой SQL запрос для получения полей с товарами
+			const result = await AppDataSource.query(`
+				SELECT name 
+				FROM form_fields 
+				WHERE type = 'autocomplete' 
+				AND (
+					label ILIKE '%бетон%' OR 
+					label ILIKE '%цемент%' OR 
+					label ILIKE '%раствор%' OR 
+					label ILIKE '%цпс%' OR 
+					label ILIKE '%пмд%'
+				)
+			`)
+
+			return new Set(result.map((row: any) => row.name))
+		} catch (error) {
+			console.error('Ошибка получения полей с товарами:', error)
+			return new Set()
+		}
+	}
+
+	/**
 	 * Получение названия товара из Elasticsearch по ID
 	 */
 	private async getProductNameFromElasticsearch(

@@ -174,18 +174,49 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ data }) => {
 			{/* Заявки по товарам */}
 			<Grid size={{ xs: 12, md: 6 }}>
 				<ChartCard title='Заявки по товарам'>
-					<Box
-						sx={{
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							height: '100%',
-						}}
-					>
-						<Typography color='text.secondary'>
-							Данные о товарах в разработке
-						</Typography>
-					</Box>
+					{hasData(data.submissionsByProducts) ? (
+						<ResponsiveContainer width='100%' height='100%'>
+							<BarChart
+								data={data.submissionsByProducts.labels.map((label, index) => ({
+									name:
+										label.length > 20 ? label.substring(0, 20) + '...' : label,
+									fullName: label,
+									value: data.submissionsByProducts.datasets[0].data[index],
+								}))}
+							>
+								<CartesianGrid strokeDasharray='3 3' />
+								<XAxis
+									dataKey='name'
+									angle={-45}
+									textAnchor='end'
+									height={100}
+									fontSize={12}
+								/>
+								<YAxis />
+								<Tooltip
+									content={<CustomTooltip />}
+									formatter={(value: any, name: any, props: any) => [
+										value,
+										props.payload.fullName,
+									]}
+								/>
+								<Bar dataKey='value' fill='#2e7d32' />
+							</BarChart>
+						</ResponsiveContainer>
+					) : (
+						<Box
+							sx={{
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								height: '100%',
+							}}
+						>
+							<Typography color='text.secondary'>
+								Нет данных о товарах
+							</Typography>
+						</Box>
+					)}
 				</ChartCard>
 			</Grid>
 
@@ -210,44 +241,6 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ data }) => {
 									type='monotone'
 									dataKey='value'
 									stroke='#f50057'
-									strokeWidth={2}
-								/>
-							</LineChart>
-						</ResponsiveContainer>
-					) : (
-						<Box
-							sx={{
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								height: '100%',
-							}}
-						>
-							<Typography color='text.secondary'>Нет данных</Typography>
-						</Box>
-					)}
-				</ChartCard>
-			</Grid>
-
-			{/* Тренд времени обработки */}
-			<Grid size={{ xs: 12 }}>
-				<ChartCard title='Тренд времени обработки' height={200}>
-					{hasData(data.processingTimeTrend) ? (
-						<ResponsiveContainer width='100%' height='100%'>
-							<LineChart
-								data={data.processingTimeTrend.labels.map((label, index) => ({
-									name: label,
-									value: data.processingTimeTrend.datasets[0].data[index],
-								}))}
-							>
-								<CartesianGrid strokeDasharray='3 3' />
-								<XAxis dataKey='name' />
-								<YAxis />
-								<Tooltip content={<CustomTooltip />} />
-								<Line
-									type='monotone'
-									dataKey='value'
-									stroke='#9c27b0'
 									strokeWidth={2}
 								/>
 							</LineChart>

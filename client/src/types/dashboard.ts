@@ -35,8 +35,8 @@ export interface DashboardCharts {
 	submissionsByMonth: ChartData
 	submissionsByStatus: ChartData
 	submissionsByPriority: ChartData
+	submissionsByProducts: ChartData
 	submissionsByDayOfWeek: ChartData
-	processingTimeTrend: ChartData
 }
 
 export interface TopListItem {

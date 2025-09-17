@@ -69,7 +69,7 @@ class DashboardService {
 			const data = response.data.data
 
 			return {
-				submissionsByMonth: this.formatChartData(
+				submissionsByMonth: this.formatMonthData(
 					data?.byMonth || [],
 					'Заявки по месяцам',
 					'#4c1130'
@@ -82,12 +82,16 @@ class DashboardService {
 				submissionsByPriority: this.getDefaultChartData(
 					'Заявки по приоритетам'
 				), // Убираем график по приоритетам
+				submissionsByProducts: this.formatChartData(
+					data?.byProducts || [],
+					'Заявки по товарам',
+					'#2e7d32'
+				),
 				submissionsByDayOfWeek: this.formatDayOfWeekData(
 					data?.byDayOfWeek || [],
 					'Заявки по дням недели',
 					'#9c27b0'
 				),
-				processingTimeTrend: this.getDefaultChartData('Время обработки'),
 			}
 		} catch (error) {
 			console.error('Ошибка получения данных графиков:', error)
@@ -155,6 +159,43 @@ class DashboardService {
 					item.priority ||
 					'Неизвестно'
 			),
+			datasets: [
+				{
+					label,
+					data: data.map(item => parseInt(item.count) || 0),
+					backgroundColor: colors,
+					borderColor: colors,
+					borderWidth: 1,
+				},
+			],
+		}
+	}
+
+	/**
+	 * Форматирование данных по месяцам
+	 */
+	private formatMonthData(data: any[], label: string, color: string) {
+		const monthNames = [
+			'Январь',
+			'Февраль',
+			'Март',
+			'Апрель',
+			'Май',
+			'Июнь',
+			'Июль',
+			'Август',
+			'Сентябрь',
+			'Октябрь',
+			'Ноябрь',
+			'Декабрь',
+		]
+		const colors = this.generateColors(data.length, color)
+
+		return {
+			labels: data.map(item => {
+				const monthIndex = parseInt(item.month) || 0
+				return monthNames[monthIndex] || 'Неизвестно'
+			}),
 			datasets: [
 				{
 					label,
@@ -335,8 +376,8 @@ class DashboardService {
 			submissionsByMonth: this.getDefaultChartData('Заявки по месяцам'),
 			submissionsByStatus: this.getDefaultChartData('Заявки по статусам'),
 			submissionsByPriority: this.getDefaultChartData('Заявки по приоритетам'),
+			submissionsByProducts: this.getDefaultChartData('Заявки по товарам'),
 			submissionsByDayOfWeek: this.getDefaultChartData('Заявки по дням недели'),
-			processingTimeTrend: this.getDefaultChartData('Время обработки'),
 		}
 	}
 
