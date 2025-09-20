@@ -996,6 +996,7 @@ class ElasticsearchService {
 						},
 					},
 					settings: {
+						number_of_replicas: 0, // Отключаем реплики для single-node кластера
 						analysis: {
 							analyzer: {
 								product_search: {
