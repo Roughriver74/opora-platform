@@ -59,13 +59,9 @@ class IncrementalSyncService {
 
 			result.isFullSync = needsFullSync
 
-			if (needsFullSync) {
-				logger.info('📦 Выполняем полную синхронизацию продуктов...')
-				await this.performFullProductSync(result, options)
-			} else {
-				logger.info('⚡ Выполняем инкрементальную синхронизацию продуктов...')
-				await this.performIncrementalProductSync(result, options)
-			}
+			// Для продуктов всегда делаем полную синхронизацию
+			logger.info('📦 Выполняем полную синхронизацию продуктов...')
+			await this.performFullProductSync(result, options)
 
 			// Обновляем метаданные
 			await syncMetadataService.upsertMetadata({
@@ -104,58 +100,40 @@ class IncrementalSyncService {
 		options: IncrementalSyncOptions
 	): Promise<void> {
 		try {
-			// Создаем временный индекс
-			const tempIndexName = await elasticsearchService.createTemporaryIndex()
+			// Получаем все продукты из Bitrix24
+			const products = await bitrix24Service.getAllProducts()
+			logger.info(`Найдено ${products.length} продуктов для синхронизации`)
 
-			try {
-				// Получаем все продукты из Bitrix24
-				const products = await bitrix24Service.getAllProducts()
-				logger.info(`Найдено ${products.length} продуктов для синхронизации`)
+			result.totalProcessed = products.length
 
-				result.totalProcessed = products.length
+			// Подготавливаем документы
+			const documents: SearchDocument[] = products.map((product: any) => ({
+				id: `product_${product.ID}`,
+				name: product.NAME || '',
+				description: product.DESCRIPTION || '',
+				type: 'product' as const,
+				price: product.PRICE ? parseFloat(product.PRICE) : undefined,
+				currency: product.CURRENCY_ID || 'RUB',
+				industry: 'строительство',
+				bitrixId: product.ID,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				searchableText: this.buildSearchableText(product),
+			}))
 
-				// Подготавливаем документы
-				const documents: SearchDocument[] = products.map((product: any) => ({
-					id: `product_${product.ID}`,
-					name: product.NAME || '',
-					description: product.DESCRIPTION || '',
-					type: 'product' as const,
-					price: product.PRICE ? parseFloat(product.PRICE) : undefined,
-					currency: product.CURRENCY_ID || 'RUB',
-					industry: 'строительство',
-					bitrixId: product.ID,
-					createdAt: new Date().toISOString(),
-					updatedAt: new Date().toISOString(),
-					searchableText: this.buildSearchableText(product),
-				}))
-
-				// Индексируем в временный индекс
-				const batchSize = options.batchSize || this.DEFAULT_BATCH_SIZE
-				for (let i = 0; i < documents.length; i += batchSize) {
-					const batch = documents.slice(i, i + batchSize)
-					await elasticsearchService.bulkIndex(batch, tempIndexName)
-					logger.info(
-						`Обработано ${Math.min(i + batchSize, documents.length)}/${
-							documents.length
-						} продуктов`
-					)
-				}
-
-				// Переключаем алиас на новый индекс
-				await elasticsearchService.switchAlias(tempIndexName)
-
-				// Удаляем старый индекс
-				const oldIndexName = await elasticsearchService.getCurrentIndexName()
-				if (oldIndexName !== tempIndexName) {
-					await elasticsearchService.deleteOldIndex(oldIndexName)
-				}
-
-				result.successful = documents.length
-			} catch (error) {
-				// В случае ошибки удаляем временный индекс
-				await elasticsearchService.deleteOldIndex(tempIndexName)
-				throw error
+			// Используем bulkUpsert для перезаписи данных
+			const batchSize = options.batchSize || this.DEFAULT_BATCH_SIZE
+			for (let i = 0; i < documents.length; i += batchSize) {
+				const batch = documents.slice(i, i + batchSize)
+				await elasticsearchService.bulkUpsert(batch)
+				logger.info(
+					`Обработано ${Math.min(i + batchSize, documents.length)}/${
+						documents.length
+					} продуктов`
+				)
 			}
+
+			result.successful = documents.length
 		} catch (error) {
 			logger.error('Ошибка при полной синхронизации продуктов:', error)
 			throw error
@@ -230,13 +208,9 @@ class IncrementalSyncService {
 
 			result.isFullSync = needsFullSync
 
-			if (needsFullSync) {
-				logger.info('🏢 Выполняем полную синхронизацию компаний...')
-				await this.performFullCompanySync(result, options)
-			} else {
-				logger.info('⚡ Выполняем инкрементальную синхронизацию компаний...')
-				await this.performIncrementalCompanySync(result, options)
-			}
+			// Для компаний всегда делаем полную синхронизацию
+			logger.info('🏢 Выполняем полную синхронизацию компаний...')
+			await this.performFullCompanySync(result, options)
 
 			await syncMetadataService.upsertMetadata({
 				entityType,
@@ -362,13 +336,9 @@ class IncrementalSyncService {
 
 			result.isFullSync = needsFullSync
 
-			if (needsFullSync) {
-				logger.info('📋 Выполняем полную синхронизацию заявок...')
-				await this.performFullSubmissionSync(result, options)
-			} else {
-				logger.info('⚡ Выполняем инкрементальную синхронизацию заявок...')
-				await this.performIncrementalSubmissionSync(result, options)
-			}
+			// Для заявок всегда делаем полную синхронизацию
+			logger.info('📋 Выполняем полную синхронизацию заявок...')
+			await this.performFullSubmissionSync(result, options)
 
 			await syncMetadataService.upsertMetadata({
 				entityType,

@@ -1,26 +1,23 @@
 import {
 	Entity,
-	PrimaryGeneratedColumn,
 	Column,
+	PrimaryColumn,
 	CreateDateColumn,
 	UpdateDateColumn,
 } from 'typeorm'
 
 @Entity('sync_metadata')
 export class SyncMetadata {
-	@PrimaryGeneratedColumn()
-	id: number
+	@PrimaryColumn({ type: 'varchar', length: 50 })
+	entityType: string
 
-	@Column({ name: 'entity_type', type: 'varchar', length: 100, unique: true })
-	entityType: string // 'products', 'companies', 'submissions', 'contacts'
+	@Column({ type: 'timestamp', nullable: true })
+	lastSyncTime?: Date
 
-	@Column({ name: 'last_sync_time', type: 'timestamp', nullable: true })
-	lastSyncTime: Date | null
+	@Column({ type: 'timestamp', nullable: true })
+	lastFullSyncTime?: Date
 
-	@Column({ name: 'last_full_sync_time', type: 'timestamp', nullable: true })
-	lastFullSyncTime: Date | null
-
-	@Column({ name: 'total_processed', type: 'int', default: 0 })
+	@Column({ type: 'int', default: 0 })
 	totalProcessed: number
 
 	@Column({ type: 'int', default: 0 })
@@ -29,10 +26,14 @@ export class SyncMetadata {
 	@Column({ type: 'int', default: 0 })
 	failed: number
 
-	@Column({ type: 'text', array: true, default: '{}' })
+	@Column({ type: 'text', array: true, default: [] })
 	errors: string[]
 
-	@Column({ type: 'varchar', length: 50, default: 'idle' })
+	@Column({
+		type: 'enum',
+		enum: ['idle', 'running', 'completed', 'failed'],
+		default: 'idle',
+	})
 	status: 'idle' | 'running' | 'completed' | 'failed'
 
 	@CreateDateColumn()
