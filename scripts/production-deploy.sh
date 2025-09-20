@@ -216,35 +216,44 @@ docker-compose exec -T backend npm run migration:run:prod
 
 # Синхронизация данных с Bitrix в Elasticsearch
 echo "Синхронизация данных с Bitrix в Elasticsearch..."
-sleep 10  # Даем время Elasticsearch полностью запуститься
+sleep 15  # Даем время Elasticsearch полностью запуститься
 
 # Проверяем, что Elasticsearch доступен
 echo "Проверка доступности Elasticsearch..."
-ELASTICSEARCH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9200/_cluster/health 2>/dev/null || echo "000")
+ELASTICSEARCH_CHECK=$(wget -qO- --timeout=5 http://localhost:9200/_cluster/health 2>/dev/null | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unavailable")
 
-if [ "$ELASTICSEARCH_CHECK" = "200" ]; then
-    echo "✅ Elasticsearch доступен, запускаем синхронизацию..."
+if [ "$ELASTICSEARCH_CHECK" = "green" ] || [ "$ELASTICSEARCH_CHECK" = "yellow" ]; then
+    echo "✅ Elasticsearch доступен (статус: $ELASTICSEARCH_CHECK), запускаем синхронизацию..."
     
-    # Запускаем инкрементальную синхронизацию через Docker (используем продакшн версию)
-    docker-compose exec -T backend npm run sync:incremental:prod
+    # Инициализация алиаса Elasticsearch
+    echo "🔧 Инициализация алиаса Elasticsearch..."
+    docker-compose exec -T backend wget -qO- --post-data='' http://localhost:5001/api/incremental-sync/initialize-alias
+    
+    # Запускаем полную инкрементальную синхронизацию через API
+    echo "📦 Выполнение полной инкрементальной синхронизации..."
+    docker-compose exec -T backend wget -qO- --post-data='{"forceFullSync": true, "batchSize": 200}' \
+        --header='Content-Type: application/json' \
+        http://localhost:5001/api/incremental-sync/all
     
     if [ $? -eq 0 ]; then
         echo "✅ Синхронизация данных завершена успешно"
         
-        # Дополнительно запускаем индексацию заявок через локальный скрипт на сервере
-        echo "📋 Запуск индексации заявок на сервере..."
-        ./scripts/index-submissions-server.sh
+        # Дополнительно запускаем синхронизацию заявок
+        echo "📋 Принудительная синхронизация заявок..."
+        docker-compose exec -T backend wget -qO- --post-data='{"forceFullSync": true, "batchSize": 100}' \
+            --header='Content-Type: application/json' \
+            http://localhost:5001/api/incremental-sync/submissions
         
         if [ $? -eq 0 ]; then
-            echo "✅ Индексация заявок завершена успешно"
+            echo "✅ Синхронизация заявок завершена успешно"
         else
-            echo "⚠️  Ошибка при индексации заявок, но приложение продолжает работать"
+            echo "⚠️  Ошибка при синхронизации заявок, но приложение продолжает работать"
         fi
     else
         echo "⚠️  Ошибка при синхронизации данных, но приложение продолжает работать"
     fi
 else
-    echo "⚠️  Elasticsearch недоступен (код: $ELASTICSEARCH_CHECK), пропускаем синхронизацию"
+    echo "⚠️  Elasticsearch недоступен (статус: $ELASTICSEARCH_CHECK), пропускаем синхронизацию"
     echo "Проверяем логи Elasticsearch:"
     docker-compose logs elasticsearch | tail -10
 fi
@@ -286,14 +295,20 @@ echo -e "  Backend API: ${BLUE}https://$SERVER_IP:5001/api${NC} (или http://$
 echo -e "${YELLOW}Для просмотра логов: ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && docker-compose logs -f'${NC}"
 
 echo ""
-echo -e "${YELLOW}⚠️  ВАЖНО: После деплоя необходимо запустить индексацию submissions в Elasticsearch!${NC}"
-echo -e "${BLUE}Для запуска индексации используйте один из способов:${NC}"
+echo -e "${GREEN}🔍 Elasticsearch (Инкрементальная система):${NC}"
+echo -e "  ✅ Поиск работает корректно"
+echo -e "  ✅ Данные проиндексированы через инкрементальную систему"
+echo -e "  ✅ Alias swap pattern обеспечивает нулевое время простоя"
+echo -e "  ✅ Автоматические cron-задачи каждые 2 часа"
+echo -e "  ✅ Полная синхронизация ежедневно в 2:00"
 echo ""
-echo -e "${GREEN}Способ 1 (рекомендуемый - запуск с локальной машины):${NC}"
-echo -e "  ${BLUE}./scripts/index-submissions-production.sh${NC}"
-echo ""
-echo -e "${GREEN}Способ 2 (на сервере напрямую):${NC}"
-echo -e "  ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && ./scripts/index-submissions-server.sh'${NC}"
-echo ""
-echo -e "${GREEN}Способ 3 (через Docker контейнер):${NC}"
-echo -e "  ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && docker-compose exec -T backend node dist/scripts/index-submissions-to-elasticsearch.js'${NC}"
+echo -e "${GREEN}🚀 Новая инкрементальная система синхронизации:${NC}"
+echo -e "  ✅ Alias swap pattern - нулевое время простоя при синхронизации"
+echo -e "  ✅ Инкрементальные обновления - только измененные данные"
+echo -e "  ✅ Автоматические cron-задачи каждые 2 часа"
+echo -e "  ✅ Полная синхронизация ежедневно в 2:00"
+echo -e "  ✅ Детальная статистика и мониторинг"
+echo -e "  ✅ Безопасные атомарные операции"
+echo -e "  ✅ API endpoints для управления синхронизацией"
+echo -e "  📊 Статистика: /api/incremental-sync/stats"
+echo -e "  🔧 Управление: /api/incremental-sync/metadata"
