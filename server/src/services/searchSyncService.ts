@@ -52,6 +52,11 @@ class SearchSyncService {
 			const companiesStats = await this.syncCompanies()
 			this.mergeStats(stats, companiesStats)
 
+			// Синхронизация заявок
+			logger.info('Starting submissions sync...')
+			const submissionsStats = await this.syncSubmissions()
+			this.mergeStats(stats, submissionsStats)
+
 			// Контакты исключены из синхронизации по требованию
 
 			logger.info('Data sync completed:', stats)
@@ -124,9 +129,9 @@ class SearchSyncService {
 		}
 
 		try {
-			// Получаем ВСЕ компании из Bitrix24 с пагинацией
-			logger.info('Загружаем все компании из Bitrix24...')
-			const companies = await bitrix24Service.getAllCompanies()
+			// Получаем ВСЕ компании из Bitrix24 с реквизитами (включая ИНН)
+			logger.info('Загружаем все компании из Bitrix24 с реквизитами...')
+			const companies = await bitrix24Service.getAllCompaniesWithRequisites()
 
 			logger.info(`Found ${companies.length} companies to sync`)
 
@@ -160,6 +165,101 @@ class SearchSyncService {
 		} catch (error) {
 			logger.error('Companies sync failed:', error)
 			stats.errors.push(`Companies sync failed: ${error.message}`)
+		}
+
+		return stats
+	}
+
+	/**
+	 * Синхронизация заявок
+	 */
+	async syncSubmissions(): Promise<SyncStats> {
+		const stats: SyncStats = {
+			totalProcessed: 0,
+			successful: 0,
+			failed: 0,
+			errors: [],
+		}
+
+		try {
+			// Импортируем необходимые модули
+			const { AppDataSource } = await import(
+				'../database/config/database.config'
+			)
+			const { Submission } = await import(
+				'../database/entities/Submission.entity'
+			)
+
+			logger.info('Загружаем все заявки из базы данных...')
+
+			// Получаем все заявки из базы данных
+			const submissionRepository = AppDataSource.getRepository(Submission)
+			const submissions = await submissionRepository.find({
+				order: { createdAt: 'DESC' },
+			})
+
+			logger.info(`Found ${submissions.length} submissions to sync`)
+
+			const documents: SearchDocument[] = []
+			let indexedCount = 0
+			let errorCount = 0
+
+			for (const submission of submissions) {
+				try {
+					// Очищаем formData от пустых значений
+					const cleanedFormData = submission.formData
+						? Object.fromEntries(
+								Object.entries(submission.formData).filter(
+									([_, value]) =>
+										value !== null && value !== undefined && value !== ''
+								)
+						  )
+						: {}
+
+					const submissionData: SearchDocument = {
+						id: `submission_${submission.id}`,
+						name: submission.title || `Заявка #${submission.submissionNumber}`,
+						description: submission.notes || '',
+						type: 'submission' as const,
+						status: submission.status,
+						priority: submission.priority,
+						tags: submission.tags || [],
+						formData: cleanedFormData,
+						submissionNumber: submission.submissionNumber,
+						userName: submission.userName,
+						userEmail: submission.userEmail,
+						formName: submission.formName,
+						formTitle: submission.formTitle,
+						notes: submission.notes,
+						createdAt: submission.createdAt.toISOString(),
+						updatedAt: submission.updatedAt.toISOString(),
+						searchableText: this.buildSubmissionSearchableText(submission),
+					}
+
+					documents.push(submissionData)
+					indexedCount++
+				} catch (error) {
+					logger.error(
+						`Ошибка при подготовке заявки ${submission.submissionNumber}:`,
+						error
+					)
+					errorCount++
+				}
+			}
+
+			stats.totalProcessed = documents.length
+
+			if (documents.length > 0) {
+				await elasticsearchService.bulkIndex(documents)
+				stats.successful = documents.length
+			}
+
+			logger.info(
+				`Submissions sync completed: ${stats.successful}/${stats.totalProcessed} (errors: ${errorCount})`
+			)
+		} catch (error) {
+			logger.error('Submissions sync failed:', error)
+			stats.errors.push(`Submissions sync failed: ${error.message}`)
 		}
 
 		return stats
@@ -312,7 +412,39 @@ class SearchSyncService {
 			obj.ADDRESS || '',
 			obj.PHONE?.[0]?.VALUE || '',
 			obj.EMAIL?.[0]?.VALUE || '',
+			obj.RQ_INN || '', // Добавляем ИНН в поисковый текст
 		]
+
+		return searchableFields
+			.filter(field => field && field.trim())
+			.join(' ')
+			.trim()
+	}
+
+	/**
+	 * Построение поискового текста для заявки
+	 */
+	private buildSubmissionSearchableText(submission: any): string {
+		const searchableFields = [
+			submission.title || '',
+			submission.notes || '',
+			submission.submissionNumber || '',
+			submission.userName || '',
+			submission.userEmail || '',
+			submission.formName || '',
+			submission.formTitle || '',
+			submission.status || '',
+			submission.priority || '',
+		]
+
+		// Добавляем данные из formData
+		if (submission.formData && typeof submission.formData === 'object') {
+			Object.values(submission.formData).forEach(value => {
+				if (value && typeof value === 'string') {
+					searchableFields.push(value)
+				}
+			})
+		}
 
 		return searchableFields
 			.filter(field => field && field.trim())

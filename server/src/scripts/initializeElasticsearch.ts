@@ -11,6 +11,12 @@ export const initializeElasticsearch = async (): Promise<void> => {
 		// Инициализация индекса
 		await searchSyncService.initialize()
 
+		// Инициализация алиаса для инкрементальной синхронизации
+		const { elasticsearchService } = await import(
+			'../services/elasticsearchService'
+		)
+		await elasticsearchService.initializeAlias()
+
 		// Проверка здоровья
 		const isHealthy = await searchSyncService.healthCheck()
 

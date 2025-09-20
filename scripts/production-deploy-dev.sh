@@ -73,26 +73,119 @@ if [ -f "$ENV_FILE" ]; then
     echo -e "${GREEN}✓ API URL настроен для dev сервера${NC}"
 fi
 
-# Сборка проекта
-echo -e "${BLUE}4. Сборка проекта...${NC}"
-cd client && npm install --silent
-cd ../server && npm install --silent
+# Проверка наличия необходимых файлов
+echo -e "${BLUE}4. Проверка наличия необходимых файлов...${NC}"
+
+# Проверка package.json файлов
+if [ ! -f "client/package.json" ]; then
+    echo -e "${RED}❌ Файл client/package.json не найден!${NC}"
+    exit 1
+fi
+
+if [ ! -f "server/package.json" ]; then
+    echo -e "${RED}❌ Файл server/package.json не найден!${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Все необходимые файлы найдены${NC}"
+
+# Установка зависимостей
+echo -e "${BLUE}5. Установка зависимостей...${NC}"
+
+# Установка зависимостей для клиента
+echo "Установка зависимостей для клиента..."
+cd client
+if ! npm install --silent; then
+    echo -e "${RED}❌ Ошибка при установке зависимостей клиента!${NC}"
+    cd ..
+    # Восстановление локального .env
+    if [ -f "$ENV_BACKUP" ]; then
+        mv "$ENV_BACKUP" "$ENV_FILE"
+    fi
+    exit 1
+fi
 cd ..
-npm run build
+
+# Установка зависимостей для сервера
+echo "Установка зависимостей для сервера..."
+cd server
+if ! npm install --silent; then
+    echo -e "${RED}❌ Ошибка при установке зависимостей сервера!${NC}"
+    cd ..
+    # Восстановление локального .env
+    if [ -f "$ENV_BACKUP" ]; then
+        mv "$ENV_BACKUP" "$ENV_FILE"
+    fi
+    exit 1
+fi
+cd ..
+
+# Сборка проекта
+echo -e "${BLUE}6. Сборка проекта...${NC}"
+
+# Сборка клиента
+echo "Сборка клиента..."
+cd client
+if ! npm run build; then
+    echo -e "${RED}❌ Ошибка при сборке клиента!${NC}"
+    cd ..
+    # Восстановление локального .env
+    if [ -f "$ENV_BACKUP" ]; then
+        mv "$ENV_BACKUP" "$ENV_FILE"
+    fi
+    exit 1
+fi
+
+# Проверка успешности сборки клиента
+if [ ! -d "build" ]; then
+    echo -e "${RED}❌ Директория build не создана после сборки клиента!${NC}"
+    cd ..
+    # Восстановление локального .env
+    if [ -f "$ENV_BACKUP" ]; then
+        mv "$ENV_BACKUP" "$ENV_FILE"
+    fi
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Клиент успешно собран${NC}"
+cd ..
+
+# Сборка сервера
+echo "Сборка сервера..."
+cd server
+if ! npm run build; then
+    echo -e "${RED}❌ Ошибка при сборке сервера!${NC}"
+    cd ..
+    # Восстановление локального .env
+    if [ -f "$ENV_BACKUP" ]; then
+        mv "$ENV_BACKUP" "$ENV_FILE"
+    fi
+    exit 1
+fi
+
+# Проверка успешности сборки сервера
+if [ ! -d "dist" ]; then
+    echo -e "${RED}❌ Директория dist не создана после сборки сервера!${NC}"
+    cd ..
+    # Восстановление локального .env
+    if [ -f "$ENV_BACKUP" ]; then
+        mv "$ENV_BACKUP" "$ENV_FILE"
+    fi
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Сервер успешно собран${NC}"
+cd ..
 
 # Восстановление локального .env
 if [ -f "$ENV_BACKUP" ]; then
     mv "$ENV_BACKUP" "$ENV_FILE"
 fi
 
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Ошибка при сборке проекта!${NC}"
-    exit 1
-fi
 echo -e "${GREEN}✓ Проект успешно собран${NC}"
 
 # Создание архива
-echo -e "${BLUE}5. Создание архива для деплоя...${NC}"
+echo -e "${BLUE}7. Создание архива для деплоя...${NC}"
 ARCHIVE_NAME="deploy-docker-$(date +%s).tar.gz"
 tar -czf "$ARCHIVE_NAME" \
     --exclude="node_modules" \
@@ -118,16 +211,35 @@ tar -czf "$ARCHIVE_NAME" \
     .env.development \
     scripts/
 
-echo -e "${GREEN}✓ Архив $ARCHIVE_NAME создан${NC}"
+# Проверка успешности создания архива
+if [ ! -f "$ARCHIVE_NAME" ]; then
+    echo -e "${RED}❌ Архив не создан!${NC}"
+    # Восстановление локального .env
+    if [ -f "$ENV_BACKUP" ]; then
+        mv "$ENV_BACKUP" "$ENV_FILE"
+    fi
+    exit 1
+fi
+
+# Проверка размера архива
+ARCHIVE_SIZE=$(du -h "$ARCHIVE_NAME" | cut -f1)
+echo -e "${GREEN}✓ Архив $ARCHIVE_NAME создан (размер: $ARCHIVE_SIZE)${NC}"
 
 # Копирование на сервер
-echo -e "${BLUE}6. Копирование файлов на сервер...${NC}"
+echo -e "${BLUE}8. Копирование файлов на сервер...${NC}"
 ssh $SERVER_USER@$SERVER_IP "mkdir -p $APP_DIR"
-scp "$ARCHIVE_NAME" $SERVER_USER@$SERVER_IP:$APP_DIR/
+if ! scp "$ARCHIVE_NAME" $SERVER_USER@$SERVER_IP:$APP_DIR/; then
+    echo -e "${RED}❌ Ошибка при копировании файлов на сервер!${NC}"
+    # Восстановление локального .env
+    if [ -f "$ENV_BACKUP" ]; then
+        mv "$ENV_BACKUP" "$ENV_FILE"
+    fi
+    exit 1
+fi
 echo -e "${GREEN}✓ Файлы скопированы на сервер${NC}"
 
 # Деплой на сервер
-echo -e "${BLUE}7. Деплой на сервер...${NC}"
+echo -e "${BLUE}9. Деплой на сервер...${NC}"
 ssh $SERVER_USER@$SERVER_IP << ENDSSH
 cd $APP_DIR
 
@@ -302,6 +414,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     networks:
       - beton_network
     deploy:
@@ -310,6 +424,8 @@ services:
           memory: 512M
         reservations:
           memory: 256M
+    volumes:
+      - /app/logs:/app/logs
 
   frontend:
     build:
@@ -434,16 +550,24 @@ for i in {1..10}; do
     sleep 2
 done
 
-# Инициализация и индексация Elasticsearch
-echo "Инициализация Elasticsearch..."
-docker-compose -f docker-compose.stable.yml exec -T backend npm run sync:bitrix:prod || docker compose -f docker-compose.stable.yml exec -T backend npm run sync:bitrix:prod
+# Инициализация и индексация Elasticsearch с новой инкрементальной системой
+echo "Инициализация Elasticsearch с инкрементальной системой..."
+echo "🔧 Инициализация алиаса Elasticsearch..."
+docker-compose -f docker-compose.stable.yml exec -T backend curl -X POST http://localhost:5001/api/incremental-sync/initialize-alias || docker compose -f docker-compose.stable.yml exec -T backend curl -X POST http://localhost:5001/api/incremental-sync/initialize-alias
+
+echo "📦 Выполнение полной инкрементальной синхронизации..."
+docker-compose -f docker-compose.stable.yml exec -T backend curl -X POST http://localhost:5001/api/incremental-sync/all \
+    -H "Content-Type: application/json" \
+    -d '{"forceFullSync": true, "batchSize": 200}' || docker compose -f docker-compose.stable.yml exec -T backend curl -X POST http://localhost:5001/api/incremental-sync/all \
+    -H "Content-Type: application/json" \
+    -d '{"forceFullSync": true, "batchSize": 200}'
 
 echo "Деплой завершен!"
 ENDSSH
 
 # Создание дампа локальной БД и восстановление на сервере
 if [ "$LOCAL_DB_AVAILABLE" = true ]; then
-    echo -e "${BLUE}8. Синхронизация базы данных...${NC}"
+    echo -e "${BLUE}10. Синхронизация базы данных...${NC}"
     
     TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
     BACKUP_FILE="local_to_dev_backup_${TIMESTAMP}.sql"
@@ -491,7 +615,7 @@ else
 fi
 
 # Проверка работоспособности
-echo -e "${BLUE}9. Проверка работоспособности...${NC}"
+echo -e "${BLUE}11. Проверка работоспособности...${NC}"
 sleep 10
 
 # Проверка API
@@ -543,10 +667,11 @@ echo ""
 echo -e "${GREEN}🔧 Оптимизация для стабильной работы:${NC}"
 echo -e "  ✅ PostgreSQL: ограничен до 512MB памяти"
 echo -e "  ✅ Redis: ограничен до 128MB памяти"
-echo -e "  ✅ Elasticsearch: ограничен до 512MB памяти (увеличен для стабильности)"
-echo -e "  ✅ Backend: ограничен до 1.5GB памяти (увеличен для индексации)"
+echo -e "  ✅ Elasticsearch: ограничен до 1.5GB памяти (оптимизирован для инкрементальной системы)"
+echo -e "  ✅ Backend: ограничен до 512MB памяти (оптимизирован для инкрементальной синхронизации)"
 echo -e "  ✅ Frontend: ограничен до 128MB памяти"
 echo -e "  📊 Общее использование памяти: ~2.8GB (оптимизировано для стабильной работы)"
+echo -e "  🚀 Инкрементальная синхронизация: нулевое время простоя, автоматические cron-задачи"
 
 echo ""
 echo -e "${GREEN}📊 База данных:${NC}"
@@ -557,12 +682,37 @@ else
 fi
 
 echo ""
-echo -e "${GREEN}🔍 Elasticsearch:${NC}"
+echo -e "${GREEN}🔍 Elasticsearch (Инкрементальная система):${NC}"
 if [ "$SEARCH_TEST" -gt 0 ]; then
     echo -e "  ✅ Поиск работает корректно"
-    echo -e "  ✅ Данные проиндексированы"
+    echo -e "  ✅ Данные проиндексированы через инкрементальную систему"
+    echo -e "  ✅ Alias swap pattern обеспечивает нулевое время простоя"
 else
     echo -e "  ⚠️ Поиск требует дополнительной настройки"
-    echo -e "  💡 Для индексации данных выполните:"
-    echo -e "     ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && docker-compose -f docker-compose.stable.yml exec backend npm run sync:bitrix:prod'${NC}"
+    echo -e "  💡 Для индексации данных через новую систему выполните:"
+    echo -e "     ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && docker-compose -f docker-compose.stable.yml exec backend curl -X POST http://localhost:5001/api/incremental-sync/all -H \"Content-Type: application/json\" -d \"{\\\"forceFullSync\\\": true, \\\"batchSize\\\": 200}\"'${NC}"
 fi
+
+echo ""
+echo -e "${GREEN}🔧 Исправления в скрипте деплоя:${NC}"
+echo -e "  ✅ Добавлена проверка наличия package.json файлов"
+echo -e "  ✅ Улучшена обработка ошибок при установке зависимостей"
+echo -e "  ✅ Добавлена проверка успешности сборки клиента и сервера"
+echo -e "  ✅ Добавлена проверка создания архива и его размера"
+echo -e "  ✅ Улучшена обработка ошибок при копировании на сервер"
+echo -e "  ✅ Добавлено восстановление .env файла при ошибках"
+echo -e "  ✅ Разделена установка зависимостей и сборка проекта"
+echo -e "  🚀 Интеграция с новой инкрементальной системой синхронизации"
+
+echo ""
+echo -e "${GREEN}🚀 Новая инкрементальная система синхронизации:${NC}"
+echo -e "  ✅ Alias swap pattern - нулевое время простоя при синхронизации"
+echo -e "  ✅ Инкрементальные обновления - только измененные данные"
+echo -e "  ✅ Автоматические cron-задачи каждые 2 часа"
+echo -e "  ✅ Полная синхронизация ежедневно в 2:00"
+echo -e "  ✅ Детальная статистика и мониторинг"
+echo -e "  ✅ Безопасные атомарные операции"
+echo -e "  ✅ API endpoints для управления синхронизацией"
+echo -e "  📊 Статистика: /api/incremental-sync/stats"
+echo -e "  🔧 Управление: /api/incremental-sync/metadata"
+

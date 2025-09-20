@@ -142,29 +142,63 @@ export class SyncController {
 	}
 
 	/**
-	 * Синхронизация данных из Bitrix24 в Elasticsearch (с поддержкой Bitrix ID)
+	 * Синхронизация данных из Bitrix24 в Elasticsearch (использует новую инкрементальную систему)
 	 */
 	async syncBitrixToElastic(req: Request, res: Response): Promise<void> {
 		try {
-			logger.info('🔄 Starting Bitrix24 to Elasticsearch sync via API')
-
-			// Импортируем функцию синхронизации
-			const { syncBitrixToElasticsearch } = await import(
-				'../scripts/syncBitrixToElasticsearch'
+			logger.info(
+				'🔄 Starting incremental Bitrix24 to Elasticsearch sync via API'
 			)
-			await syncBitrixToElasticsearch()
 
-			logger.info('✅ Bitrix24 to Elasticsearch sync completed successfully')
+			// Импортируем инкрементальный сервис синхронизации
+			const { incrementalSyncService } = await import(
+				'../services/incrementalSyncService'
+			)
+
+			// Получаем параметры из запроса
+			const { forceFullSync, batchSize, maxAgeHours } = req.body
+
+			// Выполняем полную инкрементальную синхронизацию
+			const results = await incrementalSyncService.syncAllData({
+				forceFullSync: forceFullSync || false,
+				batchSize: batchSize || 100,
+				maxAgeHours: maxAgeHours || 24,
+			})
+
+			// Подсчитываем общую статистику
+			const totalProcessed = results.reduce(
+				(sum, r) => sum + r.totalProcessed,
+				0
+			)
+			const totalSuccessful = results.reduce((sum, r) => sum + r.successful, 0)
+			const totalFailed = results.reduce((sum, r) => sum + r.failed, 0)
+			const allErrors = results.flatMap(r => r.errors)
+
+			logger.info(
+				'✅ Incremental Bitrix24 to Elasticsearch sync completed successfully'
+			)
 			res.json({
 				success: true,
-				message: 'Синхронизация данных завершена успешно',
+				message: 'Инкрементальная синхронизация данных завершена успешно',
+				data: {
+					results,
+					summary: {
+						totalProcessed,
+						totalSuccessful,
+						totalFailed,
+						errors: allErrors,
+					},
+				},
 				timestamp: new Date().toISOString(),
 			})
 		} catch (error: any) {
-			logger.error('❌ Bitrix24 to Elasticsearch sync failed:', error)
+			logger.error(
+				'❌ Incremental Bitrix24 to Elasticsearch sync failed:',
+				error
+			)
 			res.status(500).json({
 				success: false,
-				message: 'Ошибка при синхронизации данных',
+				message: 'Ошибка при инкрементальной синхронизации данных',
 				error: error.message,
 				timestamp: new Date().toISOString(),
 			})
@@ -172,40 +206,54 @@ export class SyncController {
 	}
 
 	/**
-	 * Переиндексация с поддержкой Bitrix ID
+	 * Переиндексация с поддержкой Bitrix ID (использует новую инкрементальную систему)
 	 */
 	async reindexWithBitrixId(req: Request, res: Response): Promise<void> {
 		try {
-			logger.info('🔄 Starting reindex with Bitrix ID support via API')
-
-			// 1. Check Elasticsearch connection
-			const isConnected = await elasticsearchService.healthCheck()
-			if (!isConnected) {
-				throw new Error('Elasticsearch is not connected')
-			}
-
-			// 2. Delete existing index (if any)
-			logger.info('🗑️ Deleting existing index...')
-			await elasticsearchService.deleteIndex()
-			logger.info('✅ Index deleted successfully')
-
-			// 3. Initialize index with new mapping
-			logger.info('📝 Initializing new index with Bitrix ID mapping...')
-			await elasticsearchService.initializeIndex()
-			logger.info('✅ New index initialized successfully')
-
-			// 4. Run full sync from Bitrix24 to populate the new index
-			logger.info('📦 Running full Bitrix24 to Elasticsearch sync...')
-			const { syncBitrixToElasticsearch } = await import(
-				'../scripts/syncBitrixToElasticsearch'
+			logger.info(
+				'🔄 Starting reindex with Bitrix ID support via API (using incremental sync)'
 			)
-			await syncBitrixToElasticsearch()
-			logger.info('✅ Full sync completed successfully')
+
+			// Импортируем инкрементальный сервис синхронизации
+			const { incrementalSyncService } = await import(
+				'../services/incrementalSyncService'
+			)
+
+			// Инициализируем алиас Elasticsearch
+			logger.info('🔧 Initializing Elasticsearch alias...')
+			await elasticsearchService.initializeAlias()
+
+			// Выполняем полную инкрементальную синхронизацию с принудительным обновлением
+			logger.info('📦 Running full incremental sync with force update...')
+			const results = await incrementalSyncService.syncAllData({
+				forceFullSync: true, // Принудительная полная синхронизация
+				batchSize: 200,
+				maxAgeHours: 24,
+			})
+
+			// Подсчитываем общую статистику
+			const totalProcessed = results.reduce(
+				(sum, r) => sum + r.totalProcessed,
+				0
+			)
+			const totalSuccessful = results.reduce((sum, r) => sum + r.successful, 0)
+			const totalFailed = results.reduce((sum, r) => sum + r.failed, 0)
+			const allErrors = results.flatMap(r => r.errors)
 
 			logger.info('🎉 Reindex with Bitrix ID completed successfully')
 			res.json({
 				success: true,
-				message: 'Переиндексация с поддержкой Bitrix ID завершена успешно',
+				message:
+					'Переиндексация с поддержкой Bitrix ID завершена успешно (инкрементальная система)',
+				data: {
+					results,
+					summary: {
+						totalProcessed,
+						totalSuccessful,
+						totalFailed,
+						errors: allErrors,
+					},
+				},
 				timestamp: new Date().toISOString(),
 			})
 		} catch (error: any) {

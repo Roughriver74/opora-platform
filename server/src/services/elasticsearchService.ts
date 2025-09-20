@@ -81,6 +81,7 @@ export interface SearchOptions {
 class ElasticsearchService {
 	private client: Client
 	private readonly indexName = 'beton_crm_search'
+	private readonly aliasName = 'beton_crm_search_alias'
 
 	constructor() {
 		const host = process.env.ELASTICSEARCH_HOST || 'localhost'
@@ -397,9 +398,9 @@ class ElasticsearchService {
 	}
 
 	/**
-	 * Массовая индексация документов
+	 * Массовая индексация документов (legacy метод)
 	 */
-	async bulkIndex(documents: SearchDocument[]): Promise<void> {
+	async bulkIndexLegacy(documents: SearchDocument[]): Promise<void> {
 		try {
 			const body = documents.flatMap(doc => [
 				{ index: { _index: this.indexName, _id: doc.id } },
@@ -570,7 +571,7 @@ class ElasticsearchService {
 								{
 									match_phrase: {
 										name: {
-											query: originalQuery,
+											query: originalQuery.toLowerCase(), // Приводим к нижнему регистру
 											boost: 5,
 										},
 									},
@@ -579,7 +580,7 @@ class ElasticsearchService {
 								{
 									match: {
 										'name.exact': {
-											query: originalQuery,
+											query: originalQuery.toLowerCase(), // Приводим к нижнему регистру
 											boost: 4.5,
 										},
 									},
@@ -588,7 +589,7 @@ class ElasticsearchService {
 								{
 									match: {
 										'name.autocomplete': {
-											query: originalQuery,
+											query: originalQuery.toLowerCase(), // Приводим к нижнему регистру
 											boost: 4,
 										},
 									},
@@ -596,7 +597,7 @@ class ElasticsearchService {
 								// Multi-match по всем полям с разными вариантами и улучшенной обработкой опечаток
 								...searchVariants.map(variant => ({
 									multi_match: {
-										query: variant,
+										query: variant.toLowerCase(), // Приводим к нижнему регистру
 										fields: [
 											'name^4',
 											'name.autocomplete^3.5',
@@ -612,10 +613,10 @@ class ElasticsearchService {
 											'notes^2',
 										],
 										type: 'best_fields',
-										fuzziness: fuzzy ? 'AUTO' : 0,
+										fuzziness: fuzzy ? 2 : 0, // Увеличиваем fuzziness до 2 для лучшего поиска опечаток
 										fuzzy_transpositions: true,
-										prefix_length: 1,
-										max_expansions: 50,
+										prefix_length: 0, // Убираем prefix_length для лучшего поиска в начале слова
+										max_expansions: 100, // Увеличиваем max_expansions
 										boost: variant === originalQuery ? 1 : 0.8,
 									},
 								})),
@@ -623,7 +624,7 @@ class ElasticsearchService {
 								{
 									wildcard: {
 										name: {
-											value: `*${normalizedQuery}*`,
+											value: `*${normalizedQuery.toLowerCase()}*`, // Приводим к нижнему регистру
 											boost: 1.5,
 										},
 									},
@@ -631,7 +632,7 @@ class ElasticsearchService {
 								{
 									wildcard: {
 										searchableText: {
-											value: `*${normalizedQuery}*`,
+											value: `*${normalizedQuery.toLowerCase()}*`, // Приводим к нижнему регистру
 											boost: 1,
 										},
 									},
@@ -640,8 +641,20 @@ class ElasticsearchService {
 								{
 									wildcard: {
 										name: {
-											value: `*${originalQuery.replace(/\s+/g, '')}*`,
+											value: `*${originalQuery
+												.replace(/\s+/g, '')
+												.toLowerCase()}*`, // Приводим к нижнему регистру
 											boost: 1.2,
+										},
+									},
+								},
+								// Дополнительный нечеткий поиск для опечаток в начале слова
+								{
+									fuzzy: {
+										name: {
+											value: originalQuery.toLowerCase(),
+											fuzziness: 2,
+											boost: 0.8,
 										},
 									},
 								},
@@ -680,7 +693,7 @@ class ElasticsearchService {
 			}
 
 			const response = await this.client.search({
-				index: this.indexName,
+				index: this.aliasName, // Используем алиас для поиска
 				body: searchBody,
 			})
 
@@ -765,7 +778,7 @@ class ElasticsearchService {
 			}
 
 			const response = await this.client.search({
-				index: this.indexName,
+				index: this.aliasName, // Используем алиас для поиска
 				body: searchBody,
 			})
 
@@ -822,7 +835,12 @@ class ElasticsearchService {
 	async healthCheck(): Promise<boolean> {
 		try {
 			const response = await this.client.cluster.health()
-			return response.status === 'green' || response.status === 'yellow'
+			// Для single-node кластера принимаем также статус 'red' если есть активные шарды
+			return (
+				response.status === 'green' ||
+				response.status === 'yellow' ||
+				(response.status === 'red' && response.active_shards > 0)
+			)
 		} catch (error) {
 			logger.error('Elasticsearch health check failed:', error)
 			return false
@@ -835,9 +853,14 @@ class ElasticsearchService {
 	async getIndexStats(): Promise<any> {
 		try {
 			const response = await this.client.indices.stats({
-				index: this.indexName,
+				index: this.aliasName, // Используем алиас для получения статистики
 			})
-			return response.indices[this.indexName]
+			// Получаем статистику для всех индексов, на которые указывает алиас
+			const indexNames = Object.keys(response.indices)
+			if (indexNames.length > 0) {
+				return response.indices[indexNames[0]]
+			}
+			return null
 		} catch (error) {
 			logger.error('Failed to get index stats:', error)
 			return null
@@ -865,6 +888,355 @@ class ElasticsearchService {
 			logger.info(`✅ Индекс ${this.indexName} очищен`)
 		} catch (error) {
 			logger.error('Failed to clear index:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * Создание нового индекса с временным именем
+	 */
+	async createTemporaryIndex(): Promise<string> {
+		try {
+			const tempIndexName = `${this.indexName}_temp_${Date.now()}`
+
+			await this.client.indices.create({
+				index: tempIndexName,
+				body: {
+					mappings: {
+						properties: {
+							id: { type: 'keyword' },
+							name: {
+								type: 'text',
+								analyzer: 'product_search',
+								fields: {
+									keyword: { type: 'keyword' },
+									exact: {
+										type: 'text',
+										analyzer: 'exact_match',
+									},
+									autocomplete: {
+										type: 'text',
+										analyzer: 'autocomplete',
+									},
+									suggest: {
+										type: 'completion',
+										analyzer: 'simple',
+									},
+								},
+							},
+							description: {
+								type: 'text',
+								analyzer: 'product_search',
+								fields: {
+									keyword: { type: 'keyword' },
+								},
+							},
+							type: { type: 'keyword' },
+							price: { type: 'float' },
+							currency: { type: 'keyword' },
+							industry: {
+								type: 'text',
+								analyzer: 'product_search',
+								fields: {
+									keyword: { type: 'keyword' },
+								},
+							},
+							phone: { type: 'keyword' },
+							email: { type: 'keyword' },
+							address: {
+								type: 'text',
+								analyzer: 'product_search',
+								fields: {
+									keyword: { type: 'keyword' },
+								},
+							},
+							inn: {
+								type: 'keyword',
+								fields: {
+									text: {
+										type: 'text',
+										analyzer: 'keyword',
+									},
+								},
+							},
+							bitrixId: {
+								type: 'keyword',
+								fields: {
+									text: {
+										type: 'text',
+										analyzer: 'keyword',
+									},
+								},
+							},
+							assignedById: {
+								type: 'keyword',
+								fields: {
+									text: {
+										type: 'text',
+										analyzer: 'keyword',
+									},
+								},
+							},
+							status: { type: 'keyword' },
+							priority: { type: 'keyword' },
+							tags: { type: 'keyword' },
+							formData: { type: 'object' },
+							submissionNumber: { type: 'keyword' },
+							userName: { type: 'text' },
+							userEmail: { type: 'keyword' },
+							formName: { type: 'text' },
+							formTitle: { type: 'text' },
+							notes: { type: 'text' },
+							createdAt: { type: 'date' },
+							updatedAt: { type: 'date' },
+							searchableText: {
+								type: 'text',
+								analyzer: 'product_search',
+							},
+						},
+					},
+					settings: {
+						analysis: {
+							analyzer: {
+								product_search: {
+									type: 'custom',
+									tokenizer: 'standard',
+									filter: ['lowercase', 'russian_stop', 'russian_stemmer'],
+								},
+								exact_match: {
+									type: 'custom',
+									tokenizer: 'keyword',
+									filter: ['lowercase'],
+								},
+								autocomplete: {
+									type: 'custom',
+									tokenizer: 'autocomplete_tokenizer',
+									filter: ['lowercase'],
+								},
+							},
+							tokenizer: {
+								autocomplete_tokenizer: {
+									type: 'edge_ngram',
+									min_gram: 1,
+									max_gram: 20,
+									token_chars: ['letter', 'digit'],
+								},
+							},
+							filter: {
+								russian_stop: {
+									type: 'stop',
+									stopwords: '_russian_',
+								},
+								russian_stemmer: {
+									type: 'stemmer',
+									language: 'russian',
+								},
+							},
+						},
+					},
+				},
+			})
+
+			logger.info(`✅ Создан временный индекс: ${tempIndexName}`)
+			return tempIndexName
+		} catch (error) {
+			logger.error('Failed to create temporary index:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * Переключение алиаса на новый индекс
+	 */
+	async switchAlias(newIndexName: string): Promise<void> {
+		try {
+			logger.info(
+				`🔄 Переключаем алиас ${this.aliasName} на индекс ${newIndexName}...`
+			)
+
+			// Получаем текущие алиасы
+			const currentAliases = await this.client.indices.getAlias({
+				name: this.aliasName,
+			})
+
+			const actions: any[] = []
+
+			// Удаляем алиас со всех старых индексов
+			for (const indexName of Object.keys(currentAliases)) {
+				actions.push({
+					remove: {
+						index: indexName,
+						alias: this.aliasName,
+					},
+				})
+			}
+
+			// Добавляем алиас на новый индекс
+			actions.push({
+				add: {
+					index: newIndexName,
+					alias: this.aliasName,
+				},
+			})
+
+			await this.client.indices.updateAliases({
+				body: {
+					actions,
+				},
+			})
+
+			logger.info(`✅ Алиас ${this.aliasName} переключен на ${newIndexName}`)
+		} catch (error) {
+			logger.error('Failed to switch alias:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * Удаление старого индекса после переключения алиаса
+	 */
+	async deleteOldIndex(oldIndexName: string): Promise<void> {
+		try {
+			logger.info(`🗑️ Удаляем старый индекс: ${oldIndexName}`)
+
+			await this.client.indices.delete({
+				index: oldIndexName,
+			})
+
+			logger.info(`✅ Старый индекс ${oldIndexName} удален`)
+		} catch (error) {
+			logger.error(`Failed to delete old index ${oldIndexName}:`, error)
+			throw error
+		}
+	}
+
+	/**
+	 * Получение имени текущего индекса через алиас
+	 */
+	async getCurrentIndexName(): Promise<string> {
+		try {
+			const aliases = await this.client.indices.getAlias({
+				name: this.aliasName,
+			})
+
+			const indexNames = Object.keys(aliases)
+			if (indexNames.length === 0) {
+				throw new Error(`No index found for alias ${this.aliasName}`)
+			}
+
+			return indexNames[0]
+		} catch (error) {
+			logger.error('Failed to get current index name:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * Инициализация алиаса (создание если не существует)
+	 */
+	async initializeAlias(): Promise<void> {
+		try {
+			// Проверяем, существует ли алиас
+			const aliasExists = await this.client.indices.existsAlias({
+				name: this.aliasName,
+			})
+
+			if (!aliasExists) {
+				// Если алиас не существует, создаем его и указываем на основной индекс
+				await this.client.indices.putAlias({
+					index: this.indexName,
+					name: this.aliasName,
+				})
+				logger.info(
+					`✅ Создан алиас ${this.aliasName} для индекса ${this.indexName}`
+				)
+			} else {
+				logger.info(`✅ Алиас ${this.aliasName} уже существует`)
+			}
+		} catch (error) {
+			logger.error('Failed to initialize alias:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * Инкрементальное обновление документа
+	 */
+	async upsertDocument(document: SearchDocument): Promise<void> {
+		try {
+			await this.client.index({
+				index: this.aliasName, // Используем алиас для поиска
+				id: document.id,
+				body: document,
+				refresh: false, // Не обновляем индекс сразу для производительности
+			})
+		} catch (error) {
+			logger.error(`Failed to upsert document ${document.id}:`, error)
+			throw error
+		}
+	}
+
+	/**
+	 * Массовое инкрементальное обновление документов
+	 */
+	async bulkUpsert(documents: SearchDocument[]): Promise<void> {
+		try {
+			const body = documents.flatMap(doc => [
+				{ index: { _index: this.aliasName, _id: doc.id } },
+				doc,
+			])
+
+			await this.client.bulk({
+				body,
+				refresh: false, // Не обновляем индекс сразу для производительности
+			})
+
+			logger.info(`Bulk upserted ${documents.length} documents`)
+		} catch (error) {
+			logger.error('Failed to bulk upsert documents:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * Обновление индекса для поиска
+	 */
+	async refreshIndex(): Promise<void> {
+		try {
+			await this.client.indices.refresh({
+				index: this.aliasName,
+			})
+			logger.info('Index refreshed for search')
+		} catch (error) {
+			logger.error('Failed to refresh index:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * Массовая индексация в конкретный индекс (для временных индексов)
+	 */
+	async bulkIndex(
+		documents: SearchDocument[],
+		indexName?: string
+	): Promise<void> {
+		try {
+			const targetIndex = indexName || this.aliasName
+			const body = documents.flatMap(doc => [
+				{ index: { _index: targetIndex, _id: doc.id } },
+				doc,
+			])
+
+			await this.client.bulk({
+				body,
+				refresh: false,
+			})
+
+			logger.info(
+				`Bulk indexed ${documents.length} documents to ${targetIndex}`
+			)
+		} catch (error) {
+			logger.error('Failed to bulk index documents:', error)
 			throw error
 		}
 	}

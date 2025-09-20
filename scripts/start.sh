@@ -110,23 +110,30 @@ elif [ "$HEALTH_CHECK" = "000" ]; then
     fi
 fi
 
-# Синхронизация данных с Bitrix в Elasticsearch
-echo "🔄 Синхронизация данных с Bitrix в Elasticsearch..."
+# Инкрементальная синхронизация данных с Bitrix в Elasticsearch
+echo "🔄 Запуск инкрементальной синхронизации данных с Bitrix в Elasticsearch..."
 sleep 5  # Даем время Elasticsearch полностью запуститься
 
 # Проверяем, что Elasticsearch доступен
 ELASTICSEARCH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9200/_cluster/health 2>/dev/null || echo "000")
 
 if [ "$ELASTICSEARCH_CHECK" = "200" ]; then
-    echo "✅ Elasticsearch доступен, запускаем синхронизацию..."
+    echo "✅ Elasticsearch доступен, запускаем инкрементальную синхронизацию..."
     
-    # Запускаем синхронизацию через Docker (используем продакшн версию)
-    docker compose exec -T backend npm run sync:bitrix:prod
+    # Инициализируем алиас Elasticsearch
+    echo "🔧 Инициализация алиаса Elasticsearch..."
+    docker compose exec -T backend curl -X POST http://localhost:3000/api/incremental-sync/initialize-alias
+    
+    # Запускаем полную инкрементальную синхронизацию
+    echo "📦 Выполнение полной инкрементальной синхронизации..."
+    docker compose exec -T backend curl -X POST http://localhost:3000/api/incremental-sync/all \
+        -H "Content-Type: application/json" \
+        -d '{"forceFullSync": true, "batchSize": 200}'
     
     if [ $? -eq 0 ]; then
-        echo "✅ Синхронизация данных завершена успешно"
+        echo "✅ Инкрементальная синхронизация данных завершена успешно"
     else
-        echo "⚠️  Ошибка при синхронизации данных, но приложение продолжает работать"
+        echo "⚠️  Ошибка при инкрементальной синхронизации данных, но приложение продолжает работать"
     fi
 else
     echo "⚠️  Elasticsearch недоступен, пропускаем синхронизацию"

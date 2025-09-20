@@ -263,7 +263,14 @@ export class SubmissionService extends BaseService<
 				})
 
 				// Получаем полные данные submissions по ID из Elasticsearch
-				const submissionIds = searchResults.map(result => result.id)
+				// ID в Elasticsearch имеют формат "submission_${id}", нужно извлечь только id
+				const submissionIds = searchResults.map(result => {
+					// Если ID начинается с "submission_", убираем этот префикс
+					return result.id.startsWith('submission_')
+						? result.id.replace('submission_', '')
+						: result.id
+				})
+
 				if (submissionIds.length === 0) {
 					return {
 						data: [],

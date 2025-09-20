@@ -225,8 +225,8 @@ ELASTICSEARCH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:92
 if [ "$ELASTICSEARCH_CHECK" = "200" ]; then
     echo "✅ Elasticsearch доступен, запускаем синхронизацию..."
     
-    # Запускаем синхронизацию через Docker (используем продакшн версию)
-    docker-compose exec -T backend npm run sync:bitrix:prod
+    # Запускаем инкрементальную синхронизацию через Docker (используем продакшн версию)
+    docker-compose exec -T backend npm run sync:incremental:prod
     
     if [ $? -eq 0 ]; then
         echo "✅ Синхронизация данных завершена успешно"

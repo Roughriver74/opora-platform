@@ -8,6 +8,9 @@ export interface SyncStatus {
 	successfulRecords: number
 	failedRecords: number
 	errors: string[]
+	progress: number
+	currentStep: string
+	startTime: string | null
 }
 
 export interface IndexStats {
@@ -63,12 +66,12 @@ class SyncService {
 	}
 
 	/**
-	 * Установка расписания синхронизации
+	 * Установка расписания синхронизации (через cron)
 	 */
 	async setSchedule(
 		schedule: string
 	): Promise<{ success: boolean; message: string }> {
-		const response = await api.post('/api/sync/schedule', { schedule })
+		const response = await api.post('/api/cron/schedule', { schedule })
 		return response.data
 	}
 
@@ -81,18 +84,100 @@ class SyncService {
 	}
 
 	/**
-	 * Синхронизация с Bitrix24 в Elasticsearch
+	 * Синхронизация с Bitrix24 в Elasticsearch (инкрементальная система)
 	 */
-	async syncBitrixToElastic(): Promise<{ success: boolean; message: string }> {
-		const response = await api.post('/api/sync/bitrix-to-elastic')
+	async syncBitrixToElastic(): Promise<{
+		success: boolean
+		message: string
+		data?: any
+	}> {
+		const response = await api.post(
+			'/api/incremental-sync/all',
+			{
+				forceFullSync: false,
+				batchSize: 500, // Увеличиваем batchSize для более быстрой синхронизации
+				maxAgeHours: 24,
+			},
+			{
+				timeout: 300000, // 5 минут для синхронизации
+			}
+		)
 		return response.data
 	}
 
 	/**
-	 * Переиндексация с поддержкой Bitrix ID
+	 * Переиндексация с поддержкой Bitrix ID (инкрементальная система)
 	 */
-	async reindexWithBitrixId(): Promise<{ success: boolean; message: string }> {
-		const response = await api.post('/api/sync/reindex-bitrix')
+	async reindexWithBitrixId(): Promise<{
+		success: boolean
+		message: string
+		data?: any
+	}> {
+		const response = await api.post(
+			'/api/incremental-sync/all',
+			{
+				forceFullSync: true,
+				batchSize: 200,
+				maxAgeHours: 24,
+			},
+			{
+				timeout: 600000, // 10 минут для полной переиндексации
+			}
+		)
+		return response.data
+	}
+
+	/**
+	 * Получение статистики инкрементальной синхронизации
+	 */
+	async getIncrementalSyncStats(): Promise<{
+		success: boolean
+		data?: any
+	}> {
+		const response = await api.get('/api/incremental-sync/stats')
+		return response.data
+	}
+
+	/**
+	 * Получение метаданных синхронизации
+	 */
+	async getSyncMetadata(): Promise<{
+		success: boolean
+		data?: any
+	}> {
+		const response = await api.get('/api/incremental-sync/metadata')
+		return response.data
+	}
+
+	/**
+	 * Инициализация алиаса Elasticsearch
+	 */
+	async initializeAlias(): Promise<{
+		success: boolean
+		message: string
+	}> {
+		const response = await api.post('/api/incremental-sync/initialize-alias')
+		return response.data
+	}
+
+	/**
+	 * Полная инкрементальная синхронизация
+	 */
+	async runIncrementalSync(
+		options: {
+			forceFullSync?: boolean
+			batchSize?: number
+			maxAgeHours?: number
+		} = {}
+	): Promise<{
+		success: boolean
+		message: string
+		data?: any
+	}> {
+		const timeout = options.forceFullSync ? 600000 : 300000 // 10 минут для полной, 5 минут для инкрементальной
+		const response = await api.post('/api/incremental-sync/all', options, {
+			timeout,
+		})
 		return response.data
 	}
 
@@ -109,6 +194,7 @@ class SyncService {
 	 */
 	getAvailableSchedules(): { [key: string]: string } {
 		return {
+			'Каждые 30 минут': '*/30 * * * *',
 			'Каждый час': '0 * * * *',
 			'Каждые 3 часа': '0 */3 * * *',
 			'Каждые 6 часов': '0 */6 * * *',

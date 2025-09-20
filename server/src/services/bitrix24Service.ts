@@ -242,13 +242,20 @@ class Bitrix24Service {
 		let hasMore = true
 
 		while (hasMore) {
-			const response = await axios.post(`${this.webhookUrl}crm.product.list`, {
-				filter: { ACTIVE: 'Y' },
-				select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
-				start: start,
-				limit: limit,
-				order: { NAME: 'ASC' },
-			})
+			const response = await retryRequest(
+				() =>
+					axios.post(
+						`${this.webhookUrl}crm.product.list`,
+						{
+							filter: { ACTIVE: 'Y' },
+							select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
+							start: start,
+							limit: limit,
+							order: { NAME: 'ASC' },
+						},
+						{ timeout: 30000 }
+					) // Увеличиваем таймаут для продуктов
+			)
 
 			if (response.data?.result && response.data.result.length > 0) {
 				allProducts.push(...response.data.result)
@@ -258,8 +265,8 @@ class Bitrix24Service {
 					hasMore = false
 				} else {
 					start += limit
-					// Небольшая задержка между запросами
-					await new Promise(resolve => setTimeout(resolve, 100))
+					// Увеличиваем задержку между запросами для стабильности
+					await new Promise(resolve => setTimeout(resolve, 500))
 				}
 			} else {
 				hasMore = false
@@ -842,7 +849,7 @@ class Bitrix24Service {
 							limit,
 							order: { TITLE: 'ASC' },
 						},
-						{ timeout: 15000 }
+						{ timeout: 30000 } // Увеличиваем таймаут для компаний
 					)
 				)
 
@@ -854,6 +861,8 @@ class Bitrix24Service {
 					hasMore = false
 				} else {
 					start += limit
+					// Добавляем задержку между запросами для стабильности
+					await new Promise(resolve => setTimeout(resolve, 300))
 				}
 
 				logger.info(`Загружено компаний: ${allCompanies.length}`)
@@ -915,27 +924,30 @@ class Bitrix24Service {
 			let hasMore = true
 
 			while (hasMore) {
-				const response = await axios.post(
-					`${this.webhookUrl}crm.requisite.list`,
-					{
-						filter: {
-							ENTITY_TYPE_ID: 4, // 4 = Company
+				const response = await retryRequest(() =>
+					axios.post(
+						`${this.webhookUrl}crm.requisite.list`,
+						{
+							filter: {
+								ENTITY_TYPE_ID: 4, // 4 = Company
+							},
+							select: [
+								'ID',
+								'ENTITY_TYPE_ID',
+								'ENTITY_ID',
+								'NAME',
+								'RQ_INN',
+								'RQ_KPP',
+								'RQ_OGRN',
+								'RQ_OKPO',
+								'RQ_OKVED',
+								'ACTIVE',
+							],
+							start,
+							limit,
 						},
-						select: [
-							'ID',
-							'ENTITY_TYPE_ID',
-							'ENTITY_ID',
-							'NAME',
-							'RQ_INN',
-							'RQ_KPP',
-							'RQ_OGRN',
-							'RQ_OKPO',
-							'RQ_OKVED',
-							'ACTIVE',
-						],
-						start,
-						limit,
-					}
+						{ timeout: 30000 } // Увеличиваем таймаут для реквизитов
+					)
 				)
 
 				const requisites = response.data?.result || []
@@ -946,6 +958,8 @@ class Bitrix24Service {
 					hasMore = false
 				} else {
 					start += limit
+					// Добавляем задержку между запросами для стабильности
+					await new Promise(resolve => setTimeout(resolve, 300))
 				}
 
 				logger.info(`Загружено реквизитов: ${allRequisites.length}`)

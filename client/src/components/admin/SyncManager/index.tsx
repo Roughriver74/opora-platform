@@ -46,16 +46,19 @@ const SyncManager = () => {
 		loadData()
 	}, [])
 
-	// Автообновление каждые 30 секунд
+	// Автообновление каждые 5 секунд во время синхронизации, иначе каждые 30 секунд
 	useEffect(() => {
-		const interval = setInterval(() => {
-			if (!loading) {
-				loadData()
-			}
-		}, 30000)
+		const interval = setInterval(
+			() => {
+				if (!loading) {
+					loadData()
+				}
+			},
+			syncStatus?.isRunning ? 5000 : 30000
+		)
 
 		return () => clearInterval(interval)
-	}, [loading])
+	}, [loading, syncStatus?.isRunning])
 
 	const loadData = async () => {
 		try {
@@ -91,6 +94,9 @@ const SyncManager = () => {
 					successfulRecords: 0,
 					failedRecords: 0,
 					errors: [],
+					progress: 0,
+					currentStep: '',
+					startTime: null,
 				})
 				setIndexStats({
 					docs: { count: 2, deleted: 0 }, // Количество тестовых документов
@@ -112,6 +118,9 @@ const SyncManager = () => {
 				successfulRecords: 0,
 				failedRecords: 0,
 				errors: [],
+				progress: 0,
+				currentStep: '',
+				startTime: null,
 			})
 			setIndexStats({
 				docs: { count: 2, deleted: 0 }, // Количество тестовых документов
@@ -127,20 +136,48 @@ const SyncManager = () => {
 			setError(null)
 			setSuccess(null)
 
-			const response = await syncService.startSync(force)
+			// Используем новую инкрементальную систему
+			const response = await syncService.syncBitrixToElastic()
 
 			if (response.success) {
-				setSuccess(response.message)
-				// Обновляем данные через 2 секунды
+				let successMessage = force
+					? 'Принудительная синхронизация завершена успешно'
+					: 'Синхронизация завершена успешно'
+
+				// Показываем детальную статистику если есть
+				if (response.data?.summary) {
+					const { totalProcessed, totalSuccessful, totalFailed } =
+						response.data.summary
+					successMessage += ` (${totalSuccessful}/${totalProcessed} записей успешно обработано`
+					if (totalFailed > 0) {
+						successMessage += `, ${totalFailed} ошибок`
+					}
+					successMessage += ')'
+				}
+
+				setSuccess(successMessage)
+				// Обновляем данные через 3 секунды
 				setTimeout(() => {
 					loadData()
-				}, 2000)
+				}, 3000)
 			} else {
 				setError(response.message || 'Ошибка при запуске синхронизации')
 			}
-		} catch (err) {
+		} catch (err: any) {
 			console.warn('API синхронизации недоступен:', err)
-			setError('API синхронизации недоступен. Попробуйте позже.')
+
+			// Более детальная обработка ошибок
+			if (err.code === 'ECONNABORTED' && err.message.includes('timeout')) {
+				setError(
+					'Синхронизация занимает слишком много времени. Попробуйте позже или используйте кнопку "Принудительно" для полной синхронизации.'
+				)
+			} else if (err.response?.status === 500) {
+				setError('Ошибка сервера при синхронизации. Проверьте логи сервера.')
+			} else if (err.response?.status === 404) {
+				setError('API синхронизации не найден. Проверьте конфигурацию сервера.')
+			} else {
+				setError('API синхронизации недоступен. Попробуйте позже.')
+			}
 		} finally {
 			setLoading(false)
 		}
@@ -155,7 +192,20 @@ const SyncManager = () => {
 			const response = await syncService.syncBitrixToElastic()
 
 			if (response.success) {
-				setSuccess('Синхронизация с Bitrix24 завершена успешно')
+				let successMessage = 'Синхронизация с Bitrix24 завершена успешно'
+
+				// Показываем детальную статистику если есть
+				if (response.data?.summary) {
+					const { totalProcessed, totalSuccessful, totalFailed } =
+						response.data.summary
+					successMessage += ` (${totalSuccessful}/${totalProcessed} записей успешно обработано`
+					if (totalFailed > 0) {
+						successMessage += `, ${totalFailed} ошибок`
+					}
+					successMessage += ')'
+				}
+
+				setSuccess(successMessage)
 				// Обновляем данные через 3 секунды
 				setTimeout(() => {
 					loadData()
@@ -163,9 +213,21 @@ const SyncManager = () => {
 			} else {
 				setError(response.message || 'Ошибка синхронизации с Bitrix24')
 			}
-		} catch (err) {
+		} catch (err: any) {
 			console.warn('API синхронизации недоступен:', err)
-			setError('API синхронизации недоступен. Попробуйте позже.')
+
+			// Более детальная обработка ошибок
+			if (err.code === 'ECONNABORTED' && err.message.includes('timeout')) {
+				setError(
+					'Синхронизация занимает слишком много времени. Попробуйте позже или используйте кнопку "Принудительно" для полной синхронизации.'
+				)
+			} else if (err.response?.status === 500) {
+				setError('Ошибка сервера при синхронизации. Проверьте логи сервера.')
+			} else if (err.response?.status === 404) {
+				setError('API синхронизации не найден. Проверьте конфигурацию сервера.')
+			} else {
+				setError('API синхронизации недоступен. Попробуйте позже.')
+			}
 		} finally {
 			setLoading(false)
 		}
@@ -260,6 +322,65 @@ const SyncManager = () => {
 
 			<Grid container spacing={3}>
 				{/* Статус синхронизации */}
+				<Grid size={{ xs: 12, md: 6 }}>
+					<Card>
+						<CardContent>
+							<Box display='flex' alignItems='center' gap={1} mb={2}>
+								<ScheduleIcon />
+								<Typography variant='h6'>Статус синхронизации</Typography>
+								{syncStatus?.isRunning && <CircularProgress size={20} />}
+							</Box>
+
+							{syncStatus && (
+								<>
+									<Box display='flex' alignItems='center' gap={1} mb={2}>
+										<Chip
+											label={getStatusText(syncStatus)}
+											color={getStatusColor(syncStatus) as any}
+											size='small'
+										/>
+										{syncStatus.isRunning && (
+											<Typography variant='body2' color='text.secondary'>
+												{syncStatus.currentStep}
+											</Typography>
+										)}
+									</Box>
+
+									{syncStatus.isRunning && (
+										<Box mb={2}>
+											<LinearProgress
+												variant='determinate'
+												value={syncStatus.progress}
+												sx={{ mb: 1 }}
+											/>
+											<Typography variant='body2' color='text.secondary'>
+												{syncStatus.progress}% завершено
+											</Typography>
+										</Box>
+									)}
+
+									<Typography variant='body2' gutterBottom>
+										Последняя синхронизация:{' '}
+										{syncService.formatDate(syncStatus.lastSync)}
+									</Typography>
+									<Typography variant='body2' gutterBottom>
+										Следующая синхронизация:{' '}
+										{syncService.formatDate(syncStatus.nextSync)}
+									</Typography>
+									<Typography variant='body2' gutterBottom>
+										Обработано записей: {syncStatus.successfulRecords} /{' '}
+										{syncStatus.totalRecords}
+									</Typography>
+									{syncStatus.failedRecords > 0 && (
+										<Typography variant='body2' color='error'>
+											Ошибок: {syncStatus.failedRecords}
+										</Typography>
+									)}
+								</>
+							)}
+						</CardContent>
+					</Card>
+				</Grid>
 
 				{/* Статистика индекса */}
 				<Grid size={{ xs: 12, md: 6 }}>
@@ -302,7 +423,7 @@ const SyncManager = () => {
 										variant='contained'
 										color='primary'
 										startIcon={<PlayIcon />}
-										onClick={() => handleStartSync(false)}
+										onClick={handleSyncBitrix}
 										disabled={loading || (syncStatus?.isRunning ?? false)}
 										fullWidth
 									>

@@ -131,7 +131,16 @@ const MySubmissions = () => {
 
 			// Устанавливаем новый timeout
 			const timeout = setTimeout(() => {
-				handleFilterChange({ search: value })
+				// При поиске сбрасываем фильтр по статусу, чтобы искать по всем заявкам
+				const newFilters: Partial<SubmissionFilters> = { search: value }
+				if (value.trim()) {
+					// Если есть поисковый запрос, сбрасываем статус
+					newFilters.status = undefined
+				} else {
+					// Если поиск пустой, возвращаем дефолтный фильтр
+					newFilters.status = DEFAULT_STATUS_FILTER
+				}
+				handleFilterChange(newFilters)
 			}, 500)
 
 			setSearchTimeout(timeout)

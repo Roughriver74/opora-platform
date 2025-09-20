@@ -129,10 +129,10 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 
 		if (filters.search) {
 			queryBuilder.andWhere(
-				'(submission.submissionNumber LIKE :search OR ' +
-					'submission.title LIKE :search OR ' +
-					'submission.userEmail LIKE :search OR ' +
-					'submission.userName LIKE :search)',
+				'(submission.submissionNumber ILIKE :search OR ' +
+					'submission.title ILIKE :search OR ' +
+					'submission.userEmail ILIKE :search OR ' +
+					'submission.userName ILIKE :search)',
 				{ search: `%${filters.search}%` }
 			)
 		}

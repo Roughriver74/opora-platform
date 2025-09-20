@@ -1,6 +1,8 @@
 import cron from 'node-cron'
 import { elasticsearchService } from './elasticsearchService'
 import { searchSyncService } from './searchSyncService'
+import { incrementalSyncService } from './incrementalSyncService'
+import { syncMetadataService } from './syncMetadataService'
 import { logger } from '../utils/logger'
 
 interface SyncStatus {
@@ -11,6 +13,9 @@ interface SyncStatus {
 	successfulRecords: number
 	failedRecords: number
 	errors: string[]
+	progress: number
+	currentStep: string
+	startTime: Date | null
 }
 
 class SyncScheduler {
@@ -22,6 +27,9 @@ class SyncScheduler {
 		successfulRecords: 0,
 		failedRecords: 0,
 		errors: [],
+		progress: 0,
+		currentStep: 'Готов к синхронизации',
+		startTime: null,
 	}
 
 	private cronJob: cron.ScheduledTask | null = null
@@ -32,9 +40,9 @@ class SyncScheduler {
 
 	/**
 	 * Запускает планировщик синхронизации
-	 * По умолчанию: каждые 6 часов
+	 * По умолчанию: каждые 30 минут
 	 */
-	public startScheduler(schedule: string = '0 */6 * * *'): void {
+	public startScheduler(schedule: string = '*/30 * * * *'): void {
 		if (this.cronJob) {
 			this.cronJob.destroy()
 		}
@@ -69,7 +77,7 @@ class SyncScheduler {
 	}
 
 	/**
-	 * Выполняет синхронизацию данных
+	 * Выполняет синхронизацию данных (использует новую инкрементальную систему)
 	 */
 	public async performSync(force: boolean = false): Promise<SyncStatus> {
 		if (this.syncStatus.isRunning && !force) {
@@ -79,30 +87,113 @@ class SyncScheduler {
 
 		this.syncStatus.isRunning = true
 		this.syncStatus.errors = []
+		this.syncStatus.progress = 0
+		this.syncStatus.startTime = new Date()
+		this.syncStatus.currentStep =
+			'Инициализация инкрементальной синхронизации...'
 
 		try {
-			logger.info('🔄 Начинаем синхронизацию данных с Bitrix24...')
+			logger.info('🔄 Начинаем инкрементальную синхронизацию данных...')
 
-			// Очищаем старые данные
-			await this.clearOldData()
+			// Инициализируем алиас если нужно
+			this.syncStatus.currentStep = 'Инициализация алиаса Elasticsearch...'
+			this.syncStatus.progress = 5
+			try {
+				await elasticsearchService.initializeAlias()
+			} catch (error) {
+				logger.warn('Предупреждение при инициализации алиаса:', error.message)
+			}
 
-			// Синхронизируем данные
-			const result = await searchSyncService.syncAllData()
+			// Определяем стратегию синхронизации
+			this.syncStatus.currentStep = 'Определение стратегии синхронизации...'
+			this.syncStatus.progress = 10
+
+			const entityTypes = ['products', 'companies', 'submissions']
+			let totalProcessed = 0
+			let totalSuccessful = 0
+			let totalFailed = 0
+			const allErrors: string[] = []
+
+			// Синхронизируем каждый тип данных
+			for (let i = 0; i < entityTypes.length; i++) {
+				const entityType = entityTypes[i]
+				const progressStart = 15 + i * 25
+				const progressEnd = 15 + (i + 1) * 25
+
+				this.syncStatus.currentStep = `Синхронизация ${entityType}...`
+				this.syncStatus.progress = progressStart
+
+				try {
+					let result
+					switch (entityType) {
+						case 'products':
+							result = await incrementalSyncService.syncProducts({
+								forceFullSync: force,
+								batchSize: 100,
+								maxAgeHours: 24,
+							})
+							break
+						case 'companies':
+							result = await incrementalSyncService.syncCompanies({
+								forceFullSync: force,
+								batchSize: 100,
+								maxAgeHours: 24,
+							})
+							break
+						case 'submissions':
+							result = await incrementalSyncService.syncSubmissions({
+								forceFullSync: force,
+								batchSize: 100,
+								maxAgeHours: 24,
+							})
+							break
+						default:
+							throw new Error(`Неизвестный тип сущности: ${entityType}`)
+					}
+
+					totalProcessed += result.totalProcessed
+					totalSuccessful += result.successful
+					totalFailed += result.failed
+					allErrors.push(...result.errors)
+
+					this.syncStatus.progress = progressEnd
+					logger.info(
+						`✅ ${entityType}: ${result.successful}/${result.totalProcessed}`
+					)
+				} catch (error) {
+					logger.error(`❌ Ошибка синхронизации ${entityType}:`, error)
+					allErrors.push(`${entityType}: ${error.message}`)
+					totalFailed++
+				}
+			}
+
+			// Обновляем индекс для поиска
+			this.syncStatus.currentStep = 'Обновление индекса для поиска...'
+			this.syncStatus.progress = 90
+			try {
+				await elasticsearchService.refreshIndex()
+			} catch (error) {
+				logger.warn('Предупреждение при обновлении индекса:', error.message)
+			}
 
 			this.syncStatus.lastSync = new Date()
-			this.syncStatus.totalRecords = result.totalProcessed
-			this.syncStatus.successfulRecords = result.successful
-			this.syncStatus.failedRecords = result.failed
-			this.syncStatus.errors = result.errors
+			this.syncStatus.totalRecords = totalProcessed
+			this.syncStatus.successfulRecords = totalSuccessful
+			this.syncStatus.failedRecords = totalFailed
+			this.syncStatus.errors = allErrors
+			this.syncStatus.progress = 100
+			this.syncStatus.currentStep = 'Инкрементальная синхронизация завершена'
 
 			logger.info(
-				`✅ Синхронизация завершена: ${result.successful}/${result.totalProcessed} записей успешно обработано`
+				`✅ Инкрементальная синхронизация завершена: ${totalSuccessful}/${totalProcessed} записей успешно обработано`
 			)
 		} catch (error) {
-			logger.error('❌ Ошибка при синхронизации:', error)
+			logger.error('❌ Критическая ошибка при синхронизации:', error)
 			this.syncStatus.errors.push(
 				error instanceof Error ? error.message : String(error)
 			)
+			this.syncStatus.currentStep = 'Критическая ошибка синхронизации'
+			this.syncStatus.progress = 0
 		} finally {
 			this.syncStatus.isRunning = false
 		}
@@ -111,19 +202,14 @@ class SyncScheduler {
 	}
 
 	/**
-	 * Очищает старые данные из Elasticsearch
+	 * Получает статус всех синхронизаций
 	 */
-	private async clearOldData(): Promise<void> {
+	public async getSyncMetadata(): Promise<any[]> {
 		try {
-			logger.info('🧹 Очищаем старые данные...')
-
-			// Удаляем все документы из индекса
-			await elasticsearchService.clearIndex()
-
-			logger.info('✅ Старые данные очищены')
+			return await syncMetadataService.getAllMetadata()
 		} catch (error) {
-			logger.error('❌ Ошибка при очистке данных:', error)
-			throw error
+			logger.error('❌ Ошибка при получении метаданных синхронизации:', error)
+			return []
 		}
 	}
 
@@ -162,6 +248,7 @@ class SyncScheduler {
 	 */
 	public getAvailableSchedules(): { [key: string]: string } {
 		return {
+			'Каждые 30 минут': '*/30 * * * *',
 			'Каждый час': '0 * * * *',
 			'Каждые 3 часа': '0 */3 * * *',
 			'Каждые 6 часов': '0 */6 * * *',

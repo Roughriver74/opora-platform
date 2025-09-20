@@ -23,6 +23,8 @@ import backupRoutes from './routes/backupRoutes'
 import settingsRoutes from './routes/settingsRoutes'
 import syncRoutes from './routes/syncRoutes'
 import searchRoutes from './routes/searchRoutes'
+import incrementalSyncRoutes from './routes/incrementalSyncRoutes'
+import cronRoutes from './routes/cronRoutes'
 import { initializeDefaultSettings } from './controllers/settingsController'
 import { initializeElasticsearch } from './scripts/initializeElasticsearch'
 import { syncScheduler } from './services/syncScheduler'
@@ -79,55 +81,85 @@ app.use(bodyParser.urlencoded({ extended: true }))
 // Маршруты авторизации (без middleware)
 app.use('/api/auth', authRoutes)
 
-// Простой endpoint для синхронизации без аутентификации
+// Простой endpoint для инкрементальной синхронизации без аутентификации
 app.post('/sync-data', async (req, res) => {
 	try {
-		const { searchSyncService } = require('./services/searchSyncService')
-		console.log('🚀 Запуск синхронизации данных...')
+		const {
+			incrementalSyncService,
+		} = require('./services/incrementalSyncService')
+		console.log('🚀 Запуск инкрементальной синхронизации данных...')
 
-		const result = await searchSyncService.syncAllData()
+		const results = await incrementalSyncService.syncAllData({
+			forceFullSync: false,
+			batchSize: 100,
+			maxAgeHours: 24,
+		})
+
+		const totalProcessed = results.reduce((sum, r) => sum + r.totalProcessed, 0)
+		const totalSuccessful = results.reduce((sum, r) => sum + r.successful, 0)
 
 		console.log(
-			`✅ Синхронизация завершена: ${result.successful}/${result.totalProcessed} записей успешно обработано`
+			`✅ Инкрементальная синхронизация завершена: ${totalSuccessful}/${totalProcessed} записей успешно обработано`
 		)
 
 		res.json({
 			success: true,
-			message: 'Синхронизация завершена',
-			data: result,
+			message: 'Инкрементальная синхронизация завершена',
+			data: {
+				results,
+				summary: {
+					totalProcessed,
+					totalSuccessful,
+				},
+			},
 		})
 	} catch (error) {
-		console.error('❌ Ошибка при синхронизации:', error)
+		console.error('❌ Ошибка при инкрементальной синхронизации:', error)
 		res.status(500).json({
 			success: false,
-			message: 'Ошибка при синхронизации',
+			message: 'Ошибка при инкрементальной синхронизации',
 			error: error.message,
 		})
 	}
 })
 
-// Временно убираем аутентификацию для запуска синхронизации
+// Временно убираем аутентификацию для запуска инкрементальной синхронизации
 app.post('/api/sync/start', async (req, res) => {
 	try {
-		const { searchSyncService } = require('./services/searchSyncService')
-		console.log('🚀 Запуск синхронизации данных...')
+		const {
+			incrementalSyncService,
+		} = require('./services/incrementalSyncService')
+		console.log('🚀 Запуск инкрементальной синхронизации данных...')
 
-		const result = await searchSyncService.syncAllData(true)
+		const results = await incrementalSyncService.syncAllData({
+			forceFullSync: true, // Принудительная полная синхронизация
+			batchSize: 100,
+			maxAgeHours: 24,
+		})
+
+		const totalProcessed = results.reduce((sum, r) => sum + r.totalProcessed, 0)
+		const totalSuccessful = results.reduce((sum, r) => sum + r.successful, 0)
 
 		console.log(
-			`✅ Синхронизация завершена: ${result.successful}/${result.totalProcessed} записей успешно обработано`
+			`✅ Инкрементальная синхронизация завершена: ${totalSuccessful}/${totalProcessed} записей успешно обработано`
 		)
 
 		res.json({
 			success: true,
-			message: 'Синхронизация завершена',
-			data: result,
+			message: 'Инкрементальная синхронизация завершена',
+			data: {
+				results,
+				summary: {
+					totalProcessed,
+					totalSuccessful,
+				},
+			},
 		})
 	} catch (error) {
-		console.error('❌ Ошибка при синхронизации:', error)
+		console.error('❌ Ошибка при инкрементальной синхронизации:', error)
 		res.status(500).json({
 			success: false,
-			message: 'Ошибка при синхронизации',
+			message: 'Ошибка при инкрементальной синхронизации',
 			error: error.message,
 		})
 	}
@@ -187,6 +219,12 @@ app.get('/sync-stats', async (req, res) => {
 
 // Маршруты синхронизации без аутентификации
 app.use('/api/sync', syncRoutes)
+
+// Маршруты инкрементальной синхронизации без аутентификации (для тестирования)
+app.use('/api/incremental-sync', incrementalSyncRoutes)
+
+// Маршруты управления cron-задачами
+app.use('/api/cron', cronRoutes)
 
 // Применяем middleware авторизации для остальных маршрутов
 app.use(authMiddleware)

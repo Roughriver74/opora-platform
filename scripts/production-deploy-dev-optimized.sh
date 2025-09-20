@@ -470,4 +470,4 @@ fi
 
 echo ""
 echo -e "${YELLOW}💡 Для индексации данных в Elasticsearch выполните:${NC}"
-echo -e "  ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && docker-compose -f docker-compose.stable.yml exec backend npm run sync:bitrix:prod'${NC}"
+echo -e "  ${BLUE}ssh $SERVER_USER@$SERVER_IP 'cd $APP_DIR && docker-compose -f docker-compose.stable.yml exec backend npm run sync:incremental:prod'${NC}"
