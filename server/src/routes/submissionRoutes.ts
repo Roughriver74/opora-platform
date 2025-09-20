@@ -31,13 +31,25 @@ router.post('/submit', (req: Request, res: Response) => {
 
 // Получение всех заявок (только для админов)
 router.get('/', requireAdmin, (req: Request, res: Response) => {
+	console.log(
+		'📍 Маршрут / вызван, перенаправляем к submissionController.getAllSubmissions'
+	)
 	submissionController.getAllSubmissions(req, res)
 })
 
 // Получение заявок текущего пользователя (оптимизированная версия)
 router.get('/my', requireAuth, getOptimizedUserSubmissions)
 
-// Получение заявки по ID
+// Получение статусов из Битрикс24
+router.get(
+	'/bitrix/stages/:categoryId',
+	requireAuth,
+	(req: Request, res: Response) => {
+		submissionController.getBitrixStages(req, res)
+	}
+)
+
+// Получение заявки по ID (должен быть последним, чтобы не перехватывать другие маршруты)
 router.get('/:id', requireAuth, (req: Request, res: Response) => {
 	submissionController.getSubmissionById(req, res)
 })
@@ -71,14 +83,5 @@ router.put('/:id', requireAuth, (req: Request, res: Response) => {
 router.delete('/:id', requireAdmin, (req: Request, res: Response) => {
 	submissionController.deleteSubmission(req, res)
 })
-
-// Получение статусов из Битрикс24
-router.get(
-	'/bitrix/stages/:categoryId',
-	requireAuth,
-	(req: Request, res: Response) => {
-		submissionController.getBitrixStages(req, res)
-	}
-)
 
 export default router

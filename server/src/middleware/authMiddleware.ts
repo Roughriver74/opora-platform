@@ -41,7 +41,6 @@ export const authMiddleware = async (
 		const authHeader = req.headers.authorization
 		const token = authHeader && authHeader.split(' ')[1]
 
-
 		// Если токен не предоставлен, пропускаем запрос для публичных маршрутов
 		if (!token) {
 			req.isAdmin = false
@@ -60,22 +59,21 @@ export const authMiddleware = async (
 				return next()
 			}
 
-
 			try {
 				// Проверяем тип токена
 				if (decoded.adminId) {
 					// Токен администратора
 					const tokenRepository = AppDataSource.getRepository(AdminToken)
-					const storedToken = await tokenRepository.findOne({ 
+					const storedToken = await tokenRepository.findOne({
 						where: { token },
-						relations: ['user']
+						relations: ['user'],
 					})
 
 					if (storedToken && storedToken.isValid()) {
 						// Обновляем время последнего использования
 						storedToken.markAsUsed()
 						await tokenRepository.save(storedToken)
-						
+
 						req.isAdmin = true
 						req.user = {
 							id: 'admin',
@@ -91,24 +89,24 @@ export const authMiddleware = async (
 				} else {
 					// Токен пользователя
 					const userId = decoded.id || decoded.userId || decoded.sub
-					
+
 					console.log(`🔍 JWT decoded:`, {
 						userId,
 						bitrixUserId: decoded.bitrixUserId,
 						role: decoded.role,
-						email: decoded.email
+						email: decoded.email,
 					})
-					
+
 					const user = await userService.findById(userId)
-					
+
 					if (user && user.isActive) {
 						console.log(`👤 User loaded from DB:`, {
 							id: user.id,
 							email: user.email,
 							bitrixUserId: user.bitrixUserId,
-							settings: user.settings
+							settings: user.settings,
 						})
-						
+
 						req.user = {
 							id: user.id,
 							role: user.role,
@@ -153,7 +151,7 @@ export const requireAdmin = (
 	console.log(`🔒 requireAdmin: проверка прав для ${req.method} ${req.path}`)
 	console.log(`🔒 req.isAdmin: ${req.isAdmin}`)
 	console.log(`🔒 req.user: ${JSON.stringify(req.user, null, 2)}`)
-	
+
 	if (!req.isAdmin) {
 		console.log(`❌ Доступ запрещен - требуются права администратора`)
 		res.status(401).json({
@@ -164,7 +162,9 @@ export const requireAdmin = (
 	}
 
 	console.log(`✅ Доступ разрешен - пользователь является администратором`)
+	console.log(`🔒 requireAdmin: вызываем next()`)
 	next()
+	console.log(`🔒 requireAdmin: next() завершен`)
 }
 
 /**
@@ -175,9 +175,11 @@ export const requireAuth = (
 	res: Response,
 	next: NextFunction
 ): void => {
-	console.log(`🔓 requireAuth: проверка авторизации для ${req.method} ${req.path}`)
+	console.log(
+		`🔓 requireAuth: проверка авторизации для ${req.method} ${req.path}`
+	)
 	console.log(`🔓 req.user: ${JSON.stringify(req.user, null, 2)}`)
-	
+
 	// Проверяем, есть ли авторизованный пользователь или админ
 	if (!req.user) {
 		console.log(`❌ Доступ запрещен - требуется авторизация`)

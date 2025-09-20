@@ -191,6 +191,9 @@ export const submitForm = async (req: Request, res: Response) => {
 // Получение всех заявок (для админов)
 export const getAllSubmissions = async (req: Request, res: Response) => {
 	try {
+		console.log('🔍 getAllSubmissions: начало обработки запроса')
+		console.log('🔍 getAllSubmissions: query параметры:', req.query)
+
 		const {
 			page = 1,
 			limit = 20,
@@ -207,6 +210,23 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			sortBy = 'createdAt',
 			sortOrder = 'desc',
 		} = req.query
+
+		console.log('🔍 getAllSubmissions: извлеченные параметры:', {
+			page,
+			limit,
+			status,
+			priority,
+			assignedTo,
+			userId,
+			dateFrom,
+			dateTo,
+			search,
+			tags,
+			formId,
+			bitrixSyncStatus,
+			sortBy,
+			sortOrder,
+		})
 
 		// Подготовка фильтров
 		const filters = {
@@ -234,10 +254,24 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			sortOrder: (sortOrder as string).toUpperCase() as 'ASC' | 'DESC',
 		}
 
+		console.log('🔍 getAllSubmissions: подготовленные фильтры:', filters)
+		console.log('🔍 getAllSubmissions: подготовленная пагинация:', pagination)
+
+		console.log(
+			'🔍 getAllSubmissions: вызываем submissionService.searchSubmissions'
+		)
+
 		// Используем сервис для получения заявок
 		const result = await submissionService.searchSubmissions({
 			...filters,
 			...pagination,
+		})
+
+		console.log('🔍 getAllSubmissions: получен результат от сервиса:', {
+			dataCount: result.data?.length || 0,
+			total: result.total,
+			page: result.page,
+			limit: result.limit,
 		})
 
 		res.status(200).json({
@@ -245,7 +279,7 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			...result,
 		})
 	} catch (error: any) {
-		console.error('Ошибка при получении заявок:', error)
+		console.error('❌ getAllSubmissions: ошибка при получении заявок:', error)
 		res.status(500).json({
 			success: false,
 			message: 'Ошибка при получении заявок',

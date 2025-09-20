@@ -252,6 +252,16 @@ export class SubmissionService extends BaseService<
 		// Если есть поисковый запрос, используем Elasticsearch
 		if (params.search && params.search.trim()) {
 			try {
+				console.log(
+					'🔍 SubmissionService.searchSubmissions: поиск через Elasticsearch:',
+					{
+						query: params.search.trim(),
+						type: 'submission',
+						limit: params.limit || 20,
+						offset: ((params.page || 1) - 1) * (params.limit || 20),
+					}
+				)
+
 				const elasticsearchService = new ElasticsearchService()
 				const searchResults = await elasticsearchService.search({
 					query: params.search.trim(),
@@ -261,6 +271,16 @@ export class SubmissionService extends BaseService<
 					includeHighlights: false,
 					fuzzy: true,
 				})
+
+				console.log(
+					'🔍 SubmissionService.searchSubmissions: результаты Elasticsearch:',
+					{
+						count: searchResults.length,
+						results: searchResults
+							.slice(0, 3)
+							.map(r => ({ id: r.id, name: r.name })),
+					}
+				)
 
 				// Получаем полные данные submissions по ID из Elasticsearch
 				// ID в Elasticsearch имеют формат "submission_${id}", нужно извлечь только id
@@ -283,9 +303,20 @@ export class SubmissionService extends BaseService<
 					}
 				}
 
+				console.log(
+					'🔍 SubmissionService.searchSubmissions: получение данных из БД для ID:',
+					submissionIds.slice(0, 3)
+				)
+
 				const submissions = await this.repository.findByIds(submissionIds, {
 					relations: ['user', 'form', 'assignedTo'],
 				})
+
+				console.log(
+					'🔍 SubmissionService.searchSubmissions: получено из БД:',
+					submissions.length,
+					'заявок'
+				)
 
 				// Сортируем по порядку из Elasticsearch результатов
 				const sortedSubmissions = submissionIds
@@ -295,6 +326,17 @@ export class SubmissionService extends BaseService<
 				const page = params.page || 1
 				const limit = params.limit || 20
 				const totalPages = Math.ceil(searchResults.length / limit)
+
+				console.log(
+					'🔍 SubmissionService.searchSubmissions: возвращаем результат:',
+					{
+						dataCount: sortedSubmissions.length,
+						total: searchResults.length,
+						page,
+						limit,
+						totalPages,
+					}
+				)
 
 				return {
 					data: sortedSubmissions,
@@ -306,8 +348,15 @@ export class SubmissionService extends BaseService<
 					hasPrev: page > 1,
 				}
 			} catch (error) {
-				console.error('Ошибка поиска через Elasticsearch:', error)
+				console.error('❌ Ошибка поиска через Elasticsearch:', error)
+				console.error('❌ Детали ошибки:', {
+					message: error.message,
+					stack: error.stack,
+					query: params.search.trim(),
+					type: 'submission',
+				})
 				// Fallback к обычному поиску
+				console.log('🔄 Переход к fallback поиску через базу данных')
 				return this.repository.findWithFilters(params, params)
 			}
 		}
