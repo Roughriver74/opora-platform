@@ -33,6 +33,17 @@ const FormField: React.FC<FormFieldProps> = React.memo(
 		const [forceUpdateKey, setForceUpdateKey] = useState(0)
 		const [lastValue, setLastValue] = useState(value)
 
+		// Подготавливаем опции для хука
+		const staticOptions =
+			field.options && field.options.length > 0
+				? field.options.map(option => ({
+						value: option.value,
+						label: option.label,
+				  }))
+				: []
+
+		const optionsToPass = preloadedOptions || staticOptions
+
 		const {
 			options,
 			loading,
@@ -43,7 +54,7 @@ const FormField: React.FC<FormFieldProps> = React.memo(
 			syncWithOptions,
 			resetFailedAttempts,
 			failedAttempts,
-		} = useOptimizedSearch(field.dynamicSource, preloadedOptions)
+		} = useOptimizedSearch(field.dynamicSource, optionsToPass)
 
 		// Отладочные логи для autocomplete полей (только при активном взаимодействии)
 		if (field.type === 'autocomplete' && searchQuery) {
@@ -57,17 +68,7 @@ const FormField: React.FC<FormFieldProps> = React.memo(
 			})
 		}
 
-		// Initialize static options
-		useEffect(() => {
-			if (field.options && field.options.length > 0) {
-				setOptions(
-					field.options.map(option => ({
-						value: option.value,
-						label: option.label,
-					}))
-				)
-			}
-		}, [field.options, setOptions])
+		// Static options are now handled by the hook via optionsToPass
 
 		// Initialize selected option (только если есть реальное значение)
 		useEffect(() => {

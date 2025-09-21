@@ -78,3 +78,4 @@ export class AddSyncMetadataTable1756000000000 implements MigrationInterface {
 		await queryRunner.query(`DROP TYPE "public"."sync_metadata_status_enum"`)
 	}
 }
+

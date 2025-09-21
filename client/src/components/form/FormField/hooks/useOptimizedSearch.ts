@@ -35,7 +35,7 @@ export const useOptimizedSearch = (
 	const isLegacyConfig = config && 'enabled' in config
 	const dynamicSource = isLegacyConfig
 		? config
-		: { enabled: true, source: config?.source || 'catalog' }
+		: { enabled: !!config?.source, source: config?.source || 'catalog' }
 	const minQueryLength = isLegacyConfig
 		? FIELD_CONSTANTS.MIN_SEARCH_LENGTH
 		: config?.minQueryLength || 2
@@ -48,6 +48,17 @@ export const useOptimizedSearch = (
 			setOptions(preloadedOptions)
 		}
 	}, [preloadedOptions])
+
+	// Initialize static options for non-dynamic fields
+	useEffect(() => {
+		if (
+			!dynamicSource?.enabled &&
+			preloadedOptions &&
+			preloadedOptions.length > 0
+		) {
+			setOptions(preloadedOptions)
+		}
+	}, [dynamicSource?.enabled, preloadedOptions])
 
 	// Debounced search function
 	const debouncedSearch = useCallback(
@@ -253,6 +264,10 @@ export const useOptimizedSearch = (
 		// Новые методы для OptimizedAutocompleteInput
 		search: debouncedSearch,
 		clearResults: () => {
+			// Не очищаем опции для статических полей
+			if (!dynamicSource?.enabled) {
+				return
+			}
 			setOptions([])
 			setSelectedOption(null)
 		},
