@@ -305,6 +305,17 @@ export const SubmissionService = {
 		})
 		return response.data
 	},
+
+	// Получение данных полей формы для заявки
+	getSubmissionFormFields: async (
+		id: string
+	): Promise<{
+		success: boolean
+		data: { formFields: Record<string, any> | null }
+	}> => {
+		const response = await api.get(`/api/submissions/${id}/form-fields`)
+		return response.data
+	},
 }
 
 // Экспорт по умолчанию для обратной совместимости

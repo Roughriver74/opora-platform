@@ -5,16 +5,24 @@ import {
 	Box,
 	CircularProgress,
 	Alert,
+	Stack,
+	useTheme,
+	useMediaQuery,
 } from '@mui/material'
 import { useSearchParams } from 'react-router-dom'
 import BetoneForm from '../components/form/BetoneForm'
+
+import QuickActions from '../components/home/QuickActions'
 import { Form, FormField } from '../types'
 import { FormService } from '../services/formService'
 import { useAuth } from '../contexts/auth'
 
 const HomePage: React.FC = () => {
 	const [searchParams] = useSearchParams()
-	const { user } = useAuth()
+	const { user, isAuthenticated } = useAuth()
+	const theme = useTheme()
+	const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+
 	const [form, setForm] = useState<Form | null>(null)
 	const [fields, setFields] = useState<FormField[]>([])
 	const [loading, setLoading] = useState(true)
@@ -118,7 +126,7 @@ const HomePage: React.FC = () => {
 	}, [editData])
 
 	return (
-		<Container maxWidth='md' sx={{ mt: 4 }}>
+		<Container maxWidth='xl' sx={{ mt: 4 }}>
 			{loading ? (
 				<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
 					<CircularProgress />
@@ -127,19 +135,56 @@ const HomePage: React.FC = () => {
 				<Alert severity='error' sx={{ mb: 4 }}>
 					{error}
 				</Alert>
-			) : form ? (
-				<BetoneForm
-					form={form}
-					fields={fields}
-					editData={editData}
-					preloadedOptions={editData?.preloadedOptions}
-					isAdminMode={isAdminMode}
-					onFieldUpdate={handleFieldUpdate}
-				/>
 			) : (
-				<Alert severity='info'>
-					В данный момент формы заказа недоступны. Пожалуйста, попробуйте позже.
-				</Alert>
+				<Box
+					sx={{
+						display: 'flex',
+						flexDirection: { xs: 'column', lg: 'row' },
+						gap: 3,
+					}}
+				>
+					{/* Левая колонка - Форма заказа */}
+					<Box sx={{ flex: isAuthenticated ? 2 : 1 }}>
+						<Typography variant='h4' component='h1' gutterBottom>
+							Заказ бетона
+						</Typography>
+						<Typography variant='body1' color='text.secondary' sx={{ mb: 3 }}>
+							Заполните форму для создания новой заявки на поставку бетона
+						</Typography>
+
+						{form ? (
+							<BetoneForm
+								form={form}
+								fields={fields}
+								editData={editData}
+								preloadedOptions={editData?.preloadedOptions}
+								isAdminMode={isAdminMode}
+								onFieldUpdate={handleFieldUpdate}
+							/>
+						) : (
+							<Alert severity='info'>
+								В данный момент формы заказа недоступны. Пожалуйста, попробуйте
+								позже.
+							</Alert>
+						)}
+					</Box>
+
+					{/* Правая колонка - Мои заявки (только для авторизованных пользователей) */}
+					{isAuthenticated && (
+						<Box sx={{ flex: 1, minWidth: { lg: '300px' } }}>
+							<Stack spacing={3}>
+								{/* Быстрые действия */}
+								<QuickActions
+									showNewSubmission={false}
+									showMySubmissions={true}
+									showHistory={false}
+								/>
+
+							
+							</Stack>
+						</Box>
+					)}
+				</Box>
 			)}
 		</Container>
 	)

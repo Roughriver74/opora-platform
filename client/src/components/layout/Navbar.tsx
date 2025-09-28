@@ -55,7 +55,7 @@ const Navbar: React.FC = () => {
 		await logout()
 		handleClose()
 		setMobileOpen(false)
-		navigate('/')
+		navigate('/my-submissions')
 	}, [logout, handleClose, navigate])
 
 	// Обработчик клика по навигационным элементам
@@ -78,8 +78,8 @@ const Navbar: React.FC = () => {
 	)
 
 	const menuItems = [
-		{ text: 'Главная', icon: <HomeIcon />, path: '/' },
 		{ text: 'Мои заявки', icon: <AssignmentIcon />, path: '/my-submissions' },
+		{ text: 'Новая заявка', icon: <HomeIcon />, path: '/' },
 	]
 
 	if (user?.role === 'admin') {
@@ -186,7 +186,7 @@ const Navbar: React.FC = () => {
 							variant='h6'
 							noWrap
 							component='div'
-							onClick={() => navigate('/')}
+							onClick={() => navigate('/my-submissions')}
 							sx={{
 								mr: 2,
 								display: 'flex',
