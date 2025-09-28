@@ -59,6 +59,11 @@ router.get('/:id/edit', requireAuth, (req: Request, res: Response) => {
 	submissionController.getSubmissionWithBitrixData(req, res)
 })
 
+// Получение данных полей формы для заявки
+router.get('/:id/form-fields', requireAuth, (req: Request, res: Response) => {
+	submissionController.getSubmissionFormFields(req, res)
+})
+
 // Копирование заявки
 router.post('/:id/copy', requireAuth, (req: Request, res: Response) => {
 	submissionController.copySubmission(req, res)

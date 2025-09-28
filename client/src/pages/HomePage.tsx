@@ -12,7 +12,7 @@ import {
 import { useSearchParams } from 'react-router-dom'
 import BetoneForm from '../components/form/BetoneForm'
 
-import QuickActions from '../components/home/QuickActions'
+// import QuickActions from '../components/home/QuickActions'
 import { Form, FormField } from '../types'
 import { FormService } from '../services/formService'
 import { useAuth } from '../contexts/auth'
@@ -173,12 +173,7 @@ const HomePage: React.FC = () => {
 					{isAuthenticated && (
 						<Box sx={{ flex: 1, minWidth: { lg: '300px' } }}>
 							<Stack spacing={3}>
-								{/* Быстрые действия */}
-								<QuickActions
-									showNewSubmission={false}
-									showMySubmissions={true}
-									showHistory={false}
-								/>
+								{/* Быстрые действия - компонент QuickActions временно отключен */}
 
 							
 							</Stack>

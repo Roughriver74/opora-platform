@@ -9,7 +9,7 @@ const API_URL =
 
 const api = axios.create({
 	baseURL: API_URL,
-	timeout: 60000, // Увеличиваем timeout до 60 секунд для синхронизации
+	timeout: 300000, // Увеличиваем timeout до 5 минут для синхронизации
 	headers: {
 		'Content-Type': 'application/json',
 	},

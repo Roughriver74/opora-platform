@@ -122,11 +122,11 @@ if [ "$ELASTICSEARCH_CHECK" = "200" ]; then
     
     # Инициализируем алиас Elasticsearch
     echo "🔧 Инициализация алиаса Elasticsearch..."
-    docker compose exec -T backend curl -X POST http://localhost:3000/api/incremental-sync/initialize-alias
+    curl -X POST http://localhost:5001/api/incremental-sync/initialize-alias
     
     # Запускаем полную инкрементальную синхронизацию
     echo "📦 Выполнение полной инкрементальной синхронизации..."
-    docker compose exec -T backend curl -X POST http://localhost:3000/api/incremental-sync/all \
+    curl -X POST http://localhost:5001/api/incremental-sync/all \
         -H "Content-Type: application/json" \
         -d '{"forceFullSync": true, "batchSize": 200}'
     

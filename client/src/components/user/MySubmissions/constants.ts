@@ -14,4 +14,4 @@ export const ITEMS_PER_PAGE_OPTIONS = [5, 10, 25]
 export const DEFAULT_ROWS_PER_PAGE = 10
 
 // Дефолтный статус фильтра - показываем только новые заявки
-export const DEFAULT_STATUS_FILTER = 'C1:NEW'
+export const DEFAULT_STATUS_FILTER = ''

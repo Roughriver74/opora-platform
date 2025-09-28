@@ -1375,3 +1375,44 @@ export const copySubmission = async (req: Request, res: Response) => {
 		})
 	}
 }
+
+// Получение данных полей формы для заявки
+export const getSubmissionFormFields = async (req: Request, res: Response) => {
+	try {
+		const { id } = req.params
+		const userId = req.user?.id
+		const isAdmin = req.isAdmin
+
+		const submission = await submissionService.findById(id)
+		if (!submission) {
+			return res.status(404).json({
+				success: false,
+				message: 'Заявка не найдена',
+			})
+		}
+
+		// Проверяем права доступа
+		if (!isAdmin && submission.userId !== userId) {
+			return res.status(403).json({
+				success: false,
+				message: 'Нет прав для просмотра этой заявки',
+			})
+		}
+
+		// Получаем данные полей из Elasticsearch
+		const formFields = await submissionService.getSubmissionFormFields(id)
+
+		res.json({
+			success: true,
+			data: {
+				formFields,
+			},
+		})
+	} catch (error: any) {
+		console.error('Ошибка получения данных полей формы:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка получения данных полей формы',
+		})
+	}
+}

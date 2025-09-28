@@ -78,6 +78,13 @@ app.use(
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
+// Увеличиваем timeout для Express (5 минут)
+app.use((req, res, next) => {
+	req.setTimeout(300000) // 5 минут
+	res.setTimeout(300000) // 5 минут
+	next()
+})
+
 // Маршруты авторизации (без middleware)
 app.use('/api/auth', authRoutes)
 

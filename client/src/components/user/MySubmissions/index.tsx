@@ -64,6 +64,7 @@ import {
 import { useAuth } from '../../../contexts/auth'
 import { useNotificationHelpers } from '../../../contexts/notification'
 import api from '../../../services/api'
+import elasticsearchService from '../../../services/elasticsearchService'
 import { DEFAULT_STATUS_FILTER } from './constants'
 
 // Константы перенесены в отдельный файл
@@ -92,6 +93,13 @@ const MySubmissions = () => {
 	const [rowsPerPage, setRowsPerPage] = useState(10)
 	const [total, setTotal] = useState(0)
 	const [users, setUsers] = useState<any[]>([])
+	const [submissionFormFields, setSubmissionFormFields] = useState<
+		Record<string, Record<string, any>>
+	>({})
+
+	// Кэш названий компаний и продуктов
+	const [companyNames, setCompanyNames] = useState<Record<string, string>>({})
+	const [productNames, setProductNames] = useState<Record<string, string>>({})
 
 	// Настройки системы
 	const [settings, setSettings] = useState({
@@ -211,6 +219,102 @@ const MySubmissions = () => {
 		}
 	}
 
+	// Загрузка данных полей формы для заявки
+	const loadSubmissionFormFields = async (submissionId: string) => {
+		try {
+			const response = await SubmissionService.getSubmissionFormFields(
+				submissionId
+			)
+			if (response.success && response.data.formFields) {
+				setSubmissionFormFields(prev => ({
+					...prev,
+					[submissionId]: response.data.formFields || {},
+				}))
+			}
+		} catch (error) {
+			console.error('Ошибка загрузки данных полей формы:', error)
+		}
+	}
+
+	// Загрузка названий компаний и продуктов для всех заявок
+	const loadNamesForSubmissions = async (submissions: Submission[]) => {
+		try {
+			console.log(
+				'[MySubmissions] Начинаем загрузку названий для заявок:',
+				submissions.length
+			)
+			// Собираем все уникальные ID компаний и продуктов
+			const companyIds = new Set<string>()
+			const productIds = new Set<string>()
+
+			// Загружаем данные полей формы для каждой заявки если их еще нет
+			const formFieldsPromises = submissions.map(async submission => {
+				if (!submissionFormFields[submission.id]) {
+					try {
+						const response = await SubmissionService.getSubmissionFormFields(
+							submission.id
+						)
+						if (response.success && response.data.formFields) {
+							setSubmissionFormFields(prev => ({
+								...prev,
+								[submission.id]: response.data.formFields || {},
+							}))
+							return response.data.formFields || {}
+						}
+					} catch (error) {
+						console.error(
+							`Ошибка загрузки полей формы для заявки ${submission.id}:`,
+							error
+						)
+					}
+				}
+				return submissionFormFields[submission.id] || {}
+			})
+
+			// Ждем загрузки всех полей формы
+			const allFormFields = await Promise.all(formFieldsPromises)
+
+			// Теперь собираем ID из загруженных данных
+			allFormFields.forEach(formFieldsData => {
+				// Компания (field_1750266840204)
+				if (formFieldsData.field_1750266840204) {
+					const companyValue = formFieldsData.field_1750266840204
+					if (typeof companyValue === 'object' && companyValue.ID) {
+						companyIds.add(companyValue.ID.toString())
+					} else if (typeof companyValue === 'string' && companyValue.trim()) {
+						companyIds.add(companyValue.trim())
+					}
+				}
+
+				// Бетон (field_1750264442280)
+				if (formFieldsData.field_1750264442280) {
+					const productValue = formFieldsData.field_1750264442280
+					if (typeof productValue === 'object' && productValue.ID) {
+						productIds.add(productValue.ID.toString())
+					} else if (typeof productValue === 'string' && productValue.trim()) {
+						productIds.add(productValue.trim())
+					}
+				}
+			})
+
+			// Загружаем названия параллельно
+			const [companyNamesResult, productNamesResult] = await Promise.all([
+				companyIds.size > 0
+					? elasticsearchService.getCompanyNamesByIds(Array.from(companyIds))
+					: Promise.resolve({}),
+				productIds.size > 0
+					? elasticsearchService.getProductNamesByIds(Array.from(productIds))
+					: Promise.resolve({}),
+			])
+
+			// Обновляем состояния
+			setCompanyNames(prev => ({ ...prev, ...companyNamesResult }))
+			setProductNames(prev => ({ ...prev, ...productNamesResult }))
+		} catch (error) {
+			console.error('Ошибка загрузки названий:', error)
+		}
+	}
+
 	// Загрузка заявок
 	const loadSubmissions = async () => {
 		try {
@@ -235,6 +339,9 @@ const MySubmissions = () => {
 
 			setSubmissions(response.data)
 			setTotal(response.total || response.pagination?.total || 0)
+
+			// Загружаем названия компаний и продуктов (включая загрузку полей формы)
+			loadNamesForSubmissions(response.data)
 		} catch (err: any) {
 			showError(err.message || 'Ошибка загрузки заявок')
 		} finally {
@@ -480,6 +587,60 @@ const MySubmissions = () => {
 		// Проверяем, является ли статус "Отгружено" (C1:WON)
 		const isShipped = submission.status === 'C1:WON'
 
+		// Получаем данные полей формы для этой заявки
+		const formFieldsData = submissionFormFields[submission.id] || {}
+
+		// Функция для получения значения поля
+		const getFieldValue = (fieldName: string): string => {
+			const value = formFieldsData[fieldName]
+			if (value === undefined || value === null || value === '') {
+				return 'Не указано'
+			}
+
+			// Если это объект, пытаемся извлечь название
+			if (typeof value === 'object') {
+				return value.TITLE || value.NAME || value.label || JSON.stringify(value)
+			}
+
+			return String(value)
+		}
+
+		// Функция для получения названия компании по ID
+		const getCompanyName = (fieldName: string): string => {
+			const value = formFieldsData[fieldName]
+			if (!value) return 'Не указано'
+
+			let companyId: string
+			if (typeof value === 'object' && value.ID) {
+				companyId = value.ID.toString()
+			} else if (typeof value === 'string' && value.trim()) {
+				companyId = value.trim()
+			} else {
+				return 'Не указано'
+			}
+
+			// Возвращаем название из кэша или ID если название не найдено
+			return companyNames[companyId] || companyId
+		}
+
+		// Функция для получения названия продукта по ID
+		const getProductName = (fieldName: string): string => {
+			const value = formFieldsData[fieldName]
+			if (!value) return 'Не указано'
+
+			let productId: string
+			if (typeof value === 'object' && value.ID) {
+				productId = value.ID.toString()
+			} else if (typeof value === 'string' && value.trim()) {
+				productId = value.trim()
+			} else {
+				return 'Не указано'
+			}
+
+			// Возвращаем название из кэша или ID если название не найдено
+			return productNames[productId] || productId
+		}
+
 		return (
 			<Card
 				sx={{
@@ -524,14 +685,15 @@ const MySubmissions = () => {
 
 					{/* Основная информация */}
 					<Stack spacing={1} sx={{ mb: 2 }}>
-						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+						{/*	<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 							<ScheduleIcon fontSize='small' color='action' />
 							<Typography variant='body2'>
 								{format(new Date(submission.createdAt), 'dd.MM.yyyy HH:mm', {
 									locale: ru,
 								})}
 							</Typography>
-						</Box>
+						</Box>} 
+						*/}
 
 						{/* Битрикс24 статус */}
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -581,6 +743,90 @@ const MySubmissions = () => {
 								{submission.title}
 							</Typography>
 						</Box>
+
+						{/* Поля формы */}
+						{Object.keys(formFieldsData).length > 0 && (
+							<Box sx={{ mt: 1 }}>
+								<Typography
+									variant='caption'
+									color='text.secondary'
+									sx={{ mb: 1, display: 'block' }}
+								>
+									Детали заявки:
+								</Typography>
+								<Stack spacing={0.5}>
+									{/* Компания */}
+									{formFieldsData.field_1750266840204 && (
+										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+											<BusinessIcon fontSize='small' color='action' />
+											<Typography variant='caption' color='text.secondary'>
+												Компания:
+											</Typography>
+											<Typography
+												variant='caption'
+												sx={{ fontWeight: 'medium' }}
+											>
+												{getCompanyName('field_1750266840204')}
+											</Typography>
+										</Box>
+									)}
+
+									{/* Бетон */}
+									{formFieldsData.field_1750264442280 && (
+										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+											<DescriptionIcon fontSize='small' color='action' />
+											<Typography variant='caption' color='text.secondary'>
+												Бетон:
+											</Typography>
+											<Typography
+												variant='caption'
+												sx={{ fontWeight: 'medium' }}
+											>
+												{getProductName('field_1750264442280')}
+											</Typography>
+										</Box>
+									)}
+
+									{/* Объем бетона */}
+									{formFieldsData.field_1750266620544 && (
+										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+											<DescriptionIcon fontSize='small' color='action' />
+											<Typography variant='caption' color='text.secondary'>
+												Объем:
+											</Typography>
+											<Typography
+												variant='caption'
+												sx={{ fontWeight: 'medium' }}
+											>
+												{getFieldValue('field_1750266620544')}
+											</Typography>
+										</Box>
+									)}
+
+									{/* Дата и время отгрузки */}
+									{formFieldsData.field_1750311865385 && (
+										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+											<ScheduleIcon fontSize='small' color='action' />
+											<Typography variant='caption' color='text.secondary'>
+												Отгрузка:
+											</Typography>
+											<Typography
+												variant='caption'
+												sx={{ fontWeight: 'medium' }}
+											>
+												{format(
+													new Date(getFieldValue('field_1750311865385')),
+													'dd.MM.yyyy HH:mm',
+													{
+														locale: ru,
+													}
+												)}
+											</Typography>
+										</Box>
+									)}
+								</Stack>
+							</Box>
+						)}
 					</Stack>
 
 					{/* Действия */}

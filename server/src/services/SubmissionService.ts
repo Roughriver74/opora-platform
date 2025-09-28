@@ -624,6 +624,21 @@ export class SubmissionService extends BaseService<
 
 		return `${formTitle} - ${new Date().toLocaleString('ru-RU')}`
 	}
+
+	/**
+	 * Получение данных полей формы для заявки из Elasticsearch
+	 */
+	async getSubmissionFormFields(
+		submissionId: string
+	): Promise<Record<string, any> | null> {
+		try {
+			const elasticsearchService = new ElasticsearchService()
+			return await elasticsearchService.getSubmissionFormFields(submissionId)
+		} catch (error) {
+			console.error('Ошибка получения данных полей формы:', error)
+			return null
+		}
+	}
 }
 
 // Синглтон для сервиса
