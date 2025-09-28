@@ -76,12 +76,21 @@ export interface SearchOptions {
 	includeHighlights?: boolean
 	fuzzy?: boolean
 	assignedById?: string // Фильтр по ответственному пользователю
+	userId?: string // Фильтр по пользователю (для submissions)
 }
 
 class ElasticsearchService {
 	private client: Client
 	private readonly indexName = 'beton_crm_search'
 	private readonly aliasName = 'beton_crm_search_alias'
+
+	// Кэш для результатов поиска
+	private searchCache = new Map<
+		string,
+		{ data: SearchResult[]; timestamp: number }
+	>()
+	private readonly CACHE_TTL = 2 * 60 * 1000 // 2 минуты для поиска
+	private readonly MAX_CACHE_SIZE = 500
 
 	constructor() {
 		const host = process.env.ELASTICSEARCH_HOST || 'localhost'
@@ -122,6 +131,10 @@ class ElasticsearchService {
 										autocomplete: {
 											type: 'text',
 											analyzer: 'autocomplete',
+										},
+										long_text: {
+											type: 'text',
+											analyzer: 'long_text_search',
 										},
 										suggest: {
 											type: 'completion',
@@ -235,6 +248,11 @@ class ElasticsearchService {
 							},
 						},
 						settings: {
+							// Оптимизация для производительности
+							number_of_shards: 1,
+							number_of_replicas: 0, // Отключаем реплики для single-node кластера
+							refresh_interval: '30s', // Увеличиваем интервал обновления для лучшей производительности
+							max_result_window: 100000, // Увеличиваем лимит результатов
 							analysis: {
 								analyzer: {
 									russian: {
@@ -266,6 +284,17 @@ class ElasticsearchService {
 										tokenizer: 'keyword',
 										filter: ['lowercase'],
 									},
+									// Новый анализатор для длинных названий
+									long_text_search: {
+										type: 'custom',
+										tokenizer: 'standard',
+										filter: [
+											'lowercase',
+											'russian_stop',
+											'russian_stemmer',
+											'product_synonyms',
+										],
+									},
 								},
 								filter: {
 									russian_stop: {
@@ -276,20 +305,24 @@ class ElasticsearchService {
 										type: 'stemmer',
 										language: 'russian',
 									},
-									// Синонимы для товаров
+									// Расширенные синонимы для товаров
 									product_synonyms: {
 										type: 'synonym',
 										synonyms: [
-											'бетон,цемент,раствор',
-											'песок,песчаный,песчаная',
-											'щебень,гравий,камень',
-											'арматура,металл,сталь',
-											'доставка,транспорт,перевозка',
-											'м300,м-300,марка 300',
-											'м400,м-400,марка 400',
-											'м500,м-500,марка 500',
-											'фундамент,основание,база',
-											'строительство,стройка,возведение',
+											'бетон,цемент,раствор,смесь',
+											'песок,песчаный,песчаная,песок речной',
+											'щебень,гравий,камень,каменная крошка',
+											'арматура,металл,сталь,железо',
+											'доставка,транспорт,перевозка,логистика',
+											'м300,м-300,марка 300,бетон м300',
+											'м400,м-400,марка 400,бетон м400',
+											'м500,м-500,марка 500,бетон м500',
+											'фундамент,основание,база,фундаментный',
+											'строительство,стройка,возведение,строительный',
+											'кирпич,кирпичный,камень,блок',
+											'блок,блочный,газобетон,пенобетон',
+											'плита,плитный,перекрытие,панель',
+											'труба,трубный,водопровод,канализация',
 										],
 									},
 									// Edge n-gram для поиска товаров
@@ -465,7 +498,63 @@ class ElasticsearchService {
 	}
 
 	/**
-	 * Поиск документов - оптимизированная версия
+	 * Генерация ключа кэша для поискового запроса
+	 */
+	private getCacheKey(options: SearchOptions): string {
+		const {
+			query,
+			type,
+			limit = 30,
+			offset = 0,
+			fuzzy = true,
+			assignedById,
+			userId,
+		} = options
+
+		return `${query}_${type || 'all'}_${limit}_${offset}_${fuzzy}_${
+			assignedById || ''
+		}_${userId || ''}`
+	}
+
+	/**
+	 * Получение результата из кэша
+	 */
+	private getCachedResult(cacheKey: string): SearchResult[] | null {
+		const cached = this.searchCache.get(cacheKey)
+		if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+			return cached.data
+		}
+		this.searchCache.delete(cacheKey)
+		return null
+	}
+
+	/**
+	 * Сохранение результата в кэш
+	 */
+	private setCachedResult(cacheKey: string, data: SearchResult[]): void {
+		// Очищаем старые записи если кэш переполнен
+		if (this.searchCache.size >= this.MAX_CACHE_SIZE) {
+			const now = Date.now()
+			for (const [key, value] of this.searchCache.entries()) {
+				if (now - value.timestamp > this.CACHE_TTL) {
+					this.searchCache.delete(key)
+				}
+			}
+		}
+
+		this.searchCache.set(cacheKey, { data, timestamp: Date.now() })
+	}
+
+	/**
+	 * Очистка кэша поиска
+	 */
+	public clearSearchCache(): void {
+		this.searchCache.clear()
+		logger.info('Search cache cleared')
+	}
+
+	/**
+	 * Поиск документов - оптимизированная версия для быстрого поиска
 	 */
 	async search(options: SearchOptions): Promise<SearchResult[]> {
 		try {
@@ -477,7 +566,21 @@ class ElasticsearchService {
 				includeHighlights = true,
 				fuzzy = true,
 				assignedById,
+				userId,
 			} = options
+
+			// Проверяем кэш для быстрых результатов
+			const cacheKey = this.getCacheKey(options)
+			const cachedResult = this.getCachedResult(cacheKey)
+			if (cachedResult) {
+				logger.debug(`Cache hit for query: ${query}`)
+				return cachedResult
+			}
+
+			// Определяем стратегию поиска на основе длины запроса
+			const queryLength = query.trim().length
+			const isLongQuery = queryLength > 20
+			const isShortQuery = queryLength < 5
 
 			const searchBody: any = {
 				query: {
@@ -512,9 +615,27 @@ class ElasticsearchService {
 								},
 								weight: 1.1,
 							},
+							// Бустинг для документов с высоким приоритетом (для submissions)
+							{
+								filter: {
+									term: { priority: 'high' },
+								},
+								weight: 1.3,
+							},
+							// Бустинг для активных статусов
+							{
+								filter: {
+									terms: {
+										status: ['NEW', 'IN_PROCESS', 'PENDING'],
+									},
+								},
+								weight: 1.15,
+							},
 						],
 						score_mode: 'multiply',
 						boost_mode: 'multiply',
+						// Добавляем минимальный score для фильтрации нерелевантных результатов
+						min_score: 0.5,
 					},
 				},
 				size: limit,
@@ -533,6 +654,13 @@ class ElasticsearchService {
 			if (assignedById && type === 'company') {
 				searchBody.query.function_score.query.bool.filter.push({
 					term: { assignedById },
+				})
+			}
+
+			// Фильтр по пользователю (для submissions)
+			if (userId && type === 'submission') {
+				searchBody.query.function_score.query.bool.filter.push({
+					term: { userId },
 				})
 			}
 
@@ -556,112 +684,14 @@ class ElasticsearchService {
 						},
 					})
 				} else {
-					// Создаем несколько вариантов поиска для лучшего покрытия
-					const searchVariants = [
-						originalQuery, // Оригинальный запрос
-						normalizedQuery, // Нормализованный запрос
-						originalQuery.replace(/\s+/g, ''), // Без пробелов
-						originalQuery.replace(/\s+/g, ' '), // С одним пробелом
-					].filter((variant, index, array) => array.indexOf(variant) === index) // Убираем дубликаты
-
-					const searchQuery = {
-						bool: {
-							should: [
-								// Точное совпадение в названии (высокий приоритет)
-								{
-									match_phrase: {
-										name: {
-											query: originalQuery.toLowerCase(), // Приводим к нижнему регистру
-											boost: 5,
-										},
-									},
-								},
-								// Точное совпадение с использованием exact анализатора
-								{
-									match: {
-										'name.exact': {
-											query: originalQuery.toLowerCase(), // Приводим к нижнему регистру
-											boost: 4.5,
-										},
-									},
-								},
-								// Автокомплит поиск
-								{
-									match: {
-										'name.autocomplete': {
-											query: originalQuery.toLowerCase(), // Приводим к нижнему регистру
-											boost: 4,
-										},
-									},
-								},
-								// Multi-match по всем полям с разными вариантами и улучшенной обработкой опечаток
-								...searchVariants.map(variant => ({
-									multi_match: {
-										query: variant.toLowerCase(), // Приводим к нижнему регистру
-										fields: [
-											'name^4',
-											'name.autocomplete^3.5',
-											'description^2.5',
-											'searchableText^2',
-											'industry^2',
-											'address^1.5',
-											'inn^3',
-											'submissionNumber^3.5',
-											'userName^3',
-											'formName^2.5',
-											'formTitle^2.5',
-											'notes^2',
-										],
-										type: 'best_fields',
-										fuzziness: fuzzy ? 2 : 0, // Увеличиваем fuzziness до 2 для лучшего поиска опечаток
-										fuzzy_transpositions: true,
-										prefix_length: 0, // Убираем prefix_length для лучшего поиска в начале слова
-										max_expansions: 100, // Увеличиваем max_expansions
-										boost: variant === originalQuery ? 1 : 0.8,
-									},
-								})),
-								// Wildcard поиск для частичных совпадений
-								{
-									wildcard: {
-										name: {
-											value: `*${normalizedQuery.toLowerCase()}*`, // Приводим к нижнему регистру
-											boost: 1.5,
-										},
-									},
-								},
-								{
-									wildcard: {
-										searchableText: {
-											value: `*${normalizedQuery.toLowerCase()}*`, // Приводим к нижнему регистру
-											boost: 1,
-										},
-									},
-								},
-								// Поиск без пробелов для случаев типа "бств12"
-								{
-									wildcard: {
-										name: {
-											value: `*${originalQuery
-												.replace(/\s+/g, '')
-												.toLowerCase()}*`, // Приводим к нижнему регистру
-											boost: 1.2,
-										},
-									},
-								},
-								// Дополнительный нечеткий поиск для опечаток в начале слова
-								{
-									fuzzy: {
-										name: {
-											value: originalQuery.toLowerCase(),
-											fuzziness: 2,
-											boost: 0.8,
-										},
-									},
-								},
-							],
-							minimum_should_match: 1,
-						},
-					}
+					// Оптимизированная стратегия поиска в зависимости от длины запроса
+					const searchQuery = this.buildOptimizedSearchQuery(
+						originalQuery,
+						normalizedQuery,
+						isLongQuery,
+						isShortQuery,
+						fuzzy
+					)
 
 					searchBody.query.function_score.query.bool.must.push(searchQuery)
 				}
@@ -697,7 +727,7 @@ class ElasticsearchService {
 				body: searchBody,
 			})
 
-			return response.hits.hits.map((hit: any) => ({
+			const results = response.hits.hits.map((hit: any) => ({
 				id: hit._source.id,
 				name: hit._source.name,
 				description: hit._source.description,
@@ -723,6 +753,11 @@ class ElasticsearchService {
 				notes: hit._source.notes,
 				formData: hit._source.formData,
 			}))
+
+			// Сохраняем результат в кэш
+			this.setCachedResult(cacheKey, results)
+
+			return results
 		} catch (error) {
 			logger.error('Elasticsearch search error:', {
 				query: options.query,
@@ -743,6 +778,221 @@ class ElasticsearchService {
 			}
 
 			throw error
+		}
+	}
+
+	/**
+	 * Построение оптимизированного поискового запроса в зависимости от длины запроса
+	 */
+	private buildOptimizedSearchQuery(
+		originalQuery: string,
+		normalizedQuery: string,
+		isLongQuery: boolean,
+		isShortQuery: boolean,
+		fuzzy: boolean
+	): any {
+		const queryLower = originalQuery.toLowerCase()
+
+		if (isLongQuery) {
+			// Для длинных запросов используем оптимизированную стратегию
+			return {
+				bool: {
+					should: [
+						// Точное совпадение в названии (самый высокий приоритет)
+						{
+							match_phrase: {
+								name: {
+									query: queryLower,
+									boost: 12,
+								},
+							},
+						},
+						// Поиск по длинному тексту (специальный анализатор)
+						{
+							match: {
+								'name.long_text': {
+									query: queryLower,
+									operator: 'and',
+									boost: 10,
+								},
+							},
+						},
+						// Поиск по всем словам в названии
+						{
+							match: {
+								name: {
+									query: queryLower,
+									operator: 'and',
+									boost: 8,
+								},
+							},
+						},
+						// Multi-match только по основным полям с меньшим fuzziness
+						{
+							multi_match: {
+								query: queryLower,
+								fields: [
+									'name^5',
+									'name.long_text^4',
+									'description^2',
+									'searchableText^2',
+									'submissionNumber^3',
+									'userName^2',
+									'formName^2',
+								],
+								type: 'best_fields',
+								fuzziness: fuzzy ? 1 : 0,
+								boost: 3,
+							},
+						},
+						// Поиск по частичным совпадениям (только для длинных запросов)
+						{
+							wildcard: {
+								name: {
+									value: `*${normalizedQuery.toLowerCase()}*`,
+									boost: 1.5,
+								},
+							},
+						},
+					],
+					minimum_should_match: 1,
+				},
+			}
+		} else if (isShortQuery) {
+			// Для коротких запросов используем более агрессивный поиск
+			return {
+				bool: {
+					should: [
+						// Точное совпадение в названии
+						{
+							match_phrase: {
+								name: {
+									query: queryLower,
+									boost: 8,
+								},
+							},
+						},
+						// Автокомплит поиск
+						{
+							match: {
+								'name.autocomplete': {
+									query: queryLower,
+									boost: 6,
+								},
+							},
+						},
+						// Multi-match с большим fuzziness для коротких запросов
+						{
+							multi_match: {
+								query: queryLower,
+								fields: [
+									'name^4',
+									'name.autocomplete^3',
+									'description^2',
+									'searchableText^2',
+									'inn^3',
+									'submissionNumber^3',
+									'userName^2',
+									'formName^2',
+								],
+								type: 'best_fields',
+								fuzziness: fuzzy ? 2 : 0,
+								fuzzy_transpositions: true,
+								boost: 2,
+							},
+						},
+						// Нечеткий поиск для опечаток
+						{
+							fuzzy: {
+								name: {
+									value: queryLower,
+									fuzziness: 2,
+									boost: 1,
+								},
+							},
+						},
+					],
+					minimum_should_match: 1,
+				},
+			}
+		} else {
+			// Для средних запросов используем сбалансированную стратегию
+			return {
+				bool: {
+					should: [
+						// Точное совпадение в названии
+						{
+							match_phrase: {
+								name: {
+									query: queryLower,
+									boost: 8,
+								},
+							},
+						},
+						// Точное совпадение с использованием exact анализатора
+						{
+							match: {
+								'name.exact': {
+									query: queryLower,
+									boost: 6,
+								},
+							},
+						},
+						// Автокомплит поиск
+						{
+							match: {
+								'name.autocomplete': {
+									query: queryLower,
+									boost: 5,
+								},
+							},
+						},
+						// Multi-match по всем полям
+						{
+							multi_match: {
+								query: queryLower,
+								fields: [
+									'name^4',
+									'name.autocomplete^3',
+									'description^2.5',
+									'searchableText^2',
+									'industry^2',
+									'address^1.5',
+									'inn^3',
+									'submissionNumber^3',
+									'userName^2.5',
+									'formName^2.5',
+									'formTitle^2.5',
+									'notes^2',
+								],
+								type: 'best_fields',
+								fuzziness: fuzzy ? 1 : 0,
+								fuzzy_transpositions: true,
+								boost: 2,
+							},
+						},
+						// Wildcard поиск для частичных совпадений
+						{
+							wildcard: {
+								name: {
+									value: `*${normalizedQuery.toLowerCase()}*`,
+									boost: 1.5,
+								},
+							},
+						},
+						// Поиск без пробелов
+						{
+							wildcard: {
+								name: {
+									value: `*${originalQuery.replace(/\s+/g, '').toLowerCase()}*`,
+									boost: 1.2,
+								},
+							},
+						},
+					],
+					minimum_should_match: 1,
+				},
+			}
 		}
 	}
 
@@ -1239,6 +1489,51 @@ class ElasticsearchService {
 		} catch (error) {
 			logger.error('Failed to bulk index documents:', error)
 			throw error
+		}
+	}
+
+	/**
+	 * Получение документа по ID из Elasticsearch
+	 */
+	async getDocumentById(documentId: string): Promise<SearchDocument | null> {
+		try {
+			const response = await this.client.get({
+				index: this.aliasName,
+				id: documentId,
+			})
+
+			if (response.found) {
+				return response._source as SearchDocument
+			}
+
+			return null
+		} catch (error) {
+			if (error.status === 404) {
+				return null
+			}
+			logger.error('Failed to get document by ID:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * Получение данных полей формы для заявки из Elasticsearch
+	 */
+	async getSubmissionFormFields(
+		submissionId: string
+	): Promise<Record<string, any> | null> {
+		try {
+			const documentId = `submission_${submissionId}`
+			const document = await this.getDocumentById(documentId)
+
+			if (document && document.formData) {
+				return document.formData
+			}
+
+			return null
+		} catch (error) {
+			logger.error('Failed to get submission form fields:', error)
+			return null
 		}
 	}
 }

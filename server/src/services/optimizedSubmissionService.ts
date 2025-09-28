@@ -108,21 +108,19 @@ export class OptimizedSubmissionService {
 			})
 		}
 
-		// Поиск по тексту в денормализованных полях (используем PostgreSQL full-text search)
+		// Поиск по тексту в денормализованных полях (упрощенный поиск)
 		if (filters.search) {
-			queryBuilder.andWhere(
-				`(
-				submission.title ILIKE :search OR 
-				submission.submissionNumber ILIKE :search OR
-				submission.userEmail ILIKE :search OR
-				submission.userName ILIKE :search OR
-				submission.formName ILIKE :search OR
-				submission.formTitle ILIKE :search OR
-				submission.assignedToName ILIKE :search OR
-				submission.notes ILIKE :search
-			)`,
-				{ search: `%${filters.search}%` }
-			)
+			const searchTerm = filters.search.trim()
+			if (searchTerm.length > 0) {
+				// Используем только основные поля для поиска (более быстрый поиск)
+				queryBuilder.andWhere(
+					`(
+					submission.title ILIKE :search OR 
+					submission.submission_number ILIKE :search
+				)`,
+					{ search: `%${searchTerm}%` }
+				)
+			}
 		}
 
 		// Подсчет общего количества
@@ -144,7 +142,7 @@ export class OptimizedSubmissionService {
 		// Выбираем только нужные поля для уменьшения объема данных
 		queryBuilder.select([
 			'submission.id',
-			'submission.submissionNumber',
+			'submission.submission_number',
 			'submission.title',
 			'submission.status',
 			'submission.priority',
@@ -155,11 +153,11 @@ export class OptimizedSubmissionService {
 			'submission.notes',
 			'submission.tags',
 			// Денормализованные поля (без joins!)
-			'submission.formName',
-			'submission.formTitle',
-			'submission.userEmail',
-			'submission.userName',
-			'submission.assignedToName',
+			'submission.form_name',
+			'submission.form_title',
+			'submission.user_email',
+			'submission.user_name',
+			'submission.assigned_to_name',
 			// Предвычисленные поля
 			'submission.processingTimeMinutes',
 			'submission.dayOfWeek',
@@ -251,33 +249,33 @@ export class OptimizedSubmissionService {
 			// Статистика по формам
 			baseQuery
 				.clone()
-				.select('submission.formName', 'name')
+				.select('submission.form_name', 'name')
 				.addSelect('submission.formId', 'id')
 				.addSelect('COUNT(*)', 'count')
-				.where('submission.formName IS NOT NULL')
-				.groupBy('submission.formId, submission.formName')
+				.where('submission.form_name IS NOT NULL')
+				.groupBy('submission.formId, submission.form_name')
 				.orderBy('COUNT(*)', 'DESC')
 				.getRawMany(),
 
 			// Статистика по менеджерам
 			baseQuery
 				.clone()
-				.select('submission.assignedToName', 'name')
+				.select('submission.assigned_to_name', 'name')
 				.addSelect('submission.assignedToId', 'id')
 				.addSelect('COUNT(*)', 'count')
-				.where('submission.assignedToName IS NOT NULL')
-				.groupBy('submission.assignedToId, submission.assignedToName')
+				.where('submission.assigned_to_name IS NOT NULL')
+				.groupBy('submission.assignedToId, submission.assigned_to_name')
 				.orderBy('COUNT(*)', 'DESC')
 				.getRawMany(),
 
 			// Статистика по пользователям
 			baseQuery
 				.clone()
-				.select('submission.userName', 'name')
+				.select('submission.user_name', 'name')
 				.addSelect('submission.userId', 'id')
 				.addSelect('COUNT(*)', 'count')
-				.where('submission.userName IS NOT NULL')
-				.groupBy('submission.userId, submission.userName')
+				.where('submission.user_name IS NOT NULL')
+				.groupBy('submission.userId, submission.user_name')
 				.orderBy('COUNT(*)', 'DESC')
 				.getRawMany(),
 
@@ -712,12 +710,12 @@ export class OptimizedSubmissionService {
 			queryBuilder.andWhere(
 				`(
 				submission.title ILIKE :search OR 
-				submission.submissionNumber ILIKE :search OR
-				submission.userEmail ILIKE :search OR
-				submission.userName ILIKE :search OR
-				submission.formName ILIKE :search OR
-				submission.formTitle ILIKE :search OR
-				submission.assignedToName ILIKE :search OR
+				submission.submission_number ILIKE :search OR
+				submission.user_email ILIKE :search OR
+				submission.user_name ILIKE :search OR
+				submission.form_name ILIKE :search OR
+				submission.form_title ILIKE :search OR
+				submission.assigned_to_name ILIKE :search OR
 				submission.notes ILIKE :search
 			)`,
 				{ search: `%${filters.search}%` }

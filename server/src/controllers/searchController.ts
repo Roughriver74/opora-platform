@@ -54,14 +54,25 @@ export const search = async (req: Request, res: Response): Promise<void> => {
 			fuzzy = true,
 		} = req.body
 
-		const results = await elasticsearchService.search({
+		const userId = req.user?.id
+		const isAdmin = req.isAdmin
+
+		// Для обычных пользователей добавляем фильтр по userId для submissions
+		const searchOptions: any = {
 			query,
 			type,
 			limit: Math.min(limit, 100), // Максимум 100 результатов
 			offset,
 			includeHighlights,
 			fuzzy,
-		})
+		}
+
+		// Если пользователь не админ и ищем submissions, фильтруем только его заявки
+		if (!isAdmin && userId && type === 'submission') {
+			searchOptions.userId = userId
+		}
+
+		const results = await elasticsearchService.search(searchOptions)
 
 		res.status(200).json({
 			success: true,
@@ -69,6 +80,8 @@ export const search = async (req: Request, res: Response): Promise<void> => {
 			total: results.length,
 			query,
 			type,
+			filteredByUser:
+				!isAdmin && userId && type === 'submission' ? true : false,
 		})
 	} catch (error: any) {
 		logger.error('Search failed:', error)
@@ -507,16 +520,33 @@ export const searchSubmissions = async (
 			fuzzy = true,
 		} = req.body
 
-		console.log('searchSubmissions called with:', { query, limit, offset })
+		const userId = req.user?.id
+		const isAdmin = req.isAdmin
 
-		const results = await elasticsearchService.search({
+		console.log('searchSubmissions called with:', {
+			query,
+			limit,
+			offset,
+			userId,
+			isAdmin,
+		})
+
+		// Для обычных пользователей добавляем фильтр по userId
+		const searchOptions: any = {
 			query,
 			type: 'submission',
 			limit: Math.min(limit, 100), // Максимум 100 результатов
 			offset,
 			includeHighlights,
 			fuzzy,
-		})
+		}
+
+		// Если пользователь не админ, фильтруем только его заявки
+		if (!isAdmin && userId) {
+			searchOptions.userId = userId
+		}
+
+		const results = await elasticsearchService.search(searchOptions)
 
 		res.status(200).json({
 			success: true,
@@ -526,6 +556,7 @@ export const searchSubmissions = async (
 				query,
 				limit,
 				offset,
+				filteredByUser: !isAdmin && userId ? true : false,
 			},
 		})
 	} catch (error) {
