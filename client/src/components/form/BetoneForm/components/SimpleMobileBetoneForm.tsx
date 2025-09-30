@@ -392,6 +392,7 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 											showTitle={false}
 											preloadedOptions={preloadedOptions}
 											isAdminMode={isAdminMode}
+											showCopyButton={true}
 										/>
 									</Box>
 								</Collapse>
@@ -439,6 +440,7 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 						compact={true}
 						preloadedOptions={preloadedOptions}
 						isAdminMode={isAdminMode}
+						showCopyButton={true}
 					/>
 					<SubmitButton submitting={submitting} variant='primary' fullWidth />
 				</Box>

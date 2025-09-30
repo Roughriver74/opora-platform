@@ -27,6 +27,7 @@ const FormField: React.FC<FormFieldProps> = React.memo(
 		compact = false,
 		preloadedOptions,
 		isMobile = false,
+		showCopyButton = false,
 	}) => {
 		const [searchQuery, setSearchQuery] = useState('')
 		const [isValueSelected, setIsValueSelected] = useState(false)
@@ -149,6 +150,7 @@ const FormField: React.FC<FormFieldProps> = React.memo(
 				error,
 				compact: compact || isMobile,
 				isMobile,
+				showCopyButton,
 			}
 
 			switch (field.type) {

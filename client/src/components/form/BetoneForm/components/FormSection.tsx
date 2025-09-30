@@ -25,179 +25,187 @@ interface FormSectionProps {
 	preloadedOptions?: Record<string, any[]>
 	isAdminMode?: boolean
 	onSectionTitleChange?: (sectionId: string, newTitle: string) => void
+	showCopyButton?: boolean
 }
 
-export const FormSection: React.FC<FormSectionProps> = React.memo(({
-	section,
-	values,
-	onFieldChange,
-	getFieldError,
-	compact = false,
-	showTitle = true,
-	preloadedOptions,
-	isAdminMode = false,
-	onSectionTitleChange,
-}) => {
-	const theme = useTheme()
-	const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+export const FormSection: React.FC<FormSectionProps> = React.memo(
+	({
+		section,
+		values,
+		onFieldChange,
+		getFieldError,
+		compact = false,
+		showTitle = true,
+		preloadedOptions,
+		isAdminMode = false,
+		onSectionTitleChange,
+		showCopyButton = false,
+	}) => {
+		const theme = useTheme()
+		const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
-	const [isEditingTitle, setIsEditingTitle] = useState(false)
-	const [tempTitle, setTempTitle] = useState(section.title)
+		const [isEditingTitle, setIsEditingTitle] = useState(false)
+		const [tempTitle, setTempTitle] = useState(section.title)
 
-	const handleStartEditing = () => {
-		setTempTitle(section.title)
-		setIsEditingTitle(true)
-	}
-
-	const handleSaveTitle = () => {
-		if (
-			onSectionTitleChange &&
-			section.id &&
-			tempTitle.trim() &&
-			tempTitle.trim() !== section.title
-		) {
-			onSectionTitleChange(section.id, tempTitle.trim())
+		const handleStartEditing = () => {
+			setTempTitle(section.title)
+			setIsEditingTitle(true)
 		}
-		setIsEditingTitle(false)
-	}
 
-	const handleCancelEditing = () => {
-		setTempTitle(section.title)
-		setIsEditingTitle(false)
-	}
-
-	const handleKeyPress = (event: React.KeyboardEvent) => {
-		if (event.key === 'Enter') {
-			handleSaveTitle()
-		} else if (event.key === 'Escape') {
-			handleCancelEditing()
+		const handleSaveTitle = () => {
+			if (
+				onSectionTitleChange &&
+				section.id &&
+				tempTitle.trim() &&
+				tempTitle.trim() !== section.title
+			) {
+				onSectionTitleChange(section.id, tempTitle.trim())
+			}
+			setIsEditingTitle(false)
 		}
-	}
 
-	// Мемоизированные отступы для полей
-	const fieldSpacing = useMemo(() => {
-		if (isMobile) {
-			return FORM_CONSTANTS.MOBILE_FIELD_SPACING.xs
+		const handleCancelEditing = () => {
+			setTempTitle(section.title)
+			setIsEditingTitle(false)
 		}
-		return compact
-			? FORM_CONSTANTS.FIELD_SPACING.xs
-			: FORM_CONSTANTS.FIELD_SPACING.sm
-	}, [isMobile, compact])
 
-	return (
-		<Box>
-			{/* Заголовок секции */}
-			{showTitle && (
-				<Box sx={{ mb: isMobile ? 1 : 2 }}>
-					{isEditingTitle ? (
-						<Box
-							sx={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: 1,
-								mb: 1,
-							}}
-						>
-							<TextField
-								value={tempTitle}
-								onChange={e => setTempTitle(e.target.value)}
-								onKeyDown={handleKeyPress}
-								size='small'
-								fullWidth
-								autoFocus
-								variant='outlined'
+		const handleKeyPress = (event: React.KeyboardEvent) => {
+			if (event.key === 'Enter') {
+				handleSaveTitle()
+			} else if (event.key === 'Escape') {
+				handleCancelEditing()
+			}
+		}
+
+		// Мемоизированные отступы для полей
+		const fieldSpacing = useMemo(() => {
+			if (isMobile) {
+				return FORM_CONSTANTS.MOBILE_FIELD_SPACING.xs
+			}
+			return compact
+				? FORM_CONSTANTS.FIELD_SPACING.xs
+				: FORM_CONSTANTS.FIELD_SPACING.sm
+		}, [isMobile, compact])
+
+		return (
+			<Box>
+				{/* Заголовок секции */}
+				{showTitle && (
+					<Box sx={{ mb: isMobile ? 1 : 2 }}>
+						{isEditingTitle ? (
+							<Box
 								sx={{
-									'& .MuiOutlinedInput-root': {
-										fontSize: isMobile ? '0.95rem' : '1.1rem',
-									},
-								}}
-							/>
-							<Tooltip title='Сохранить'>
-								<IconButton
-									onClick={handleSaveTitle}
-									size='small'
-									color='primary'
-								>
-									<Save />
-								</IconButton>
-							</Tooltip>
-							<Tooltip title='Отменить'>
-								<IconButton
-									onClick={handleCancelEditing}
-									size='small'
-									color='secondary'
-								>
-									<Cancel />
-								</IconButton>
-							</Tooltip>
-						</Box>
-					) : (
-						<Box
-							sx={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: 1,
-								mb: isMobile ? 1 : 2,
-							}}
-						>
-							<Typography
-								variant={isMobile ? 'h6' : 'h5'}
-								component='h2'
-								sx={{
-									fontWeight: 600,
-									color: 'text.primary',
-									flex: 1,
-									fontSize: isMobile ? '1rem' : '1.25rem',
+									display: 'flex',
+									alignItems: 'center',
+									gap: 1,
+									mb: 1,
 								}}
 							>
-								{section.title}
-							</Typography>
-							{isAdminMode && (
-								<Tooltip title='Редактировать название секции'>
+								<TextField
+									value={tempTitle}
+									onChange={e => setTempTitle(e.target.value)}
+									onKeyDown={handleKeyPress}
+									size='small'
+									fullWidth
+									autoFocus
+									variant='outlined'
+									sx={{
+										'& .MuiOutlinedInput-root': {
+											fontSize: isMobile ? '0.95rem' : '1.1rem',
+										},
+									}}
+								/>
+								<Tooltip title='Сохранить'>
 									<IconButton
-										onClick={handleStartEditing}
+										onClick={handleSaveTitle}
 										size='small'
 										color='primary'
 									>
-										<Edit />
+										<Save />
 									</IconButton>
 								</Tooltip>
-							)}
-						</Box>
-					)}
-					<Divider sx={{ mb: isMobile ? 1.5 : 2 }} />
-				</Box>
-			)}
+								<Tooltip title='Отменить'>
+									<IconButton
+										onClick={handleCancelEditing}
+										size='small'
+										color='secondary'
+									>
+										<Cancel />
+									</IconButton>
+								</Tooltip>
+							</Box>
+						) : (
+							<Box
+								sx={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: 1,
+									mb: isMobile ? 1 : 2,
+								}}
+							>
+								<Typography
+									variant={isMobile ? 'h6' : 'h5'}
+									component='h2'
+									sx={{
+										fontWeight: 600,
+										color: 'text.primary',
+										flex: 1,
+										fontSize: isMobile ? '1rem' : '1.25rem',
+									}}
+								>
+									{section.title}
+								</Typography>
+								{isAdminMode && (
+									<Tooltip title='Редактировать название секции'>
+										<IconButton
+											onClick={handleStartEditing}
+											size='small'
+											color='primary'
+										>
+											<Edit />
+										</IconButton>
+									</Tooltip>
+								)}
+							</Box>
+						)}
+						<Divider sx={{ mb: isMobile ? 1.5 : 2 }} />
+					</Box>
+				)}
 
-			{/* Поля секции */}
-			{section.fields?.map((field) => (
-				<Box
-					key={field._id || field.name}
-					sx={{ 
-						mb: fieldSpacing
-					}}
-				>
-					<FormField
-						field={field}
-						value={values[field.name]}
-						onChange={onFieldChange}
-						error={getFieldError(field.name)}
-						compact={compact || isMobile}
-						isMobile={isMobile}
-						preloadedOptions={preloadedOptions?.[field.name]}
-					/>
-				</Box>
-			))}
-		</Box>
-	)
-}, (prevProps, nextProps) => {
-	// Кастомная функция сравнения для оптимизации React.memo
-	return (
-		prevProps.section.title === nextProps.section.title &&
-		JSON.stringify(prevProps.values) === JSON.stringify(nextProps.values) &&
-		prevProps.compact === nextProps.compact &&
-		prevProps.showTitle === nextProps.showTitle &&
-		prevProps.isAdminMode === nextProps.isAdminMode &&
-		JSON.stringify(prevProps.preloadedOptions) === JSON.stringify(nextProps.preloadedOptions)
-	)
-})
+				{/* Поля секции */}
+				{section.fields?.map(field => (
+					<Box
+						key={field._id || field.name}
+						sx={{
+							mb: fieldSpacing,
+						}}
+					>
+						<FormField
+							field={field}
+							value={values[field.name]}
+							onChange={onFieldChange}
+							error={getFieldError(field.name)}
+							compact={compact || isMobile}
+							isMobile={isMobile}
+							preloadedOptions={preloadedOptions?.[field.name]}
+							showCopyButton={showCopyButton}
+						/>
+					</Box>
+				))}
+			</Box>
+		)
+	},
+	(prevProps, nextProps) => {
+		// Кастомная функция сравнения для оптимизации React.memo
+		return (
+			prevProps.section.title === nextProps.section.title &&
+			JSON.stringify(prevProps.values) === JSON.stringify(nextProps.values) &&
+			prevProps.compact === nextProps.compact &&
+			prevProps.showTitle === nextProps.showTitle &&
+			prevProps.isAdminMode === nextProps.isAdminMode &&
+			prevProps.showCopyButton === nextProps.showCopyButton &&
+			JSON.stringify(prevProps.preloadedOptions) ===
+				JSON.stringify(nextProps.preloadedOptions)
+		)
+	}
+)

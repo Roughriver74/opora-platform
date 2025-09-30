@@ -376,6 +376,7 @@ const MobileBetoneForm: React.FC<BetoneFormProps> = ({
 										preloadedOptions={preloadedOptions}
 										isAdminMode={isAdminMode}
 										onSectionTitleChange={handleSectionTitleChange}
+										showCopyButton={true}
 									/>
 								</Box>
 							</Collapse>
@@ -428,6 +429,7 @@ const MobileBetoneForm: React.FC<BetoneFormProps> = ({
 					preloadedOptions={preloadedOptions}
 					isAdminMode={isAdminMode}
 					onSectionTitleChange={handleSectionTitleChange}
+					showCopyButton={true}
 				/>
 				<SubmitButton submitting={submitting} variant='primary' fullWidth />
 			</Box>

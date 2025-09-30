@@ -70,7 +70,12 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 		scrollToTop,
 		handleFieldChange,
 		getFieldError,
-	} = useBetoneForm(form.id || form._id || '', fields, editData, preloadedOptions)
+	} = useBetoneForm(
+		form.id || form._id || '',
+		fields,
+		editData,
+		preloadedOptions
+	)
 
 	// Автоматическое переключение на мобильную версию для небольших экранов
 	if (isMobile || isTablet) {
@@ -377,7 +382,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 																	cursor: 'pointer',
 																	ml: 1,
 																	opacity: 0.7,
-																	'&:hover': { 
+																	'&:hover': {
 																		opacity: 1,
 																		backgroundColor: 'rgba(0, 0, 0, 0.04)',
 																	},
@@ -444,6 +449,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 												preloadedOptions={preloadedOptions}
 												isAdminMode={isAdminMode}
 												onSectionTitleChange={handleSectionTitleChange}
+												showCopyButton={true}
 											/>
 										</AccordionDetails>
 									</Accordion>

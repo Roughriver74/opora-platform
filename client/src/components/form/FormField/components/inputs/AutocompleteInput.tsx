@@ -11,8 +11,10 @@ import {
 	Autocomplete,
 	TextField,
 	CircularProgress,
+	Box,
 } from '@mui/material'
 import { FieldInputProps } from '../../types'
+import { CopyButton } from '../CopyButton'
 
 // Константы для текстов
 const FIELD_TEXTS = {
@@ -39,6 +41,8 @@ export const AutocompleteInput = forwardRef<
 			options = [],
 			loading = false,
 			onSearchChange,
+			isMobile = false,
+			showCopyButton = false,
 		},
 		ref
 	) => {
@@ -133,45 +137,53 @@ export const AutocompleteInput = forwardRef<
 		)
 
 		return (
-			<FormControl fullWidth margin={compact ? 'dense' : 'normal'}>
-				<Autocomplete
-					id={field.name}
-					value={selectedOption}
-					inputValue={inputValue}
-					onInputChange={handleInputChange}
-					onChange={handleChange}
-					options={options}
-					getOptionLabel={option => option?.label || ''}
-					loading={loading}
-					size={compact ? 'small' : 'medium'}
-					renderInput={params => (
-						<TextField
-							{...params}
-							label={field.label}
-							placeholder={field.placeholder || ''}
-							error={!!error}
-							helperText={error}
-							required={field.required}
-							size={compact ? 'small' : 'medium'}
-							onPaste={handlePaste}
-							InputProps={{
-								...params.InputProps,
-								endAdornment: (
-									<>
-										{loading ? (
-											<CircularProgress color='inherit' size={20} />
-										) : null}
-										{params.InputProps.endAdornment}
-									</>
-								),
-							}}
-						/>
-					)}
-					noOptionsText={FIELD_TEXTS.NO_OPTIONS}
-					loadingText={FIELD_TEXTS.LOADING}
-					filterOptions={x => x}
-				/>
-			</FormControl>
+			<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+				<FormControl
+					fullWidth
+					margin={compact || isMobile ? 'dense' : 'normal'}
+				>
+					<Autocomplete
+						id={field.name}
+						value={selectedOption}
+						inputValue={inputValue}
+						onInputChange={handleInputChange}
+						onChange={handleChange}
+						options={options}
+						getOptionLabel={option => option?.label || ''}
+						loading={loading}
+						size={isMobile ? 'small' : compact ? 'small' : 'medium'}
+						renderInput={params => (
+							<TextField
+								{...params}
+								label={field.label}
+								placeholder={field.placeholder || ''}
+								error={!!error}
+								helperText={error}
+								required={field.required}
+								size={isMobile ? 'small' : compact ? 'small' : 'medium'}
+								onPaste={handlePaste}
+								InputProps={{
+									...params.InputProps,
+									endAdornment: (
+										<>
+											{loading ? (
+												<CircularProgress color='inherit' size={20} />
+											) : null}
+											{params.InputProps.endAdornment}
+										</>
+									),
+								}}
+							/>
+						)}
+						noOptionsText={FIELD_TEXTS.NO_OPTIONS}
+						loadingText={FIELD_TEXTS.LOADING}
+						filterOptions={x => x}
+					/>
+				</FormControl>
+				{showCopyButton && (
+					<CopyButton value={value} compact={compact} isMobile={isMobile} />
+				)}
+			</Box>
 		)
 	}
 )

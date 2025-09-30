@@ -672,7 +672,7 @@ const MySubmissions = () => {
 								Bitrix ID: {submission.bitrixDealId || 'Не указан'}
 							</Typography>
 							<Typography variant='body2' color='text.secondary'>
-								User: {submission.userName || 'Анонимная заявка'}
+								User: {submission.userEmail || 'Анонимная заявка'}
 							</Typography>
 						</Box>
 						<Chip

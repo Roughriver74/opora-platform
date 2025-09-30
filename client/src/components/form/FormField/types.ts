@@ -8,6 +8,7 @@ export interface FormFieldProps {
 	compact?: boolean
 	preloadedOptions?: FormFieldOption[]
 	isMobile?: boolean
+	showCopyButton?: boolean
 }
 
 export interface FieldInputProps {
@@ -20,6 +21,7 @@ export interface FieldInputProps {
 	loading?: boolean
 	onSearchChange?: (query: string) => void
 	isMobile?: boolean
+	showCopyButton?: boolean
 }
 
 export interface DynamicOptionsConfig {
