@@ -94,6 +94,61 @@ sleep 15
 echo "🔍 Проверка статуса контейнеров..."
 docker compose ps
 
+# Инициализация базы данных
+echo "🗄️ Инициализация базы данных..."
+sleep 5  # Даем время PostgreSQL полностью запуститься
+
+# Проверяем, что PostgreSQL доступен
+if docker exec beton_postgres pg_isready -U beton_user -d beton_crm >/dev/null 2>&1; then
+    echo "✅ PostgreSQL доступен"
+    
+    # Проверяем, есть ли таблицы в базе данных
+    TABLE_COUNT=$(docker exec -e PGPASSWORD=beton_password_secure_2025 beton_postgres psql -U beton_user -d beton_crm -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name != 'migrations';" 2>/dev/null | xargs || echo "0")
+    
+    if [ "$TABLE_COUNT" = "0" ]; then
+        echo "📋 Создание базовых таблиц..."
+        
+        # Выполняем SQL скрипт инициализации
+        if docker exec -i -e PGPASSWORD=beton_password_secure_2025 beton_postgres psql -U beton_user -d beton_crm < server/src/database/scripts/init-db.sql >/dev/null 2>&1; then
+            echo "✅ Базовые таблицы созданы"
+            
+            # Перемещаем таблицы в схему public (если они создались в beton)
+            docker exec -e PGPASSWORD=beton_password_secure_2025 beton_postgres psql -U beton_user -d beton_crm -c "
+                DO \$\$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'beton' AND table_name = 'users') THEN
+                        ALTER TABLE beton.users SET SCHEMA public;
+                        ALTER TABLE beton.forms SET SCHEMA public;
+                        ALTER TABLE beton.form_fields SET SCHEMA public;
+                        ALTER TABLE beton.submissions SET SCHEMA public;
+                        ALTER TABLE beton.submission_history SET SCHEMA public;
+                        ALTER TABLE beton.admin_tokens SET SCHEMA public;
+                        ALTER TABLE beton.settings SET SCHEMA public;
+                    END IF;
+                END
+                \$\$;
+            " >/dev/null 2>&1
+            
+            echo "✅ Таблицы перемещены в схему public"
+        else
+            echo "⚠️ Предупреждение: Не удалось создать базовые таблицы"
+        fi
+    else
+        echo "✅ Таблицы уже существуют ($TABLE_COUNT таблиц)"
+    fi
+    
+    # Выполняем миграции TypeORM
+    echo "🔄 Выполнение миграций TypeORM..."
+    if docker exec beton_backend npm run migration:run:prod >/dev/null 2>&1; then
+        echo "✅ Миграции TypeORM выполнены успешно"
+    else
+        echo "⚠️ Предупреждение: Не удалось выполнить миграции TypeORM"
+        echo "   Возможно потребуется запустить их вручную: docker exec beton_backend npm run migration:run:prod"
+    fi
+else
+    echo "⚠️ PostgreSQL недоступен, пропускаем инициализацию БД"
+fi
+
 # Проверка работоспособности API
 echo "🔍 Проверка health endpoint..."
 sleep 3

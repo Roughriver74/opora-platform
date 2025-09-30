@@ -207,7 +207,7 @@ check_local_services() {
     check_local_containers
     
     # Проверка подключения к локальной БД
-    if docker exec $LOCAL_POSTGRES_CONTAINER pg_isready -U $LOCAL_DB_USER -d $LOCAL_DB_NAME >/dev/null 2>&1; then
+    if docker exec -e PGPASSWORD=beton_password_secure_2025 $LOCAL_POSTGRES_CONTAINER pg_isready -U $LOCAL_DB_USER -d $LOCAL_DB_NAME >/dev/null 2>&1; then
         echo -e "${GREEN}✅ Локальная PostgreSQL БД доступна${NC}"
     else
         echo -e "${RED}❌ Локальная PostgreSQL БД недоступна${NC}"
@@ -304,7 +304,7 @@ backup_local_db() {
     local backup_file="local_backup_${TIMESTAMP}.sql"
     local backup_path="$BACKUP_DIR/$backup_file"
     
-    if docker exec $LOCAL_POSTGRES_CONTAINER pg_dump -U $LOCAL_DB_USER -d $LOCAL_DB_NAME --clean --if-exists > "$backup_path" 2>/dev/null; then
+    if docker exec -e PGPASSWORD=beton_password_secure_2025 $LOCAL_POSTGRES_CONTAINER pg_dump -U $LOCAL_DB_USER -d $LOCAL_DB_NAME --clean --if-exists > "$backup_path" 2>/dev/null; then
         echo -e "${GREEN}✅ Бэкап локальной БД создан: $backup_file${NC}"
         echo -e "${CYAN}   Размер: $(du -h "$backup_path" | cut -f1)${NC}"
         log_operation "Бэкап локальной БД успешно создан: $backup_file"
@@ -321,7 +321,7 @@ get_db_stats() {
     local db_type="$1"  # "local" или "server"
     
     if [ "$db_type" = "local" ]; then
-        docker exec $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -t -c "
+        docker exec -e PGPASSWORD=beton_password_secure_2025 $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -t -c "
             SELECT 
                 schemaname,
                 tablename,
@@ -446,21 +446,21 @@ pull_database() {
     echo ""
     echo -e "${BLUE}📂 Восстановление дампа в локальную БД...${NC}"
     
-    if docker exec -i $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME < "$temp_dump" >/dev/null 2>&1; then
+    if docker exec -i -e PGPASSWORD=beton_password_secure_2025 $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME < "$temp_dump" >/dev/null 2>&1; then
         echo -e "${GREEN}✅ База данных успешно восстановлена${NC}"
         
         # Запуск миграций для синхронизации схемы
         echo -e "${BLUE}🔄 Запуск миграций TypeORM для синхронизации схемы...${NC}"
-        if docker exec $LOCAL_BACKEND_CONTAINER npm run migration:run >/dev/null 2>&1; then
+        if docker exec $LOCAL_BACKEND_CONTAINER npm run migration:run:prod >/dev/null 2>&1; then
             echo -e "${GREEN}✅ Миграции успешно выполнены${NC}"
         else
             echo -e "${YELLOW}⚠️ Предупреждение: Не удалось запустить миграции${NC}"
-            echo -e "${YELLOW}   Возможно потребуется запустить их вручную: npm run migration:run${NC}"
+            echo -e "${YELLOW}   Возможно потребуется запустить их вручную: npm run migration:run:prod${NC}"
         fi
         
         # Проверка целостности схемы
         echo -e "${BLUE}🔍 Проверка целостности схемы БД...${NC}"
-        if docker exec $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" >/dev/null 2>&1; then
+        if docker exec -e PGPASSWORD=beton_password_secure_2025 $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" >/dev/null 2>&1; then
             echo -e "${GREEN}✅ Схема БД проверена и готова к работе${NC}"
         fi
         
@@ -469,10 +469,10 @@ pull_database() {
         echo -e "${BLUE}📊 Статистика синхронизированных данных:${NC}"
         
         # Получаем статистику по таблицам
-        local users_count=$(docker exec $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | xargs || echo "0")
-        local submissions_count=$(docker exec $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -t -c "SELECT COUNT(*) FROM submissions;" 2>/dev/null | xargs || echo "0")
-        local forms_count=$(docker exec $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -t -c "SELECT COUNT(*) FROM forms;" 2>/dev/null | xargs || echo "0")
-        local fields_count=$(docker exec $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -t -c "SELECT COUNT(*) FROM form_fields;" 2>/dev/null | xargs || echo "0")
+        local users_count=$(docker exec -e PGPASSWORD=beton_password_secure_2025 $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | xargs || echo "0")
+        local submissions_count=$(docker exec -e PGPASSWORD=beton_password_secure_2025 $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -t -c "SELECT COUNT(*) FROM submissions;" 2>/dev/null | xargs || echo "0")
+        local forms_count=$(docker exec -e PGPASSWORD=beton_password_secure_2025 $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -t -c "SELECT COUNT(*) FROM forms;" 2>/dev/null | xargs || echo "0")
+        local fields_count=$(docker exec -e PGPASSWORD=beton_password_secure_2025 $LOCAL_POSTGRES_CONTAINER psql -U $LOCAL_DB_USER -d $LOCAL_DB_NAME -t -c "SELECT COUNT(*) FROM form_fields;" 2>/dev/null | xargs || echo "0")
         
         echo -e "${GREEN}   ✓ Пользователи: $users_count${NC}"
         echo -e "${GREEN}   ✓ Заявки: $submissions_count${NC}"  
@@ -591,7 +591,7 @@ compare_schemas() {
     local prod_schema="$BACKUP_DIR/prod_schema_${TIMESTAMP}.sql"
     
     echo -e "${BLUE}📋 Получение схемы локальной БД...${NC}"
-    if docker exec $LOCAL_POSTGRES_CONTAINER pg_dump -U $LOCAL_DB_USER -d $LOCAL_DB_NAME --schema-only --no-owner --no-privileges > "$local_schema" 2>/dev/null; then
+    if docker exec -e PGPASSWORD=beton_password_secure_2025 $LOCAL_POSTGRES_CONTAINER pg_dump -U $LOCAL_DB_USER -d $LOCAL_DB_NAME --schema-only --no-owner --no-privileges > "$local_schema" 2>/dev/null; then
         echo -e "${GREEN}✅ Схема локальной БД получена${NC}"
     else
         echo -e "${RED}❌ Ошибка получения схемы локальной БД${NC}"

@@ -309,11 +309,17 @@ class ElasticsearchService {
 									product_synonyms: {
 										type: 'synonym',
 										synonyms: [
-											'бетон,цемент,раствор,смесь',
+											'бетон,цемент,смесь', // Убираем раствор из синонимов бетона
+											'раствор,строительный раствор,цементный раствор', // Отдельная группа для растворов
 											'песок,песчаный,песчаная,песок речной',
 											'щебень,гравий,камень,каменная крошка',
 											'арматура,металл,сталь,железо',
 											'доставка,транспорт,перевозка,логистика',
+											// Специальные синонимы для марок бетона
+											'в25,в-25,бетон в25,бетон в-25,марка в25',
+											'в30,в-30,бетон в30,бетон в-30,марка в30',
+											'в35,в-35,бетон в35,бетон в-35,марка в35',
+											'в40,в-40,бетон в40,бетон в-40,марка в40',
 											'м300,м-300,марка 300,бетон м300',
 											'м400,м-400,марка 400,бетон м400',
 											'м500,м-500,марка 500,бетон м500',
@@ -593,6 +599,19 @@ class ElasticsearchService {
 							},
 						},
 						functions: [
+							// Бустинг для точных совпадений марок бетона
+							{
+								filter: {
+									bool: {
+										should: [
+											{ regexp: { 'name.exact': '.*в[0-9]+.*' } },
+											{ regexp: { 'name.exact': '.*м[0-9]+.*' } },
+											{ regexp: { 'name.exact': '.*марка.*[0-9]+.*' } },
+										],
+									},
+								},
+								weight: 2.0, // Высокий бустинг для марок бетона
+							},
 							// Бустинг для новых документов
 							{
 								filter: {
@@ -672,6 +691,11 @@ class ElasticsearchService {
 				// Проверяем, является ли запрос числовым Bitrix ID
 				const isNumericBitrixId = /^\d+$/.test(originalQuery)
 
+				// Проверяем, является ли запрос маркой бетона
+				const isConcreteGrade =
+					/^[вм][0-9]+$/i.test(originalQuery) ||
+					/^марка\s*[вм][0-9]+$/i.test(originalQuery)
+
 				if (isNumericBitrixId) {
 					// Для числовых ID ищем точное совпадение в поле bitrixId или inn
 					searchBody.query.function_score.query.bool.must.push({
@@ -683,6 +707,10 @@ class ElasticsearchService {
 							minimum_should_match: 1,
 						},
 					})
+				} else if (isConcreteGrade) {
+					// Специальная обработка для марок бетона
+					const searchQuery = this.buildConcreteGradeSearchQuery(originalQuery)
+					searchBody.query.function_score.query.bool.must.push(searchQuery)
 				} else {
 					// Оптимизированная стратегия поиска в зависимости от длины запроса
 					const searchQuery = this.buildOptimizedSearchQuery(
@@ -782,6 +810,91 @@ class ElasticsearchService {
 	}
 
 	/**
+	 * Построение специального поискового запроса для марок бетона
+	 */
+	private buildConcreteGradeSearchQuery(originalQuery: string): any {
+		const queryLower = originalQuery.toLowerCase()
+
+		return {
+			bool: {
+				should: [
+					// Максимальный приоритет для точного совпадения в exact поле
+					{
+						match: {
+							'name.exact': {
+								query: queryLower,
+								boost: 50, // Очень высокий boost для точных совпадений марок
+							},
+						},
+					},
+					// Высокий приоритет для точного совпадения в названии
+					{
+						match_phrase: {
+							name: {
+								query: queryLower,
+								boost: 30,
+							},
+						},
+					},
+					// Поиск с учетом различных форматов записи марки
+					{
+						bool: {
+							should: [
+								// В25, В-25, бетон В25
+								{
+									match: {
+										name: {
+											query: queryLower,
+											boost: 25,
+										},
+									},
+								},
+								// Поиск с дефисом
+								{
+									match: {
+										name: {
+											query: queryLower.replace(/([вм])(\d+)/, '$1-$2'),
+											boost: 20,
+										},
+									},
+								},
+								// Поиск с пробелом
+								{
+									match: {
+										name: {
+											query: queryLower.replace(/([вм])(\d+)/, '$1 $2'),
+											boost: 20,
+										},
+									},
+								},
+								// Поиск с "бетон"
+								{
+									match: {
+										name: {
+											query: `бетон ${queryLower}`,
+											boost: 15,
+										},
+									},
+								},
+							],
+						},
+					},
+					// Wildcard поиск для частичных совпадений
+					{
+						wildcard: {
+							name: {
+								value: `*${queryLower}*`,
+								boost: 10,
+							},
+						},
+					},
+				],
+				minimum_should_match: 1,
+			},
+		}
+	}
+
+	/**
 	 * Построение оптимизированного поискового запроса в зависимости от длины запроса
 	 */
 	private buildOptimizedSearchQuery(
@@ -803,7 +916,7 @@ class ElasticsearchService {
 							match_phrase: {
 								name: {
 									query: queryLower,
-									boost: 12,
+									boost: 20, // Увеличиваем boost для точных совпадений
 								},
 							},
 						},
@@ -934,7 +1047,7 @@ class ElasticsearchService {
 							match: {
 								'name.exact': {
 									query: queryLower,
-									boost: 6,
+									boost: 15, // Увеличиваем boost для точных совпадений
 								},
 							},
 						},

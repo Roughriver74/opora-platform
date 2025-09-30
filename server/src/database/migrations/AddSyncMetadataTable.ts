@@ -4,9 +4,13 @@ export class AddSyncMetadataTable1756000000000 implements MigrationInterface {
 	name = 'AddSyncMetadataTable1756000000000'
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		// Создаем enum для статуса синхронизации
+		// Создаем enum для статуса синхронизации (если не существует)
 		await queryRunner.query(`
-      CREATE TYPE "public"."sync_metadata_status_enum" AS ENUM('idle', 'running', 'completed', 'failed')
+      DO $$ BEGIN
+        CREATE TYPE "public"."sync_metadata_status_enum" AS ENUM('idle', 'running', 'completed', 'failed');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
     `)
 
 		// Создаем таблицу sync_metadata
@@ -75,7 +79,12 @@ export class AddSyncMetadataTable1756000000000 implements MigrationInterface {
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.dropTable('sync_metadata')
-		await queryRunner.query(`DROP TYPE "public"."sync_metadata_status_enum"`)
+		await queryRunner.query(`
+      DO $$ BEGIN
+        DROP TYPE "public"."sync_metadata_status_enum";
+      EXCEPTION
+        WHEN undefined_object THEN null;
+      END $$;
+    `)
 	}
 }
-

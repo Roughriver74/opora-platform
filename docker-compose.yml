@@ -9,7 +9,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-beton_password}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - '${DB_PORT:-5489}:5432'
+      # Доступ только через localhost (туннель)
+      - '127.0.0.1:${DB_PORT:-5489}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # - ./server/src/database/scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
@@ -25,8 +26,9 @@ services:
     image: redis:7-alpine
     container_name: beton_redis
     restart: unless-stopped
-    ports:
-      - '${REDIS_PORT:-6396}:6379'
+    # Убираем внешний доступ - Redis доступен только внутри Docker сети
+    # ports:
+    #   - '${REDIS_PORT:-6396}:6379'
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes

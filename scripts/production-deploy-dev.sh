@@ -23,21 +23,58 @@ echo -e "${BLUE}1. Проверка локальной базы данных...$
 LOCAL_DB_AVAILABLE=false
 LOCAL_DB_TYPE=""
 
+# Загружаем переменные окружения для БД
+if [ -f ".env" ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
+# Если пароль не найден в .env, запрашиваем его интерактивно
+if [ -z "$POSTGRES_PASSWORD" ]; then
+    echo -e "${YELLOW}Пароль для PostgreSQL не найден в .env файле${NC}"
+    echo -e "${BLUE}Введите пароль для подключения к локальной БД (или нажмите Enter для пропуска):${NC}"
+    read -s POSTGRES_PASSWORD
+    if [ -n "$POSTGRES_PASSWORD" ]; then
+        echo -e "${GREEN}✓ Пароль получен${NC}"
+    else
+        echo -e "${YELLOW}⚠️ Подключение без пароля${NC}"
+    fi
+fi
+
 # Проверяем Docker PostgreSQL
 if docker ps --format "table {{.Names}}" | grep -q "beton_postgres"; then
-    if docker exec beton_postgres psql -U beton_user -d beton_crm -c "SELECT 1;" &>/dev/null; then
-        echo -e "${GREEN}✅ Docker PostgreSQL доступен${NC}"
-        LOCAL_DB_AVAILABLE=true
-        LOCAL_DB_TYPE="docker"
+    # Пробуем подключиться с паролем из переменных окружения
+    if [ -n "$POSTGRES_PASSWORD" ]; then
+        if PGPASSWORD="$POSTGRES_PASSWORD" docker exec beton_postgres psql -U beton_user -d beton_crm -c "SELECT 1;" &>/dev/null; then
+            echo -e "${GREEN}✅ Docker PostgreSQL доступен (с паролем)${NC}"
+            LOCAL_DB_AVAILABLE=true
+            LOCAL_DB_TYPE="docker"
+        fi
+    else
+        # Пробуем без пароля
+        if docker exec beton_postgres psql -U beton_user -d beton_crm -c "SELECT 1;" &>/dev/null; then
+            echo -e "${GREEN}✅ Docker PostgreSQL доступен (без пароля)${NC}"
+            LOCAL_DB_AVAILABLE=true
+            LOCAL_DB_TYPE="docker"
+        fi
     fi
 fi
 
 # Проверяем системную PostgreSQL
 if [ "$LOCAL_DB_AVAILABLE" = false ] && command -v psql &> /dev/null; then
-    if psql -h localhost -U postgres -d beton_crm -c "SELECT 1;" &>/dev/null; then
-        echo -e "${GREEN}✅ Системная PostgreSQL доступна${NC}"
-        LOCAL_DB_AVAILABLE=true
-        LOCAL_DB_TYPE="system"
+    # Пробуем с паролем из переменных окружения
+    if [ -n "$POSTGRES_PASSWORD" ]; then
+        if PGPASSWORD="$POSTGRES_PASSWORD" psql -h localhost -U postgres -d beton_crm -c "SELECT 1;" &>/dev/null; then
+            echo -e "${GREEN}✅ Системная PostgreSQL доступна (с паролем)${NC}"
+            LOCAL_DB_AVAILABLE=true
+            LOCAL_DB_TYPE="system"
+        fi
+    else
+        # Пробуем без пароля
+        if psql -h localhost -U postgres -d beton_crm -c "SELECT 1;" &>/dev/null; then
+            echo -e "${GREEN}✅ Системная PostgreSQL доступна (без пароля)${NC}"
+            LOCAL_DB_AVAILABLE=true
+            LOCAL_DB_TYPE="system"
+        fi
     fi
 fi
 
@@ -253,51 +290,12 @@ docker-compose exec -T backend curl -X POST http://localhost:5001/api/incrementa
 echo "Деплой завершен!"
 ENDSSH
 
-# Создание дампа локальной БД и восстановление на сервере
+# Синхронизация базы данных
 if [ "$LOCAL_DB_AVAILABLE" = true ]; then
     echo -e "${BLUE}8. Синхронизация базы данных...${NC}"
-    
-    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-    BACKUP_FILE="local_to_dev_backup_${TIMESTAMP}.sql"
-    LOCAL_DUMP_FILE="/tmp/beton_crm_dump_${TIMESTAMP}.sql"
-    
-    # Создание дампа
-    if [ "$LOCAL_DB_TYPE" = "docker" ]; then
-        docker exec beton_postgres pg_dump -U beton_user -d beton_crm --clean --if-exists > "$LOCAL_DUMP_FILE" 2>/dev/null
-    elif [ "$LOCAL_DB_TYPE" = "system" ]; then
-        pg_dump -h localhost -U postgres -d beton_crm --clean --if-exists > "$LOCAL_DUMP_FILE" 2>/dev/null
-    fi
-    
-    if [ -f "$LOCAL_DUMP_FILE" ] && [ -s "$LOCAL_DUMP_FILE" ]; then
-        echo -e "${GREEN}✅ Дамп локальной БД создан${NC}"
-        
-        # Копирование на сервер
-        scp -o StrictHostKeyChecking=no "$LOCAL_DUMP_FILE" $SERVER_USER@$SERVER_IP:$APP_DIR/backups/db-sync/$BACKUP_FILE 2>/dev/null
-        
-        # Восстановление на сервере
-        ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP "cd $APP_DIR && mkdir -p backups/db-sync && docker-compose exec -T postgres psql -U beton_user -d beton_crm < backups/db-sync/$BACKUP_FILE" 2>/dev/null
-        
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✅ База данных восстановлена на сервере${NC}"
-            
-            # Показываем статистику
-            USERS_COUNT=$(ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP "cd $APP_DIR && docker exec beton_postgres psql -U beton_user -d beton_crm -t -c 'SELECT COUNT(*) FROM users;'" 2>/dev/null | xargs || echo "0")
-            SUBMISSIONS_COUNT=$(ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP "cd $APP_DIR && docker exec beton_postgres psql -U beton_user -d beton_crm -t -c 'SELECT COUNT(*) FROM submissions;'" 2>/dev/null | xargs || echo "0")
-            FORMS_COUNT=$(ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP "cd $APP_DIR && docker exec beton_postgres psql -U beton_user -d beton_crm -t -c 'SELECT COUNT(*) FROM forms;'" 2>/dev/null | xargs || echo "0")
-            
-            echo -e "${GREEN}📊 Статистика восстановленных данных:${NC}"
-            echo -e "   ✓ Пользователи: $USERS_COUNT"
-            echo -e "   ✓ Заявки: $SUBMISSIONS_COUNT"
-            echo -e "   ✓ Формы: $FORMS_COUNT"
-        else
-            echo -e "${YELLOW}⚠️ Ошибка восстановления БД${NC}"
-        fi
-        
-        # Удаление локального дампа
-        rm -f "$LOCAL_DUMP_FILE"
-    else
-        echo -e "${YELLOW}⚠️ Не удалось создать дамп локальной БД${NC}"
-    fi
+    echo -e "${YELLOW}Используйте отдельный скрипт для синхронизации БД:${NC}"
+    echo -e "${BLUE}  ./scripts/sync-db-to-dev.sh${NC}"
+    echo -e "${YELLOW}⚠️ Продолжаем деплой без синхронизации БД${NC}"
 else
     echo -e "${YELLOW}⚠️ Локальная БД недоступна - используется пустая БД на сервере${NC}"
 fi
@@ -342,7 +340,7 @@ echo -e "${YELLOW}Для просмотра логов: ${BLUE}ssh $SERVER_USER@
 echo ""
 echo -e "${GREEN}📊 База данных:${NC}"
 if [ "$LOCAL_DB_AVAILABLE" = true ]; then
-    echo -e "  ✅ Данные синхронизированы с локальной машины"
+    echo -e "  ⚠️ Для синхронизации БД используйте: ${BLUE}./scripts/sync-db-to-dev.sh${NC}"
 else
     echo -e "  ✅ Создана пустая база данных на сервере"
 fi

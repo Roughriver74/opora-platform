@@ -25,7 +25,9 @@
 		"reindex:bitrix": "ts-node --transpile-only src/scripts/reindexWithBitrixIdNew.ts",
 		"reindex:bitrix:prod": "node dist/scripts/reindexWithBitrixIdNew.js",
 		"reindex:bitrix:old": "ts-node --transpile-only src/scripts/reindexWithBitrixId.ts",
-		"reindex:bitrix:old:prod": "node dist/scripts/reindexWithBitrixId.js"
+		"reindex:bitrix:old:prod": "node dist/scripts/reindexWithBitrixId.js",
+		"reindex:improved": "ts-node --transpile-only src/scripts/reindexWithImprovedScoring.ts",
+		"test:search": "ts-node --transpile-only src/scripts/testSearchImprovements.ts"
 	},
 	"keywords": [],
 	"author": "",

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useFormik } from 'formik'
+import { useNavigate } from 'react-router-dom'
 import { FormField as FormFieldType } from '../../../../types'
 import { SubmitResult } from '../types'
-import { SubmissionService } from '../../../../services/submissionService'
+import { Submission, SubmissionService } from '../../../../services/submissionService'
 import {
 	generateValidationSchema,
 	generateInitialValues,
@@ -34,6 +35,7 @@ export const useBetoneForm = (
 	const [submitting, setSubmitting] = useState(false)
 	const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null)
 	const { showSuccess, showError } = useNotificationHelpers()
+	const navigate = useNavigate()
 
 	// Инициализация formik с оптимизированными настройками
 	const formik = useFormik({
@@ -41,7 +43,7 @@ export const useBetoneForm = (
 		validationSchema: generateValidationSchema(fields),
 		validateOnChange: false, // Отключаем валидацию при каждом изменении
 		validateOnBlur: true, // Включаем валидацию только при blur
-		onSubmit: async values => {
+		onSubmit: async (values: Record<string, any> | Partial<Submission>) => {
 			setSubmitting(true)
 			setSubmitResult(null)
 
@@ -80,9 +82,9 @@ export const useBetoneForm = (
 						title: editData?.submissionId ? 'Обновлено!' : 'Отправлено!',
 						autoHideDuration: 3000,
 						onAfterHide: () => {
-							// Обновляем страницу только для новых заявок, не для редактирования
+							// Перенаправляем на страницу "Мои заявки" только для новых заявок, не для редактирования
 							if (!editData?.submissionId) {
-								window.location.reload()
+								navigate('/my-submissions')
 							}
 						},
 					})
