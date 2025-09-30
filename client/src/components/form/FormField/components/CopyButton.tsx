@@ -83,7 +83,7 @@ export const CopyButton: React.FC<CopyButtonProps> = React.memo(
 						disabled={disabled || !value}
 						sx={{
 							padding: isMobile ? '4px' : compact ? '6px' : '8px',
-							marginLeft: '4px',
+							marginLeft: '4px', marginBottom: '4px',
 							'&:hover': {
 								backgroundColor: 'action.hover',
 							},

@@ -8,8 +8,13 @@ import {
 	Tooltip,
 	useTheme,
 	useMediaQuery,
+	Dialog,
+	DialogTitle,
+	DialogContent,
+	DialogActions,
+	Button,
 } from '@mui/material'
-import { Edit, Save, Cancel } from '@mui/icons-material'
+import { Edit, Save, Cancel, ClearAll } from '@mui/icons-material'
 import FormField from '../../FormField'
 import { FormSection as FormSectionType } from '../types'
 import { FormField as FormFieldType } from '../../../../types'
@@ -26,6 +31,8 @@ interface FormSectionProps {
 	isAdminMode?: boolean
 	onSectionTitleChange?: (sectionId: string, newTitle: string) => void
 	showCopyButton?: boolean
+	onClearSection?: (sectionIndex: number) => void
+	sectionIndex?: number
 }
 
 export const FormSection: React.FC<FormSectionProps> = React.memo(
@@ -40,12 +47,15 @@ export const FormSection: React.FC<FormSectionProps> = React.memo(
 		isAdminMode = false,
 		onSectionTitleChange,
 		showCopyButton = false,
+		onClearSection,
+		sectionIndex,
 	}) => {
 		const theme = useTheme()
 		const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
 		const [isEditingTitle, setIsEditingTitle] = useState(false)
 		const [tempTitle, setTempTitle] = useState(section.title)
+		const [showClearConfirm, setShowClearConfirm] = useState(false)
 
 		const handleStartEditing = () => {
 			setTempTitle(section.title)
@@ -75,6 +85,21 @@ export const FormSection: React.FC<FormSectionProps> = React.memo(
 			} else if (event.key === 'Escape') {
 				handleCancelEditing()
 			}
+		}
+
+		const handleClearSection = () => {
+			if (onClearSection && sectionIndex !== undefined) {
+				onClearSection(sectionIndex)
+				setShowClearConfirm(false)
+			}
+		}
+
+		const handleClearConfirm = () => {
+			setShowClearConfirm(true)
+		}
+
+		const handleClearCancel = () => {
+			setShowClearConfirm(false)
 		}
 
 		// Мемоизированные отступы для полей
@@ -166,6 +191,17 @@ export const FormSection: React.FC<FormSectionProps> = React.memo(
 										</IconButton>
 									</Tooltip>
 								)}
+								{onClearSection && sectionIndex !== undefined && (
+									<Tooltip title='Очистить раздел'>
+										<IconButton
+											onClick={handleClearConfirm}
+											size='small'
+											color='warning'
+										>
+											<ClearAll />
+										</IconButton>
+									</Tooltip>
+								)}
 							</Box>
 						)}
 						<Divider sx={{ mb: isMobile ? 1.5 : 2 }} />
@@ -192,6 +228,34 @@ export const FormSection: React.FC<FormSectionProps> = React.memo(
 						/>
 					</Box>
 				))}
+
+				{/* Диалог подтверждения очистки */}
+				<Dialog
+					open={showClearConfirm}
+					onClose={handleClearCancel}
+					maxWidth='sm'
+					fullWidth
+				>
+					<DialogTitle>Подтверждение очистки</DialogTitle>
+					<DialogContent>
+						<Typography>
+							Вы уверены, что хотите очистить все поля в разделе "
+							{section.title}"? Это действие нельзя отменить.
+						</Typography>
+					</DialogContent>
+					<DialogActions>
+						<Button onClick={handleClearCancel} color='primary'>
+							Отмена
+						</Button>
+						<Button
+							onClick={handleClearSection}
+							color='warning'
+							variant='contained'
+						>
+							Очистить
+						</Button>
+					</DialogActions>
+				</Dialog>
 			</Box>
 		)
 	},
@@ -204,6 +268,8 @@ export const FormSection: React.FC<FormSectionProps> = React.memo(
 			prevProps.showTitle === nextProps.showTitle &&
 			prevProps.isAdminMode === nextProps.isAdminMode &&
 			prevProps.showCopyButton === nextProps.showCopyButton &&
+			prevProps.sectionIndex === nextProps.sectionIndex &&
+			prevProps.onClearSection === nextProps.onClearSection &&
 			JSON.stringify(prevProps.preloadedOptions) ===
 				JSON.stringify(nextProps.preloadedOptions)
 		)

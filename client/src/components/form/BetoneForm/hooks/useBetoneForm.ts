@@ -40,7 +40,7 @@ export const useBetoneForm = (
 		initialValues: generateInitialValues(fields, editData?.formData),
 		validationSchema: generateValidationSchema(fields),
 		validateOnChange: false, // Отключаем валидацию при каждом изменении
-		validateOnBlur: true,    // Включаем валидацию только при blur
+		validateOnBlur: true, // Включаем валидацию только при blur
 		onSubmit: async values => {
 			setSubmitting(true)
 			setSubmitResult(null)
@@ -69,7 +69,8 @@ export const useBetoneForm = (
 				}
 
 				if (result.success) {
-					const successMessage = (result as any).message ||
+					const successMessage =
+						(result as any).message ||
 						(editData?.submissionId
 							? 'Заявка успешно обновлена!'
 							: 'Заявка успешно отправлена!')
@@ -83,7 +84,7 @@ export const useBetoneForm = (
 							if (!editData?.submissionId) {
 								window.location.reload()
 							}
-						}
+						},
 					})
 
 					// Устанавливаем результат для совместимости с существующими компонентами
@@ -107,7 +108,8 @@ export const useBetoneForm = (
 						}
 					}
 				} else {
-					const errorMessage = (result as any).message ||
+					const errorMessage =
+						(result as any).message ||
 						(editData?.submissionId
 							? 'Произошла ошибка при обновлении заявки.'
 							: 'Произошла ошибка при отправке заявки.')
@@ -126,7 +128,8 @@ export const useBetoneForm = (
 				}
 			} catch (error) {
 				console.error('Ошибка отправки формы:', error)
-				const errorMessage = 'Произошла ошибка при отправке заявки. Попробуйте еще раз.'
+				const errorMessage =
+					'Произошла ошибка при отправке заявки. Попробуйте еще раз.'
 
 				// Показываем глобальное уведомление об ошибке
 				showError(errorMessage, {
@@ -148,16 +151,19 @@ export const useBetoneForm = (
 	// Обновляем значения формы при изменении editData (для копирования и редактирования)
 	useEffect(() => {
 		if (editData?.formData && Object.keys(editData.formData).length > 0) {
-			console.log('[FORM] Обновление значений формы из editData:', editData.formData)
+			console.log(
+				'[FORM] Обновление значений формы из editData:',
+				editData.formData
+			)
 			console.log('[FORM] Режим копирования:', editData.isCopy)
 			console.log('[FORM] Текущие значения formik:', formik.values)
-			
+
 			// Используем setTimeout для обеспечения корректного обновления после рендера
 			setTimeout(() => {
 				// Объединяем текущие значения с новыми данными
 				const newValues = {
 					...formik.values,
-					...editData.formData
+					...editData.formData,
 				}
 				console.log('[FORM] Новые значения для установки:', newValues)
 				formik.setValues(newValues)
@@ -183,6 +189,64 @@ export const useBetoneForm = (
 		sectionsLogic.setExpandedSections?.(new Set([0]))
 	}
 
+	// Метод для очистки конкретной секции
+	const clearSection = (sectionIndex: number) => {
+		const section = sectionsLogic.fieldSections[sectionIndex]
+		if (!section) return
+
+		// Создаем объект с пустыми значениями для полей этой секции
+		const clearedValues: Record<string, any> = {}
+
+		section.fields.forEach(field => {
+			// Определяем значение по умолчанию в зависимости от типа поля
+			switch (field.type) {
+				case 'text':
+				case 'textarea':
+				case 'number':
+					clearedValues[field.name] = ''
+					break
+				case 'select':
+				case 'radio':
+				case 'autocomplete':
+					clearedValues[field.name] = ''
+					break
+				case 'checkbox':
+					clearedValues[field.name] = false
+					break
+				case 'date':
+					clearedValues[field.name] = ''
+					break
+				default:
+					clearedValues[field.name] = ''
+			}
+		})
+
+		// Обновляем значения формы
+		formik.setValues({
+			...formik.values,
+			...clearedValues,
+		})
+
+		// Сбрасываем ошибки валидации для очищенных полей
+		const clearedTouched: Record<string, boolean> = {}
+		const clearedErrors: Record<string, string> = {}
+
+		section.fields.forEach(field => {
+			clearedTouched[field.name] = false
+			delete clearedErrors[field.name]
+		})
+
+		formik.setTouched({
+			...formik.touched,
+			...clearedTouched,
+		})
+
+		formik.setErrors({
+			...formik.errors,
+			...clearedErrors,
+		})
+	}
+
 	return {
 		// Formik
 		formik,
@@ -192,6 +256,7 @@ export const useBetoneForm = (
 		submitResult,
 		clearSubmitResult,
 		resetForm,
+		clearSection,
 
 		// Логика секций
 		...sectionsLogic,

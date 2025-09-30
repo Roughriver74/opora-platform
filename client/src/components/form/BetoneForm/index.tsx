@@ -11,11 +11,12 @@ import {
 	Snackbar,
 	TextField,
 	Tooltip,
+	IconButton,
 	useTheme,
 	useMediaQuery,
 } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import { Edit, Save, Cancel } from '@mui/icons-material'
+import { Edit, Save, Cancel, ClearAll } from '@mui/icons-material'
 import { BetoneFormProps } from './types'
 import { useBetoneForm } from './hooks/useBetoneForm'
 import { getSortedFields } from './utils/sectionHelpers'
@@ -60,6 +61,7 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 		submitResult,
 		clearSubmitResult,
 		resetForm,
+		clearSection,
 		fieldSections,
 		useSectionMode,
 		toggleSectionExpanded,
@@ -362,6 +364,26 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 														})()}
 														)
 													</Typography>
+													{/* Кнопка очистки секции */}
+													<Tooltip title='Очистить раздел'>
+														<IconButton
+															onClick={e => {
+																e.stopPropagation()
+																if (
+																	window.confirm(
+																		`Вы уверены, что хотите очистить все поля в разделе "${section.title}"? Это действие нельзя отменить.`
+																	)
+																) {
+																	clearSection(index)
+																}
+															}}
+															size='small'
+															color='warning'
+															sx={{ ml: 1 }}
+														>
+															<ClearAll />
+														</IconButton>
+													</Tooltip>
 													{isAdminMode && section.id && (
 														<Tooltip title='Редактировать название раздела'>
 															<Box
@@ -450,6 +472,8 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 												isAdminMode={isAdminMode}
 												onSectionTitleChange={handleSectionTitleChange}
 												showCopyButton={true}
+												onClearSection={clearSection}
+												sectionIndex={index}
 											/>
 										</AccordionDetails>
 									</Accordion>
@@ -480,6 +504,8 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 									preloadedOptions={preloadedOptions}
 									isAdminMode={isAdminMode}
 									onSectionTitleChange={handleSectionTitleChange}
+									onClearSection={clearSection}
+									sectionIndex={0}
 								/>
 								<SubmitButton
 									submitting={submitting}

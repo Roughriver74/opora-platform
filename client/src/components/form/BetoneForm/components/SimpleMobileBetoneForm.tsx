@@ -11,6 +11,8 @@ import {
 	Fade,
 	Chip,
 	LinearProgress,
+	IconButton,
+	Tooltip,
 } from '@mui/material'
 import {
 	ExpandMore as ExpandMoreIcon,
@@ -19,6 +21,7 @@ import {
 	Speed as SpeedIcon,
 	CheckCircle as CheckCircleIcon,
 	RadioButtonUnchecked as RadioButtonUncheckedIcon,
+	ClearAll,
 } from '@mui/icons-material'
 import { BetoneFormProps } from '../types'
 import { useBetoneForm } from '../hooks/useBetoneForm'
@@ -108,6 +111,7 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 			collapseAllSections,
 			scrollToTop,
 			resetForm,
+			clearSection,
 			getFieldError,
 			handleFieldChange,
 		} = useBetoneForm(
@@ -328,6 +332,27 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 										</Box>
 									)}
 
+									{/* Кнопка очистки секции */}
+									<Tooltip title='Очистить раздел'>
+										<IconButton
+											onClick={e => {
+												e.stopPropagation()
+												if (
+													window.confirm(
+														`Вы уверены, что хотите очистить все поля в разделе "${section.title}"? Это действие нельзя отменить.`
+													)
+												) {
+													clearSection(index)
+												}
+											}}
+											size='small'
+											color='warning'
+											sx={{ mr: 1 }}
+										>
+											<ClearAll />
+										</IconButton>
+									</Tooltip>
+
 									<Box
 										sx={{
 											color: isExpanded
@@ -393,6 +418,8 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 											preloadedOptions={preloadedOptions}
 											isAdminMode={isAdminMode}
 											showCopyButton={true}
+											onClearSection={clearSection}
+											sectionIndex={index}
 										/>
 									</Box>
 								</Collapse>
@@ -441,6 +468,8 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 						preloadedOptions={preloadedOptions}
 						isAdminMode={isAdminMode}
 						showCopyButton={true}
+						onClearSection={clearSection}
+						sectionIndex={0}
 					/>
 					<SubmitButton submitting={submitting} variant='primary' fullWidth />
 				</Box>
@@ -455,6 +484,7 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 				preloadedOptions,
 				isAdminMode,
 				submitting,
+				clearSection,
 			]
 		)
 
