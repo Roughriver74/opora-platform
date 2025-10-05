@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import {
 	TextField,
 	Box,
@@ -21,6 +21,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import WbSunnyIcon from '@mui/icons-material/WbSunny'
 import Brightness5Icon from '@mui/icons-material/Brightness5'
 import Brightness3Icon from '@mui/icons-material/Brightness3'
+import ClearIcon from '@mui/icons-material/Clear'
 import { FieldInputProps } from '../../types'
 import { getFieldStyles } from '../../utils/fieldStyles'
 
@@ -43,11 +44,11 @@ export const DateInput: React.FC<FieldInputProps> = ({
 
 	// Разбираем существующее значение
 	const parseValue = (dateValue: string) => {
-		if (!dateValue) return { date: '', time: '12:00' }
+		if (!dateValue) return { date: '', time: '' }
 
 		try {
 			const date = new Date(dateValue)
-			if (isNaN(date.getTime())) return { date: '', time: '12:00' }
+			if (isNaN(date.getTime())) return { date: '', time: '' }
 
 			const year = date.getFullYear()
 			const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -60,24 +61,25 @@ export const DateInput: React.FC<FieldInputProps> = ({
 				time: `${hours}:${minutes}`,
 			}
 		} catch {
-			return { date: '', time: '12:00' }
+			return { date: '', time: '' }
 		}
 	}
 
 	const { date, time } = parseValue(value || '')
-	const [selectedTime, setSelectedTime] = useState(time || (includeTime ? '12:00' : '12:00'))
+	const [selectedTime, setSelectedTime] = useState(time || '')
 
-	// Загрузка сохраненных предпочтений времени
-	useEffect(() => {
-		const savedTime = localStorage.getItem('preferredDeliveryTime')
-		if (savedTime && !value) {
-			setSelectedTime(savedTime)
-		}
-	}, [value])
+	// Больше НЕ загружаем сохраненные предпочтения времени автоматически
+	// useEffect(() => {
+	// 	const savedTime = localStorage.getItem('preferredDeliveryTime')
+	// 	if (savedTime && !value) {
+	// 		setSelectedTime(savedTime)
+	// 	}
+	// }, [value])
 
-	// Сохранение предпочтений времени
+	// Больше НЕ сохраняем предпочтения времени автоматически
 	const saveTimePreference = (timeStr: string) => {
-		localStorage.setItem('preferredDeliveryTime', timeStr)
+		// localStorage.setItem('preferredDeliveryTime', timeStr)
+		// Функция оставлена для совместимости, но ничего не делает
 	}
 
 	// Комбинируем дату и время
@@ -142,9 +144,18 @@ export const DateInput: React.FC<FieldInputProps> = ({
 
 	// Кнопки быстрого выбора времени
 	const quickTimeButtons = [
-		{ label: 'Утром', value: '09:00', icon: <WbSunnyIcon fontSize="small" /> },
-		{ label: 'Днем', value: '14:00', icon: <Brightness5Icon fontSize="small" /> },
-		{ label: 'Вечером', value: '18:00', icon: <Brightness3Icon fontSize="small" /> },
+		{ label: 'Пусто', value: '' },
+		{ label: 'Утром', value: '09:00', icon: <WbSunnyIcon fontSize='small' /> },
+		{
+			label: 'Днем',
+			value: '14:00',
+			icon: <Brightness5Icon fontSize='small' />,
+		},
+		{
+			label: 'Вечером',
+			value: '18:00',
+			icon: <Brightness3Icon fontSize='small' />,
+		},
 	]
 
 	// Обработчик быстрого выбора времени
@@ -157,10 +168,26 @@ export const DateInput: React.FC<FieldInputProps> = ({
 		}
 	}
 
+	// Обработчик очистки даты
+	const handleClearDate = () => {
+		onChange(field.name, '')
+		setSelectedTime('')
+	}
+
+	// Обработчик очистки времени
+	const handleClearTime = () => {
+		setSelectedTime('')
+		if (date) {
+			// Если дата есть, устанавливаем только дату без времени
+			const newValue = combineDateTime(date, '')
+			onChange(field.name, newValue)
+		}
+	}
+
 	// Используем раздельные поля для всех устройств при включенном времени
 	if (includeTime) {
 		const timeGroups = generateTimeOptions()
-		
+
 		return (
 			<Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
 				{/* Поле даты */}
@@ -171,21 +198,41 @@ export const DateInput: React.FC<FieldInputProps> = ({
 					label={field.label ? `${field.label} - Дата` : 'Дата'}
 					type='date'
 					margin={compact ? 'dense' : 'normal'}
-					value={date}
+					value={date || ''}
 					onChange={e => {
 						const newValue = combineDateTime(e.target.value, selectedTime)
 						onChange(field.name, newValue)
 					}}
+					placeholder=""
 					required={false}
 					error={!!error}
 					size={compact ? 'small' : 'medium'}
 					InputLabelProps={{
 						shrink: true,
 					}}
+					InputProps={{
+						endAdornment: date ? (
+							<InputAdornment position="end">
+								<IconButton
+									aria-label="очистить дату"
+									onClick={handleClearDate}
+									edge="end"
+									size="small"
+									sx={{ mr: 0.5 }}
+								>
+									<ClearIcon fontSize="small" />
+								</IconButton>
+							</InputAdornment>
+						) : null,
+					}}
 					inputProps={{
-						autoComplete: 'off',
-						min: new Date().toISOString().split('T')[0],
-						form: 'no-validation',
+						autoComplete: 'new-password',
+						autoCorrect: 'off',
+						autoCapitalize: 'off',
+						spellCheck: 'false',
+						'data-form-type': 'other',
+						'data-lpignore': 'true',
+						'data-1p-ignore': 'true',
 					}}
 					sx={styles.textField}
 				/>
@@ -225,7 +272,7 @@ export const DateInput: React.FC<FieldInputProps> = ({
 						labelId={`${field.name}_time_label`}
 						id={`${field.name}_time`}
 						name={`${field.name}_time`}
-						value={selectedTime}
+						value={selectedTime || ''}
 						onChange={e => {
 							const newTime = e.target.value as string
 							setSelectedTime(newTime)
@@ -242,12 +289,34 @@ export const DateInput: React.FC<FieldInputProps> = ({
 								<AccessTimeIcon fontSize="small" color="action" />
 							</InputAdornment>
 						}
+						endAdornment={
+							selectedTime ? (
+								<InputAdornment position="end" sx={{ mr: 1 }}>
+									<IconButton
+										aria-label="очистить время"
+										onClick={(e) => {
+											e.stopPropagation()
+											handleClearTime()
+										}}
+										edge="end"
+										size="small"
+									>
+										<ClearIcon fontSize="small" />
+									</IconButton>
+								</InputAdornment>
+							) : null
+						}
 						MenuProps={{
 							PaperProps: {
 								style: {
 									maxHeight: 400,
 								},
 							},
+						}}
+						inputProps={{
+							autoComplete: 'new-password',
+							'data-lpignore': 'true',
+							'data-1p-ignore': 'true',
 						}}
 					>
 						{/* Группа "Утро" */}
@@ -310,11 +379,12 @@ export const DateInput: React.FC<FieldInputProps> = ({
 			label={field.label}
 			type='date'
 			margin={compact ? 'dense' : 'normal'}
-			value={date}
+			value={date || ''}
 			onChange={e => {
 				const newValue = combineDateTime(e.target.value, '12:00')
 				onChange(field.name, newValue)
 			}}
+			placeholder=""
 			required={field.required}
 			error={!!error}
 			helperText={error}
@@ -322,10 +392,29 @@ export const DateInput: React.FC<FieldInputProps> = ({
 			InputLabelProps={{
 				shrink: true,
 			}}
+			InputProps={{
+				endAdornment: date ? (
+					<InputAdornment position="end">
+						<IconButton
+							aria-label="очистить дату"
+							onClick={handleClearDate}
+							edge="end"
+							size="small"
+							sx={{ mr: 0.5 }}
+						>
+							<ClearIcon fontSize="small" />
+						</IconButton>
+					</InputAdornment>
+				) : null,
+			}}
 			inputProps={{
-				autoComplete: 'off',
-				min: new Date().toISOString().split('T')[0],
-				form: 'no-validation',
+				autoComplete: 'new-password',
+				autoCorrect: 'off',
+				autoCapitalize: 'off',
+				spellCheck: 'false',
+				'data-form-type': 'other',
+				'data-lpignore': 'true',
+				'data-1p-ignore': 'true',
 			}}
 			sx={styles.textField}
 		/>

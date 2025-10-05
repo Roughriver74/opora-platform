@@ -62,10 +62,16 @@ class Bitrix24Service {
 	}
 
 	async createDeal(dealData: any) {
-		const response = await axios.post(`${this.webhookUrl}crm.deal.add`, {
-			fields: dealData,
-			params: { REGISTER_SONET_EVENT: 'Y' },
-		})
+		const response = await retryRequest(() =>
+			axios.post(
+				`${this.webhookUrl}crm.deal.add`,
+				{
+					fields: dealData,
+					params: { REGISTER_SONET_EVENT: 'Y' },
+				},
+				{ timeout: 15000 }
+			)
+		)
 		return response.data
 	}
 

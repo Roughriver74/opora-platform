@@ -48,3 +48,4 @@ npm run test:search
 
 1. Восстановите старые настройки в `elasticsearchService.ts`
 2. Переиндексируйте данные: `npm run reindex:bitrix`
+

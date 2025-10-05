@@ -80,11 +80,14 @@ export const useBetoneForm = (
 					// Показываем глобальное уведомление поверх экрана
 					showSuccess(successMessage, {
 						title: editData?.submissionId ? 'Обновлено!' : 'Отправлено!',
-						autoHideDuration: 3000,
+						autoHideDuration: 2000,
 						onAfterHide: () => {
 							// Перенаправляем на страницу "Мои заявки" только для новых заявок, не для редактирования
 							if (!editData?.submissionId) {
-								navigate('/my-submissions')
+								// Небольшая задержка для плавности
+								setTimeout(() => {
+									navigate('/my-submissions', { replace: true })
+								}, 100)
 							}
 						},
 					})

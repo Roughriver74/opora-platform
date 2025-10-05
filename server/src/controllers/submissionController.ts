@@ -88,28 +88,57 @@ export const submitForm = async (req: Request, res: Response) => {
 		dealData.CATEGORY_ID = categoryId
 
 		let submission: any = null
+		let dealResponse: any = null
 
 		try {
+			// ШАГ 1: Сначала создаем сделку в Bitrix24
+			console.log('[SUBMIT_FORM] Шаг 1: Создание сделки в Bitrix24...')
+			dealResponse = await bitrix24Service.createDeal(dealData)
+			const bitrixDealId = dealResponse.result?.toString?.()
+			console.log(
+				`[SUBMIT_FORM] ✅ Сделка создана в Bitrix24, ID: ${bitrixDealId}`
+			)
+
+			// ШАГ 2: Только после успешного создания в Bitrix сохраняем в БД
+			console.log('[SUBMIT_FORM] Шаг 2: Сохранение заявки в БД...')
 			const submissionData = {
 				formId: formId,
 				userId: userId,
 				title: dealTitle,
 				notes: 'Заявка создана через форму',
 				formData: formData,
+				bitrixDealId: bitrixDealId,
 				// Добавляем денормализованные данные пользователя
 				userName: userName,
 				userEmail: userEmail,
 			}
 
 			submission = await submissionService.createSubmission(submissionData)
-			dealData.UF_CRM_1750107484181 = submission.id
+			console.log(
+				`[SUBMIT_FORM] ✅ Заявка сохранена в БД, ID: ${submission.id}, номер: ${submission.submissionNumber}`
+			)
 
-			const dealResponse = await bitrix24Service.createDeal(dealData)
+			// ШАГ 3: Обновляем Bitrix24 с ID заявки для обратной связи
+			console.log('[SUBMIT_FORM] Шаг 3: Обновление Bitrix24 с ID заявки...')
+			try {
+				await bitrix24Service.updateDeal(bitrixDealId, {
+					UF_CRM_1750107484181: submission.id,
+				})
+				console.log(
+					`[SUBMIT_FORM] ✅ Bitrix24 обновлен с ID заявки: ${submission.id}`
+				)
+			} catch (updateError: any) {
+				// Не критично, если не удалось обновить поле - заявка уже создана
+				console.warn(
+					`[SUBMIT_FORM] ⚠️ Не удалось обновить поле UF_CRM_1750107484181 в Bitrix24:`,
+					updateError.message
+				)
+			}
 
 			await submissionService.updateSyncStatus(
 				submission.id,
 				BitrixSyncStatus.SYNCED,
-				dealResponse.result?.toString?.()
+				bitrixDealId
 			)
 
 			// Автоматическая индексация заявки в Elasticsearch
@@ -160,6 +189,10 @@ export const submitForm = async (req: Request, res: Response) => {
 				// Не прерываем выполнение, если индексация не удалась
 			}
 
+			console.log(
+				`[SUBMIT_FORM] ✅ Заявка успешно создана. ID: ${submission.id}, Bitrix Deal: ${dealResponse.result?.toString?.()}`
+			)
+
 			return res.status(200).json({
 				success: true,
 				message:
@@ -168,16 +201,108 @@ export const submitForm = async (req: Request, res: Response) => {
 				submissionNumber: submission.submissionNumber,
 				dealId: dealResponse.result?.toString?.(),
 			})
-		} catch (bitrixError: any) {
-			if (submission && submission.id) {
+		} catch (error: any) {
+			// Логируем детали ошибки
+			console.error('[SUBMIT_FORM] ❌ Ошибка при создании заявки:', {
+				stage: submission ? 'after_db_save' : 'before_db_save',
+				bitrixDealCreated: !!dealResponse?.result,
+				bitrixDealId: dealResponse?.result?.toString?.(),
+				submissionCreated: !!submission?.id,
+				submissionId: submission?.id,
+				error: error.message,
+				stack: error.stack,
+			})
+
+			// Если заявка была создана в БД, но произошла ошибка после - НЕ УДАЛЯЕМ
+			// Это может быть ошибка индексации или обновления Bitrix, но данные уже сохранены
+			if (submission?.id) {
+				console.warn(
+					`[SUBMIT_FORM] ⚠️ Заявка ${submission.id} создана в БД и Bitrix, но произошла ошибка на финальном этапе. Заявка сохранена.`
+				)
+				// Помечаем как частично синхронизированную
 				try {
-					await submissionService.delete(submission.id)
+					await submissionService.updateSyncStatus(
+						submission.id,
+						BitrixSyncStatus.FAILED,
+						dealResponse?.result?.toString?.(),
+						`Финальная ошибка: ${error.message}`
+					)
 				} catch {}
+
+				// Возвращаем успех, т.к. основные данные сохранены
+				return res.status(200).json({
+					success: true,
+					message:
+						form.successMessage ||
+						'Спасибо! Ваша заявка успешно отправлена.',
+					submissionId: submission.id,
+					submissionNumber: submission.submissionNumber,
+					dealId: dealResponse?.result?.toString?.(),
+					warning: 'Заявка создана, но индексация может быть неполной',
+				})
 			}
 
+			// Если сделка создана в Bitrix, но не удалось сохранить в БД
+			if (dealResponse?.result) {
+				console.error(
+					`[SUBMIT_FORM] ❌ КРИТИЧЕСКАЯ ОШИБКА: Сделка создана в Bitrix24 (ID: ${dealResponse.result}), но не сохранена в БД!`
+				)
+				// Попытаемся создать заявку еще раз
+				try {
+					const recoverySubmissionData = {
+						formId: formId,
+						userId: userId,
+						title: dealTitle,
+						notes:
+							'Заявка создана через форму (восстановлена после ошибки БД)',
+						formData: formData,
+						bitrixDealId: dealResponse.result?.toString?.(),
+						userName: userName,
+						userEmail: userEmail,
+					}
+					const recoveredSubmission = await submissionService.createSubmission(
+						recoverySubmissionData
+					)
+					console.log(
+						`[SUBMIT_FORM] ✅ Заявка восстановлена в БД: ${recoveredSubmission.id}`
+					)
+
+					return res.status(200).json({
+						success: true,
+						message:
+							form.successMessage ||
+							'Спасибо! Ваша заявка успешно отправлена.',
+						submissionId: recoveredSubmission.id,
+						submissionNumber: recoveredSubmission.submissionNumber,
+						dealId: dealResponse.result?.toString?.(),
+					})
+				} catch (recoveryError: any) {
+					console.error(
+						`[SUBMIT_FORM] ❌ Не удалось восстановить заявку в БД:`,
+						recoveryError
+					)
+					// Сохраняем информацию для ручного восстановления
+					return res.status(500).json({
+						message:
+							'Заявка создана в Bitrix24, но произошла ошибка сохранения в системе. Обратитесь в поддержку.',
+						bitrixDealId: dealResponse.result?.toString?.(),
+						error: error.message,
+						recoveryData: {
+							formId,
+							dealTitle,
+							formData,
+						},
+					})
+				}
+			}
+
+			// Если ошибка на этапе создания Bitrix сделки - ничего не создано
+			console.error(
+				`[SUBMIT_FORM] ❌ Ошибка создания сделки в Bitrix24, ничего не сохранено`
+			)
 			return res.status(500).json({
 				message: 'Ошибка создания заявки в системе',
-				error: bitrixError?.message,
+				error: error?.message,
 			})
 		}
 	} catch (error: any) {
@@ -1413,6 +1538,155 @@ export const getSubmissionFormFields = async (req: Request, res: Response) => {
 		res.status(500).json({
 			success: false,
 			message: 'Ошибка получения данных полей формы',
+		})
+	}
+}
+
+// Webhook для создания заявки из Bitrix24 (если она потерялась в системе)
+export const syncSubmissionFromBitrix = async (
+	req: Request,
+	res: Response
+) => {
+	try {
+		const { bitrixDealId, formId } = req.body
+
+		console.log(
+			`[BITRIX_WEBHOOK] Запрос на синхронизацию сделки ${bitrixDealId}`
+		)
+
+		// Проверяем, существует ли уже заявка с таким bitrixDealId
+		const existingSubmission = await submissionService.findByBitrixDealId(
+			bitrixDealId
+		)
+
+		if (existingSubmission) {
+			console.log(
+				`[BITRIX_WEBHOOK] Заявка для сделки ${bitrixDealId} уже существует: ${existingSubmission.id}`
+			)
+			return res.json({
+				success: true,
+				message: 'Заявка уже существует в системе',
+				submissionId: existingSubmission.id,
+				submissionNumber: existingSubmission.submissionNumber,
+			})
+		}
+
+		// Получаем данные сделки из Bitrix24
+		const dealResponse = await bitrix24Service.getDeal(bitrixDealId)
+		if (!dealResponse?.result) {
+			return res.status(404).json({
+				success: false,
+				message: `Сделка ${bitrixDealId} не найдена в Bitrix24`,
+			})
+		}
+
+		const dealData = dealResponse.result
+
+		// Определяем форму (если не передана)
+		let targetFormId = formId
+		if (!targetFormId) {
+			// Пытаемся определить по категории сделки или используем первую доступную форму
+			const forms = await formService.findAll()
+			const matchingForm = forms.find(
+				f => f.bitrixDealCategory === dealData.CATEGORY_ID
+			)
+			targetFormId = matchingForm?.id || forms[0]?.id
+		}
+
+		if (!targetFormId) {
+			return res.status(400).json({
+				success: false,
+				message: 'Не удалось определить форму для заявки',
+			})
+		}
+
+		const form = await formService.findWithFields(targetFormId)
+		if (!form) {
+			return res.status(404).json({
+				success: false,
+				message: `Форма ${targetFormId} не найдена`,
+			})
+		}
+
+		// Конвертируем данные Bitrix в формат formData
+		const formData: Record<string, any> = {}
+		for (const field of form.fields) {
+			if (field.bitrixFieldId && dealData[field.bitrixFieldId] !== undefined) {
+				formData[field.name] = dealData[field.bitrixFieldId]
+			}
+		}
+
+		// Находим пользователя по полю ASSIGNED_BY_ID (Ответственный в Bitrix24)
+		let assignedUserId: string | undefined = undefined
+		let assignedUserName: string | undefined = undefined
+		let assignedUserEmail: string | undefined = undefined
+
+		if (dealData.ASSIGNED_BY_ID) {
+			console.log(
+				`[BITRIX_WEBHOOK] Поиск пользователя по bitrixUserId: ${dealData.ASSIGNED_BY_ID}`
+			)
+			try {
+				const users = await userService.findAll()
+				const assignedUser = users.find(
+					u => u.bitrixUserId === String(dealData.ASSIGNED_BY_ID)
+				)
+
+				if (assignedUser) {
+					assignedUserId = assignedUser.id
+					assignedUserName = assignedUser.fullName
+					assignedUserEmail = assignedUser.email
+					console.log(
+						`[BITRIX_WEBHOOK] ✅ Найден пользователь: ${assignedUserName} (${assignedUserId})`
+					)
+				} else {
+					console.log(
+						`[BITRIX_WEBHOOK] ⚠️ Пользователь с bitrixUserId ${dealData.ASSIGNED_BY_ID} не найден в системе`
+					)
+				}
+			} catch (error: any) {
+				console.error(
+					`[BITRIX_WEBHOOK] ❌ Ошибка поиска пользователя:`,
+					error.message
+				)
+			}
+		}
+
+		// Создаем заявку
+		const submissionData = {
+			formId: targetFormId,
+			userId: assignedUserId,
+			title: dealData.TITLE || `Сделка #${bitrixDealId}`,
+			notes: 'Заявка восстановлена из Bitrix24 через webhook',
+			formData: formData,
+			bitrixDealId: bitrixDealId,
+			userName: assignedUserName,
+			userEmail: assignedUserEmail,
+		}
+
+		const submission = await submissionService.createSubmission(submissionData)
+		await submissionService.updateSyncStatus(
+			submission.id,
+			BitrixSyncStatus.SYNCED,
+			bitrixDealId
+		)
+
+		console.log(
+			`[BITRIX_WEBHOOK] ✅ Заявка создана из Bitrix24: ${submission.id} для сделки ${bitrixDealId}`
+		)
+
+		res.json({
+			success: true,
+			message: 'Заявка успешно создана из Bitrix24',
+			submissionId: submission.id,
+			submissionNumber: submission.submissionNumber,
+			bitrixDealId: bitrixDealId,
+		})
+	} catch (error: any) {
+		console.error('[BITRIX_WEBHOOK] ❌ Ошибка синхронизации:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка создания заявки из Bitrix24',
+			error: error.message,
 		})
 	}
 }

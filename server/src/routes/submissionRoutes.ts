@@ -21,6 +21,11 @@ router.get('/check-field/:dealId', (req: Request, res: Response) => {
 	submissionController.checkBitrixField(req, res)
 })
 
+// Публичный webhook для синхронизации заявки из Bitrix24
+router.post('/sync-from-bitrix', (req: Request, res: Response) => {
+	submissionController.syncSubmissionFromBitrix(req, res)
+})
+
 // Применяем middleware авторизации для всех роутов
 router.use(authMiddleware)
 
