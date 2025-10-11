@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useCallback } from 'react'
+import React, { useRef, useMemo, useCallback, useState } from 'react'
 import {
 	Box,
 	Paper,
@@ -13,6 +13,8 @@ import {
 	LinearProgress,
 	IconButton,
 	Tooltip,
+	Alert,
+	Snackbar,
 } from '@mui/material'
 import {
 	ExpandMore as ExpandMoreIcon,
@@ -30,8 +32,11 @@ import { FormSection } from './FormSection'
 import { SubmitButton } from './SubmitButton'
 import { ScrollToTopButton } from './ScrollToTopButton'
 import { FormResult } from './FormResult'
+import { PeriodSubmissionToggle } from './PeriodSubmissionToggle'
+import { PeriodDatePicker } from './PeriodDatePicker'
 
 import { LinkedFields } from '../../LinkedFields'
+import { usePeriodSubmission } from '../hooks/usePeriodSubmission'
 
 // Мобильные константы - более компактные для телефонов
 const MOBILE_CONSTANTS = {
@@ -97,6 +102,16 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 		const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 		const formRef = useRef<HTMLDivElement>(null)
 
+		// Состояние для уведомлений
+		const [snackbar, setSnackbar] = useState<{
+			open: boolean
+			message: string
+			severity?: 'success' | 'error'
+		}>({
+			open: false,
+			message: '',
+		})
+
 		// Хук основной логики формы
 		const {
 			formik,
@@ -120,6 +135,79 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 			editData,
 			preloadedOptions
 		)
+
+		// Хук для периодических заявок
+		const {
+			isPeriodMode,
+			periodStartDate,
+			periodEndDate,
+			dateFieldName,
+			dateRangeError,
+			hasDateField,
+			togglePeriodMode,
+			setPeriodStartDate,
+			setPeriodEndDate,
+			submitPeriodSubmissions,
+		} = usePeriodSubmission(fields)
+
+		// Обработчик отправки формы с поддержкой периодических заявок
+		const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+			e.preventDefault()
+
+			// Если включен режим периодических заявок и нет ошибок валидации дат
+			if (isPeriodMode && !dateRangeError && !editData?.submissionId) {
+				// Используем стандартную валидацию formik для полей формы
+				const errors = await formik.validateForm()
+				if (Object.keys(errors).length > 0) {
+					formik.setTouched(
+						Object.keys(errors).reduce((acc, key) => {
+							acc[key] = true
+							return acc
+						}, {} as any)
+					)
+					setSnackbar({
+						open: true,
+						message: 'Пожалуйста, исправьте ошибки в форме',
+						severity: 'error',
+					})
+					return
+				}
+
+				// Отправка периодических заявок
+				try {
+					const result = await submitPeriodSubmissions(
+						form.id || form._id || '',
+						formik.values
+					)
+
+					if (result.success) {
+						setSnackbar({
+							open: true,
+							message: result.message,
+							severity: 'success',
+						})
+
+						// Сбрасываем форму и переключаем режим
+						formik.resetForm()
+						togglePeriodMode(false)
+
+						// Перенаправление после небольшой задержки
+						setTimeout(() => {
+							window.location.href = '/my-submissions'
+						}, 2000)
+					}
+				} catch (error: any) {
+					setSnackbar({
+						open: true,
+						message: error.response?.data?.message || 'Ошибка создания заявок',
+						severity: 'error',
+					})
+				}
+			} else {
+				// Обычная отправка формы
+				formik.handleSubmit(e)
+			}
+		}
 
 		// Мемоизированные вычисления для производительности
 		const sortedFields = useMemo(() => getSortedFields(fields), [fields])
@@ -512,7 +600,7 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 				)}
 
 				{/* Основная форма */}
-				<Box component='form' onSubmit={formik.handleSubmit}>
+				<Box component='form' onSubmit={handleFormSubmit}>
 					<Paper
 						elevation={isMobile ? 0 : 1}
 						sx={{
@@ -572,6 +660,28 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 							</Stack>
 						</Box>
 
+						{/* Компоненты периодических заявок - только для новых заявок */}
+						{!editData?.submissionId && (
+							<Box sx={{ p: mobileStyles.padding, pb: 0 }}>
+								<PeriodSubmissionToggle
+									enabled={isPeriodMode}
+									onToggle={togglePeriodMode}
+									dateFieldName={dateFieldName}
+									hasDateField={hasDateField}
+								/>
+
+								{isPeriodMode && hasDateField && (
+									<PeriodDatePicker
+										startDate={periodStartDate}
+										endDate={periodEndDate}
+										onStartDateChange={setPeriodStartDate}
+										onEndDateChange={setPeriodEndDate}
+										error={dateRangeError || undefined}
+									/>
+								)}
+							</Box>
+						)}
+
 						{/* Содержимое формы */}
 						<Box ref={formRef}>
 							{useSectionMode ? renderMobileSections() : renderSimpleForm()}
@@ -581,6 +691,20 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 
 				{/* Кнопка "наверх" для мобильных */}
 				<ScrollToTopButton show={showScrollTop} onClick={scrollToTop} />
+
+				{/* Snackbar для уведомлений */}
+				<Snackbar
+					open={snackbar.open}
+					autoHideDuration={6000}
+					onClose={() => setSnackbar({ ...snackbar, open: false })}
+				>
+					<Alert
+						onClose={() => setSnackbar({ ...snackbar, open: false })}
+						severity={snackbar.severity}
+					>
+						{snackbar.message}
+					</Alert>
+				</Snackbar>
 			</Box>
 		)
 	}

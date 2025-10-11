@@ -83,27 +83,62 @@ export class SubmissionService extends BaseService<
 			}
 		}
 
-		// Создание заявки
-		const submission = await this.repository.create({
-			formId: data.formId,
-			userId: data.userId,
-			title: data.title,
-			status: 'C1:NEW',
-			priority: data.priority || SubmissionPriority.MEDIUM,
-			notes: data.notes,
-			tags: data.tags || [],
-			bitrixDealId: data.bitrixDealId,
-			bitrixSyncStatus: data.bitrixDealId
-				? BitrixSyncStatus.SYNCED
-				: BitrixSyncStatus.PENDING,
-			formData: data.formData || {},
-			// Денормализованные данные
-			formName: form.name,
-			formTitle: form.title,
-			// Приоритет: сначала из переданных данных, затем из БД пользователя
-			userEmail: data.userEmail || userData?.userEmail,
-			userName: data.userName || userData?.userName,
-		})
+		// Создание заявки с обработкой ошибок дублирования
+		let submission: Submission
+		let attempts = 0
+		const maxAttempts = 3
+
+		while (attempts < maxAttempts) {
+			try {
+				submission = await this.repository.create({
+					formId: data.formId,
+					userId: data.userId,
+					title: data.title,
+					status: 'C1:NEW',
+					priority: data.priority || SubmissionPriority.MEDIUM,
+					notes: data.notes,
+					tags: data.tags || [],
+					bitrixDealId: data.bitrixDealId,
+					bitrixSyncStatus: data.bitrixDealId
+						? BitrixSyncStatus.SYNCED
+						: BitrixSyncStatus.PENDING,
+					formData: data.formData || {},
+					// Денормализованные данные
+					formName: form.name,
+					formTitle: form.title,
+					// Приоритет: сначала из переданных данных, затем из БД пользователя
+					userEmail: data.userEmail || userData?.userEmail,
+					userName: data.userName || userData?.userName,
+				})
+
+				// Убеждаемся, что submissionNumber сгенерирован
+				if (!submission.submissionNumber) {
+					await submission.generateSubmissionNumber()
+				}
+
+				break // Успешно создали, выходим из цикла
+			} catch (error: any) {
+				attempts++
+				if (
+					error.code === '23505' &&
+					error.constraint?.includes('submission_number')
+				) {
+					// Ошибка дублирования submissionNumber
+					if (attempts >= maxAttempts) {
+						throw new Error(
+							`Не удалось создать заявку: конфликт номера заявки после ${maxAttempts} попыток`
+						)
+					}
+					console.warn(
+						`[SUBMISSION_SERVICE] Конфликт номера заявки, попытка ${attempts}/${maxAttempts}`
+					)
+					// Небольшая задержка перед следующей попыткой
+					await new Promise(resolve => setTimeout(resolve, 100))
+					continue
+				}
+				throw error // Перебрасываем другие ошибки
+			}
+		}
 
 		// Создание записи в истории
 		await this.createHistoryEntry(

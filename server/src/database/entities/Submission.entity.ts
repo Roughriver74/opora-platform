@@ -7,10 +7,18 @@ import {
 	BeforeInsert,
 	BeforeUpdate,
 } from 'typeorm'
-import { IsString, IsEnum, IsOptional, IsArray, IsNumber } from 'class-validator'
+import {
+	IsString,
+	IsEnum,
+	IsOptional,
+	IsArray,
+	IsNumber,
+	IsBoolean,
+} from 'class-validator'
 import { BaseEntity } from './base/BaseEntity'
 import { User } from './User.entity'
 import { Form } from './Form.entity'
+import { getSubmissionRepository } from '../repositories'
 
 export enum SubmissionPriority {
 	LOW = 'low',
@@ -152,7 +160,35 @@ export class Submission extends BaseEntity {
 	@IsOptional()
 	@IsNumber()
 	processingTimeMinutes?: number
-	
+
+	// Поля для периодических заявок
+	@Column({ type: 'boolean', name: 'is_period_submission', default: false })
+	@IsBoolean()
+	isPeriodSubmission: boolean
+
+	@Column({ type: 'uuid', name: 'period_group_id', nullable: true })
+	@IsOptional()
+	@IsString()
+	periodGroupId?: string
+
+	@Column({ type: 'timestamp', name: 'period_start_date', nullable: true })
+	@IsOptional()
+	periodStartDate?: Date
+
+	@Column({ type: 'timestamp', name: 'period_end_date', nullable: true })
+	@IsOptional()
+	periodEndDate?: Date
+
+	@Column({ type: 'int', name: 'period_position', nullable: true })
+	@IsOptional()
+	@IsNumber()
+	periodPosition?: number
+
+	@Column({ type: 'int', name: 'total_in_period', nullable: true })
+	@IsOptional()
+	@IsNumber()
+	totalInPeriod?: number
+
 	@Column({ type: 'jsonb', name: 'form_data' })
 	formData: any
 
@@ -165,18 +201,54 @@ export class Submission extends BaseEntity {
 		// await super.validate()
 	}
 
-	private async generateSubmissionNumber() {
+	public async generateSubmissionNumber() {
 		// Always generate submissionNumber if not set
 		if (!this.submissionNumber || this.submissionNumber === undefined) {
-			const today = new Date()
-			const year = today.getFullYear()
-			const month = String(today.getMonth() + 1).padStart(2, '0')
-			const day = String(today.getDate()).padStart(2, '0')
-			const randomSuffix = Math.floor(Math.random() * 9999)
-				.toString()
-				.padStart(4, '0')
-			
-			this.submissionNumber = `${year}${month}${day}${randomSuffix}`
+			let attempts = 0
+			const maxAttempts = 10
+
+			while (attempts < maxAttempts) {
+				const today = new Date()
+				const year = today.getFullYear()
+				const month = String(today.getMonth() + 1).padStart(2, '0')
+				const day = String(today.getDate()).padStart(2, '0')
+				const randomSuffix = Math.floor(Math.random() * 9999)
+					.toString()
+					.padStart(4, '0')
+
+				const candidateNumber = `${year}${month}${day}${randomSuffix}`
+
+				// Проверяем уникальность через репозиторий
+				try {
+					const existingSubmission =
+						await getSubmissionRepository().findBySubmissionNumber(
+							candidateNumber
+						)
+					if (!existingSubmission) {
+						this.submissionNumber = candidateNumber
+						break
+					}
+				} catch (error) {
+					// Если ошибка при проверке, используем номер с timestamp для уникальности
+					this.submissionNumber = `${year}${month}${day}${Date.now()
+						.toString()
+						.slice(-4)}`
+					break
+				}
+
+				attempts++
+			}
+
+			// Если не удалось сгенерировать уникальный номер за 10 попыток, используем timestamp
+			if (!this.submissionNumber) {
+				const today = new Date()
+				const year = today.getFullYear()
+				const month = String(today.getMonth() + 1).padStart(2, '0')
+				const day = String(today.getDate()).padStart(2, '0')
+				this.submissionNumber = `${year}${month}${day}${Date.now()
+					.toString()
+					.slice(-4)}`
+			}
 		}
 
 		// Заполнение предвычисленных полей
@@ -197,12 +269,16 @@ export class Submission extends BaseEntity {
 	}
 
 	isStatusCompleted(): boolean {
-		return ['WON', 'LOSE', 'COMPLETED', 'CLOSED', 'C1:WON', 'C1:LOSE'].includes(this.status)
+		return ['WON', 'LOSE', 'COMPLETED', 'CLOSED', 'C1:WON', 'C1:LOSE'].includes(
+			this.status
+		)
 	}
 
 	isHighPriority(): boolean {
-		return this.priority === SubmissionPriority.HIGH || 
-			   this.priority === SubmissionPriority.URGENT
+		return (
+			this.priority === SubmissionPriority.HIGH ||
+			this.priority === SubmissionPriority.URGENT
+		)
 	}
 
 	isSyncedWithBitrix(): boolean {
@@ -215,7 +291,29 @@ export class Submission extends BaseEntity {
 		}
 		const now = new Date()
 		const created = new Date(this.createdAt)
-		return Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))
+		return Math.floor(
+			(now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+		)
+	}
+
+	isPeriodic(): boolean {
+		return this.isPeriodSubmission === true && !!this.periodGroupId
+	}
+
+	getPeriodDisplayString(): string | null {
+		if (!this.isPeriodic() || !this.periodStartDate || !this.periodEndDate) {
+			return null
+		}
+		const start = new Date(this.periodStartDate).toLocaleDateString('ru-RU')
+		const end = new Date(this.periodEndDate).toLocaleDateString('ru-RU')
+		return `${start} - ${end}`
+	}
+
+	getPeriodPositionString(): string | null {
+		if (!this.isPeriodic() || !this.periodPosition || !this.totalInPeriod) {
+			return null
+		}
+		return `${this.periodPosition} из ${this.totalInPeriod}`
 	}
 
 	get submittedAt(): Date {

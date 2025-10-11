@@ -25,9 +25,12 @@ import { SubmitButton } from './components/SubmitButton'
 import { ScrollToTopButton } from './components/ScrollToTopButton'
 import { FormResult } from './components/FormResult'
 import SimpleMobileBetoneForm from './components/SimpleMobileBetoneForm'
+import { PeriodSubmissionToggle } from './components/PeriodSubmissionToggle'
+import { PeriodDatePicker } from './components/PeriodDatePicker'
 
 import { LinkedFields } from '../LinkedFields'
 import { FormFieldService } from '../../../services/formFieldService'
+import { usePeriodSubmission } from './hooks/usePeriodSubmission'
 
 const BetoneForm: React.FC<BetoneFormProps> = ({
 	form,
@@ -78,6 +81,20 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 		editData,
 		preloadedOptions
 	)
+
+	// Хук для периодических заявок
+	const {
+		isPeriodMode,
+		periodStartDate,
+		periodEndDate,
+		dateFieldName,
+		dateRangeError,
+		hasDateField,
+		togglePeriodMode,
+		setPeriodStartDate,
+		setPeriodEndDate,
+		submitPeriodSubmissions,
+	} = usePeriodSubmission(fields)
 
 	// Автоматическое переключение на мобильную версию для небольших экранов
 	if (isMobile || isTablet) {
@@ -169,8 +186,67 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 		}
 	}
 
+	// Обработчик отправки формы с поддержкой периодических заявок
+	const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+		e.preventDefault()
+
+		// Если включен режим периодических заявок и нет ошибок валидации дат
+		if (isPeriodMode && !dateRangeError && !editData?.submissionId) {
+			// Используем стандартную валидацию formik для полей формы
+			const errors = await formik.validateForm()
+			if (Object.keys(errors).length > 0) {
+				formik.setTouched(
+					Object.keys(errors).reduce((acc, key) => {
+						acc[key] = true
+						return acc
+					}, {} as any)
+				)
+				setSnackbar({
+					open: true,
+					message: 'Пожалуйста, исправьте ошибки в форме',
+					severity: 'error',
+				})
+				return
+			}
+
+			// Отправка периодических заявок
+			try {
+				const result = await submitPeriodSubmissions(
+					form.id || form._id || '',
+					formik.values
+				)
+
+				if (result.success) {
+					setSnackbar({
+						open: true,
+						message: result.message,
+						severity: 'success',
+					})
+
+					// Сбрасываем форму и переключаем режим
+					formik.resetForm()
+					togglePeriodMode(false)
+
+					// Перенаправление после небольшой задержки
+					setTimeout(() => {
+						window.location.href = '/my-submissions'
+					}, 2000)
+				}
+			} catch (error: any) {
+				setSnackbar({
+					open: true,
+					message: error.response?.data?.message || 'Ошибка создания заявок',
+					severity: 'error',
+				})
+			}
+		} else {
+			// Обычная отправка формы
+			formik.handleSubmit(e)
+		}
+	}
+
 	return (
-		<Box component='form' onSubmit={formik.handleSubmit}>
+		<Box component='form' onSubmit={handleFormSubmit}>
 			<Box sx={{ maxWidth: '800px', mx: 'auto', p: { xs: 1, sm: 2 } }}>
 				<Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }}>
 					{/* Заголовок формы */}
@@ -195,6 +271,28 @@ const BetoneForm: React.FC<BetoneFormProps> = ({
 									будет создана новая заявка.
 								</Typography>
 							</Alert>
+						</Box>
+					)}
+
+					{/* Компоненты периодических заявок - только для новых заявок */}
+					{!editData?.submissionId && (
+						<Box sx={{ p: 3, pb: 0 }}>
+							<PeriodSubmissionToggle
+								enabled={isPeriodMode}
+								onToggle={togglePeriodMode}
+								dateFieldName={dateFieldName}
+								hasDateField={hasDateField}
+							/>
+
+							{isPeriodMode && hasDateField && (
+								<PeriodDatePicker
+									startDate={periodStartDate}
+									endDate={periodEndDate}
+									onStartDateChange={setPeriodStartDate}
+									onEndDateChange={setPeriodEndDate}
+									error={dateRangeError || undefined}
+								/>
+							)}
 						</Box>
 					)}
 
