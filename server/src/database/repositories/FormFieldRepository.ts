@@ -7,18 +7,29 @@ export class FormFieldRepository extends BaseRepository<FormField> {
 		this.cacheTTL = 3600 // 1 час для полей формы
 	}
 
-	async findByFormId(formId: string): Promise<FormField[]> {
-		const cacheKey = `${this.cachePrefix}:form:${formId}`
+	async findByFormId(formId: string, includeInactive = true): Promise<FormField[]> {
+		const cacheKey = includeInactive
+			? `${this.cachePrefix}:form:${formId}`
+			: `${this.cachePrefix}:form:${formId}:active`
 		const cached = await this.cacheGet<FormField[]>(cacheKey)
 		if (cached) return cached
 
+		const whereCondition: any = { formId }
+		if (!includeInactive) {
+			whereCondition.isActive = true
+		}
+
 		const fields = await this.repository.find({
-			where: { formId },
+			where: whereCondition,
 			order: { order: 'ASC' }
 		})
 
 		await this.cacheSet(cacheKey, fields)
 		return fields
+	}
+
+	async findActiveByFormId(formId: string): Promise<FormField[]> {
+		return this.findByFormId(formId, false)
 	}
 
 	async findByFormAndName(formId: string, name: string): Promise<FormField | null> {

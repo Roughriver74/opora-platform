@@ -3,6 +3,7 @@ import { FormSubmission, FormSubmissionResponse } from '../types'
 
 // Типы для заявок
 export interface Submission {
+	isPeriodSubmission: any
 	id: string
 	submissionNumber: string
 	formId: {

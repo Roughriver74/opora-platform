@@ -42,19 +42,29 @@ export const createPeriodSubmissions = async (req: Request, res: Response): Prom
 			return
 		}
 
-		// Получаем данные пользователя
-		let userData = {
-			userId: req.user?.id,
-			userName: undefined as string | undefined,
-			userEmail: undefined as string | undefined,
+		// Проверяем авторизацию
+		if (!req.user?.id) {
+			res.status(401).json({
+				success: false,
+				message: 'Необходима авторизация для создания периодических заявок',
+			})
+			return
 		}
 
-		if (req.user?.id) {
-			const user = await userService.findById(req.user.id)
-			if (user) {
-				userData.userName = user.fullName
-				userData.userEmail = user.email
-			}
+		// Получаем данные пользователя
+		const user = await userService.findById(req.user.id)
+		if (!user) {
+			res.status(404).json({
+				success: false,
+				message: 'Пользователь не найден',
+			})
+			return
+		}
+
+		const userData = {
+			userId: user.id,
+			userName: user.fullName,
+			userEmail: user.email,
 		}
 
 		// Создаем периодические заявки

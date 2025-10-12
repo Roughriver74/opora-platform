@@ -11,9 +11,11 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 	const [periodStartDate, setPeriodStartDate] = useState('')
 	const [periodEndDate, setPeriodEndDate] = useState('')
 	const [dateFieldName, setDateFieldName] = useState<string>('')
+	const [timeFieldName, setTimeFieldName] = useState<string>('')
 	const [dateRangeError, setDateRangeError] = useState<string | null>(null)
 
 	// Находим поле "Дата отгрузки" (field_1750311865385) или любое поле с типом "date"
+	// И поле времени (ищем по label или bitrixFieldId, содержащим "время" или "time")
 	useEffect(() => {
 		// Сначала ищем конкретное поле "Дата отгрузки"
 		let dateField = fields.find(f => f.name === 'field_1750311865385')
@@ -25,6 +27,18 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 
 		if (dateField) {
 			setDateFieldName(dateField.name)
+		}
+
+		// Ищем поле времени по label или bitrixFieldId
+		// Например, поле с label "Время" или bitrixFieldId содержащим "time"
+		const timeField = fields.find(
+			f =>
+				f.label?.toLowerCase().includes('время') ||
+				f.label?.toLowerCase().includes('time') ||
+				f.bitrixFieldId?.toLowerCase().includes('time')
+		)
+		if (timeField) {
+			setTimeFieldName(timeField.name)
 		}
 	}, [fields])
 
@@ -86,14 +100,22 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 				throw new Error(dateRangeError || 'Ошибка валидации периода')
 			}
 
+			const periodConfig: any = {
+				startDate: periodStartDate,
+				endDate: periodEndDate,
+				dateFieldName,
+			}
+
+			// Добавляем поле времени, если оно есть в формуляре и заполнено
+			if (timeFieldName && formData[timeFieldName]) {
+				periodConfig.timeFieldName = timeFieldName
+				periodConfig.time = formData[timeFieldName]
+			}
+
 			const response = await periodSubmissionService.createPeriodSubmissions({
 				formId,
 				formData,
-				periodConfig: {
-					startDate: periodStartDate,
-					endDate: periodEndDate,
-					dateFieldName,
-				},
+				periodConfig,
 			})
 
 			return response
@@ -102,6 +124,7 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 			periodStartDate,
 			periodEndDate,
 			dateFieldName,
+			timeFieldName,
 			validatePeriodSubmission,
 			dateRangeError,
 		]
@@ -113,8 +136,10 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 		periodStartDate,
 		periodEndDate,
 		dateFieldName,
+		timeFieldName,
 		dateRangeError,
 		hasDateField: hasDateField(),
+		hasTimeField: !!timeFieldName,
 
 		// Методы
 		togglePeriodMode,

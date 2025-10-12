@@ -12,10 +12,11 @@ export const getAllFields = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		const { formId } = req.query
-		
+		const { formId, includeInactive } = req.query
+
 		if (formId) {
-			const fields = await formFieldService.findByFormId(formId as string)
+			const includeInactiveBool = includeInactive === 'true'
+			const fields = await formFieldService.findByFormId(formId as string, includeInactiveBool)
 			res.status(200).json(fields)
 		} else {
 			// Если formId не указан, возвращаем пустой массив
@@ -373,16 +374,16 @@ export const updateFieldsOrder = async (
 		const { updates } = req.body
 
 		if (!updates || !Array.isArray(updates)) {
-			res.status(400).json({ 
+			res.status(400).json({
 				success: false,
-				message: 'Требуется массив обновлений' 
+				message: 'Требуется массив обновлений'
 			})
 			return
 		}
 
 		const result = await formFieldService.updateFieldsOrder(updates)
-		
-		
+
+
 		res.status(200).json({
 			success: result.success,
 			message: 'Порядок полей обновлен',
@@ -391,9 +392,51 @@ export const updateFieldsOrder = async (
 		})
 	} catch (error: any) {
 		console.error('Ошибка при обновлении порядка полей:', error)
-		res.status(500).json({ 
+		res.status(500).json({
 			success: false,
-			message: error.message 
+			message: error.message
+		})
+	}
+}
+
+// Переключение активности поля
+export const toggleFieldActive = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
+	try {
+		const { id } = req.params
+		const { isActive } = req.body
+
+		if (typeof isActive !== 'boolean') {
+			res.status(400).json({
+				success: false,
+				message: 'Параметр isActive должен быть boolean'
+			})
+			return
+		}
+
+		const field = await formFieldService.findById(id)
+		if (!field) {
+			res.status(404).json({
+				success: false,
+				message: 'Поле не найдено'
+			})
+			return
+		}
+
+		const updatedField = await formFieldService.updateField(id, { isActive })
+
+		res.status(200).json({
+			success: true,
+			message: isActive ? 'Поле активировано' : 'Поле скрыто',
+			field: updatedField
+		})
+	} catch (error: any) {
+		console.error('Ошибка при переключении активности поля:', error)
+		res.status(500).json({
+			success: false,
+			message: error.message
 		})
 	}
 }

@@ -23,7 +23,7 @@ export const useFormData = (formId: string) => {
 		try {
 			const [formData, fieldsData] = await Promise.all([
 				FormService.getFormById(formId),
-				FormFieldService.getFormFields(formId),
+				FormFieldService.getFormFields(formId, true), // includeInactive = true для админки
 			])
 
 			setForm(formData)
@@ -42,7 +42,7 @@ export const useFormData = (formId: string) => {
 		setError(null)
 
 		try {
-			const fieldsData = await FormFieldService.getFormFields(formId)
+			const fieldsData = await FormFieldService.getFormFields(formId, true) // includeInactive = true для админки
 			setFields(fieldsData)
 		} catch (error: any) {
 			setError(error.message || 'Ошибка загрузки полей')

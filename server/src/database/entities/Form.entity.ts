@@ -52,7 +52,14 @@ export class Form extends BaseEntity {
 	submissions: Submission[]
 
 	getActiveFields(): FormField[] {
-		return this.fields?.filter(field => field !== null) || []
+		return this.fields?.filter(field => field !== null && field.isActive !== false) || []
+	}
+
+	getAllFields(includeInactive = false): FormField[] {
+		if (includeInactive) {
+			return this.fields?.filter(field => field !== null) || []
+		}
+		return this.getActiveFields()
 	}
 
 	getRequiredFields(): FormField[] {

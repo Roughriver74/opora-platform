@@ -664,13 +664,25 @@ const MySubmissions = () => {
 						}}
 					>
 						<Box>
-							<Typography
-								variant='h6'
-								component='div'
-								sx={{ fontWeight: 'bold', color: 'primary.main' }}
-							>
-								Bitrix ID: {submission.bitrixDealId || 'Не указан'}
-							</Typography>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+								<Typography
+									variant='h6'
+									component='div'
+									sx={{ fontWeight: 'bold', color: 'primary.main' }}
+								>
+									Bitrix ID: {submission.bitrixDealId || 'Не указан'}
+								</Typography>
+								{submission.isPeriodSubmission && (
+									<Tooltip title='Периодическая заявка'>
+										<ScheduleIcon
+											sx={{
+												fontSize: 20,
+												color: 'primary.main',
+											}}
+										/>
+									</Tooltip>
+								)}
+							</Box>
 							<Typography variant='body2' color='text.secondary'>
 								User: {submission.userEmail || 'Анонимная заявка'}
 							</Typography>
@@ -1106,9 +1118,21 @@ const MySubmissions = () => {
 										return (
 											<TableRow key={submission.id}>
 												<TableCell>
-													<Typography variant='body2' fontWeight='bold'>
-														{submission.bitrixDealId || 'Не указан'}
-													</Typography>
+													<Stack direction='row' spacing={1} alignItems='center'>
+														<Typography variant='body2' fontWeight='bold'>
+															{submission.bitrixDealId || 'Не указан'}
+														</Typography>
+														{submission.isPeriodSubmission && (
+															<Tooltip title='Периодическая заявка'>
+																<ScheduleIcon
+																	sx={{
+																		fontSize: 18,
+																		color: 'primary.main',
+																	}}
+																/>
+															</Tooltip>
+														)}
+													</Stack>
 												</TableCell>
 												<TableCell>
 													<Typography variant='body2'>

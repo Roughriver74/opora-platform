@@ -31,6 +31,9 @@ export interface PeriodConfig {
 	startDate: string
 	endDate: string
 	dateFieldName: string
+	startTime?: string // Время начала (HH:mm)
+	endTime?: string // Время окончания (HH:mm)
+	timeFieldName?: string // Название поля времени в форме
 	priority?: 'low' | 'medium' | 'high'
 }
 

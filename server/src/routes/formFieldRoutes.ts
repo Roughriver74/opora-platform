@@ -85,6 +85,9 @@ router.get('/bitrix/debug-fields', formFieldController.debugFieldStructure)
 // Обновление порядка полей
 router.put('/order', authMiddleware, requireAdmin, formFieldController.updateFieldsOrder)
 
+// Переключение активности поля
+router.patch('/:id/toggle-active', authMiddleware, requireAdmin, formFieldController.toggleFieldActive)
+
 // Маршруты с параметрами должны идти последними
 router.get('/:id', formFieldController.getFieldById)
 

@@ -67,6 +67,7 @@ export interface FormField {
 	dynamicSource?: DynamicSource
 	linkedFields?: LinkedFields
 	order: number
+	isActive?: boolean // Флаг активности поля (true - показывается, false - скрыто)
 	// Данные для заголовков разделов
 	headerData?: {
 		label: string

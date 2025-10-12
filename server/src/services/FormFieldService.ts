@@ -34,6 +34,7 @@ export interface CreateFormFieldDTO {
 	}
 	order?: number
 	formId: string
+	isActive?: boolean
 }
 
 export interface UpdateFormFieldDTO {
@@ -67,6 +68,7 @@ export interface UpdateFormFieldDTO {
 			sourceSectionName?: string
 		}
 	}
+	isActive?: boolean
 }
 
 export class FormFieldService extends BaseService<FormField, FormFieldRepository> {
@@ -113,8 +115,8 @@ export class FormFieldService extends BaseService<FormField, FormFieldRepository
 		return this.repository.update(id, cleanData)
 	}
 
-	async findByFormId(formId: string): Promise<FormField[]> {
-		return this.repository.findByFormId(formId)
+	async findByFormId(formId: string, includeInactive = true): Promise<FormField[]> {
+		return this.repository.findByFormId(formId, includeInactive)
 	}
 
 	async updateFieldsOrder(updates: Array<{ id: string; order: number }>): Promise<{ success: boolean; updatedCount: number }> {

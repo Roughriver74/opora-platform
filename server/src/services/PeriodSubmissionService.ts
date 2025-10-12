@@ -24,6 +24,8 @@ export interface CreatePeriodSubmissionsDTO {
 		startDate: string | Date
 		endDate: string | Date
 		dateFieldName: string
+		time?: string // Единое время для всех заявок (HH:mm)
+		timeFieldName?: string // Название поля времени в форме
 	}
 	userId?: string
 	userName?: string
@@ -110,6 +112,17 @@ export class PeriodSubmissionService {
 		await queryRunner.startTransaction()
 
 		try {
+			// Проверяем userId - обязательное поле для периодических заявок
+			if (!data.userId) {
+				throw new Error(
+					'userId обязателен для создания периодических заявок. Пользователь должен быть авторизован.'
+				)
+			}
+
+			console.log(
+				`[PERIOD_SERVICE] Создание периодических заявок от пользователя: ${data.userId} (${data.userName || 'Неизвестно'})`
+			)
+
 			// Получаем форму
 			const form = await this.formService.findWithFields(data.formId)
 			if (!form) {
@@ -137,11 +150,23 @@ export class PeriodSubmissionService {
 			const dates = this.generateDateRange(startDate, endDate)
 			const totalDays = dates.length
 
-			console.log(
-				`[PERIOD_SERVICE] Создание ${totalDays} заявок на период ${startDate.toLocaleDateString(
-					'ru-RU'
-				)} - ${endDate.toLocaleDateString('ru-RU')}`
-			)
+			// Проверяем, указано ли время для всех заявок
+			const hasTime =
+				data.periodConfig.time && data.periodConfig.timeFieldName
+
+			if (hasTime) {
+				console.log(
+					`[PERIOD_SERVICE] Создание ${totalDays} заявок на период ${startDate.toLocaleDateString(
+						'ru-RU'
+					)} - ${endDate.toLocaleDateString('ru-RU')} с временем ${data.periodConfig.time}`
+				)
+			} else {
+				console.log(
+					`[PERIOD_SERVICE] Создание ${totalDays} заявок на период ${startDate.toLocaleDateString(
+						'ru-RU'
+					)} - ${endDate.toLocaleDateString('ru-RU')}`
+				)
+			}
 
 			// Создаем группу периода
 			const periodGroup = queryRunner.manager.create(SubmissionPeriodGroup, {
@@ -172,16 +197,23 @@ export class PeriodSubmissionService {
 				const position = i + 1
 
 				try {
+					const timeForLog = hasTime ? ` в ${data.periodConfig.time}` : ''
 					console.log(
 						`[PERIOD_SERVICE] Создание заявки ${position}/${totalDays} на дату ${date.toLocaleDateString(
 							'ru-RU'
-						)}`
+						)}${timeForLog}`
 					)
 
 					// Клонируем formData и обновляем дату
 					const periodFormData = {
 						...data.formData,
 						[data.periodConfig.dateFieldName]: date.toISOString().split('T')[0],
+					}
+
+					// Добавляем время, если оно указано (одно и то же для всех заявок)
+					if (hasTime) {
+						periodFormData[data.periodConfig.timeFieldName!] =
+							data.periodConfig.time
 					}
 
 					// Подготавливаем данные для Bitrix24
@@ -204,6 +236,8 @@ export class PeriodSubmissionService {
 					dealData.TITLE = dealTitle
 					dealData.STAGE_ID = 'C1:NEW'
 					dealData.CATEGORY_ID = form.bitrixDealCategory || '1'
+					// Маркер периодической заявки для Bitrix24
+					dealData.UF_CRM_1760208480 = '1'
 
 					// Создаем сделку в Bitrix24
 					const dealResponse = await bitrix24Service.createDeal(dealData)

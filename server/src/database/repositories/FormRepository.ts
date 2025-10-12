@@ -40,16 +40,29 @@ export class FormRepository extends BaseRepository<Form> {
 		return forms
 	}
 
-	async findWithFields(formId: string): Promise<Form | null> {
-		return this.repository.findOne({
-			where: { id: formId },
-			relations: ['fields'],
-		})
+	async findWithFields(
+		formId: string,
+		includeInactive = false
+	): Promise<Form | null> {
+		const queryBuilder = this.repository
+			.createQueryBuilder('form')
+			.leftJoinAndSelect('form.fields', 'field')
+			.where('form.id = :formId', { formId })
+
+		// Фильтруем неактивные поля если includeInactive = false
+		if (!includeInactive) {
+			queryBuilder.andWhere('field.isActive IS NULL OR field.isActive = true')
+		}
+
+		return queryBuilder.getOne()
 	}
 
-	async createWithFields(formData: Partial<Form>, fields: Partial<FormField>[]): Promise<Form> {
+	async createWithFields(
+		formData: Partial<Form>,
+		fields: Partial<FormField>[]
+	): Promise<Form> {
 		const form = this.repository.create(formData)
-		
+
 		// Создание полей формы
 		if (fields && fields.length > 0) {
 			form.fields = fields.map((fieldData, index) => {
@@ -65,13 +78,13 @@ export class FormRepository extends BaseRepository<Form> {
 		const saved = await this.repository.save(form)
 		await this.invalidateCache(saved.id)
 		await this.invalidateCachePattern(`${this.cachePrefix}:*`)
-		
+
 		return saved
 	}
 
 	async updateWithFields(
-		formId: string, 
-		formData: Partial<Form>, 
+		formId: string,
+		formData: Partial<Form>,
 		fields?: Partial<FormField>[]
 	): Promise<Form | null> {
 		const form = await this.findWithFields(formId)
@@ -84,7 +97,7 @@ export class FormRepository extends BaseRepository<Form> {
 		if (fields !== undefined) {
 			// Удаляем старые поля
 			form.fields = []
-			
+
 			// Добавляем новые поля
 			if (fields.length > 0) {
 				form.fields = fields.map((fieldData, index) => {
@@ -102,7 +115,7 @@ export class FormRepository extends BaseRepository<Form> {
 		const saved = await this.repository.save(form)
 		await this.invalidateCache(formId)
 		await this.invalidateCachePattern(`${this.cachePrefix}:*`)
-		
+
 		return saved
 	}
 
@@ -114,7 +127,7 @@ export class FormRepository extends BaseRepository<Form> {
 		await this.repository.save(form)
 		await this.invalidateCache(formId)
 		await this.invalidateCachePattern(`${this.cachePrefix}:active`)
-		
+
 		return true
 	}
 
@@ -156,9 +169,12 @@ export class FormRepository extends BaseRepository<Form> {
 		// Вычисление среднего количества заявок в день
 		const form = await this.findById(formId)
 		const daysSinceCreation = form ? form.getAge() : 1
-		const avgDailySubmissions = daysSinceCreation > 0 
-			? Math.round((parseInt(stats.totalSubmissions) || 0) / daysSinceCreation * 10) / 10
-			: 0
+		const avgDailySubmissions =
+			daysSinceCreation > 0
+				? Math.round(
+						((parseInt(stats.totalSubmissions) || 0) / daysSinceCreation) * 10
+				  ) / 10
+				: 0
 
 		return {
 			totalSubmissions: parseInt(stats.totalSubmissions) || 0,
@@ -199,16 +215,18 @@ export class FormRepository extends BaseRepository<Form> {
 
 		const saved = await this.repository.save(newForm)
 		await this.invalidateCachePattern(`${this.cachePrefix}:*`)
-		
+
 		return saved
 	}
 
-	async getFieldsGroupedBySections(formId: string): Promise<Record<string, FormField[]>> {
+	async getFieldsGroupedBySections(
+		formId: string
+	): Promise<Record<string, FormField[]>> {
 		const form = await this.findWithFields(formId)
 		if (!form || !form.fields) return {}
 
 		const grouped: Record<string, FormField[]> = {}
-		
+
 		for (const field of form.fields) {
 			const sectionId = field.sectionId || 'default'
 			if (!grouped[sectionId]) {

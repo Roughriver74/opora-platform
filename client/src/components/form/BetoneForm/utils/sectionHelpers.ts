@@ -4,14 +4,22 @@ import { FORM_CONSTANTS } from '../constants'
 
 /**
  * Группирует поля по секциям на основе заголовков (header полей)
+ * Фильтрует неактивные поля и разделы для публичной формы
  * @param fields - массив полей формы
+ * @param includeInactive - включать ли неактивные поля (для админки)
  * @returns массив секций с полями
  */
 export const groupFieldsBySection = (
-	fields: FormFieldType[]
+	fields: FormFieldType[],
+	includeInactive = false
 ): FormSection[] => {
+	// Фильтруем поля по активности если includeInactive = false
+	const activeFields = includeInactive
+		? fields
+		: fields.filter(field => field.isActive !== false)
+
 	// Сортируем поля по порядку
-	const sortedFields = [...fields].sort(
+	const sortedFields = [...activeFields].sort(
 		(a, b) => (a.order || 0) - (b.order || 0)
 	)
 
@@ -24,32 +32,41 @@ export const groupFieldsBySection = (
 
 	// Флаг для отслеживания, содержит ли секция поля
 	let hasSectionFields = false
+	// Флаг для отслеживания активности текущего заголовка
+	let currentHeaderActive = true
 
 	// Проходим по всем полям и группируем их по секциям
 	sortedFields.forEach(field => {
 		if (field.type === 'header') {
 			// Если встречаем заголовок, создаем новую секцию
-			if (currentSection.fields.length > 0) {
-				// Сохраняем предыдущую секцию, если в ней есть поля
+			if (currentSection.fields.length > 0 && currentHeaderActive) {
+				// Сохраняем предыдущую секцию, если в ней есть поля и заголовок активен
 				sections.push(currentSection)
 				hasSectionFields = false
 			}
 
-			// Создаем новую секцию с ID заголовка
-			currentSection = {
-				id: field._id, // Сохраняем ID заголовка для возможности редактирования
-				title: field.label || 'Без названия',
-				fields: [],
+			// Проверяем активность нового заголовка
+			currentHeaderActive = field.isActive !== false
+
+			// Создаем новую секцию с ID заголовка (только если заголовок активен или includeInactive = true)
+			if (currentHeaderActive || includeInactive) {
+				currentSection = {
+					id: field._id, // Сохраняем ID заголовка для возможности редактирования
+					title: field.label || 'Без названия',
+					fields: [],
+				}
 			}
 		} else {
-			// Добавляем поле в текущую секцию
-			currentSection.fields.push(field)
-			hasSectionFields = true
+			// Добавляем поле в текущую секцию (только если заголовок активен или includeInactive = true)
+			if (currentHeaderActive || includeInactive) {
+				currentSection.fields.push(field)
+				hasSectionFields = true
+			}
 		}
 	})
 
-	// Добавляем последнюю секцию, если она содержит поля
-	if (currentSection.fields.length > 0) {
+	// Добавляем последнюю секцию, если она содержит поля и заголовок активен
+	if (currentSection.fields.length > 0 && currentHeaderActive) {
 		sections.push(currentSection)
 	}
 

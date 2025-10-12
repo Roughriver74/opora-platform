@@ -816,19 +816,6 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 					/>
 				)}
 
-				{/* Переключатель активности поля - для всех типов */}
-				<FormControlLabel
-					control={
-						<Switch
-							checked={formField.isActive !== false}
-							onChange={e => handleFieldChange('isActive', e.target.checked)}
-							color='success'
-						/>
-					}
-					label={formField.isActive !== false ? 'Активно' : 'Скрыто'}
-					sx={{ mt: 2 }}
-				/>
-
 				{/* Динамические источники и опции не нужны для заголовков и разделителей */}
 				{formField.type !== 'header' &&
 					formField.type !== 'divider' &&

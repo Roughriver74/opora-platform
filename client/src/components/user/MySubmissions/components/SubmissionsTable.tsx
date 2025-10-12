@@ -24,6 +24,7 @@ import {
 	Pending as PendingIcon,
 	FileCopy as FileCopyIcon,
 	Cancel as CancelIcon,
+	Schedule as ScheduleIcon,
 } from '@mui/icons-material'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -102,16 +103,28 @@ export const SubmissionsTable = ({
 								}}
 							>
 								<TableCell>
-									<Typography
-										variant='body2'
-										fontWeight='bold'
-										sx={{
-											textDecoration: isCancelled ? 'line-through' : 'none',
-											color: isCancelled ? 'text.secondary' : 'inherit',
-										}}
-									>
-										{submission.bitrixDealId || 'Не указан'}
-									</Typography>
+									<Stack direction='row' spacing={1} alignItems='center'>
+										<Typography
+											variant='body2'
+											fontWeight='bold'
+											sx={{
+												textDecoration: isCancelled ? 'line-through' : 'none',
+												color: isCancelled ? 'text.secondary' : 'inherit',
+											}}
+										>
+											{submission.bitrixDealId || 'Не указан'}
+										</Typography>
+										{submission.isPeriodSubmission && (
+											<Tooltip title='Периодическая заявка'>
+												<ScheduleIcon
+													sx={{
+														fontSize: 18,
+														color: 'primary.main',
+													}}
+												/>
+											</Tooltip>
+										)}
+									</Stack>
 								</TableCell>
 								<TableCell>
 									{submission.userName || 'Анонимная заявка'}

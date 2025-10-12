@@ -21,10 +21,10 @@ export const getAllForms = async (
 		// Получаем все активные формы с полями
 		const forms = await formService.findActive()
 
-		// Загружаем поля для каждой формы
+		// Загружаем поля для каждой формы (только активные поля для публичных форм)
 		const formsWithFields = await Promise.all(
 			forms.map(async form => {
-				const formWithFields = await formService.findWithFields(form.id)
+				const formWithFields = await formService.findWithFields(form.id, false) // includeInactive = false для публичных форм
 				return formWithFields || form
 			})
 		)
@@ -47,8 +47,8 @@ export const getFormById = async (
 	try {
 		const { id } = req.params
 
-		// Получаем форму с полями через сервис
-		const form = await formService.findWithFields(id)
+		// Получаем форму с полями через сервис (включая неактивные для админки)
+		const form = await formService.findWithFields(id, true) // includeInactive = true для админки
 
 		if (!form) {
 			res.status(404).json({

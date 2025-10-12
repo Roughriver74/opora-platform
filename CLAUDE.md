@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+
+## Что использовать
+
+Для внутрениих вычеслений испольщзуй бекенд.
+
+Для отрисовки данных - frontend.
+
+
 ## Project Overview
 
 Beton CRM is a concrete order management system with Bitrix24 integration. It's a full-stack TypeScript application with React frontend and Node.js/Express backend, using PostgreSQL for data persistence.

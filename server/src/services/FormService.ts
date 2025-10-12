@@ -72,7 +72,8 @@ export class FormService extends BaseService<Form, FormRepository> {
 			title: data.title,
 			description: data.description,
 			bitrixDealCategory: data.bitrixDealCategory,
-			successMessage: data.successMessage || 'Спасибо! Ваша заявка успешно отправлена.',
+			successMessage:
+				data.successMessage || 'Спасибо! Ваша заявка успешно отправлена.',
 			isActive: true,
 		}
 
@@ -88,7 +89,11 @@ export class FormService extends BaseService<Form, FormRepository> {
 
 		// Обновление формы с полями
 		const { fields, ...formData } = data
-		return this.repository.updateWithFields(id, formData as Partial<Form>, fields)
+		return this.repository.updateWithFields(
+			id,
+			formData as Partial<Form>,
+			fields
+		)
 	}
 
 	async findByName(name: string): Promise<Form | null> {
@@ -99,8 +104,11 @@ export class FormService extends BaseService<Form, FormRepository> {
 		return this.repository.findActive()
 	}
 
-	async findWithFields(formId: string): Promise<Form | null> {
-		return this.repository.findWithFields(formId)
+	async findWithFields(
+		formId: string,
+		includeInactive = false
+	): Promise<Form | null> {
+		return this.repository.findWithFields(formId, includeInactive)
 	}
 
 	async toggleActive(formId: string): Promise<boolean> {
@@ -137,7 +145,9 @@ export class FormService extends BaseService<Form, FormRepository> {
 		return this.repository.getFormStatistics(formId)
 	}
 
-	async getFieldsGroupedBySections(formId: string): Promise<Record<string, FormField[]>> {
+	async getFieldsGroupedBySections(
+		formId: string
+	): Promise<Record<string, FormField[]>> {
 		const form = await this.repository.findById(formId)
 		if (!form) {
 			this.throwNotFound('Форма', formId)
@@ -146,7 +156,10 @@ export class FormService extends BaseService<Form, FormRepository> {
 		return this.repository.getFieldsGroupedBySections(formId)
 	}
 
-	async updateFieldOrder(formId: string, fieldOrders: Array<{ fieldId: string; order: number }>): Promise<Form | null> {
+	async updateFieldOrder(
+		formId: string,
+		fieldOrders: Array<{ fieldId: string; order: number }>
+	): Promise<Form | null> {
 		const form = await this.repository.findWithFields(formId)
 		if (!form) {
 			this.throwNotFound('Форма', formId)
@@ -164,7 +177,10 @@ export class FormService extends BaseService<Form, FormRepository> {
 		return this.repository.updateWithFields(formId, {}, updatedFields)
 	}
 
-	async validateFormData(formId: string, formData: Record<string, any>): Promise<{ 
+	async validateFormData(
+		formId: string,
+		formData: Record<string, any>
+	): Promise<{
 		isValid: boolean
 		errors: Record<string, string>
 	}> {
@@ -186,12 +202,16 @@ export class FormService extends BaseService<Form, FormRepository> {
 				switch (field.type) {
 					case 'email':
 						if (!this.isValidEmail(formData[field.name])) {
-							errors[field.name] = `Поле "${field.label}" должно содержать корректный email`
+							errors[
+								field.name
+							] = `Поле "${field.label}" должно содержать корректный email`
 						}
 						break
 					case 'phone':
 						if (!this.isValidPhone(formData[field.name])) {
-							errors[field.name] = `Поле "${field.label}" должно содержать корректный телефон`
+							errors[
+								field.name
+							] = `Поле "${field.label}" должно содержать корректный телефон`
 						}
 						break
 					case 'number':
@@ -205,7 +225,7 @@ export class FormService extends BaseService<Form, FormRepository> {
 
 		return {
 			isValid: Object.keys(errors).length === 0,
-			errors
+			errors,
 		}
 	}
 
@@ -230,7 +250,7 @@ export class FormService extends BaseService<Form, FormRepository> {
 
 		// Создание маппинга полей для Bitrix24
 		const fieldMapping: Record<string, string> = {}
-		
+
 		for (const field of form.fields) {
 			if (field.bitrixFieldId) {
 				fieldMapping[field.name] = field.bitrixFieldId

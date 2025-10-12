@@ -52,6 +52,7 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 		label: '',
 		type: 'text',
 		required: false,
+		isActive: true,
 		order: 0,
 		options: [],
 		formId: formId,
@@ -87,6 +88,7 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 				label: '',
 				type: 'text',
 				required: false,
+				isActive: true,
 				order: 0,
 				options: [],
 				formId: formId,
@@ -314,6 +316,7 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 			label: '',
 			type: 'text',
 			required: false,
+			isActive: true,
 			order: 0,
 			options: [],
 			formId: formId,
@@ -502,6 +505,18 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 							/>
 						}
 						label='Обязательное поле'
+					/>
+
+					{/* Переключатель активности поля */}
+					<FormControlLabel
+						control={
+							<Switch
+								checked={formData.isActive !== false}
+								onChange={e => handleChange('isActive', e.target.checked)}
+								color='success'
+							/>
+						}
+						label={formData.isActive !== false ? 'Активно' : 'Скрыто'}
 					/>
 
 					{/* Поля Битрикс24 */}

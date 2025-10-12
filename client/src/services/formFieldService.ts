@@ -52,7 +52,7 @@ export const FormFieldService = {
 		}
 	},
 
-	async getFormFields(formId: string) {
+	async getFormFields(formId: string, includeInactive = true) {
 		if (!formId) {
 			// Если нет ID формы, возвращаем пустой массив
 			return []
@@ -60,7 +60,7 @@ export const FormFieldService = {
 		try {
 			// Запрашиваем поля формы через правильный эндпоинт
 			const response = await api.get('/api/form-fields', {
-				params: { formId },
+				params: { formId, includeInactive },
 			})
 			// Возвращаем массив полей
 			return response.data || []

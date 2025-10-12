@@ -4,13 +4,17 @@ import { NON_VALIDATABLE_TYPES, FORM_CONSTANTS } from '../constants'
 
 /**
  * Создает схему валидации Yup на основе полей формы
+ * Исключает неактивные поля из валидации
  * @param fields - массив полей формы
  * @returns объект схемы валидации Yup
  */
 export const generateValidationSchema = (fields: FormFieldType[]) => {
 	const schemaFields: Record<string, any> = {}
 
-	fields.forEach(field => {
+	// Фильтруем только активные поля
+	const activeFields = fields.filter(field => field.isActive !== false)
+
+	activeFields.forEach(field => {
 		// Пропускаем поля, которые не требуют валидации
 		if (
 			NON_VALIDATABLE_TYPES.includes(
@@ -77,6 +81,7 @@ export const generateValidationSchema = (fields: FormFieldType[]) => {
 
 /**
  * Генерирует начальные значения для формы
+ * Исключает неактивные поля
  * @param fields - массив полей формы
  * @param editData - данные для предзаполнения (при редактировании)
  * @returns объект с начальными значениями
@@ -87,7 +92,10 @@ export const generateInitialValues = (
 ): Record<string, any> => {
 	const initialValues: Record<string, any> = {}
 
-	fields.forEach(field => {
+	// Фильтруем только активные поля
+	const activeFields = fields.filter(field => field.isActive !== false)
+
+	activeFields.forEach(field => {
 		// Пропускаем поля без значений
 		if (
 			NON_VALIDATABLE_TYPES.includes(

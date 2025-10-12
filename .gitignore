@@ -2,3 +2,14 @@ server/node_modules/
 node_modules/@babel/runtime/package.json
 node_modules
 dist
+*.tar.gz
+*.zip
+*.tar
+*.gz
+*.bz2
+*.rar
+*.7z
+*.iso
+*.dmg
+*.tar.xz
+backups

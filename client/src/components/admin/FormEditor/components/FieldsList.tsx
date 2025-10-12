@@ -28,6 +28,8 @@ import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank'
 import CheckBoxIcon from '@mui/icons-material/CheckBox'
 import MoveToInboxIcon from '@mui/icons-material/MoveToInbox'
 import SelectAllIcon from '@mui/icons-material/SelectAll'
+import Visibility from '@mui/icons-material/Visibility'
+import VisibilityOff from '@mui/icons-material/VisibilityOff'
 
 import { FormField } from '../../../../types'
 import FormFieldEditor from '../../FormFieldEditor'
@@ -299,7 +301,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 			if (selectedFields.size === 0) return
 
 			console.log(
-			`📦 Перемещаем ${selectedFields.size} полей в раздел с order ${targetSectionOrder}`
+				`📦 Перемещаем ${selectedFields.size} полей в раздел с order ${targetSectionOrder}`
 			)
 
 			// Перемещаем каждое выбранное поле
@@ -332,7 +334,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 		}
 
 		console.log(
-		'🔄 Применяем локальные изменения порядка разделов:',
+			'🔄 Применяем локальные изменения порядка разделов:',
 			localOrderChanges
 		)
 
@@ -357,7 +359,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 			const oldSectionOrder = sectionHeader.order || 0
 
 			console.log({
-			oldOrder: oldSectionOrder,
+				oldOrder: oldSectionOrder,
 				newOrder: newSectionOrder,
 				fieldsCount: section.fields.length,
 			})
@@ -372,7 +374,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 				new Promise<void>((resolve, reject) => {
 					try {
 						console.log(
-						`📝 Обновляем раздел ${sectionHeader.name}: ${oldSectionOrder} → ${newSectionOrder}`
+							`📝 Обновляем раздел ${sectionHeader.name}: ${oldSectionOrder} → ${newSectionOrder}`
 						)
 						onFieldSave(section.headerIndex!, updatedSectionField)
 						resolve()
@@ -400,7 +402,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 					parseInt(newSectionOrder.toString()) + fieldIndex + 1
 
 				console.log(
-				`🔍 Анализ поля "${field.name}": section=${newSectionOrder}, fieldIndex=${fieldIndex}, newOrder=${newFieldOrder}`
+					`🔍 Анализ поля "${field.name}": section=${newSectionOrder}, fieldIndex=${fieldIndex}, newOrder=${newFieldOrder}`
 				)
 
 				if (oldFieldOrder !== newFieldOrder) {
@@ -410,7 +412,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 					}
 
 					console.log(
-					`🔹 Перемещаем поле "${field.name}": ${oldFieldOrder} → ${newFieldOrder}`
+						`🔹 Перемещаем поле "${field.name}": ${oldFieldOrder} → ${newFieldOrder}`
 					)
 
 					allUpdatePromises.push(
@@ -425,7 +427,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 					)
 				} else {
 					console.log(
-					`⏭️ Поле "${field.name}" остается на месте: order=${oldFieldOrder}`
+						`⏭️ Поле "${field.name}" остается на месте: order=${oldFieldOrder}`
 					)
 				}
 			})
@@ -439,7 +441,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 			setLocalOrderChanges({})
 
 			console.log(
-			'✅ Все изменения применены, запускаем финальную нормализацию...'
+				'✅ Все изменения применены, запускаем финальную нормализацию...'
 			)
 
 			// Финальная нормализация для исправления возможных конфликтов порядка
@@ -648,8 +650,12 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 								<Box
 									sx={{
 										p: 2,
-										bgcolor: 'primary.main',
+										bgcolor:
+											section.header.isActive === false
+												? 'grey.400'
+												: 'primary.main',
 										color: 'primary.contrastText',
+										opacity: section.header.isActive === false ? 0.7 : 1,
 									}}
 								>
 									<Stack direction='row' alignItems='center' spacing={1}>
@@ -667,7 +673,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 													// НЕ сохраняем в БД, только обновляем локальное состояние
 													const newOrder = parseInt(e.target.value) || 0
 													console.log(
-													'📝 Локальное изменение порядка раздела:',
+														'📝 Локальное изменение порядка раздела:',
 														{
 															sectionId: section.id,
 															sectionName: section.header?.name,
@@ -751,6 +757,19 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 													sx={{ fontWeight: 600, flexGrow: 1 }}
 												>
 													{section.header?.label || 'Раздел'}
+													{section.header?.isActive === false && (
+														<Chip
+															label='НЕАКТИВЕН'
+															size='small'
+															sx={{
+																ml: 1,
+																bgcolor: 'error.main',
+																color: 'error.contrastText',
+																fontSize: '0.7rem',
+																fontWeight: 'bold',
+															}}
+														/>
+													)}
 												</Typography>
 												<Chip
 													label={`${section.fields.length} полей`}
@@ -900,6 +919,15 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 															dragOverIndex === originalIndex
 																? 'translateY(-4px)'
 																: 'translateY(0)',
+														opacity: field.isActive === false ? 0.6 : 1,
+														border:
+															field.isActive === false ? '2px dashed' : 'none',
+														borderColor:
+															field.isActive === false
+																? 'error.main'
+																: 'transparent',
+														borderRadius: field.isActive === false ? 1 : 0,
+														p: field.isActive === false ? 1 : 0,
 														'&::before':
 															dragOverIndex === originalIndex
 																? {
@@ -952,7 +980,45 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 																	}}
 																/>
 															)}
-
+														{/* Quick-toggle кнопка для активности поля */}
+														{!selectionMode && (
+															<Tooltip
+																title={
+																	field.isActive !== false
+																		? 'Скрыть поле'
+																		: 'Показать поле'
+																}
+															>
+																<IconButton
+																	size='small'
+																	onClick={async () => {
+																		// Вызываем onFieldSave для обновления isActive
+																		const updatedField = {
+																			...field,
+																			isActive: field.isActive === false,
+																		}
+																		handleFieldSaveWithScroll(
+																			originalIndex,
+																			updatedField
+																		)
+																	}}
+																	sx={{
+																		mt: 1,
+																		color:
+																			field.isActive !== false
+																				? 'success.main'
+																				: 'grey.400',
+																	}}
+																>
+																	{field.isActive !== false ? (
+																		<Visibility />
+																	) : (
+																		<VisibilityOff />
+																	)}
+																</IconButton>
+															</Tooltip>
+														)}
+														)
 														<Box
 															draggable={!selectionMode}
 															onDragStart={e =>

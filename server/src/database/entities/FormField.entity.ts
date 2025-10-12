@@ -113,8 +113,16 @@ export class FormField extends BaseEntity {
 	@IsNumber()
 	order: number
 
+	@Column({ type: 'boolean', default: true, name: 'is_active' })
+	@IsBoolean()
+	isActive: boolean
+
 	isDropdown(): boolean {
 		return this.type === 'dropdown' || this.type === 'select'
+	}
+
+	isHidden(): boolean {
+		return this.isActive === false
 	}
 
 	isDynamic(): boolean {
