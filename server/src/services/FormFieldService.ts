@@ -95,12 +95,12 @@ export class FormFieldService extends BaseService<FormField, FormFieldRepository
 
 		// Проверяем и очищаем данные перед обновлением
 		const cleanData = { ...data }
-		
-		// Если formId пустая строка, используем formId из существующего поля
-		if (cleanData.formId === '') {
+
+		// Если formId пустая строка, null или undefined, используем formId из существующего поля
+		if (!cleanData.formId || cleanData.formId === '') {
 			cleanData.formId = field.formId
 		}
-		
+
 		// Удаляем лишние поля если они есть
 		delete cleanData._id
 
