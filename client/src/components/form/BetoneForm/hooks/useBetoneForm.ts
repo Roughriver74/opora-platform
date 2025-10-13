@@ -70,7 +70,8 @@ export const useBetoneForm = (
 					)
 				}
 
-				if (result.success) {
+				// Проверяем явно, что result существует и имеет success: true
+				if (result && result.success === true) {
 					const successMessage =
 						(result as any).message ||
 						(editData?.submissionId
@@ -131,10 +132,23 @@ export const useBetoneForm = (
 						message: errorMessage,
 					})
 				}
-			} catch (error) {
+			} catch (error: any) {
 				console.error('Ошибка отправки формы:', error)
-				const errorMessage =
-					'Произошла ошибка при отправке заявки. Попробуйте еще раз.'
+				console.error('Детали ошибки:', {
+					message: error?.message,
+					response: error?.response?.data,
+					status: error?.response?.status,
+				})
+
+				// Извлекаем сообщение об ошибке из ответа сервера
+				let errorMessage = 'Произошла ошибка при отправке заявки. Попробуйте еще раз.'
+
+				// Проверяем различные источники сообщения об ошибке
+				if (error?.response?.data?.message) {
+					errorMessage = error.response.data.message
+				} else if (error?.message) {
+					errorMessage = error.message
+				}
 
 				// Показываем глобальное уведомление об ошибке
 				showError(errorMessage, {

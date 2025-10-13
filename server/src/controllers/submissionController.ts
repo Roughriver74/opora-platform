@@ -281,10 +281,12 @@ export const submitForm = async (req: Request, res: Response) => {
 						`[SUBMIT_FORM] ❌ Не удалось восстановить заявку в БД:`,
 						recoveryError
 					)
-					// Сохраняем информацию для ручного восстановления
+					// Сохраняем информацию для ручного восстановления, но сообщаем пользователю об успехе
+					// т.к. заявка уже создана в Bitrix24 и её можно восстановить вручную
 					return res.status(500).json({
+						success: false,
 						message:
-							'Заявка создана в Bitrix24, но произошла ошибка сохранения в системе. Обратитесь в поддержку.',
+							'Заявка создана в Bitrix24, но произошла ошибка сохранения в системе. Обратитесь в поддержку с указанием номера сделки.',
 						bitrixDealId: dealResponse.result?.toString?.(),
 						error: error.message,
 						recoveryData: {
@@ -301,13 +303,16 @@ export const submitForm = async (req: Request, res: Response) => {
 				`[SUBMIT_FORM] ❌ Ошибка создания сделки в Bitrix24, ничего не сохранено`
 			)
 			return res.status(500).json({
-				message: 'Ошибка создания заявки в системе',
+				success: false,
+				message: 'Ошибка создания заявки в системе. Пожалуйста, попробуйте еще раз.',
 				error: error?.message,
 			})
 		}
 	} catch (error: any) {
+		console.error('[SUBMIT_FORM] ❌ Неожиданная ошибка при обработке заявки:', error)
 		return res.status(500).json({
-			message: 'Произошла ошибка при обработке заявки',
+			success: false,
+			message: 'Произошла ошибка при обработке заявки. Пожалуйста, попробуйте еще раз.',
 			error: error?.message,
 		})
 	}

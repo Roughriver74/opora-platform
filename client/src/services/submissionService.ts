@@ -111,8 +111,35 @@ export const SubmissionService = {
 		values: Record<string, any>,
 		submission: FormSubmission
 	): Promise<FormSubmissionResponse> => {
-		const response = await api.post('/api/submissions/submit', submission)
-		return response.data
+		try {
+			const response = await api.post('/api/submissions/submit', submission)
+
+			// Проверяем, что ответ содержит данные
+			if (!response.data) {
+				throw new Error('Получен пустой ответ от сервера')
+			}
+
+			// Если сервер вернул success: false, пробрасываем как ошибку
+			if (response.data.success === false) {
+				const error: any = new Error(
+					response.data.message || 'Не удалось отправить заявку'
+				)
+				error.response = { data: response.data }
+				throw error
+			}
+
+			return response.data
+		} catch (error: any) {
+			// Если это ошибка сети или сервера (5xx, 4xx)
+			if (error.response?.data) {
+				throw error
+			}
+
+			// Если это другая ошибка
+			throw new Error(
+				error.message || 'Произошла ошибка при отправке заявки'
+			)
+		}
 	},
 
 	// Получение всех заявок (для админов)
