@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useFormik } from 'formik'
-import { useNavigate } from 'react-router-dom'
 import { FormField as FormFieldType } from '../../../../types'
 import { SubmitResult } from '../types'
 import { Submission, SubmissionService } from '../../../../services/submissionService'
@@ -35,7 +34,6 @@ export const useBetoneForm = (
 	const [submitting, setSubmitting] = useState(false)
 	const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null)
 	const { showSuccess, showError } = useNotificationHelpers()
-	const navigate = useNavigate()
 
 	// Инициализация formik с оптимизированными настройками
 	const formik = useFormik({
@@ -85,9 +83,9 @@ export const useBetoneForm = (
 						onAfterHide: () => {
 							// Перенаправляем на страницу "Мои заявки" только для новых заявок, не для редактирования
 							if (!editData?.submissionId) {
-								// Небольшая задержка для плавности
+								// Используем window.location.href для полного обновления страницы
 								setTimeout(() => {
-									navigate('/my-submissions', { replace: true })
+									window.location.href = '/my-submissions'
 								}, 100)
 							}
 						},

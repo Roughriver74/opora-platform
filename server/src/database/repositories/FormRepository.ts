@@ -87,36 +87,44 @@ export class FormRepository extends BaseRepository<Form> {
 		formData: Partial<Form>,
 		fields?: Partial<FormField>[]
 	): Promise<Form | null> {
-		const form = await this.findWithFields(formId)
-		if (!form) return null
+		// Используем транзакцию для атомарности операций
+		return await this.repository.manager.transaction(async manager => {
+			// Обновляем данные формы
+			await manager.update(Form, formId, formData)
 
-		// Обновление данных формы
-		Object.assign(form, formData)
+			// Обновление полей, если предоставлены
+			if (fields !== undefined) {
+				// Удаляем все существующие поля формы
+				await manager.delete(FormField, { formId: formId })
 
-		// Обновление полей, если предоставлены
-		if (fields !== undefined) {
-			// Удаляем старые поля
-			form.fields = []
-
-			// Добавляем новые поля
-			if (fields.length > 0) {
-				form.fields = fields.map((fieldData, index) => {
-					const field = new FormField()
-					Object.assign(field, {
-						...fieldData,
-						formId: formId,
-						order: fieldData.order ?? index,
+				// Добавляем новые поля, если они есть
+				if (fields.length > 0) {
+					const newFields = fields.map((fieldData, index) => {
+						const field = new FormField()
+						Object.assign(field, {
+							...fieldData,
+							formId: formId,
+							order: fieldData.order ?? index,
+						})
+						return field
 					})
-					return field
-				})
+
+					await manager.save(newFields)
+				}
 			}
-		}
 
-		const saved = await this.repository.save(form)
-		await this.invalidateCache(formId)
-		await this.invalidateCachePattern(`${this.cachePrefix}:*`)
+			// Получаем обновленную форму с полями
+			const updatedForm = await manager.findOne(Form, {
+				where: { id: formId },
+				relations: ['fields'],
+			})
 
-		return saved
+			// Инвалидируем кеш
+			await this.invalidateCache(formId)
+			await this.invalidateCachePattern(`${this.cachePrefix}:*`)
+
+			return updatedForm
+		})
 	}
 
 	async toggleActive(formId: string): Promise<boolean> {
