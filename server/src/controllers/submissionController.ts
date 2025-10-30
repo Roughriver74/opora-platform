@@ -219,13 +219,21 @@ export const submitForm = async (req: Request, res: Response) => {
 				console.warn(
 					`[SUBMIT_FORM] ⚠️ Заявка ${submission.id} создана в БД и Bitrix, но произошла ошибка на финальном этапе. Заявка сохранена.`
 				)
-				// Помечаем как частично синхронизированную
+
+				// Проверяем, есть ли у нас Bitrix Deal ID - если да, то основная синхронизация прошла успешно
+				const hasBitrixDealId = !!dealResponse?.result
+
+				// Некритичные ошибки (Elasticsearch, обновление дополнительных полей) - статус SYNCED
+				// Критичные ошибки (нет Bitrix Deal ID) - статус FAILED
 				try {
 					await submissionService.updateSyncStatus(
 						submission.id,
-						BitrixSyncStatus.FAILED,
+						hasBitrixDealId ? BitrixSyncStatus.SYNCED : BitrixSyncStatus.FAILED,
 						dealResponse?.result?.toString?.(),
-						`Финальная ошибка: ${error.message}`
+						hasBitrixDealId ? undefined : `Финальная ошибка: ${error.message}`
+					)
+					console.log(
+						`[SUBMIT_FORM] ℹ️ Статус синхронизации: ${hasBitrixDealId ? 'SYNCED (есть Bitrix ID)' : 'FAILED (нет Bitrix ID)'}`
 					)
 				} catch {}
 
@@ -238,7 +246,7 @@ export const submitForm = async (req: Request, res: Response) => {
 					submissionId: submission.id,
 					submissionNumber: submission.submissionNumber,
 					dealId: dealResponse?.result?.toString?.(),
-					warning: 'Заявка создана, но индексация может быть неполной',
+					warning: hasBitrixDealId ? undefined : 'Заявка создана, но индексация может быть неполной',
 				})
 			}
 

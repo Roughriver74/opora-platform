@@ -37,6 +37,11 @@ export interface CreateSubmissionDTO {
 	// Денормализованные данные пользователя (для случаев, когда пользователь не авторизован)
 	userName?: string
 	userEmail?: string
+	// Поля для периодических заявок
+	isPeriodSubmission?: boolean
+	periodGroupId?: string
+	periodStartDate?: Date
+	periodEndDate?: Date
 }
 
 export interface UpdateSubmissionDTO {
@@ -109,6 +114,11 @@ export class SubmissionService extends BaseService<
 					// Приоритет: сначала из переданных данных, затем из БД пользователя
 					userEmail: data.userEmail || userData?.userEmail,
 					userName: data.userName || userData?.userName,
+					// Поля периодических заявок
+					isPeriodSubmission: data.isPeriodSubmission || false,
+					periodGroupId: data.periodGroupId,
+					periodStartDate: data.periodStartDate,
+					periodEndDate: data.periodEndDate,
 				})
 
 				// Убеждаемся, что submissionNumber сгенерирован
@@ -435,6 +445,17 @@ export class SubmissionService extends BaseService<
 		}
 
 		return result
+	}
+
+	async updateBitrixDealId(
+		submissionId: string,
+		bitrixDealId: string
+	): Promise<boolean> {
+		return this.updateSyncStatus(
+			submissionId,
+			BitrixSyncStatus.SYNCED,
+			bitrixDealId
+		)
 	}
 
 	async assignToUser(

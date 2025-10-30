@@ -8,9 +8,16 @@ import {
 	BitrixSyncStatus,
 	SubmissionPriority,
 } from '../database/entities/Submission.entity'
+import {
+	ScheduledSubmission,
+	ScheduledSubmissionStatus,
+} from '../database/entities/ScheduledSubmission.entity'
 import { getSubmissionPeriodGroupRepository } from '../database/repositories/SubmissionPeriodGroupRepository'
+import { getScheduledSubmissionRepository } from '../database/repositories/ScheduledSubmissionRepository'
 import { getSubmissionService } from './SubmissionService'
 import { getFormService } from './FormService'
+import { getSubmissionQueueService } from '../queue/SubmissionQueueService'
+import { SubmissionJobType } from '../queue/config'
 import bitrix24Service from './bitrix24Service'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -30,6 +37,7 @@ export interface CreatePeriodSubmissionsDTO {
 	userId?: string
 	userName?: string
 	userEmail?: string
+	assignedToId?: string // ID ответственного пользователя
 	priority?: SubmissionPriority
 }
 
@@ -38,9 +46,12 @@ export interface CreatePeriodSubmissionsDTO {
  */
 export interface PeriodSubmissionsResult {
 	periodGroupId: string
-	submissions: Submission[]
-	bitrixDealIds: string[]
-	totalCreated: number
+	scheduledSubmissions: Array<{
+		id: string
+		scheduledDate: Date
+		periodPosition: number
+	}>
+	totalScheduled: number
 	period: {
 		startDate: Date
 		endDate: Date
@@ -123,6 +134,14 @@ export class PeriodSubmissionService {
 				`[PERIOD_SERVICE] Создание периодических заявок от пользователя: ${data.userId} (${data.userName || 'Неизвестно'})`
 			)
 
+			// Логируем полученные данные формы
+			console.log('[PERIOD_SERVICE] Полученные данные формы:', {
+				formDataKeys: Object.keys(data.formData || {}).length,
+				hasFormData: !!data.formData,
+				formDataSample: data.formData ? Object.fromEntries(Object.entries(data.formData).slice(0, 5)) : null,
+				fullFormData: JSON.stringify(data.formData),
+			})
+
 			// Получаем форму
 			const form = await this.formService.findWithFields(data.formId)
 			if (!form) {
@@ -186,166 +205,156 @@ export class PeriodSubmissionService {
 			await queryRunner.manager.save(periodGroup)
 			console.log(`[PERIOD_SERVICE] Группа периода создана: ${periodGroup.id}`)
 
-			// Массивы для хранения результатов
-			const createdSubmissions: Submission[] = []
-			const bitrixDealIds: string[] = []
-			const failedCreations: Array<{ date: Date; error: string }> = []
+			// Массив для хранения созданных запланированных заявок
+			const scheduledSubmissions: ScheduledSubmission[] = []
+			const assignedToId = data.assignedToId || null // Ответственный пользователь
 
-			// Создаем заявки для каждой даты
+			// Создаем запланированные заявки для каждой даты
 			for (let i = 0; i < dates.length; i++) {
 				const date = dates[i]
 				const position = i + 1
 
-				try {
-					const timeForLog = hasTime ? ` в ${data.periodConfig.time}` : ''
-					console.log(
-						`[PERIOD_SERVICE] Создание заявки ${position}/${totalDays} на дату ${date.toLocaleDateString(
-							'ru-RU'
-						)}${timeForLog}`
-					)
+				console.log(
+					`[PERIOD_SERVICE] Создание запланированной заявки ${position}/${totalDays} на дату ${date.toLocaleDateString(
+						'ru-RU'
+					)}`
+				)
 
-					// Клонируем formData и обновляем дату
-					const periodFormData = {
-						...data.formData,
-						[data.periodConfig.dateFieldName]: date.toISOString().split('T')[0],
-					}
-
-					// Добавляем время, если оно указано (одно и то же для всех заявок)
-					if (hasTime) {
-						periodFormData[data.periodConfig.timeFieldName!] =
-							data.periodConfig.time
-					}
-
-					// Подготавливаем данные для Bitrix24
-					const dealData: Record<string, any> = {}
-					let dealTitle = `Заявка ${date.toLocaleDateString('ru-RU')}`
-
-					for (const field of form.fields) {
-						if (
-							periodFormData[field.name] !== undefined &&
-							field.bitrixFieldId
-						) {
-							const value = periodFormData[field.name]
-							dealData[field.bitrixFieldId] = value
-							if (field.bitrixFieldId === 'TITLE' && value) {
-								dealTitle = value
-							}
-						}
-					}
-
-					dealData.TITLE = dealTitle
-					dealData.STAGE_ID = 'C1:NEW'
-					dealData.CATEGORY_ID = form.bitrixDealCategory || '1'
-					// Маркер периодической заявки для Bitrix24
-					dealData.UF_CRM_1760208480 = '1'
-
-					// Создаем сделку в Bitrix24
-					const dealResponse = await bitrix24Service.createDeal(dealData)
-					const bitrixDealId = dealResponse.result?.toString?.()
-
-					if (!bitrixDealId) {
-						throw new Error('Не удалось получить ID сделки из Bitrix24')
-					}
-
-					console.log(
-						`[PERIOD_SERVICE] Сделка Bitrix24 создана: ${bitrixDealId}`
-					)
-					bitrixDealIds.push(bitrixDealId)
-
-					// Создаем заявку в БД
-					const submission = queryRunner.manager.create(Submission, {
-						id: uuidv4(),
-						formId: data.formId,
-						userId: data.userId,
-						title: dealTitle,
-						status: 'C1:NEW',
-						priority: data.priority || SubmissionPriority.MEDIUM,
-						bitrixDealId,
-						bitrixSyncStatus: BitrixSyncStatus.SYNCED,
-						formData: periodFormData,
-						userEmail: data.userEmail,
-						userName: data.userName,
-						formName: form.name,
-						formTitle: form.title,
-						// Поля периода
-						isPeriodSubmission: true,
-						periodGroupId: periodGroup.id,
-						periodStartDate: startDate,
-						periodEndDate: endDate,
-						periodPosition: position,
-						totalInPeriod: totalDays,
-					})
-
-					// Генерируем submissionNumber вручную для периодических заявок
-					await submission.generateSubmissionNumber()
-
-					// Сохраняем с обработкой ошибок дублирования
-					try {
-						await queryRunner.manager.save(submission)
-					} catch (saveError: any) {
-						if (
-							saveError.code === '23505' &&
-							saveError.constraint?.includes('submission_number')
-						) {
-							// Ошибка дублирования submissionNumber - генерируем новый номер
-							console.warn(
-								`[PERIOD_SERVICE] Конфликт номера заявки, генерируем новый: ${submission.submissionNumber}`
-							)
-							await submission.generateSubmissionNumber()
-							await queryRunner.manager.save(submission)
-						} else {
-							throw saveError
-						}
-					}
-
-					// Обновляем Bitrix24 с ID заявки
-					try {
-						await bitrix24Service.updateDeal(bitrixDealId, {
-							UF_CRM_1750107484181: submission.id,
-						})
-					} catch (updateError) {
-						console.warn(
-							`[PERIOD_SERVICE] Не удалось обновить поле UF_CRM_1750107484181 для сделки ${bitrixDealId}`
-						)
-					}
-
-					createdSubmissions.push(submission)
-					console.log(
-						`[PERIOD_SERVICE] Заявка ${position}/${totalDays} создана: ${submission.submissionNumber}`
-					)
-				} catch (error: any) {
-					console.error(
-						`[PERIOD_SERVICE] Ошибка создания заявки на дату ${date.toLocaleDateString(
-							'ru-RU'
-						)}:`,
-						error.message
-					)
-					failedCreations.push({
-						date,
-						error: error.message,
-					})
-
-					// Если не удалось создать хотя бы одну заявку - откатываем всю транзакцию
-					throw new Error(
-						`Ошибка создания заявки на дату ${date.toLocaleDateString(
-							'ru-RU'
-						)}: ${error.message}`
-					)
+				// Клонируем formData и обновляем дату
+				const periodFormData = {
+					...data.formData,
 				}
+
+				// Очищаем поле "Время АБН(дата/время)" если оно есть,
+				// так как оно не должно копироваться из исходной заявки
+				// (это поле должно заполняться отдельно, не из периодических заявок)
+				if (periodFormData['field_1750311670121']) {
+					delete periodFormData['field_1750311670121']
+				}
+
+				// Устанавливаем дату с временем или только дату
+				if (hasTime && data.periodConfig.time) {
+					// Объединяем дату и время в формат datetime для Bitrix24
+					const dateStr = date.toISOString().split('T')[0] // "2025-10-30"
+					const timeStr = data.periodConfig.time // "14:30"
+					const dateTimeStr = `${dateStr} ${timeStr}:00` // "2025-10-30 14:30:00"
+
+					periodFormData[data.periodConfig.dateFieldName] = dateTimeStr
+
+					// Если timeFieldName отличается от dateFieldName, устанавливаем время отдельно
+					if (data.periodConfig.timeFieldName &&
+					    data.periodConfig.timeFieldName !== data.periodConfig.dateFieldName) {
+						periodFormData[data.periodConfig.timeFieldName] = data.periodConfig.time
+					}
+				} else {
+					// Только дата без времени
+					periodFormData[data.periodConfig.dateFieldName] = date.toISOString().split('T')[0]
+				}
+
+				// Логируем periodFormData перед созданием scheduled submission
+				console.log(`[PERIOD_SERVICE] periodFormData для заявки ${position}/${totalDays}:`, {
+					periodFormDataKeys: Object.keys(periodFormData).length,
+					periodFormDataSample: Object.fromEntries(Object.entries(periodFormData).slice(0, 5)),
+					fullPeriodFormData: JSON.stringify(periodFormData),
+				})
+
+				// Создаем запланированную заявку
+				const scheduledSubmission = queryRunner.manager.create(ScheduledSubmission, {
+					id: uuidv4(),
+					periodGroupId: periodGroup.id,
+					formId: data.formId,
+					formData: periodFormData,
+					scheduledDate: date,
+					scheduledTime: data.periodConfig.time, // Время отправки, если указано
+					assignedToId: assignedToId, // Ответственный
+					status: ScheduledSubmissionStatus.PENDING,
+					attempts: 0,
+					// Метаданные периода
+					periodPosition: position,
+					totalInPeriod: totalDays,
+					periodStartDate: startDate,
+					periodEndDate: endDate,
+					// Денормализованные данные
+					userId: data.userId,
+					userName: data.userName,
+					userEmail: data.userEmail,
+					formName: form.name,
+					formTitle: form.title,
+					priority: data.priority || SubmissionPriority.MEDIUM,
+				})
+
+				await queryRunner.manager.save(scheduledSubmission)
+				scheduledSubmissions.push(scheduledSubmission)
+
+				console.log(
+					`[PERIOD_SERVICE] Запланированная заявка ${position}/${totalDays} создана для даты ${date.toLocaleDateString(
+						'ru-RU'
+					)}`
+				)
 			}
 
 			// Коммитим транзакцию
 			await queryRunner.commitTransaction()
 
 			console.log(
-				`[PERIOD_SERVICE] ✅ Успешно создано ${createdSubmissions.length} заявок для периода ${periodGroup.id}`
+				`[PERIOD_SERVICE] ✅ Успешно создано ${scheduledSubmissions.length} запланированных заявок для периода ${periodGroup.id}`
+			)
+
+			// Добавляем ВСЕ задачи в очередь для немедленной обработки
+			// Заявки будут созданы в Bitrix24 сразу с сохранением информации о запланированной дате
+			const queueService = getSubmissionQueueService()
+
+			console.log(
+				`[PERIOD_SERVICE] Добавление всех ${scheduledSubmissions.length} заявок в очередь для немедленной обработки...`
+			)
+
+			for (const scheduled of scheduledSubmissions) {
+				const scheduledDate = new Date(scheduled.scheduledDate)
+				scheduledDate.setHours(0, 0, 0, 0)
+
+				try {
+					await queueService.addCreateSubmissionJob({
+						type: SubmissionJobType.CREATE_SCHEDULED,
+						scheduledSubmissionId: scheduled.id,
+						formId: scheduled.formId,
+						formData: scheduled.formData,
+						userId: scheduled.userId,
+						userName: scheduled.userName,
+						userEmail: scheduled.userEmail,
+						assignedToId: scheduled.assignedToId,
+						priority: scheduled.priority,
+						metadata: {
+							periodGroupId: scheduled.periodGroupId,
+							periodPosition: scheduled.periodPosition,
+							totalInPeriod: scheduled.totalInPeriod,
+							scheduledDate: scheduled.scheduledDate.toISOString(),
+							scheduledTime: scheduled.scheduledTime,
+						},
+					})
+
+					console.log(
+						`[PERIOD_SERVICE] Заявка ${scheduled.periodPosition}/${scheduled.totalInPeriod} на дату ${scheduledDate.toLocaleDateString('ru-RU')} добавлена в очередь`
+					)
+				} catch (error) {
+					console.error(
+						`[PERIOD_SERVICE] Ошибка добавления заявки в очередь:`,
+						error
+					)
+				}
+			}
+
+			console.log(
+				`[PERIOD_SERVICE] ✅ Все ${scheduledSubmissions.length} заявок добавлены в очередь для обработки`
 			)
 
 			return {
 				periodGroupId: periodGroup.id,
-				submissions: createdSubmissions,
-				bitrixDealIds,
-				totalCreated: createdSubmissions.length,
+				scheduledSubmissions: scheduledSubmissions.map(s => ({
+					id: s.id,
+					scheduledDate: s.scheduledDate,
+					periodPosition: s.periodPosition || 0,
+				})),
+				totalScheduled: scheduledSubmissions.length,
 				period: {
 					startDate,
 					endDate,

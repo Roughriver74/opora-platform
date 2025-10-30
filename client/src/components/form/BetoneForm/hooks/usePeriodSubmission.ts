@@ -10,6 +10,7 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 	const [isPeriodMode, setIsPeriodMode] = useState(false)
 	const [periodStartDate, setPeriodStartDate] = useState('')
 	const [periodEndDate, setPeriodEndDate] = useState('')
+	const [periodTime, setPeriodTime] = useState('')
 	const [dateFieldName, setDateFieldName] = useState<string>('')
 	const [timeFieldName, setTimeFieldName] = useState<string>('')
 	const [dateRangeError, setDateRangeError] = useState<string | null>(null)
@@ -60,6 +61,7 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 		if (!enabled) {
 			setPeriodStartDate('')
 			setPeriodEndDate('')
+			setPeriodTime('')
 			setDateRangeError(null)
 		}
 	}, [])
@@ -106,10 +108,13 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 				dateFieldName,
 			}
 
-			// Добавляем поле времени, если оно есть в формуляре и заполнено
-			if (timeFieldName && formData[timeFieldName]) {
-				periodConfig.timeFieldName = timeFieldName
-				periodConfig.time = formData[timeFieldName]
+			// Добавляем время из интерфейса периода (если указано)
+			if (periodTime) {
+				// Используем timeFieldName, если есть
+				if (timeFieldName) {
+					periodConfig.timeFieldName = timeFieldName
+				}
+				periodConfig.time = periodTime
 			}
 
 			const response = await periodSubmissionService.createPeriodSubmissions({
@@ -123,6 +128,7 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 		[
 			periodStartDate,
 			periodEndDate,
+			periodTime,
 			dateFieldName,
 			timeFieldName,
 			validatePeriodSubmission,
@@ -135,6 +141,7 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 		isPeriodMode,
 		periodStartDate,
 		periodEndDate,
+		periodTime,
 		dateFieldName,
 		timeFieldName,
 		dateRangeError,
@@ -145,6 +152,7 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 		togglePeriodMode,
 		setPeriodStartDate,
 		setPeriodEndDate,
+		setPeriodTime,
 		validatePeriodSubmission,
 		submitPeriodSubmissions,
 	}

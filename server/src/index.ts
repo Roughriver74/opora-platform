@@ -55,6 +55,18 @@ const initializeServer = async () => {
 		console.log('🕐 Инициализация планировщика синхронизации...')
 		// Планировщик автоматически запускается в конструкторе
 		console.log('✅ Планировщик синхронизации инициализирован')
+
+		// Инициализация воркера очереди заявок
+		const { getSubmissionQueueWorker } = require('./queue/SubmissionQueueWorker')
+		const submissionWorker = getSubmissionQueueWorker(5) // 5 параллельных задач
+		await submissionWorker.start()
+		console.log('✅ Воркер очереди заявок запущен')
+
+		// Инициализация планировщика запланированных заявок
+		const { getSubmissionSchedulerService } = require('./services/SubmissionSchedulerService')
+		const submissionScheduler = getSubmissionSchedulerService()
+		submissionScheduler.start('*/30 * * * *') // Каждые 30 минут
+		console.log('✅ Планировщик запланированных заявок запущен')
 	} catch (error) {
 		console.error('❌ Ошибка инициализации сервера:', error)
 		process.exit(1)
@@ -311,6 +323,25 @@ const server = app.listen(PORT, () => {})
 // Graceful shutdown
 process.on('SIGTERM', async () => {
 	server.close(async () => {
+		// Остановка воркера и планировщика
+		try {
+			const { getSubmissionQueueWorker } = require('./queue/SubmissionQueueWorker')
+			const submissionWorker = getSubmissionQueueWorker()
+			await submissionWorker.close()
+			console.log('✅ Воркер очереди заявок остановлен')
+		} catch (error) {
+			console.error('Ошибка остановки воркера:', error)
+		}
+
+		try {
+			const { getSubmissionSchedulerService } = require('./services/SubmissionSchedulerService')
+			const submissionScheduler = getSubmissionSchedulerService()
+			submissionScheduler.stop()
+			console.log('✅ Планировщик заявок остановлен')
+		} catch (error) {
+			console.error('Ошибка остановки планировщика:', error)
+		}
+
 		// Закрытие подключения к БД
 		await closeDatabaseConnection()
 

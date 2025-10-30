@@ -141,12 +141,14 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 			isPeriodMode,
 			periodStartDate,
 			periodEndDate,
+			periodTime,
 			dateFieldName,
 			dateRangeError,
 			hasDateField,
 			togglePeriodMode,
 			setPeriodStartDate,
 			setPeriodEndDate,
+			setPeriodTime,
 			submitPeriodSubmissions,
 		} = usePeriodSubmission(fields)
 
@@ -175,9 +177,16 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 
 				// Отправка периодических заявок
 				try {
+					// Очищаем поле "Время АБН" перед отправкой периодических заявок,
+					// так как оно не должно копироваться во все заявки периода
+					const cleanedValues = { ...formik.values }
+					if (cleanedValues['field_1750311670121']) {
+						delete cleanedValues['field_1750311670121']
+					}
+
 					const result = await submitPeriodSubmissions(
 						form.id || form._id || '',
-						formik.values
+						cleanedValues
 					)
 
 					if (result.success) {
@@ -191,10 +200,10 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 						formik.resetForm()
 						togglePeriodMode(false)
 
-						// Перенаправление после небольшой задержки
+						// Перенаправление после задержки 6 секунд, чтобы успели создаться заявки
 						setTimeout(() => {
 							window.location.href = '/my-submissions'
-						}, 2000)
+						}, 6000)
 					}
 				} catch (error: any) {
 					setSnackbar({
@@ -674,8 +683,10 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 									<PeriodDatePicker
 										startDate={periodStartDate}
 										endDate={periodEndDate}
+										time={periodTime}
 										onStartDateChange={setPeriodStartDate}
 										onEndDateChange={setPeriodEndDate}
+										onTimeChange={setPeriodTime}
 										error={dateRangeError || undefined}
 									/>
 								)}

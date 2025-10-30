@@ -9,22 +9,26 @@ import {
 	useTheme,
 	useMediaQuery,
 } from '@mui/material'
-import { DateRange, Event } from '@mui/icons-material'
+import { DateRange, Event, AccessTime } from '@mui/icons-material'
 import { formatDate } from '../utils/dateHelpers'
 
 interface PeriodDatePickerProps {
 	startDate: string
 	endDate: string
+	time?: string
 	onStartDateChange: (date: string) => void
 	onEndDateChange: (date: string) => void
+	onTimeChange?: (time: string) => void
 	error?: string
 }
 
 export const PeriodDatePicker: React.FC<PeriodDatePickerProps> = ({
 	startDate,
 	endDate,
+	time,
 	onStartDateChange,
 	onEndDateChange,
+	onTimeChange,
 	error,
 }) => {
 	const theme = useTheme()
@@ -115,6 +119,36 @@ export const PeriodDatePicker: React.FC<PeriodDatePickerProps> = ({
 							'& .MuiInputBase-input': {
 								fontSize: isMobile ? '16px' : undefined, // Предотвращает зум на iOS
 							},
+						}}
+					/>
+				</Box>
+
+				{/* Поле времени */}
+				<Box sx={{ flex: 1 }}>
+					<TextField
+						fullWidth
+						type='time'
+						label='Время отгрузки'
+						value={time || ''}
+						onChange={e => onTimeChange?.(e.target.value)}
+						InputLabelProps={{ shrink: true }}
+						size={isMobile ? 'small' : 'small'}
+						helperText={isMobile ? 'Одно время для всех заявок' : 'Будет применено ко всем заявкам периода'}
+						sx={{
+							'& .MuiInputBase-input': {
+								fontSize: isMobile ? '16px' : undefined, // Предотвращает зум на iOS
+							},
+						}}
+						InputProps={{
+							startAdornment: (
+								<AccessTime
+									sx={{
+										mr: 1,
+										fontSize: 20,
+										color: 'action.active',
+									}}
+								/>
+							),
 						}}
 					/>
 				</Box>

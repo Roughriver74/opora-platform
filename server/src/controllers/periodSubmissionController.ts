@@ -18,6 +18,9 @@ export const createPeriodSubmissions = async (req: Request, res: Response): Prom
 			formId,
 			periodConfig,
 			userId: req.user?.id,
+			formDataKeys: Object.keys(formData || {}).length,
+			hasFormData: !!formData,
+			formDataSample: formData ? Object.fromEntries(Object.entries(formData).slice(0, 5)) : null,
 		})
 
 		// Валидация параметров
@@ -75,28 +78,30 @@ export const createPeriodSubmissions = async (req: Request, res: Response): Prom
 				startDate: periodConfig.startDate,
 				endDate: periodConfig.endDate,
 				dateFieldName: periodConfig.dateFieldName,
+				time: periodConfig.time,
+				timeFieldName: periodConfig.timeFieldName,
 			},
 			userId: userData.userId,
 			userName: userData.userName,
 			userEmail: userData.userEmail,
+			// Ответственный: если не указан явно, используем Bitrix ID создателя заявки
+		assignedToId: periodConfig.assignedToId || user.bitrixUserId,
 			priority: periodConfig.priority || SubmissionPriority.MEDIUM,
 		})
 
-		console.log('[CREATE_PERIOD] ✅ Успешно создано заявок:', result.totalCreated)
+		console.log('[CREATE_PERIOD] ✅ Успешно запланировано заявок:', result.totalScheduled)
 
 		res.status(200).json({
 			success: true,
-			message: `Успешно создано ${result.totalCreated} заявок на период ${result.period.daysCount} дней`,
+			message: `Успешно запланировано ${result.totalScheduled} заявок на период ${result.period.daysCount} дней`,
 			data: {
 				periodGroupId: result.periodGroupId,
-				totalCreated: result.totalCreated,
+				totalScheduled: result.totalScheduled,
 				period: result.period,
-				submissions: result.submissions.map(s => ({
+				scheduledSubmissions: result.scheduledSubmissions.map(s => ({
 					id: s.id,
-					submissionNumber: s.submissionNumber,
-					bitrixDealId: s.bitrixDealId,
+					scheduledDate: s.scheduledDate,
 					periodPosition: s.periodPosition,
-					date: s.formData[periodConfig.dateFieldName],
 				})),
 			},
 		})
