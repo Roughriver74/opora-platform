@@ -303,21 +303,21 @@ export class SubmissionQueueWorker {
 			if (metadata?.isPeriodSubmission) {
 				dealData.UF_CRM_1760208480 = '1' // Признак периодической заявки
 				logger.info(`📅 Периодическая заявка: scheduledDate=${metadata.scheduledDate}, scheduledTime=${metadata.scheduledTime}`)
-			}
+		}
 
-			// Устанавливаем ответственного из assignedToId
-			if (metadata?.assignedToId) {
-				try {
-					const userRepository = getUserRepository()
-					const assignedUser = await userRepository.findById(metadata.assignedToId)
-					if (assignedUser?.bitrixUserId) {
-						dealData.ASSIGNED_BY_ID = assignedUser.bitrixUserId
-						logger.info(`👤 Ответственный: ${assignedUser.fullName} (Bitrix ID: ${assignedUser.bitrixUserId})`)
-					}
-				} catch (error) {
-					logger.warn(`⚠️ Не удалось получить данные ответственного: ${error}`)
+		// Устанавливаем ответственного из assignedToId
+		if (metadata?.assignedToId) {
+			try {
+				const userRepository = getUserRepository()
+				const assignedUser = await userRepository.findById(metadata.assignedToId)
+				if (assignedUser?.bitrixUserId) {
+					dealData.ASSIGNED_BY_ID = assignedUser.bitrixUserId
+					logger.info(`👤 Ответственный: ${assignedUser.fullName} (Bitrix ID: ${assignedUser.bitrixUserId})`)
 				}
+			} catch (error) {
+				logger.warn(`⚠️ Не удалось получить данные ответственного: ${error}`)
 			}
+		}
 
 
 			// Логируем данные перед отправкой в Bitrix24

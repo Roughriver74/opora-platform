@@ -84,8 +84,8 @@ export const createPeriodSubmissions = async (req: Request, res: Response): Prom
 			userId: userData.userId,
 			userName: userData.userName,
 			userEmail: userData.userEmail,
-			// Ответственный: если не указан явно, используем Bitrix ID создателя заявки
-		assignedToId: periodConfig.assignedToId || user.bitrixUserId,
+			// Ответственный: если не указан явно, используем UUID создателя заявки
+			assignedToId: periodConfig.assignedToId || user.id,
 			priority: periodConfig.priority || SubmissionPriority.MEDIUM,
 		})
 

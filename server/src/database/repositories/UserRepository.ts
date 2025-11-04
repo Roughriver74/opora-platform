@@ -265,3 +265,13 @@ export class UserRepository extends BaseRepository<User> {
 		}
 	}
 }
+
+// Экспорт функции для получения экземпляра репозитория
+let userRepository: UserRepository | null = null
+
+export const getUserRepository = (): UserRepository => {
+	if (!userRepository) {
+		userRepository = new UserRepository()
+	}
+	return userRepository
+}
