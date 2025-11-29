@@ -19,9 +19,9 @@ export const NumberInput: React.FC<FieldInputProps> = React.memo(
 		// Оптимизированный обработчик изменений - без debounce для мгновенного отклика
 		const handleChange = useCallback(
 			(e: React.ChangeEvent<HTMLInputElement>) => {
-				const numValue =
-					e.target.value === '' ? '' : parseFloat(e.target.value) || 0
-				onChange(field.name, numValue)
+				// Передаем сырое значение, чтобы можно было вводить "0." и "0,"
+				// Валидация и преобразование в число должны происходить при сабмите или в родительском компоненте
+				onChange(field.name, e.target.value)
 			},
 			[field.name, onChange]
 		)

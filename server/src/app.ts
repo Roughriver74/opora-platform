@@ -17,6 +17,7 @@ import searchRoutes from './routes/searchRoutes'
 import incrementalSyncRoutes from './routes/incrementalSyncRoutes'
 import cronRoutes from './routes/cronRoutes'
 // Utility for checking database connection status
+// Re-importing to fix potential resolution issues
 import { checkDatabaseConnection } from './utils/dbCheck'
 
 const app = express()
