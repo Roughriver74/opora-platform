@@ -109,33 +109,56 @@ const BitrixIntegration: React.FC = () => {
 	}
 
 	// Загрузка категорий сделок
-	const loadCategories = async () => {
+	const loadCategories = async (retryCount = 0) => {
+		const maxRetries = 2
+		let hasError = false
+		
 		try {
 			setLoading(true)
 			setError(null)
 
-			const response = await api.get('/api/forms/bitrix/deal-categories')
+			const response = await api.get('/api/forms/bitrix/deal-categories', {
+				timeout: 15000, // Специфичный timeout для этого запроса
+			})
+			
 			if (response.data.success) {
 				setCategories(response.data.data || [])
 			} else {
 				const errorMessage = response.data.message || 'Не удалось загрузить категории сделок'
 				setError(errorMessage)
+				hasError = true
 			}
 		} catch (err: any) {
+			hasError = true
 			// Более подробная обработка ошибок
 			let errorMessage = 'Ошибка загрузки категорий'
+			let shouldRetry = false
 			
-			if (err.code === 'ECONNABORTED') {
-				errorMessage = 'Превышено время ожидания при загрузке категорий'
+			if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+				errorMessage = `Превышено время ожидания при загрузке категорий (попытка ${retryCount + 1}/${maxRetries + 1})`
+				shouldRetry = retryCount < maxRetries
+			} else if (err.response?.status === 502 || err.response?.status === 503) {
+				errorMessage = 'Сервер Битрикс24 временно недоступен'
+				shouldRetry = retryCount < maxRetries
 			} else if (err.response?.data?.message) {
 				errorMessage = err.response.data.message
 			} else if (err.message) {
 				errorMessage = `Ошибка загрузки категорий: ${err.message}`
 			}
 			
-			setError(errorMessage)
+			if (shouldRetry) {
+				// Ждем перед повторной попыткой (exponential backoff)
+				const delay = Math.min(1000 * Math.pow(2, retryCount), 5000)
+				console.log(`Повторная попытка загрузки категорий через ${delay}ms...`)
+				setTimeout(() => loadCategories(retryCount + 1), delay)
+			} else {
+				setError(errorMessage)
+				setLoading(false)
+			}
 		} finally {
-			setLoading(false)
+			if (!hasError || retryCount >= maxRetries) {
+				setLoading(false)
+			}
 		}
 	}
 
@@ -286,7 +309,7 @@ const BitrixIntegration: React.FC = () => {
 				{error && (
 					<Alert severity='error' sx={{ mb: 2 }} 
 						action={
-							<Button color="inherit" size="small" onClick={loadCategories}>
+							<Button color="inherit" size="small" onClick={() => loadCategories()}>
 								Повторить
 							</Button>
 						}
@@ -328,7 +351,7 @@ const BitrixIntegration: React.FC = () => {
 					<CardActions>
 						<Button
 							startIcon={<SyncIcon />}
-							onClick={loadCategories}
+							onClick={() => loadCategories()}
 							disabled={loading}
 						>
 							Обновить статус
