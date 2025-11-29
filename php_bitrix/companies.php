@@ -149,6 +149,34 @@ class GetAllCompanies1C
 
                     // РЕКВИЗИТЫ НЕ ОБНОВЛЯЕМ ДЛЯ СУЩЕСТВУЮЩИХ КОМПАНИЙ
                     // Обновление реквизитов отключено из-за ограничений Битрикс (КПП max 9 символов)
+                    if (!empty($kontragent['UIN_Otvetstvennyiy'])) {
+                        $responsibleData = self::getResponsibleByUIN($kontragent['UIN_Otvetstvennyiy']);
+                        $assignedById = $responsibleData['id'];
+                        if ($assignedById > 0) {
+                            $currentAssigned = (int)($foundCompany['ASSIGNED_BY_ID'] ?? 0);
+                            if ($currentAssigned !== $assignedById) {
+                                if (self::updateCompanyResponsible((int)$foundCompany['ID'], $assignedById)) {
+                                    $stats['assigned_from_responsible']++;
+                                } else {
+                                    $stats['errors']++;
+                                    CEventLog::Add([
+                                        'SEVERITY' => CEventLog::SEVERITY_ERROR,
+                                        'AUDIT_TYPE_ID' => 'ASTRAL_ALERT',
+                                        'ITEM_ID' => __FILE__ . ':' . __LINE__,
+                                        'MODULE_ID' => ASTRAL_EXT,
+                                        'DESCRIPTION' => sprintf(
+                                            "ОШИБКА #%d: Не удалось обновить ответственного компании ID=%d (UIN=%s). Старый=%d, Новый=%d",
+                                            $stats['errors'],
+                                            $foundCompany['ID'],
+                                            $kontragent['UIN'],
+                                            $currentAssigned,
+                                            $assignedById
+                                        ),
+                                    ]);
+                                }
+                            }
+                        }
+                    }
                 } else {
                     // СОЗДАЕМ НОВУЮ КОМПАНИЮ
                     $result = self::createCompanyWithRequisites($kontragent);
@@ -328,14 +356,19 @@ class GetAllCompanies1C
     }
 
     /**
-     * Получение ID ответственного по UIN_Otvetstvennyiy
+     * Получение ответственного по UIN_Otvetstvennyiy
      * @param string $uinResponsible
-     * @return int
+     * @return array{id:int,resolved:bool}
      */
-    private static function getResponsibleByUIN(string $uinResponsible): int
+    private static function getResponsibleByUIN(string $uinResponsible): array
     {
+        $defaultResponsibleId = 1;
+
         if (empty($uinResponsible)) {
-            return 1; // По умолчанию администратор
+            return [
+                'id' => $defaultResponsibleId,
+                'resolved' => false,
+            ];
         }
 
         try {
@@ -350,15 +383,22 @@ class GetAllCompanies1C
             );
 
             if ($company = $dbRes->Fetch()) {
-                if (!empty($company['ASSIGNED_BY_ID']) && (int)$company['ASSIGNED_BY_ID'] > 0) {
-                    return (int)$company['ASSIGNED_BY_ID'];
+                $assignedId = (int)($company['ASSIGNED_BY_ID'] ?? 0);
+                if ($assignedId > 0) {
+                    return [
+                        'id' => $assignedId,
+                        'resolved' => true,
+                    ];
                 }
             }
         } catch (Exception $e) {
-            // В случае ошибки возвращаем администратора
+            // В случае ошибки используем значение по умолчанию
         }
 
-        return 1; // По умолчанию администратор
+        return [
+            'id' => $defaultResponsibleId,
+            'resolved' => false,
+        ];
     }
 
     /**
@@ -524,7 +564,7 @@ class GetAllCompanies1C
             ['=UF_XML_ID' => $normalizedUIN, 'CHECK_PERMISSIONS' => 'N'],
             false,
             false,
-            ['ID', 'TITLE', 'UF_XML_ID', 'COMPANY_TYPE']
+            ['ID', 'TITLE', 'UF_XML_ID', 'COMPANY_TYPE', 'ASSIGNED_BY_ID']
         );
 
         if ($company = $dbRes->Fetch()) {
@@ -608,6 +648,47 @@ class GetAllCompanies1C
     }
 
     /**
+     * Обновление ответственного для существующей компании
+     * @param int $companyId
+     * @param int $assignedById
+     * @return bool
+     */
+    private static function updateCompanyResponsible(int $companyId, int $assignedById): bool
+    {
+        if (self::$safeMode) {
+            return true;
+        }
+
+        $updateResult = CompanyTable::update(
+            $companyId,
+            [
+                'ASSIGNED_BY_ID' => $assignedById,
+                'MODIFY_BY_ID' => $assignedById,
+            ]
+        );
+
+        if ($updateResult->isSuccess()) {
+            return true;
+        }
+
+        $errors = $updateResult->getErrorMessages();
+        CEventLog::Add([
+            'SEVERITY' => CEventLog::SEVERITY_ERROR,
+            'AUDIT_TYPE_ID' => 'ASTRAL_ALERT',
+            'ITEM_ID' => __FILE__ . ':' . __LINE__,
+            'MODULE_ID' => ASTRAL_EXT,
+            'DESCRIPTION' => sprintf(
+                "updateCompanyResponsible FAILED: Company ID=%d, AssignedById=%d. Errors: %s",
+                $companyId,
+                $assignedById,
+                implode('; ', $errors)
+            ),
+        ]);
+
+        return false;
+    }
+
+    /**
      * Создание новой компании с реквизитами
      * @param array $kontragent
      * @return array
@@ -629,16 +710,23 @@ class GetAllCompanies1C
         $normalizedUIN = self::normalizeUIN($kontragent['UIN']);
         
         // Получаем ответственного по UIN_Otvetstvennyiy
-        $assignedById = 1; // По умолчанию
-
+        $assignedById = 1; // По умолчанию администратор
+        if (!empty($kontragent['UIN_Otvetstvennyiy'])) {
+            $responsibleData = self::getResponsibleByUIN($kontragent['UIN_Otvetstvennyiy']);
+            if ($responsibleData['id'] > 0) {
+                $assignedById = $responsibleData['id'];
+            }
+            if ($responsibleData['resolved']) {
+                $result['assigned_from_responsible'] = true;
+            }
+        }
 
         $entityFields = [
             'TITLE' => $kontragent['Name'],
             'UF_XML_ID' => $normalizedUIN,
             'COMPANY_TYPE' => 'CUSTOMER',
             'ASSIGNED_BY_ID' => $assignedById,
-			'MODIFY_BY_ID' => $assignedById,
-
+            'MODIFY_BY_ID' => $assignedById,
         ];
         
         $entityObject = new CCrmCompany(false);

@@ -70,10 +70,15 @@ export const DateInput: React.FC<FieldInputProps> = ({
 	const combineDateTime = (dateStr: string, timeStr: string) => {
 		if (!dateStr) return ''
 
+		// Если поле требует время, но время не выбрано - возвращаем пустую строку
+		if (includeTime && !timeStr) {
+			return ''
+		}
+
 		if (includeTime && timeStr) {
 			return new Date(`${dateStr}T${timeStr}`).toISOString()
 		} else {
-			// Только дата - устанавливаем время 12:00
+			// Только дата без времени - устанавливаем полдень для корректной обработки часовых поясов
 			return new Date(`${dateStr}T12:00`).toISOString()
 		}
 	}
