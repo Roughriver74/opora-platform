@@ -124,12 +124,71 @@ services:
     networks:
       - beton_network
 
+  # === МОНИТОРИНГ ===
+  
+  # Promtail - сбор и отправка логов в Loki
+  promtail:
+    image: grafana/promtail:2.9.2
+    container_name: beton_promtail
+    restart: unless-stopped
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./promtail-config.yaml:/etc/promtail/config.yml:ro
+      - promtail_positions:/tmp
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - beton_network
+    depends_on:
+      - backend
+      - frontend
+
+  # Node Exporter - метрики системы (CPU, RAM, Disk, Network)
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: beton_node_exporter
+    restart: unless-stopped
+    ports:
+      - '9100:9100'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - beton_network
+
+  # cAdvisor - метрики Docker контейнеров
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: beton_cadvisor
+    restart: unless-stopped
+    ports:
+      - '8081:8080'
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - beton_network
+
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
   elasticsearch_data:
+    driver: local
+  promtail_positions:
     driver: local
 
 networks:
