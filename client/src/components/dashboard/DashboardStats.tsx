@@ -6,7 +6,6 @@ import {
 	Typography,
 	Box,
 	Chip,
-	LinearProgress,
 } from '@mui/material'
 import {
 	TrendingUp,

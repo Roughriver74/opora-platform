@@ -7,20 +7,12 @@ import {
 	Select,
 	MenuItem,
 	FormHelperText,
-	useMediaQuery,
 	useTheme,
-	Button,
-	ButtonGroup,
-	Chip,
 	ListSubheader,
-	Typography,
 	InputAdornment,
 	IconButton,
 } from '@mui/material'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
-import WbSunnyIcon from '@mui/icons-material/WbSunny'
-import Brightness5Icon from '@mui/icons-material/Brightness5'
-import Brightness3Icon from '@mui/icons-material/Brightness3'
 import ClearIcon from '@mui/icons-material/Clear'
 import { FieldInputProps } from '../../types'
 import { getFieldStyles } from '../../utils/fieldStyles'
@@ -33,8 +25,8 @@ export const DateInput: React.FC<FieldInputProps> = ({
 	compact = false,
 }) => {
 	const styles = getFieldStyles(compact)
-	const theme = useTheme()
-	const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+	// const theme = useTheme()
+	// const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
 	// Определяем включает ли поле время на основе метки
 	const includeTime =
@@ -67,14 +59,6 @@ export const DateInput: React.FC<FieldInputProps> = ({
 
 	const { date, time } = parseValue(value || '')
 	const [selectedTime, setSelectedTime] = useState(time || '')
-
-	// Больше НЕ загружаем сохраненные предпочтения времени автоматически
-	// useEffect(() => {
-	// 	const savedTime = localStorage.getItem('preferredDeliveryTime')
-	// 	if (savedTime && !value) {
-	// 		setSelectedTime(savedTime)
-	// 	}
-	// }, [value])
 
 	// Больше НЕ сохраняем предпочтения времени автоматически
 	const saveTimePreference = (timeStr: string) => {
@@ -140,32 +124,6 @@ export const DateInput: React.FC<FieldInputProps> = ({
 		}
 
 		return groups
-	}
-
-	// Кнопки быстрого выбора времени
-	const quickTimeButtons = [
-		{ label: 'Пусто', value: '' },
-		{ label: 'Утром', value: '09:00', icon: <WbSunnyIcon fontSize='small' /> },
-		{
-			label: 'Днем',
-			value: '14:00',
-			icon: <Brightness5Icon fontSize='small' />,
-		},
-		{
-			label: 'Вечером',
-			value: '18:00',
-			icon: <Brightness3Icon fontSize='small' />,
-		},
-	]
-
-	// Обработчик быстрого выбора времени
-	const handleQuickTimeSelect = (timeValue: string) => {
-		setSelectedTime(timeValue)
-		saveTimePreference(timeValue)
-		if (date) {
-			const newValue = combineDateTime(date, timeValue)
-			onChange(field.name, newValue)
-		}
 	}
 
 	// Обработчик очистки даты

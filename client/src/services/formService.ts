@@ -1,11 +1,7 @@
 import api from './api'
 import { Form } from '../types'
 
-interface FormData {
-	title: string
-	description: string
-	fields: any[]
-}
+
 
 export const FormService = {
 	async getAllForms(): Promise<Form[]> {

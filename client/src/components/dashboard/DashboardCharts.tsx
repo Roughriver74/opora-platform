@@ -5,8 +5,6 @@ import {
 	CardContent,
 	Typography,
 	Box,
-	CircularProgress,
-	Alert,
 } from '@mui/material'
 import {
 	BarChart,
@@ -15,7 +13,6 @@ import {
 	YAxis,
 	CartesianGrid,
 	Tooltip,
-	Legend,
 	ResponsiveContainer,
 	PieChart,
 	Pie,

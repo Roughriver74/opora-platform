@@ -5,13 +5,8 @@ import {
 	CardContent,
 	Typography,
 	Box,
-	List,
-	ListItem,
-	ListItemText,
-	ListItemIcon,
 	Chip,
 	Avatar,
-	Divider,
 } from '@mui/material'
 import {
 	TrendingUp,

@@ -1,11 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
 	Container,
 	Typography,
 	Box,
-	Grid,
-	Card,
-	CardContent,
 	CircularProgress,
 	Alert,
 	Button,
@@ -37,7 +34,7 @@ const DashboardPage: React.FC = () => {
 	})
 
 	// Загрузка данных дашборда
-	const loadDashboardData = async (currentFilters: IDashboardFilters) => {
+	const loadDashboardData = useCallback(async (currentFilters: IDashboardFilters) => {
 		try {
 			setLoading(true)
 			setError(null)
@@ -48,18 +45,17 @@ const DashboardPage: React.FC = () => {
 		} finally {
 			setLoading(false)
 		}
-	}
+	}, [])
 
 	// Обработчик изменения фильтров
 	const handleFiltersChange = (newFilters: IDashboardFilters) => {
 		setFilters(newFilters)
-		loadDashboardData(newFilters)
 	}
 
-	// Загрузка данных при монтировании
+	// Загрузка данных при монтировании и изменении фильтров
 	useEffect(() => {
 		loadDashboardData(filters)
-	}, [])
+	}, [loadDashboardData, filters])
 
 	return (
 		<Container maxWidth='xl' sx={{ mt: 4, mb: 4 }}>

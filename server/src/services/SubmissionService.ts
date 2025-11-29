@@ -24,6 +24,7 @@ import {
 } from '../database/entities/SubmissionHistory.entity'
 import { AppDataSource } from '../database/config/database.config'
 import { ElasticsearchService } from './elasticsearchService'
+import { logger } from '../utils/logger'
 
 export interface CreateSubmissionDTO {
 	formId: string
@@ -139,7 +140,7 @@ export class SubmissionService extends BaseService<
 							`Не удалось создать заявку: конфликт номера заявки после ${maxAttempts} попыток`
 						)
 					}
-					console.warn(
+					logger.warn(
 						`[SUBMISSION_SERVICE] Конфликт номера заявки, попытка ${attempts}/${maxAttempts}`
 					)
 					// Небольшая задержка перед следующей попыткой
@@ -163,7 +164,7 @@ export class SubmissionService extends BaseService<
 			const elasticsearchService = new ElasticsearchService()
 			await elasticsearchService.indexSubmission(submission)
 		} catch (error) {
-			console.error('Ошибка при индексации заявки в Elasticsearch:', error)
+			logger.error('Ошибка при индексации заявки в Elasticsearch:', error)
 			// Не прерываем создание заявки из-за ошибки индексации
 		}
 
@@ -275,7 +276,7 @@ export class SubmissionService extends BaseService<
 			const elasticsearchService = new ElasticsearchService()
 			await elasticsearchService.indexSubmission(updated)
 		} catch (error) {
-			console.error(
+			logger.error(
 				'Ошибка при индексации обновленной заявки в Elasticsearch:',
 				error
 			)
@@ -297,7 +298,7 @@ export class SubmissionService extends BaseService<
 		// Если есть поисковый запрос, используем Elasticsearch
 		if (params.search && params.search.trim()) {
 			try {
-				console.log(
+				logger.info(
 					'🔍 SubmissionService.searchSubmissions: поиск через Elasticsearch:',
 					{
 						query: params.search.trim(),
@@ -317,7 +318,7 @@ export class SubmissionService extends BaseService<
 					fuzzy: true,
 				})
 
-				console.log(
+				logger.info(
 					'🔍 SubmissionService.searchSubmissions: результаты Elasticsearch:',
 					{
 						count: searchResults.length,
@@ -348,7 +349,7 @@ export class SubmissionService extends BaseService<
 					}
 				}
 
-				console.log(
+				logger.info(
 					'🔍 SubmissionService.searchSubmissions: получение данных из БД для ID:',
 					submissionIds.slice(0, 3)
 				)
@@ -357,7 +358,7 @@ export class SubmissionService extends BaseService<
 					relations: ['user', 'form', 'assignedTo'],
 				})
 
-				console.log(
+				logger.info(
 					'🔍 SubmissionService.searchSubmissions: получено из БД:',
 					submissions.length,
 					'заявок'
@@ -372,7 +373,7 @@ export class SubmissionService extends BaseService<
 				const limit = params.limit || 20
 				const totalPages = Math.ceil(searchResults.length / limit)
 
-				console.log(
+				logger.info(
 					'🔍 SubmissionService.searchSubmissions: возвращаем результат:',
 					{
 						dataCount: sortedSubmissions.length,
@@ -393,15 +394,15 @@ export class SubmissionService extends BaseService<
 					hasPrev: page > 1,
 				}
 			} catch (error) {
-				console.error('❌ Ошибка поиска через Elasticsearch:', error)
-				console.error('❌ Детали ошибки:', {
+				logger.error('❌ Ошибка поиска через Elasticsearch:', error)
+				logger.error('❌ Детали ошибки:', {
 					message: error.message,
 					stack: error.stack,
 					query: params.search.trim(),
 					type: 'submission',
 				})
 				// Fallback к обычному поиску
-				console.log('🔄 Переход к fallback поиску через базу данных')
+				logger.info('🔄 Переход к fallback поиску через базу данных')
 				return this.repository.findWithFilters(params, params)
 			}
 		}
@@ -691,7 +692,7 @@ export class SubmissionService extends BaseService<
 			const elasticsearchService = new ElasticsearchService()
 			return await elasticsearchService.getSubmissionFormFields(submissionId)
 		} catch (error) {
-			console.error('Ошибка получения данных полей формы:', error)
+			logger.error('Ошибка получения данных полей формы:', error)
 			return null
 		}
 	}

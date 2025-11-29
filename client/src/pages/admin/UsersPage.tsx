@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Container, 
-  Typography, 
-  Box, 
   Alert,
   Dialog,
   DialogTitle,
@@ -24,7 +22,6 @@ export const UsersPage: React.FC = () => {
   const [syncLoading, setSyncLoading] = useState(false);
   const [userFormOpen, setUserFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [loadingUserData, setLoadingUserData] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -47,7 +44,6 @@ export const UsersPage: React.FC = () => {
 
   // Обработчик редактирования пользователя
   const handleEditUser = React.useCallback(async (id: string) => {
-    setLoadingUserData(true);
     
     try {
       const response = await apiService.get(`/api/users/${id}`);
@@ -73,8 +69,6 @@ export const UsersPage: React.FC = () => {
         message: error.response?.data?.message || 'Ошибка загрузки пользователя',
         severity: 'error'
       });
-    } finally {
-      setLoadingUserData(false);
     }
   }, []);
 

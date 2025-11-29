@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
 	Box,
 	Typography,
@@ -17,7 +17,6 @@ import {
 import { Edit, Save, Cancel, ClearAll } from '@mui/icons-material'
 import FormField from '../../FormField'
 import { FormSection as FormSectionType } from '../types'
-import { FormField as FormFieldType } from '../../../../types'
 import { FORM_CONSTANTS } from '../constants'
 
 interface FormSectionProps {
