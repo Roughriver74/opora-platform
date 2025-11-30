@@ -10,7 +10,6 @@ import {
 	TextField,
 	Alert,
 	Chip,
-	Divider,
 	Collapse,
 	useTheme,
 	alpha,
@@ -25,13 +24,9 @@ import {
 	Edit as EditIcon,
 	ViewHeadline as SectionIcon,
 	AutoFixHigh as NormalizeIcon,
-	Visibility as VisibilityIcon,
 	VisibilityOff as VisibilityOffIcon,
-	KeyboardArrowUp as ArrowUpIcon,
-	KeyboardArrowDown as ArrowDownIcon,
 	SelectAll as SelectAllIcon,
 	Clear as ClearIcon,
-	ContentCopy as CopyIcon,
 	Settings as SettingsIcon,
 } from '@mui/icons-material'
 import { TransitionGroup } from 'react-transition-group'
@@ -467,7 +462,6 @@ export const AdvancedFieldsList: React.FC<AdvancedFieldsListProps> = ({
 	onFieldDelete,
 	onLoadFields,
 }) => {
-	const theme = useTheme()
 	const containerRef = useRef<HTMLDivElement>(null)
 
 	// Состояние компонента
@@ -553,7 +547,7 @@ export const AdvancedFieldsList: React.FC<AdvancedFieldsListProps> = ({
 					break
 			}
 		},
-		[editingFieldIndex, orderedElements, selectedElements]
+		[editingFieldIndex, orderedElements]
 	)
 
 	// Подключение глобальных обработчиков клавиатуры

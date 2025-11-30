@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
 	Box,
 	Paper,
@@ -109,7 +109,7 @@ const BitrixIntegration: React.FC = () => {
 	}
 
 	// Загрузка категорий сделок
-	const loadCategories = async (retryCount = 0) => {
+	const loadCategories = useCallback(async (retryCount = 0) => {
 		const maxRetries = 2
 		let hasError = false
 		
@@ -160,7 +160,7 @@ const BitrixIntegration: React.FC = () => {
 				setLoading(false)
 			}
 		}
-	}
+	}, [])
 
 	// Загрузка статусов для выбранной категории
 	const loadStages = async (categoryId: string = '0') => {
@@ -259,7 +259,7 @@ const BitrixIntegration: React.FC = () => {
 
 	useEffect(() => {
 		loadCategories()
-	}, [])
+	}, [loadCategories])
 
 	useEffect(() => {
 		if (categories.length > 0) {

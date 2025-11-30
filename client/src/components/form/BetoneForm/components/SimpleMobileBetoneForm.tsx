@@ -539,7 +539,6 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 				isSectionExpanded,
 				toggleSectionExpanded,
 				formik,
-				formik.values,
 				handleFieldChange,
 				getFieldError,
 				preloadedOptions,

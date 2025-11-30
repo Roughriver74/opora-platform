@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { FormFieldOption } from '../../../../types'
 import { FormFieldService } from '../../../../services/formFieldService'
 import { FIELD_CONSTANTS } from '../constants'
@@ -33,9 +33,11 @@ export const useOptimizedSearch = (
 
 	// Определяем конфигурацию
 	const isLegacyConfig = config && 'enabled' in config
-	const dynamicSource = isLegacyConfig
-		? config
-		: { enabled: !!config?.source, source: config?.source || 'catalog' }
+	const dynamicSource = useMemo(() => {
+		return isLegacyConfig
+			? config
+			: { enabled: !!config?.source, source: config?.source || 'catalog' }
+	}, [config, isLegacyConfig])
 	const minQueryLength = isLegacyConfig
 		? FIELD_CONSTANTS.MIN_SEARCH_LENGTH
 		: config?.minQueryLength || 2
@@ -58,22 +60,6 @@ export const useOptimizedSearch = (
 			setOptions(preloadedOptions)
 		}
 	}, [dynamicSource?.enabled, preloadedOptions])
-
-	// Debounced search function
-	const debouncedSearch = useCallback(
-		(query: string, autoSelectFirst = false) => {
-			// Очищаем предыдущий таймер
-			if (debounceTimeoutRef.current) {
-				clearTimeout(debounceTimeoutRef.current)
-			}
-
-			// Устанавливаем новый таймер
-			debounceTimeoutRef.current = setTimeout(() => {
-				performSearch(query, autoSelectFirst)
-			}, debounceMs)
-		},
-		[dynamicSource, debounceMs, performSearch]
-	)
 
 	// Основная функция поиска
 	const performSearch = useCallback(
@@ -228,6 +214,22 @@ export const useOptimizedSearch = (
 			}
 		},
 		[dynamicSource, cache, lastQuery, minQueryLength]
+	)
+
+	// Debounced search function
+	const debouncedSearch = useCallback(
+		(query: string, autoSelectFirst = false) => {
+			// Очищаем предыдущий таймер
+			if (debounceTimeoutRef.current) {
+				clearTimeout(debounceTimeoutRef.current)
+			}
+
+			// Устанавливаем новый таймер
+			debounceTimeoutRef.current = setTimeout(() => {
+				performSearch(query, autoSelectFirst)
+			}, debounceMs)
+		},
+		[debounceMs, performSearch]
 	)
 
 	// Очистка при размонтировании

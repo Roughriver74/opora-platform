@@ -109,7 +109,6 @@ const FormField: React.FC<FormFieldProps> = React.memo(
 		// Force update when value changes externally
 		useEffect(() => {
 			if (value !== lastValue) {
-				setForceUpdateKey(prev => prev + 1)
 				setLastValue(value)
 				if (value) {
 					setIsValueSelected(true)

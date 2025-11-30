@@ -566,7 +566,7 @@ export const useAdvancedDragAndDrop = (
 				error: `Ошибка при нормализации: ${(error as Error).message}`,
 			}))
 		}
-	}, [state.fields, setState, showDropSuccess, showDropError])
+	}, [state.fields, setState, showDropSuccess, showDropError, onLoadFields])
 
 	// Управление обработчиками событий
 	useEffect(() => {

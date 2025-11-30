@@ -40,7 +40,6 @@ export const groupFieldsBySection = (
 			if (currentSection.fields.length > 0 && currentHeaderActive) {
 				// Сохраняем предыдущую секцию, если в ней есть поля и заголовок активен
 				sections.push(currentSection)
-				hasSectionFields = false
 			}
 
 			// Проверяем активность нового заголовка
@@ -58,7 +57,6 @@ export const groupFieldsBySection = (
 			// Добавляем поле в текущую секцию (только если заголовок активен или includeInactive = true)
 			if (currentHeaderActive || includeInactive) {
 				currentSection.fields.push(field)
-				hasSectionFields = true
 			}
 		}
 	})

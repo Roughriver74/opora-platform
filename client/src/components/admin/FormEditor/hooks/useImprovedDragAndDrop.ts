@@ -296,7 +296,7 @@ export const useImprovedDragAndDrop = (
 				error: `Ошибка при нормализации порядков: ${(error as Error).message}`,
 			}))
 		}
-	}, [state.fields, setState])
+	}, [state.fields, setState, onLoadFields])
 
 	return {
 		dragState,
