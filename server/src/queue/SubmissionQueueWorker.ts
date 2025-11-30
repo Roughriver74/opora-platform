@@ -54,11 +54,23 @@ export class SubmissionQueueWorker {
 		})
 
 		this.worker.on('error', (error: Error) => {
-			logger.error('❌ Ошибка воркера:', error)
+			// Фильтруем частые ошибки подключения, чтобы не засорять логи
+			const errorMessage = error.message || String(error)
+			if (errorMessage.includes('Name or service not known') || 
+			    errorMessage.includes('ENOTFOUND') ||
+			    errorMessage.includes('ECONNREFUSED')) {
+				logger.warn(`⚠️ Ошибка подключения к Redis в воркере (работа продолжается): ${errorMessage}`)
+			} else {
+				logger.error('❌ Ошибка воркера:', error)
+			}
 		})
 
 		this.worker.on('stalled', (jobId: string) => {
 			logger.warn(`⚠️ Задача ${jobId} застряла`)
+		})
+
+		this.worker.on('closed', () => {
+			logger.warn('⚠️ Воркер закрыт')
 		})
 	}
 

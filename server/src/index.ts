@@ -31,10 +31,27 @@ const initializeServer = async () => {
 		// Планировщик автоматически запускается в конструкторе
 		logger.info('✅ Планировщик синхронизации инициализирован')
 
+		// Небольшая задержка перед запуском воркера, чтобы дать Redis время на запуск
+		logger.info('⏳ Ожидание готовности Redis...')
+		await new Promise(resolve => setTimeout(resolve, 5000)) // 5 секунд
+
 		// Инициализация воркера очереди заявок
-		const submissionWorker = getSubmissionQueueWorker(5) // 5 параллельных задач
-		await submissionWorker.start()
-		logger.info('✅ Воркер очереди заявок запущен')
+		try {
+			const submissionWorker = getSubmissionQueueWorker(5) // 5 параллельных задач
+			await submissionWorker.start()
+			logger.info('✅ Воркер очереди заявок запущен')
+		} catch (error: any) {
+			// Не останавливаем сервер, если воркер не запустился
+			// Воркер будет пытаться переподключиться автоматически
+			const errorMessage = error?.message || String(error)
+			if (errorMessage.includes('Name or service not known') || 
+			    errorMessage.includes('ENOTFOUND') ||
+			    errorMessage.includes('ECONNREFUSED')) {
+				logger.warn(`⚠️ Воркер очереди не смог подключиться к Redis (будет переподключаться): ${errorMessage}`)
+			} else {
+				logger.error('❌ Ошибка запуска воркера очереди:', error)
+			}
+		}
 
 		// Инициализация планировщика запланированных заявок
 		const submissionScheduler = getSubmissionSchedulerService()

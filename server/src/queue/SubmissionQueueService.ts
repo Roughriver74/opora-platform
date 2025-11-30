@@ -39,7 +39,27 @@ export class SubmissionQueueService {
 	 */
 	private setupQueueEventHandlers(): void {
 		this.queueEvents.on('error', (error) => {
-			logger.error('❌ Ошибка в очереди заявок:', error)
+			// Фильтруем частые ошибки подключения, чтобы не засорять логи
+			const errorMessage = error?.message || String(error)
+			if (errorMessage.includes('Name or service not known') || 
+			    errorMessage.includes('ENOTFOUND') ||
+			    errorMessage.includes('ECONNREFUSED')) {
+				logger.warn(`⚠️ Ошибка подключения к Redis в очереди (работа продолжается): ${errorMessage}`)
+			} else {
+				logger.error('❌ Ошибка в очереди заявок:', error)
+			}
+		})
+
+		this.queue.on('error', (error) => {
+			// Фильтруем частые ошибки подключения, чтобы не засорять логи
+			const errorMessage = error?.message || String(error)
+			if (errorMessage.includes('Name or service not known') || 
+			    errorMessage.includes('ENOTFOUND') ||
+			    errorMessage.includes('ECONNREFUSED')) {
+				logger.warn(`⚠️ Ошибка подключения к Redis в Queue (работа продолжается): ${errorMessage}`)
+			} else {
+				logger.error('❌ Ошибка в Queue:', error)
+			}
 		})
 
 		this.queueEvents.on('waiting', ({ jobId }) => {

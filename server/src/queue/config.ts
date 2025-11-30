@@ -4,16 +4,24 @@ import { logger } from '../utils/logger'
 /**
  * Конфигурация подключения к Redis для BullMQ
  */
+const redisHost = process.env.REDIS_HOST || 'localhost'
+const redisPort = parseInt(process.env.REDIS_PORT || '6379')
+const redisPassword = process.env.REDIS_PASSWORD
+
+// Логируем конфигурацию для диагностики
+logger.info(`🔧 Redis конфигурация: host=${redisHost}, port=${redisPort}, password=${redisPassword ? '***' : 'не установлен'}`)
+
 export const redisConnection: ConnectionOptions = {
-	host: process.env.REDIS_HOST || 'localhost',
-	port: parseInt(process.env.REDIS_PORT || '6396'),
-	password: process.env.REDIS_PASSWORD,
+	host: redisHost,
+	port: redisPort,
+	password: redisPassword,
 	maxRetriesPerRequest: 3,
 	enableReadyCheck: true,
+	connectTimeout: 10000, // 10 секунд таймаут подключения
 	retryStrategy: (times: number) => {
 		// Увеличиваем интервал между попытками подключения
 		const delay = Math.min(times * 1000, 30000)
-		logger.warn(`🔄 Переподключение к Redis через ${delay}ms (попытка ${times})`)
+		logger.warn(`🔄 Переподключение к Redis (${redisHost}:${redisPort}) через ${delay}ms (попытка ${times})`)
 		return delay
 	},
 }
