@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Form } from '../../../../types'
 import { FormService } from '../../../../services/formService'
 import { FormEditorState } from '../types'
-import { AUTOSAVE_DELAY, NOTIFICATION_DURATION } from '../constants'
+import { AUTOSAVE_DELAY } from '../constants'
 
 export const useAutoSave = (
 	state: FormEditorState,
@@ -30,7 +29,7 @@ export const useAutoSave = (
 				}
 
 				// Автосохранение только для существующих форм
-				const savedForm = await FormService.updateForm(
+				await FormService.updateForm(
 					state.formData._id,
 					formToSave
 				)
@@ -57,6 +56,7 @@ export const useAutoSave = (
 		state.saving,
 		state.autoSaving,
 		state.formData,
+		state.fields,
 		setState,
 	])
 
@@ -71,7 +71,7 @@ export const useAutoSave = (
 		return () => {
 			if (saveTimeout) clearTimeout(saveTimeout)
 		}
-	}, [state.hasChanges, state.saving, state.autoSaving, autoSave])
+	}, [state.hasChanges, state.saving, state.autoSaving, autoSave, saveTimeout])
 
 	return { autoSave }
 }

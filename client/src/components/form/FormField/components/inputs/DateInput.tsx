@@ -7,7 +7,6 @@ import {
 	Select,
 	MenuItem,
 	FormHelperText,
-	useTheme,
 	ListSubheader,
 	InputAdornment,
 	IconButton,

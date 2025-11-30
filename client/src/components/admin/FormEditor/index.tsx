@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState } from 'react'
 import {
 	Box,
 	Alert,
@@ -20,7 +20,6 @@ import { FormSettings } from './components/FormSettings'
 import { FieldsList } from './components/FieldsList'
 import { ImprovedFieldsList } from './components/ImprovedFieldsList'
 import { AdvancedFieldsList } from './components/AdvancedFieldsList'
-import { FormFieldService } from '../../../services/formFieldService'
 
 const FormEditor: React.FC<FormEditorProps> = ({ form, onSave, onBack }) => {
 	const [useImprovedUI, setUseImprovedUI] = useState(true)

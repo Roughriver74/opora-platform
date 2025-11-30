@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react'
-import GlobalNotification, { GlobalNotificationProps } from '../components/notifications/GlobalNotification'
+import GlobalNotification from '../components/notifications/GlobalNotification'
 
 // Тип для настроек уведомления
 export interface NotificationSettings {

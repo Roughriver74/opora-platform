@@ -219,22 +219,22 @@ const MySubmissions = () => {
 		}
 	}
 
-	// Загрузка данных полей формы для заявки
-	const loadSubmissionFormFields = async (submissionId: string) => {
-		try {
-			const response = await SubmissionService.getSubmissionFormFields(
-				submissionId
-			)
-			if (response.success && response.data.formFields) {
-				setSubmissionFormFields(prev => ({
-					...prev,
-					[submissionId]: response.data.formFields || {},
-				}))
-			}
-		} catch (error) {
-			console.error('Ошибка загрузки данных полей формы:', error)
-		}
-	}
+	// Загрузка данных полей формы для заявки (зарезервировано для будущего использования)
+	// const loadSubmissionFormFields = async (submissionId: string) => {
+	// 	try {
+	// 		const response = await SubmissionService.getSubmissionFormFields(
+	// 			submissionId
+	// 		)
+	// 		if (response.success && response.data.formFields) {
+	// 			setSubmissionFormFields(prev => ({
+	// 				...prev,
+	// 				[submissionId]: response.data.formFields || {},
+	// 			}))
+	// 		}
+	// 	} catch (error) {
+	// 		console.error('Ошибка загрузки данных полей формы:', error)
+	// 	}
+	// }
 
 	// Загрузка названий компаний и продуктов для всех заявок
 	const loadNamesForSubmissions = async (submissions: Submission[]) => {

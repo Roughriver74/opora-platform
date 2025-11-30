@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState, useEffect } from 'react'
+import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import {
 	Box,
 	Stack,
@@ -135,7 +135,7 @@ export const FieldsList: React.FC<FieldsListProps> = ({
 	}, [fields, restoreScrollPosition])
 
 	// Проверяем, что fields определен и является массивом
-	const safeFields = Array.isArray(fields) ? fields : []
+	const safeFields = useMemo(() => Array.isArray(fields) ? fields : [], [fields])
 	const safeBitrixFields = bitrixFields || {}
 
 	// Логирование для диагностики

@@ -191,7 +191,7 @@ export const useFormEditor = (form?: Form, onSave?: (form: Form) => void) => {
 				saving: false,
 			}))
 		}
-	}, [state.formData, onSave])
+	}, [state.formData, onSave, loadFields])
 
 	// Получение статуса сохранения
 	const getSaveStatus = useCallback((): SaveStatus => {

@@ -14,12 +14,9 @@ import {
 	Avatar,
 } from '@mui/material'
 import {
-	Assignment,
 	Person,
 	Business,
 	Inventory,
-	Flag,
-	PriorityHigh,
 } from '@mui/icons-material'
 import { DashboardTopLists as IDashboardTopLists } from '../../types/dashboard'
 
@@ -42,7 +39,6 @@ export const DashboardTopLists: React.FC<DashboardTopListsProps> = ({
 		maxItems?: number
 	}> = ({ title, icon, items, color, maxItems = 5 }) => {
 		const displayItems = items.slice(0, maxItems)
-		const totalCount = items.reduce((sum, item) => sum + item.count, 0)
 
 		return (
 			<Card sx={{ height: '100%' }}>

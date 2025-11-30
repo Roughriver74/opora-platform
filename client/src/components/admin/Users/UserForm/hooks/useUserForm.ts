@@ -123,7 +123,7 @@ export const useUserForm = (
     }
 
     // Телефон (опциональная валидация)
-    if (formData.phone && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone)) {
+    if (formData.phone && !/^\+?[\d\s\-()]+$/.test(formData.phone)) {
 			newErrors.phone = 'Неверный формат телефона'
     }
 

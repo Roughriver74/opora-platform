@@ -31,7 +31,6 @@ const FormField: React.FC<FormFieldProps> = React.memo(
 	}) => {
 		const [searchQuery, setSearchQuery] = useState('')
 		const [isValueSelected, setIsValueSelected] = useState(false)
-		const [forceUpdateKey, setForceUpdateKey] = useState(0)
 		const [lastValue, setLastValue] = useState(value)
 
 		// Подготавливаем опции для хука
@@ -48,8 +47,6 @@ const FormField: React.FC<FormFieldProps> = React.memo(
 		const {
 			options,
 			loading,
-			selectedOption,
-			setSelectedOption,
 			loadDynamicOptions,
 			setOptions,
 			syncWithOptions,

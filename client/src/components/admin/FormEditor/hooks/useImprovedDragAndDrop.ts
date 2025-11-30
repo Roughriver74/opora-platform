@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react'
-import { FormField } from '../../../../types'
 import { FormEditorState } from '../types'
 import { FormFieldService } from '../../../../services/formFieldService'
 import {
@@ -163,7 +162,7 @@ export const useImprovedDragAndDrop = (
 				dragPreview: null,
 			})
 		},
-		[state.fields, setState]
+		[state.fields, setState, onLoadFields]
 	)
 
 	// Завершение перетаскивания
@@ -252,7 +251,7 @@ export const useImprovedDragAndDrop = (
 				}))
 			}
 		},
-		[state.fields, setState]
+		[state.fields, setState, onLoadFields]
 	)
 
 	// Нормализация всех порядков

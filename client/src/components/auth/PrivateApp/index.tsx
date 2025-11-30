@@ -12,7 +12,7 @@ import MySubmissions from '../../user/MySubmissions'
 import AnimatedLogo from '../../common/AnimatedLogo'
 
 export const PrivateApp: React.FC = () => {
-	const { isAuthenticated, isLoading, user, checkAuth } = useAuth()
+	const { isAuthenticated, isLoading, checkAuth } = useAuth()
 
 	// Проверяем авторизацию при загрузке приложения
 	useEffect(() => {

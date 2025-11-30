@@ -165,7 +165,7 @@ export const useFieldManagement = (
 				}))
 			}
 		},
-		[state.fields, setState, loadFields, formId]
+		[state.fields, setState, formId]
 	)
 
 	// Добавление нового поля

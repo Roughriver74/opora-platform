@@ -67,23 +67,23 @@ export const LinkedFieldsSettings: React.FC<LinkedFieldsSettingsProps> = ({
 			areFieldTypesCompatible(formField.type, field.type)
 	)
 
-	// Получаем поля с группировкой по разделам
-	const fieldsBySection = React.useMemo(() => {
-		const sections: Record<string, FormField[]> = {}
-
-		compatibleFields.forEach(field => {
-			// Определяем раздел по порядку (сотни)
-			const sectionNumber = Math.floor(field.order / 100)
-			const sectionName = `Раздел ${sectionNumber}`
-
-			if (!sections[sectionName]) {
-				sections[sectionName] = []
-			}
-			sections[sectionName].push(field)
-		})
-
-		return sections
-	}, [compatibleFields])
+	// Получаем поля с группировкой по разделам (зарезервировано для будущего использования)
+	// const fieldsBySection = React.useMemo(() => {
+	// 	const sections: Record<string, FormField[]> = {}
+	//
+	// 	compatibleFields.forEach(field => {
+	// 		// Определяем раздел по порядку (сотни)
+	// 		const sectionNumber = Math.floor(field.order / 100)
+	// 		const sectionName = `Раздел ${sectionNumber}`
+	//
+	// 		if (!sections[sectionName]) {
+	// 			sections[sectionName] = []
+	// 		}
+	// 		sections[sectionName].push(field)
+	// 	})
+	//
+	// 	return sections
+	// }, [compatibleFields])
 
 	const handleEnabledChange = (enabled: boolean) => {
 		onChange({

@@ -40,7 +40,6 @@ export const useOptimizedSearch = (
 		? FIELD_CONSTANTS.MIN_SEARCH_LENGTH
 		: config?.minQueryLength || 2
 	const debounceMs = isLegacyConfig ? 300 : config?.debounceMs || 300
-	const maxResults = isLegacyConfig ? 20 : config?.maxResults || 20
 
 	// Initialize preloaded options
 	useEffect(() => {
@@ -73,7 +72,7 @@ export const useOptimizedSearch = (
 				performSearch(query, autoSelectFirst)
 			}, debounceMs)
 		},
-		[dynamicSource]
+		[dynamicSource, debounceMs, performSearch]
 	)
 
 	// Основная функция поиска
@@ -228,7 +227,7 @@ export const useOptimizedSearch = (
 				}
 			}
 		},
-		[dynamicSource, cache, lastQuery]
+		[dynamicSource, cache, lastQuery, minQueryLength]
 	)
 
 	// Очистка при размонтировании

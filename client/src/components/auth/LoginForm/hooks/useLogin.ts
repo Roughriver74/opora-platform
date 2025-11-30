@@ -111,7 +111,7 @@ export const useLogin = (): UseLoginReturn => {
       console.error('Ошибка при входе:', error);
       setLocalError('Произошла ошибка. Попробуйте снова.');
     }
-  }, [password, validateForm, login]);
+  }, [email, password, validateForm, login]);
 
   // Очистка ошибок
   const clearError = useCallback((): void => {

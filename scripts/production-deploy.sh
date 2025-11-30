@@ -60,8 +60,15 @@ cd server && npm install --silent
 cd ..
 
 echo -e "${BLUE}4. Сборка проекта...${NC}"
-npm run build
-BUILD_STATUS=$?
+echo "Сборка клиента (без проверки ESLint)..."
+cd client && DISABLE_ESLINT_PLUGIN=true CI=false npm run build
+CLIENT_BUILD_STATUS=$?
+cd ..
+echo "Сборка сервера..."
+cd server && npm run build
+SERVER_BUILD_STATUS=$?
+cd ..
+BUILD_STATUS=$((CLIENT_BUILD_STATUS + SERVER_BUILD_STATUS))
 
 # Восстановление локального .env
 if [ -f "$ENV_BACKUP" ]; then

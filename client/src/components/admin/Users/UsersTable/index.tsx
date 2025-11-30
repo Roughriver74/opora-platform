@@ -25,14 +25,12 @@ import {
   Card,
   CardContent,
   Stack,
-  Divider,
   Avatar
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Search as SearchIcon,
-  Add as AddIcon,
   Sync as SyncIcon,
   PersonAdd as PersonAddIcon,
   Person as PersonIcon,

@@ -1,5 +1,5 @@
 import * as yup from 'yup'
-import { FormField as FormFieldType, FieldType } from '../../../../types'
+import { FormField as FormFieldType } from '../../../../types'
 import { NON_VALIDATABLE_TYPES, FORM_CONSTANTS } from '../constants'
 
 /**

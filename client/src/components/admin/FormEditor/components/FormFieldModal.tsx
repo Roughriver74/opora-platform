@@ -20,11 +20,10 @@ import {
 	Divider,
 	Autocomplete,
 	Switch,
-	Chip,
 	FormHelperText,
 } from '@mui/material'
-import { Close as CloseIcon, Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material'
-import { FormField, FormFieldOption, FieldType } from '../../../../types'
+import { Close as CloseIcon, Delete as DeleteIcon } from '@mui/icons-material'
+import { FormField, FormFieldOption } from '../../../../types'
 import BitrixOptionsLoader from '../../BitrixOptionsLoader'
 import { LinkedFieldsSettings } from '../../FormFieldEditor/components/LinkedFieldsSettings'
 
@@ -140,14 +139,14 @@ export const FormFieldModal: React.FC<FormFieldModalProps> = ({
 		setFormData(prev => ({ ...prev, options: bitrixOptions }))
 	}
 
-	// Добавление новой опции
-	const addOption = (newOption: FormFieldOption) => {
-		if (newOption.value && newOption.label) {
-			const updatedOptions = [...options, newOption]
-			setOptions(updatedOptions)
-			setFormData(prev => ({ ...prev, options: updatedOptions }))
-		}
-	}
+	// Добавление новой опции (зарезервировано для будущего использования)
+	// const addOption = (newOption: FormFieldOption) => {
+	// 	if (newOption.value && newOption.label) {
+	// 		const updatedOptions = [...options, newOption]
+	// 		setOptions(updatedOptions)
+	// 		setFormData(prev => ({ ...prev, options: updatedOptions }))
+	// 	}
+	// }
 
 	// Удаление опции
 	const removeOption = (index: number) => {

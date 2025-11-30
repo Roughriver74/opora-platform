@@ -26,7 +26,6 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator'
 import { FormField, FieldType, FormFieldOption } from '../../types'
 import BitrixOptionsLoader from './BitrixOptionsLoader'
-import { FormFieldService } from '../../services/formFieldService'
 import { LinkedFieldsSettings } from './FormFieldEditor/components/LinkedFieldsSettings'
 
 // Типы для группирования полей

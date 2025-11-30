@@ -1,5 +1,5 @@
 import { FormField as FormFieldType } from '../../../../types'
-import { FormSection, SectionMap } from '../types'
+import { FormSection } from '../types'
 import { FORM_CONSTANTS } from '../constants'
 
 /**
@@ -30,8 +30,6 @@ export const groupFieldsBySection = (
 		fields: [],
 	}
 
-	// Флаг для отслеживания, содержит ли секция поля
-	let hasSectionFields = false
 	// Флаг для отслеживания активности текущего заголовка
 	let currentHeaderActive = true
 

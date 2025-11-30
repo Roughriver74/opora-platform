@@ -12,20 +12,13 @@ import {
 	InputLabel,
 	Select,
 	MenuItem,
-	Chip,
-	Divider,
-	IconButton,
-	Tooltip,
 	LinearProgress,
 } from '@mui/material'
 import {
-	Refresh as RefreshIcon,
 	Schedule as ScheduleIcon,
 	Storage as StorageIcon,
 	Delete as DeleteIcon,
 	PlayArrow as PlayIcon,
-	Stop as StopIcon,
-	Info as InfoIcon,
 } from '@mui/icons-material'
 import {
 	syncService,

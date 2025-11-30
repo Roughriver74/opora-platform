@@ -309,7 +309,7 @@ export const useAdvancedDragAndDrop = (
 				}))
 			}
 		},
-		[state.fields, setState, showDropSuccess, showDropError]
+		[state.fields, setState, showDropSuccess, showDropError, onLoadFields]
 	)
 
 	// Обработка движения мыши во время перетаскивания
@@ -525,7 +525,7 @@ export const useAdvancedDragAndDrop = (
 				}))
 			}
 		},
-		[state.fields, setState, showDropSuccess, showDropError]
+		[state.fields, setState, showDropSuccess, showDropError, onLoadFields]
 	)
 
 	// Нормализация порядков с анимацией

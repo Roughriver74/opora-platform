@@ -108,7 +108,7 @@ export const useUsersTable = (): UseUsersTableReturn => {
 		) // Задержка только для поиска
 
 		return () => clearTimeout(timer)
-	}, [loadUsers])
+	}, [loadUsers, filters.search])
 
 	// Обновление пользователей
 	const refreshUsers = useCallback(() => {
