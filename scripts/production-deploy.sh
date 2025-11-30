@@ -191,14 +191,15 @@ scrape_configs:
     relabel_configs:
       - source_labels: ['__meta_docker_container_name']
         regex: '/(.*)'
-        target_label: 'container'
+        target_label: 'container_name'
       - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
         target_label: 'service'
       - target_label: 'host'
         replacement: 'beton-crm'
       - source_labels: ['__meta_docker_container_id']
+        regex: '(.+)'
         target_label: '__path__'
-        replacement: /var/lib/docker/containers/$1/*.log
+        replacement: /var/lib/docker/containers/${1}/${1}-json.log
 PROMTAIL_EOF
     echo "✅ Базовый promtail-config.yaml создан"
 fi

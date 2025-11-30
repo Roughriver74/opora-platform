@@ -91,7 +91,7 @@
 			"pluginVersion": "12.3.0",
 			"targets": [
 				{
-					"expr": "sum(count_over_time({host=\"$host_label\"} |~ \"(?i)(error|exception|fatal|critical)\" !~ \"(?i)(Socket connection|context canceled|Errno -2)\" [1h]))",
+					"expr": "sum(count_over_time({host=\"$host_label\"} |~ \"(?i)(error|exception|fatal|critical)\" !~ \"(?i)(Socket connection|context canceled|Errno -2|scheduler_processor|error notifying scheduler|EOF addr=|at least 1 healthy replica required)\" [1h]))",
 					"refId": "A"
 				}
 			],
@@ -1302,7 +1302,7 @@
 			"pluginVersion": "12.3.0",
 			"targets": [
 				{
-					"expr": "{host=\"$host_label\"} |~ \"(?i)(error|exception|fatal|critical)\" !~ \"(?i)(Socket connection|context canceled|Errno -2)\"",
+					"expr": "{host=\"$host_label\"} |~ \"(?i)(error|exception|fatal|critical)\" !~ \"(?i)(Socket connection|context canceled|Errno -2|scheduler_processor|error notifying scheduler|EOF addr=|at least 1 healthy replica required)\"",
 					"maxLines": 20,
 					"refId": "A"
 				}

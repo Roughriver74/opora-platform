@@ -69,9 +69,11 @@ scrape_configs:
         action: drop
 
       # Формируем путь к лог-файлу на основе ID контейнера
+      # Docker хранит логи в формате: /var/lib/docker/containers/{container_id}/{container_id}-json.log
       - source_labels: ['__meta_docker_container_id']
+        regex: '(.+)'
         target_label: '__path__'
-        replacement: /var/lib/docker/containers/$1/*.log
+        replacement: /var/lib/docker/containers/${1}/${1}-json.log
 
       # Добавляем job label для фильтрации
       - target_label: 'job'
