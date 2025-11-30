@@ -105,6 +105,7 @@ tar -czf "$ARCHIVE_NAME" \
     docker-compose.yml \
     ecosystem.config.js \
     .env.production \
+    promtail-config.yaml \
     scripts/
 
 echo -e "${GREEN}✓ Архив $ARCHIVE_NAME создан${NC}"
@@ -166,6 +167,40 @@ mkdir -p /var/log/beton-crm
 if [ -f ".env.production" ]; then
     cp .env.production .env
     echo "✅ Переменные окружения загружены"
+fi
+
+# Создание promtail-config.yaml если его нет
+if [ ! -f "promtail-config.yaml" ]; then
+    echo "⚠️ promtail-config.yaml не найден, создаем базовый конфиг..."
+    cat > promtail-config.yaml << 'PROMTAIL_EOF'
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://45.146.164.152:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+      - target_label: 'host'
+        replacement: 'beton-crm'
+      - source_labels: ['__meta_docker_container_id']
+        target_label: '__path__'
+        replacement: /var/lib/docker/containers/$1/*.log
+PROMTAIL_EOF
+    echo "✅ Базовый promtail-config.yaml создан"
 fi
 
 # Установка прав на выполнение для скриптов

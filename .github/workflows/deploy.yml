@@ -18,7 +18,7 @@ jobs:
   deploy:
     name: Deploy to Production Server
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -85,6 +85,7 @@ jobs:
             docker-compose.yml \
             ecosystem.config.js \
             .env.production \
+            promtail-config.yaml \
             scripts/
           echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
           echo "✅ Архив $ARCHIVE_NAME создан"
@@ -169,6 +170,35 @@ jobs:
             if [ -f ".env.production" ]; then
               cp .env.production .env
               echo "✅ Переменные окружения загружены"
+            fi
+
+            # Создание promtail-config.yaml если его нет
+            if [ ! -f "promtail-config.yaml" ]; then
+              echo "⚠️ promtail-config.yaml не найден, создаем базовый конфиг..."
+              echo "server:" > promtail-config.yaml
+              echo "  http_listen_port: 9080" >> promtail-config.yaml
+              echo "  grpc_listen_port: 0" >> promtail-config.yaml
+              echo "positions:" >> promtail-config.yaml
+              echo "  filename: /tmp/positions.yaml" >> promtail-config.yaml
+              echo "clients:" >> promtail-config.yaml
+              echo "  - url: http://45.146.164.152:3100/loki/api/v1/push" >> promtail-config.yaml
+              echo "scrape_configs:" >> promtail-config.yaml
+              echo "  - job_name: docker" >> promtail-config.yaml
+              echo "    docker_sd_configs:" >> promtail-config.yaml
+              echo "      - host: unix:///var/run/docker.sock" >> promtail-config.yaml
+              echo "        refresh_interval: 5s" >> promtail-config.yaml
+              echo "    relabel_configs:" >> promtail-config.yaml
+              echo "      - source_labels: ['__meta_docker_container_name']" >> promtail-config.yaml
+              echo "        regex: '/(.*)'" >> promtail-config.yaml
+              echo "        target_label: 'container'" >> promtail-config.yaml
+              echo "      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']" >> promtail-config.yaml
+              echo "        target_label: 'service'" >> promtail-config.yaml
+              echo "      - target_label: 'host'" >> promtail-config.yaml
+              echo "        replacement: 'beton-crm'" >> promtail-config.yaml
+              echo "      - source_labels: ['__meta_docker_container_id']" >> promtail-config.yaml
+              echo "        target_label: '__path__'" >> promtail-config.yaml
+              echo "        replacement: /var/lib/docker/containers/\$1/*.log" >> promtail-config.yaml
+              echo "✅ Базовый promtail-config.yaml создан"
             fi
 
             # Установка прав на выполнение для скриптов
