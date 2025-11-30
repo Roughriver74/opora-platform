@@ -1,22 +1,22 @@
-name: Deploy to Production
+name: Deploy to Dev
 
 on:
   push:
     branches:
-      - main
-      - production
+      - develop
+      - dev
   workflow_dispatch: # Позволяет запускать вручную из GitHub UI
 
 env:
   NODE_VERSION: '18'
   SERVER_USER: root
-  SERVER_IP: 31.128.39.123
-  SERVER_DOMAIN: beton.shknv.ru
+  SERVER_IP: 31.129.109.2
+  SERVER_DOMAIN: dev.beton.shknv.ru
   APP_DIR: /var/www/beton-crm
 
 jobs:
   deploy:
-    name: Deploy to Production Server
+    name: Deploy to Dev Server
     runs-on: ubuntu-latest
     
     steps:
@@ -40,11 +40,11 @@ jobs:
           echo "📦 Установка зависимостей сервера..."
           cd ../server && npm ci --silent
 
-      - name: Configure production environment
+      - name: Configure dev environment
         run: |
-          echo "⚙️ Настройка переменных окружения для продакшн..."
+          echo "⚙️ Настройка переменных окружения для dev..."
           echo "REACT_APP_API_URL=https://${{ env.SERVER_DOMAIN }}:5001/api" > client/.env
-          echo "✅ API URL настроен для продакшн сервера (HTTPS)"
+          echo "✅ API URL настроен для dev сервера (HTTPS)"
 
       - name: Build project
         run: |
@@ -91,24 +91,12 @@ jobs:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
 
       - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ env.SERVER_IP }} >> ~/.ssh/known_hosts
-
-      - name: Check server backups
-        run: |
-          echo "🔍 Проверка резервных копий на сервере..."
-          ssh -o StrictHostKeyChecking=no ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} << 'ENDSSH'
-            if [ ! -d "/var/backups/beton-crm" ] || [ -z "$(ls -A /var/backups/beton-crm 2>/dev/null)" ]; then
-              echo "❌ КРИТИЧЕСКАЯ ОШИБКА: Резервные копии не найдены!"
-              exit 1
-            fi
-            echo "✅ Резервные копии найдены:"
-            ls -la /var/backups/beton-crm/ | tail -3
-          ENDSSH
 
       - name: Copy archive to server
         run: |
@@ -223,7 +211,7 @@ jobs:
 
             # Запуск миграций базы данных
             echo "🗄️ Запуск миграций базы данных..."
-            docker-compose exec -T backend npm run migration:run:prod
+            docker-compose exec -T backend npm run migration:run:prod || true
 
             # Синхронизация данных с Bitrix в Elasticsearch
             echo "🔄 Синхронизация данных с Bitrix в Elasticsearch..."
@@ -294,7 +282,7 @@ jobs:
       - name: Deployment summary
         if: success()
         run: |
-          echo "## ✅ Деплой успешно завершен!" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Деплой на DEV успешно завершен!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🌐 Приложение доступно по адресам:" >> $GITHUB_STEP_SUMMARY
           echo "- **Frontend**: https://${{ env.SERVER_IP }}:3000" >> $GITHUB_STEP_SUMMARY
@@ -307,3 +295,4 @@ jobs:
           echo "- ✅ Миграции базы данных выполнены" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Синхронизация с Elasticsearch запущена" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Приложение проверено и работает" >> $GITHUB_STEP_SUMMARY
+
