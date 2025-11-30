@@ -219,36 +219,74 @@ jobs:
             set -e
             cd ${{ env.APP_DIR }}
 
-            # Остановка существующих контейнеров
+            # Принудительное удаление контейнеров с префиксом beton_ ПЕРЕД docker-compose down
+            echo "🧹 Принудительное удаление старых контейнеров beton_*..."
+            docker ps -a --filter "name=beton_" --format "{{.Names}}" 2>/dev/null | while read container; do
+              if [ -n "$container" ]; then
+                echo "Удаление контейнера: $container"
+                docker rm -f "$container" 2>/dev/null || true
+              fi
+            done || true
+
+            # Остановка существующих контейнеров через docker-compose
+            echo "🛑 Остановка существующих контейнеров через docker-compose..."
             docker-compose down 2>/dev/null || true
 
-            # Принудительное удаление контейнеров с префиксом beton_ (на случай, если они остались)
-            echo "🧹 Принудительное удаление старых контейнеров beton_*..."
-            CONTAINERS=$(docker ps -a --filter "name=beton_" --format "{{.Names}}" 2>/dev/null || true)
-            if [ -n "$CONTAINERS" ]; then
-              echo "$CONTAINERS" | xargs docker rm -f 2>/dev/null || true
-            fi
-
-            # Очистка старых образов и кэша
-            echo "🧹 Очистка Docker кэша..."
-            docker system prune -f 2>/dev/null || true
-            docker builder prune -f 2>/dev/null || true
+            # Финальная проверка и удаление оставшихся контейнеров
+            echo "🔍 Финальная проверка контейнеров beton_*..."
+            docker ps -a --filter "name=beton_" --format "{{.Names}}" 2>/dev/null | while read container; do
+              if [ -n "$container" ]; then
+                echo "⚠️ Найден оставшийся контейнер: $container, удаляем..."
+                docker rm -f "$container" 2>/dev/null || true
+              fi
+            done || true
 
             # Запуск новых контейнеров БЕЗ КЭША
             echo "🔨 Запуск Docker контейнеров (пересборка без кэша)..."
             docker-compose build --no-cache
 
-            # Запуск контейнеров
+            # Запуск контейнеров с проверкой зависимостей
             echo "▶️ Запуск контейнеров..."
             docker-compose up -d
 
+            # Ожидание запуска базовых сервисов (postgres, redis, elasticsearch)
+            echo "⏳ Ожидание запуска базовых сервисов..."
+            sleep 15
+
             # Проверяем статус запуска
+            echo "📊 Статус контейнеров после запуска:"
+            docker-compose ps
+
+            # Проверяем, что базовые сервисы запущены
+            if ! docker-compose ps | grep -q "postgres.*Up"; then
+              echo "❌ PostgreSQL не запустился!"
+              docker-compose logs postgres | tail -20
+              exit 1
+            fi
+
+            if ! docker-compose ps | grep -q "redis.*Up"; then
+              echo "❌ Redis не запустился!"
+              docker-compose logs redis | tail -20
+              exit 1
+            fi
+
+            if ! docker-compose ps | grep -q "elasticsearch.*Up"; then
+              echo "❌ Elasticsearch не запустился!"
+              docker-compose logs elasticsearch | tail -20
+              exit 1
+            fi
+
+            # Дополнительное ожидание для backend
+            echo "⏳ Ожидание запуска backend..."
             sleep 10
-            if ! docker-compose ps | grep -q "Up"; then
-              echo "⚠️ Первая попытка запуска не удалась, пробуем еще раз..."
-              docker-compose down
-              sleep 5
-              docker-compose up -d
+
+            # Проверяем статус backend
+            if ! docker-compose ps | grep -q "backend.*Up"; then
+              echo "⚠️ Backend не запустился, проверяем логи..."
+              docker-compose logs backend | tail -30
+              echo "⚠️ Пробуем перезапустить backend..."
+              docker-compose restart backend
+              sleep 10
             fi
 
             # Ожидание запуска сервисов

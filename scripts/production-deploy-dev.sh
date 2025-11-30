@@ -260,13 +260,45 @@ echo "Запуск Docker контейнеров..."
 docker-compose build --no-cache || docker compose build --no-cache
 docker-compose up -d || docker compose up -d
 
-# Ожидание запуска сервисов
-echo "Ожидание запуска сервисов..."
-sleep 30
+# Ожидание запуска базовых сервисов (postgres, redis, elasticsearch)
+echo "⏳ Ожидание запуска базовых сервисов..."
+sleep 15
 
-# Проверка статуса контейнеров
-echo "Статус контейнеров:"
+# Проверяем статус запуска
+echo "📊 Статус контейнеров после запуска:"
 docker-compose ps || docker compose ps
+
+# Проверяем, что базовые сервисы запущены
+if ! (docker-compose ps || docker compose ps) | grep -q "postgres.*Up"; then
+    echo "❌ PostgreSQL не запустился!"
+    (docker-compose logs postgres || docker compose logs postgres) | tail -20
+    exit 1
+fi
+
+if ! (docker-compose ps || docker compose ps) | grep -q "redis.*Up"; then
+    echo "❌ Redis не запустился!"
+    (docker-compose logs redis || docker compose logs redis) | tail -20
+    exit 1
+fi
+
+if ! (docker-compose ps || docker compose ps) | grep -q "elasticsearch.*Up"; then
+    echo "❌ Elasticsearch не запустился!"
+    (docker-compose logs elasticsearch || docker compose logs elasticsearch) | tail -20
+    exit 1
+fi
+
+# Дополнительное ожидание для backend
+echo "⏳ Ожидание запуска backend..."
+sleep 10
+
+# Проверяем статус backend
+if ! (docker-compose ps || docker compose ps) | grep -q "backend.*Up"; then
+    echo "⚠️  Backend не запустился, проверяем логи..."
+    (docker-compose logs backend || docker compose logs backend) | tail -30
+    echo "⚠️  Пробуем перезапустить backend..."
+    docker-compose restart backend || docker compose restart backend
+    sleep 10
+fi
 
 # Создание схемы базы данных
 echo "Создание схемы базы данных..."
