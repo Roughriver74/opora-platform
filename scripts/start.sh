@@ -6,6 +6,13 @@ echo "🚀 Запуск Beton CRM с полным обновлением..."
 echo "🛑 Остановка существующих контейнеров..."
 docker compose down
 
+# Принудительное удаление контейнеров с префиксом beton_ (на случай, если они остались)
+echo "🧹 Принудительное удаление старых контейнеров beton_*..."
+CONTAINERS=$(docker ps -a --filter "name=beton_" --format "{{.Names}}" 2>/dev/null || true)
+if [ -n "$CONTAINERS" ]; then
+    echo "$CONTAINERS" | xargs docker rm -f 2>/dev/null || true
+fi
+
 # Удаление старых образов
 echo "🗑️ Удаление старых образов..."
 docker compose down --rmi local

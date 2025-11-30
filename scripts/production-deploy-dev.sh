@@ -228,9 +228,17 @@ if [ -d "server" ] || [ -d "client" ]; then
     mv \$BACKUP_NAME backups/ 2>/dev/null || true
 fi
 
-# Остановка и удаление старых контейнеров
+# Остановка и удаление старых контейнеров (БЕЗ удаления volumes - данные сохраняются!)
 echo "Остановка и удаление старых контейнеров..."
-docker-compose down --volumes --remove-orphans 2>/dev/null || docker compose down --volumes --remove-orphans 2>/dev/null || true
+docker-compose down --remove-orphans 2>/dev/null || docker compose down --remove-orphans 2>/dev/null || true
+
+# Принудительное удаление контейнеров с префиксом beton_ (на случай, если они остались)
+echo "Принудительное удаление старых контейнеров beton_*..."
+CONTAINERS=$(docker ps -a --filter "name=beton_" --format "{{.Names}}" 2>/dev/null || true)
+if [ -n "$CONTAINERS" ]; then
+    echo "$CONTAINERS" | xargs docker rm -f 2>/dev/null || true
+fi
+
 docker system prune -f 2>/dev/null || true
 
 # Распаковка нового приложения
