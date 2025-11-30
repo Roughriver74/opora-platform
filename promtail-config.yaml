@@ -5,15 +5,30 @@ server:
 positions:
   filename: /tmp/positions.yaml
 
+# Настройки батчинга для уменьшения количества запросов к Loki
+# Это поможет уменьшить ошибки "context canceled"
+limits_config:
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h # 7 дней
+  max_streams_per_user: 10000
+  max_line_size: 256KB
+  max_line_size_truncate: true
+
+# Настройки батчинга логов перед отправкой
+batch:
+  max_size: 1048576 # 1MB
+  max_wait: 3s
+  timeout: 10s
+
 clients:
   # Адрес центрального сервера мониторинга
   - url: http://45.146.164.152:3100/loki/api/v1/push
     # Настройки для устойчивости к ошибкам подключения
-    timeout: 10s
+    timeout: 30s
     backoff_config:
-      min_period: 500ms
-      max_period: 5m
-      max_retries: 10
+      min_period: 1s
+      max_period: 10m
+      max_retries: 5
 
 # Глобальные метки для всех логов
 external_labels:
@@ -25,26 +40,42 @@ scrape_configs:
   - job_name: docker
     docker_sd_configs:
       - host: unix:///var/run/docker.sock
-        refresh_interval: 5s
-        
+        refresh_interval: 15s # Увеличиваем интервал для уменьшения нагрузки
+
     relabel_configs:
       # Извлекаем имя контейнера (убираем слэш в начале)
       - source_labels: ['__meta_docker_container_name']
         regex: '/(.*)'
-        target_label: 'container'
-      
+        target_label: 'container_name' # Исправлено: было 'container', должно быть 'container_name' для совместимости с Grafana
+
       # Извлекаем имя сервиса из docker-compose меток
-      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+      - source_labels:
+          ['__meta_docker_container_label_com_docker_compose_service']
         target_label: 'service'
-      
+
       # Добавляем хост
       - target_label: 'host'
         replacement: 'beton-crm'
+
+      # Исключаем контейнеры мониторинга из сбора логов (чтобы избежать рекурсии)
+      - source_labels: ['__meta_docker_container_name']
+        regex: '(promtail|loki|grafana|prometheus)'
+        action: drop
+
+      # Исключаем контейнеры без имени сервиса (системные контейнеры)
+      - source_labels:
+          ['__meta_docker_container_label_com_docker_compose_service']
+        regex: ''
+        action: drop
 
       # Формируем путь к лог-файлу на основе ID контейнера
       - source_labels: ['__meta_docker_container_id']
         target_label: '__path__'
         replacement: /var/lib/docker/containers/$1/*.log
+
+      # Добавляем job label для фильтрации
+      - target_label: 'job'
+        replacement: 'docker-logs'
 
   # Системные логи (syslog)
   - job_name: system
