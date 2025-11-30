@@ -9,7 +9,7 @@ const config = {
 	bitrix24WebhookUrl:
 		process.env.BITRIX24_WEBHOOK_URL ||
 		'https://crm.betonexpress.pro/rest/3/74sbx907svrq1v10/',
-	redisUrl: process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6396}`,
+	redisUrl: process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`,
 }
 
 export default config

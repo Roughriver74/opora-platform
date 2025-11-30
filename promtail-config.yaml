@@ -8,6 +8,16 @@ positions:
 clients:
   # Адрес центрального сервера мониторинга
   - url: http://45.146.164.152:3100/loki/api/v1/push
+    # Настройки для устойчивости к ошибкам подключения
+    timeout: 10s
+    backoff_config:
+      min_period: 500ms
+      max_period: 5m
+      max_retries: 10
+
+# Глобальные метки для всех логов
+external_labels:
+  host: beton-crm
 
 scrape_configs:
   # Логи Docker контейнеров через Service Discovery
