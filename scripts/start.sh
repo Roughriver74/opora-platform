@@ -13,6 +13,20 @@ if [ -n "$CONTAINERS" ]; then
     echo "$CONTAINERS" | xargs docker rm -f 2>/dev/null || true
 fi
 
+# Дополнительная проверка для beton_promtail (иногда Docker помечает контейнер как удаляемый, но он остается)
+echo "🔎 Проверяем состояние контейнера beton_promtail..."
+if docker ps -a --format "{{.Names}}" | grep -q "^beton_promtail$"; then
+    docker rm -f beton_promtail 2>/dev/null || true
+    for i in $(seq 1 10); do
+        if ! docker ps -a --format "{{.Names}}" | grep -q "^beton_promtail$"; then
+            echo "✅ Контейнер beton_promtail удален"
+            break
+        fi
+        echo "⏳ Ждем удаления beton_promtail... ($i/10)"
+        sleep 1
+    done
+fi
+
 # Удаление старых образов
 echo "🗑️ Удаление старых образов..."
 docker compose down --rmi local

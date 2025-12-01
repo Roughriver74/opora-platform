@@ -1,5 +1,71 @@
-import { Client } from '@elastic/elasticsearch'
+import { Client, errors } from '@elastic/elasticsearch'
 import { logger } from '../utils/logger'
+
+const isNotFoundError = (error: unknown): boolean =>
+	error instanceof errors.ResponseError && error.meta?.statusCode === 404
+
+const isClusterBlockedError = (error: unknown): boolean => {
+	if (!(error instanceof errors.ResponseError)) {
+		return false
+	}
+
+	const body = error.meta?.body
+	if (typeof body !== 'object' || body === null) {
+		return false
+	}
+
+	const typedBody = body as ElasticsearchErrorBody
+	return typedBody.error?.type === 'cluster_block_exception'
+}
+
+interface ErrorInfo {
+	message: string
+	stack?: string
+	status?: number
+}
+
+type ElasticsearchErrorBody = {
+	error?: {
+		type?: string
+	}
+}
+
+const extractGenericStatus = (error: unknown): number | undefined => {
+	if (
+		typeof error === 'object' &&
+		error !== null &&
+		'status' in error &&
+		typeof (error as { status?: unknown }).status === 'number'
+	) {
+		return (error as { status: number }).status
+	}
+	return undefined
+}
+
+const getErrorInfo = (error: unknown): ErrorInfo => {
+	if (error instanceof errors.ResponseError) {
+		return {
+			message: error.message,
+			stack: error.stack,
+			status: error.meta?.statusCode,
+		}
+	}
+
+	if (error instanceof Error) {
+		return {
+			message: error.message,
+			stack: error.stack,
+			status: extractGenericStatus(error),
+		}
+	}
+
+	return {
+		message: 'Unknown error',
+	}
+}
+
+const shouldRetryElasticsearchRequest = (status?: number): boolean =>
+	status === 429 || status === 503 || status === 504
 
 export interface SearchDocument {
 	id: string
@@ -787,19 +853,17 @@ class ElasticsearchService {
 
 			return results
 		} catch (error) {
+			const { message, stack, status } = getErrorInfo(error)
+
 			logger.error('Elasticsearch search error:', {
 				query: options.query,
 				type: options.type,
-				error: error.message,
-				stack: error.stack,
+				error: message,
+				stack,
 			})
 
 			// Если это временная ошибка, пробуем еще раз
-			if (
-				error.status === 429 ||
-				error.status === 503 ||
-				error.status === 504
-			) {
+			if (shouldRetryElasticsearchRequest(status)) {
 				logger.warn('Retrying Elasticsearch search due to temporary error...')
 				await new Promise(resolve => setTimeout(resolve, 1000)) // Ждем 1 секунду
 				return this.search(options) // Рекурсивный вызов
@@ -1621,10 +1685,18 @@ class ElasticsearchService {
 
 			return null
 		} catch (error) {
-			if (error.status === 404) {
+			if (isNotFoundError(error)) {
 				return null
 			}
-			logger.error('Failed to get document by ID:', error)
+
+			if (isClusterBlockedError(error)) {
+				logger.error(
+					`Elasticsearch cluster is read-only (disk watermark) while fetching ${documentId}`,
+					error
+				)
+			} else {
+				logger.error('Failed to get document by ID:', error)
+			}
 			throw error
 		}
 	}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
 	TextField,
 	Box,
@@ -15,6 +15,37 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import ClearIcon from '@mui/icons-material/Clear'
 import { FieldInputProps } from '../../types'
 import { getFieldStyles } from '../../utils/fieldStyles'
+
+interface ParsedDateValue {
+	date: string
+	time: string
+}
+
+const parseDateValue = (rawValue: string): ParsedDateValue => {
+	if (!rawValue) {
+		return { date: '', time: '' }
+	}
+
+	try {
+		const parsedDate = new Date(rawValue)
+		if (isNaN(parsedDate.getTime())) {
+			return { date: '', time: '' }
+		}
+
+		const year = parsedDate.getFullYear()
+		const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
+		const day = String(parsedDate.getDate()).padStart(2, '0')
+		const hours = String(parsedDate.getHours()).padStart(2, '0')
+		const minutes = String(parsedDate.getMinutes()).padStart(2, '0')
+
+		return {
+			date: `${year}-${month}-${day}`,
+			time: `${hours}:${minutes}`,
+		}
+	} catch {
+		return { date: '', time: '' }
+	}
+}
 
 export const DateInput: React.FC<FieldInputProps> = ({
 	field,
@@ -33,31 +64,28 @@ export const DateInput: React.FC<FieldInputProps> = ({
 		field.name?.toLowerCase().includes('time') ||
 		field.name?.toLowerCase().includes('datetime')
 
-	// Разбираем существующее значение
-	const parseValue = (dateValue: string) => {
-		if (!dateValue) return { date: '', time: '' }
+	const normalizedValue =
+		typeof value === 'string' ? value : value ? String(value) : ''
+	const parsedValue = parseDateValue(normalizedValue)
 
-		try {
-			const date = new Date(dateValue)
-			if (isNaN(date.getTime())) return { date: '', time: '' }
+	const [dateValue, setDateValue] = useState(parsedValue.date)
+	const [selectedTime, setSelectedTime] = useState(parsedValue.time)
+	const [isDirty, setIsDirty] = useState(false)
 
-			const year = date.getFullYear()
-			const month = String(date.getMonth() + 1).padStart(2, '0')
-			const day = String(date.getDate()).padStart(2, '0')
-			const hours = String(date.getHours()).padStart(2, '0')
-			const minutes = String(date.getMinutes()).padStart(2, '0')
-
-			return {
-				date: `${year}-${month}-${day}`,
-				time: `${hours}:${minutes}`,
-			}
-		} catch {
-			return { date: '', time: '' }
+	useEffect(() => {
+		if (normalizedValue) {
+			const nextValue = parseDateValue(normalizedValue)
+			setDateValue(nextValue.date)
+			setSelectedTime(nextValue.time)
+			setIsDirty(false)
+			return
 		}
-	}
 
-	const { date, time } = parseValue(value || '')
-	const [selectedTime, setSelectedTime] = useState(time || '')
+		if (!normalizedValue && !isDirty) {
+			setDateValue('')
+			setSelectedTime('')
+		}
+	}, [normalizedValue, isDirty])
 
 	// Больше НЕ сохраняем предпочтения времени автоматически
 	const saveTimePreference = (timeStr: string) => {
@@ -132,18 +160,17 @@ export const DateInput: React.FC<FieldInputProps> = ({
 
 	// Обработчик очистки даты
 	const handleClearDate = () => {
-		onChange(field.name, '')
+		setDateValue('')
 		setSelectedTime('')
+		setIsDirty(false)
+		onChange(field.name, '')
 	}
 
 	// Обработчик очистки времени
 	const handleClearTime = () => {
 		setSelectedTime('')
-		if (date) {
-			// Если дата есть, устанавливаем только дату без времени
-			const newValue = combineDateTime(date, '')
-			onChange(field.name, newValue)
-		}
+		setIsDirty(true)
+		onChange(field.name, '')
 	}
 
 	// Используем раздельные поля для всех устройств при включенном времени
@@ -160,10 +187,23 @@ export const DateInput: React.FC<FieldInputProps> = ({
 					label={field.label ? `${field.label} - Дата` : 'Дата'}
 					type='date'
 					margin={compact ? 'dense' : 'normal'}
-					value={date || ''}
+					value={dateValue || ''}
 					onChange={e => {
-						const newValue = combineDateTime(e.target.value, selectedTime)
-						onChange(field.name, newValue)
+						const pickedDate = e.target.value
+						if (!pickedDate) {
+							handleClearDate()
+							return
+						}
+
+						setDateValue(pickedDate)
+						setIsDirty(true)
+
+						if (selectedTime) {
+							const newValue = combineDateTime(pickedDate, selectedTime)
+							onChange(field.name, newValue)
+						} else {
+							onChange(field.name, '')
+						}
 					}}
 					placeholder=""
 					required={false}
@@ -173,7 +213,7 @@ export const DateInput: React.FC<FieldInputProps> = ({
 						shrink: true,
 					}}
 					InputProps={{
-						endAdornment: date ? (
+						endAdornment: dateValue ? (
 							<InputAdornment position="end">
 								<IconButton
 									aria-label="очистить дату"
@@ -237,11 +277,20 @@ export const DateInput: React.FC<FieldInputProps> = ({
 						value={selectedTime || ''}
 						onChange={e => {
 							const newTime = e.target.value as string
+							if (!newTime) {
+								handleClearTime()
+								return
+							}
+
 							setSelectedTime(newTime)
+							setIsDirty(true)
 							saveTimePreference(newTime)
-							if (date) {
-								const newValue = combineDateTime(date, newTime)
+
+							if (dateValue) {
+								const newValue = combineDateTime(dateValue, newTime)
 								onChange(field.name, newValue)
+							} else {
+								onChange(field.name, '')
 							}
 						}}
 						required={field.required}
@@ -341,7 +390,7 @@ export const DateInput: React.FC<FieldInputProps> = ({
 			label={field.label}
 			type='date'
 			margin={compact ? 'dense' : 'normal'}
-			value={date || ''}
+			value={parsedValue.date || ''}
 			onChange={e => {
 				const newValue = combineDateTime(e.target.value, '12:00')
 				onChange(field.name, newValue)
@@ -355,7 +404,7 @@ export const DateInput: React.FC<FieldInputProps> = ({
 				shrink: true,
 			}}
 			InputProps={{
-				endAdornment: date ? (
+				endAdornment: parsedValue.date ? (
 					<InputAdornment position="end">
 						<IconButton
 							aria-label="очистить дату"

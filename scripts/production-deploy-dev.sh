@@ -234,9 +234,25 @@ docker-compose down --remove-orphans 2>/dev/null || docker compose down --remove
 
 # Принудительное удаление контейнеров с префиксом beton_ (на случай, если они остались)
 echo "Принудительное удаление старых контейнеров beton_*..."
-CONTAINERS=$(docker ps -a --filter "name=beton_" --format "{{.Names}}" 2>/dev/null || true)
-if [ -n "$CONTAINERS" ]; then
-    echo "$CONTAINERS" | xargs docker rm -f 2>/dev/null || true
+docker ps -a --filter "name=beton_" --format "{{.Names}}" 2>/dev/null | while read container; do
+    if [ -n "$container" ]; then
+        echo "Удаление контейнера: $container"
+        docker rm -f "$container" 2>/dev/null || true
+    fi
+done
+
+# Дополнительная проверка для beton_promtail (контейнер иногда зависает в состоянии удаления)
+echo "🔎 Дополнительная проверка контейнера beton_promtail..."
+if docker ps -a --format "{{.Names}}" | grep -q "^beton_promtail$"; then
+    docker rm -f beton_promtail 2>/dev/null || true
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+        if ! docker ps -a --format "{{.Names}}" | grep -q "^beton_promtail$"; then
+            echo "✅ Контейнер beton_promtail удален"
+            break
+        fi
+        echo "⏳ Ждем удаления beton_promtail... ($i/10)"
+        sleep 1
+    done
 fi
 
 docker system prune -f 2>/dev/null || true
