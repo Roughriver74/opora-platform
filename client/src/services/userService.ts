@@ -2,10 +2,15 @@ import api from './api'
 
 export interface User {
 	_id: string
+	id?: string
 	firstName: string
 	lastName: string
 	email: string
 	role: 'admin' | 'user'
+	isActive?: boolean
+	phone?: string
+	bitrixUserId?: string
+	bitrix_id?: string
 	createdAt: string
 	updatedAt: string
 }
@@ -26,9 +31,9 @@ class UserServiceClass {
 		return response.data.data || response.data
 	}
 
-	async updateUser(id: string, updates: Partial<User>): Promise<User> {
+	async updateUser(id: string, updates: Partial<User> & { password?: string }): Promise<User> {
 		const response = await api.put(`/api/users/${id}`, updates)
-		return response.data
+		return response.data.data || response.data
 	}
 
 	async deleteUser(id: string): Promise<void> {
@@ -36,10 +41,10 @@ class UserServiceClass {
 	}
 
 	async createUser(
-		userData: Omit<User, '_id' | 'createdAt' | 'updatedAt'>
+		userData: Omit<User, '_id' | 'id' | 'createdAt' | 'updatedAt'> & { password: string }
 	): Promise<User> {
 		const response = await api.post('/api/users', userData)
-		return response.data
+		return response.data.data || response.data
 	}
 }
 

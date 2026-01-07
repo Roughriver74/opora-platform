@@ -236,20 +236,20 @@ print_status "=================================="
 print_warning "Для остановки нажмите Ctrl+C"
 print_status ""
 
-# Запуск сервера в фоне
-print_status "Запуск сервера..."
+# Запуск сервера в фоне (hot reload)
+print_status "Запуск сервера (hot reload)..."
 cd server
-npm run dev &
+npm run dev -- --watch src --ext ts,tsx,json &
 SERVER_PID=$!
 cd ..
 
 # Ждем 3 секунды для запуска сервера
 sleep 3
 
-# Запуск клиента в фоне
-print_status "Запуск клиента..."
+# Запуск клиента в фоне (hot reload)
+print_status "Запуск клиента (hot reload)..."
 cd client
-npm start &
+FAST_REFRESH=true npm start &
 CLIENT_PID=$!
 cd ..
 

@@ -31,9 +31,10 @@ export const useSimpleFields = (formId?: string) => {
 		try {
 			const updatedField = await FormFieldService.updateField(id, updates)
 			setFields(prev =>
-				prev.map(field =>
-					field._id === id ? { ...field, ...updatedField } : field
-				)
+				prev.map(field => {
+					const fieldId = (field as any).id || field._id
+					return fieldId === id ? { ...field, ...updatedField } : field
+				})
 			)
 			return true
 		} catch (error: any) {
@@ -45,7 +46,10 @@ export const useSimpleFields = (formId?: string) => {
 	const deleteField = async (id: string) => {
 		try {
 			await FormFieldService.deleteFormField(id)
-			setFields(prev => prev.filter(field => field._id !== id))
+			setFields(prev => prev.filter(field => {
+				const fieldId = (field as any).id || field._id
+				return fieldId !== id
+			}))
 		} catch (error: any) {
 			setError(error.message || 'Ошибка удаления поля')
 		}
@@ -54,6 +58,8 @@ export const useSimpleFields = (formId?: string) => {
 	useEffect(() => {
 		if (formId) {
 			loadFields()
+		} else {
+			setFields([])
 		}
 	}, [formId, loadFields])
 

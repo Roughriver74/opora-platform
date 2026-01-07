@@ -21,7 +21,8 @@ export const FieldsTable: React.FC<FieldsTableProps> = ({
 	getSectionName,
 }) => {
 	const handleProcessRowUpdate = async (newRow: FormField) => {
-		const success = await onFieldUpdate(newRow._id!, newRow)
+		const fieldId = (newRow as any).id || newRow._id
+		const success = await onFieldUpdate(fieldId, newRow)
 		if (success) {
 			return newRow
 		}
@@ -37,14 +38,17 @@ export const FieldsTable: React.FC<FieldsTableProps> = ({
 
 	const columns: GridColDef[] = [
 		{
-			field: '_id',
+			field: 'id',
 			headerName: 'ID',
 			width: 80,
-			renderCell: (params: GridRenderCellParams) => (
-				<Typography variant='caption' sx={{ color: 'text.secondary' }}>
-					{params.value?.slice(-4)}
-				</Typography>
-			),
+			renderCell: (params: GridRenderCellParams) => {
+				const idValue = params.row.id || params.row._id
+				return (
+					<Typography variant='caption' sx={{ color: 'text.secondary' }}>
+						{idValue?.slice(-4)}
+					</Typography>
+				)
+			},
 		},
 		{
 			field: 'name',
@@ -140,7 +144,7 @@ export const FieldsTable: React.FC<FieldsTableProps> = ({
 			<DataGrid
 				rows={fields}
 				columns={columns}
-				getRowId={row => row._id!}
+				getRowId={row => (row as any).id || row._id || ''}
 				pageSizeOptions={[25, 50, 100]}
 				initialState={{
 					pagination: {

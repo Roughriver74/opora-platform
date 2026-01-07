@@ -697,16 +697,6 @@ const MySubmissions = () => {
 
 					{/* Основная информация */}
 					<Stack spacing={1} sx={{ mb: 2 }}>
-						{/*	<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-							<ScheduleIcon fontSize='small' color='action' />
-							<Typography variant='body2'>
-								{format(new Date(submission.createdAt), 'dd.MM.yyyy HH:mm', {
-									locale: ru,
-								})}
-							</Typography>
-						</Box>} 
-						*/}
-
 						{/* Битрикс24 статус */}
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 							<BusinessIcon fontSize='small' color='action' />

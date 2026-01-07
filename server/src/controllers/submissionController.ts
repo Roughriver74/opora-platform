@@ -897,15 +897,18 @@ export const getSubmissionWithBitrixData = async (
 	}
 }
 
-// Обновление заявки - сразу в Битрикс24
+// Обновление заявки - OFFLINE-FIRST подход (сначала БД, потом Bitrix24)
 export const updateSubmission = async (req: Request, res: Response) => {
 	try {
 		const { id } = req.params
 		const updateData = req.body
 		const userId = req.user?.id
 
+		console.log(`[UPDATE_SUBMISSION] Начало обновления заявки ${id}`)
+
 		const submission = await submissionService.findById(id)
 		if (!submission) {
+			console.log(`[UPDATE_SUBMISSION] Заявка ${id} не найдена`)
 			return res
 				.status(404)
 				.json({ success: false, message: 'Заявка не найдена' })
@@ -913,6 +916,9 @@ export const updateSubmission = async (req: Request, res: Response) => {
 
 		const isAdmin = req.isAdmin
 		if (!isAdmin && submission.userId !== userId) {
+			console.log(
+				`[UPDATE_SUBMISSION] Нет прав для редактирования заявки ${id}`
+			)
 			return res.status(403).json({
 				success: false,
 				message: 'Нет прав для редактирования этой заявки',
@@ -925,6 +931,7 @@ export const updateSubmission = async (req: Request, res: Response) => {
 				throw new Error('Форма не найдена')
 			}
 
+			// Подготовка данных для Bitrix24
 			const dealData: Record<string, any> = {}
 			let newTitle: string = submission.title
 
@@ -938,8 +945,8 @@ export const updateSubmission = async (req: Request, res: Response) => {
 				}
 			}
 
-			await bitrix24Service.updateDeal(submission.bitrixDealId!, dealData)
-
+			// ШАГ 1: СНАЧАЛА сохраняем в локальной БД (OFFLINE-FIRST!)
+			console.log(`[UPDATE_SUBMISSION] Шаг 1: Сохранение в БД для заявки ${id}`)
 			await submissionService.updateSubmission(
 				id,
 				{
@@ -948,9 +955,41 @@ export const updateSubmission = async (req: Request, res: Response) => {
 				},
 				userId
 			)
-			await submissionService.updateSyncStatus(id, BitrixSyncStatus.SYNCED)
+			console.log(`[UPDATE_SUBMISSION] ✅ Данные сохранены в БД для заявки ${id}`)
 
-			// Автоматическая переиндексация заявки в Elasticsearch
+			// Устанавливаем статус "в процессе синхронизации"
+			await submissionService.updateSyncStatus(id, BitrixSyncStatus.PENDING)
+
+			// ШАГ 2: ПОТОМ пытаемся синхронизировать с Bitrix24
+			console.log(
+				`[UPDATE_SUBMISSION] Шаг 2: Попытка синхронизации с Bitrix24 для заявки ${id}`
+			)
+			try {
+				await bitrix24Service.updateDeal(submission.bitrixDealId!, dealData)
+				await submissionService.updateSyncStatus(id, BitrixSyncStatus.SYNCED)
+				console.log(
+					`[UPDATE_SUBMISSION] ✅ Синхронизация с Bitrix24 успешна для заявки ${id}`
+				)
+			} catch (bitrixError: any) {
+				// Синхронизация не удалась, но данные УЖЕ СОХРАНЕНЫ в БД!
+				console.warn(
+					`[UPDATE_SUBMISSION] ⚠️ Ошибка синхронизации с Bitrix24 для заявки ${id}:`,
+					bitrixError.message
+				)
+				await submissionService.updateSyncStatus(
+					id,
+					BitrixSyncStatus.FAILED,
+					undefined,
+					`Bitrix24: ${bitrixError?.message || 'Ошибка сети'}`
+				)
+				// НЕ прерываем выполнение - данные сохранены!
+
+			}
+
+			// ШАГ 3: Автоматическая переиндексация заявки в Elasticsearch
+			console.log(
+				`[UPDATE_SUBMISSION] Шаг 3: Переиндексация в Elasticsearch для заявки ${id}`
+			)
 			try {
 				const updatedSubmission = await submissionService.findById(id)
 				if (updatedSubmission) {
@@ -992,17 +1031,26 @@ export const updateSubmission = async (req: Request, res: Response) => {
 
 					await elasticsearchService.indexDocument(submissionData)
 					console.log(
-						`✅ Заявка ${updatedSubmission.submissionNumber} автоматически переиндексирована в Elasticsearch`
+						`[UPDATE_SUBMISSION] ✅ Переиндексация в Elasticsearch успешна для заявки ${updatedSubmission.submissionNumber}`
 					)
 				}
 			} catch (indexError) {
-				console.error(
-					`❌ Ошибка при автоматической переиндексации заявки ${submission.submissionNumber}:`,
+				console.warn(
+					`[UPDATE_SUBMISSION] ⚠️ Ошибка переиндексации в Elasticsearch для заявки ${submission.submissionNumber}:`,
 					indexError
 				)
 				// Не прерываем выполнение, если индексация не удалась
 			}
 
+			// ШАГ 4: Получаем финальный статус синхронизации
+			const finalSubmission = await submissionService.findById(id)
+			const syncStatus = finalSubmission?.bitrixSyncStatus || BitrixSyncStatus.SYNCED
+
+			console.log(
+				`[UPDATE_SUBMISSION] ✅ Заявка ${id} успешно обновлена. Статус синхронизации: ${syncStatus}`
+			)
+
+			// ВСЕГДА возвращаем успех, если данные сохранены в БД
 			return res.json({
 				success: true,
 				data: {
@@ -1010,25 +1058,31 @@ export const updateSubmission = async (req: Request, res: Response) => {
 					submissionNumber: submission.submissionNumber,
 					title: newTitle,
 					bitrixDealId: submission.bitrixDealId,
-					bitrixSyncStatus: BitrixSyncStatus.SYNCED,
+					bitrixSyncStatus: syncStatus,
 				},
 				message: 'Заявка успешно обновлена',
+				warning:
+					syncStatus === BitrixSyncStatus.FAILED
+						? 'Данные сохранены, но синхронизация с Bitrix24 будет выполнена позже'
+						: undefined,
 			})
-		} catch (bitrixError: any) {
-			await submissionService.updateSyncStatus(
-				id,
-				BitrixSyncStatus.FAILED,
-				undefined,
-				bitrixError?.message
+		} catch (error: any) {
+			// Критическая ошибка на этапе сохранения в БД
+			console.error(
+				`[UPDATE_SUBMISSION] ❌ Критическая ошибка обновления заявки ${id}:`,
+				error
 			)
-
 			return res.status(500).json({
 				success: false,
-				message: 'Ошибка обновления заявки в Битрикс24',
-				error: bitrixError?.message,
+				message: 'Ошибка обновления заявки',
+				error: error?.message,
 			})
 		}
 	} catch (error: any) {
+		console.error(
+			`[UPDATE_SUBMISSION] ❌ Неожиданная ошибка при обновлении заявки:`,
+			error
+		)
 		return res
 			.status(500)
 			.json({ success: false, message: 'Ошибка обновления заявки' })

@@ -8,14 +8,19 @@ import {
 	CircularProgress,
 	Alert,
 	Button,
+	Paper,
+	Stack,
+	Avatar,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import DashboardIcon from '@mui/icons-material/Dashboard'
+import LogoutIcon from '@mui/icons-material/Logout'
 import FormsList from '../../components/admin/FormsList'
 import FormEditor from '../../components/admin/FormEditor'
 import BitrixIntegration from '../../components/admin/BitrixIntegration'
-import BackupManagement from '../../components/admin/BackupManagement'
 import Settings from '../../components/admin/Settings'
 import { SimpleDatabase } from '../../components/admin/SimpleDatabase'
-import { UsersPage } from './UsersPage'
 import { useNavigate } from 'react-router-dom'
 import { Form } from '../../types'
 import { FormService } from '../../services/formService'
@@ -38,7 +43,7 @@ const TabPanel = (props: TabPanelProps) => {
 			aria-labelledby={`simple-tab-${index}`}
 			{...other}
 		>
-			{value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+			{value === index && <Box sx={{ pt: { xs: 2, md: 3 } }}>{children}</Box>}
 		</div>
 	)
 }
@@ -59,6 +64,16 @@ const AdminPage: React.FC = () => {
 	const [error, setError] = useState<string | null>(null)
 	const { user, logout } = useAuth()
 	const navigate = useNavigate()
+	const displayName =
+		user?.firstName || user?.fullName || user?.email || 'Администратор'
+	const initials =
+		displayName
+			.split(' ')
+			.filter(Boolean)
+			.map(part => part[0])
+			.slice(0, 2)
+			.join('')
+			.toUpperCase() || 'A'
 
 	// Загрузка всех форм
 	const loadForms = async () => {
@@ -135,49 +150,145 @@ const AdminPage: React.FC = () => {
 	}
 
 	return (
-		<Container maxWidth='lg' sx={{ mt: 4 }}>
-			<Box
+		<Container maxWidth='xl' sx={{ mt: { xs: 3, md: 4 }, mb: 6 }}>
+			<Paper
+				elevation={0}
 				sx={{
-					mb: 4,
-					display: 'flex',
-					justifyContent: 'space-between',
-					alignItems: 'center',
+					p: { xs: 2, md: 3 },
+					mb: 3,
+					borderRadius: 3,
+					border: '1px solid',
+					borderColor: 'divider',
+					background: theme =>
+						`linear-gradient(135deg, ${alpha(
+							theme.palette.primary.main,
+							0.12
+						)}, ${alpha(theme.palette.primary.main, 0.02)})`,
 				}}
 			>
-				<div>
-					<Typography variant='h4' component='h1' gutterBottom>
-						Администрирование
-					</Typography>
-					<Typography variant='subtitle1' color='text.secondary'>
-						Управление формами и интеграцией с Битрикс24
-					</Typography>
-				</div>
-				<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-					<Typography variant='body2' color='text.secondary'>
-						Добро пожаловать,{' '}
-						{user?.firstName || user?.fullName || 'Администратор'}
-					</Typography>
-					<Button
-						variant='contained'
-						color='primary'
-						onClick={() => navigate('/dashboard')}
-						sx={{ mr: 1 }}
+				<Stack
+					direction={{ xs: 'column', lg: 'row' }}
+					spacing={3}
+					alignItems={{ lg: 'center' }}
+					justifyContent='space-between'
+				>
+					<Box>
+						<Stack direction='row' spacing={1} alignItems='center' sx={{ mb: 1 }}>
+							<AdminPanelSettingsIcon sx={{ color: 'primary.main' }} />
+							<Typography
+								variant='overline'
+								color='text.secondary'
+								sx={{ letterSpacing: '0.08em' }}
+							>
+								Админ-панель
+							</Typography>
+						</Stack>
+						<Typography
+							variant='h4'
+							component='h1'
+							gutterBottom
+							sx={{ fontWeight: 700 }}
+						>
+							Администрирование
+						</Typography>
+						<Typography variant='body1' color='text.secondary'>
+							Управление формами и интеграцией с Битрикс24
+						</Typography>
+					</Box>
+					<Stack
+						direction={{ xs: 'column', sm: 'row' }}
+						spacing={2}
+						alignItems={{ xs: 'flex-start', sm: 'center' }}
 					>
-						Дашборд
-					</Button>
-					<Button variant='outlined' color='secondary' onClick={logout}>
-						Выйти
-					</Button>
-				</Box>
-			</Box>
+						<Stack
+							direction='row'
+							spacing={1.5}
+							alignItems='center'
+							sx={{
+								pr: { sm: 2 },
+								mr: { sm: 1 },
+								borderRight: { sm: '1px solid' },
+								borderColor: 'divider',
+							}}
+						>
+							<Avatar
+								sx={{
+									width: 40,
+									height: 40,
+									bgcolor: 'primary.main',
+									color: 'primary.contrastText',
+									fontWeight: 600,
+								}}
+							>
+								{initials}
+							</Avatar>
+							<Box>
+								<Typography variant='caption' color='text.secondary'>
+									Добро пожаловать
+								</Typography>
+								<Typography variant='subtitle2'>{displayName}</Typography>
+							</Box>
+						</Stack>
+						<Stack direction='row' spacing={1.5} flexWrap='wrap'>
+							<Button
+								variant='contained'
+								color='primary'
+								startIcon={<DashboardIcon />}
+								onClick={() => navigate('/dashboard')}
+								sx={{
+									textTransform: 'none',
+									boxShadow: 'none',
+									'&:hover': { boxShadow: 'none' },
+								}}
+							>
+								Дашборд
+							</Button>
+							<Button
+								variant='outlined'
+								color='secondary'
+								startIcon={<LogoutIcon />}
+								onClick={logout}
+								sx={{ textTransform: 'none' }}
+							>
+								Выйти
+							</Button>
+						</Stack>
+					</Stack>
+				</Stack>
+			</Paper>
 
-			<Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+			<Paper
+				elevation={0}
+				sx={{
+					mb: 3,
+					borderRadius: 3,
+					border: '1px solid',
+					borderColor: 'divider',
+					overflow: 'hidden',
+				}}
+			>
 				<Tabs
 					value={tabValue}
 					onChange={handleTabChange}
 					aria-label='admin tabs'
 					variant='scrollable'
 					scrollButtons='auto'
+					textColor='primary'
+					indicatorColor='primary'
+					sx={{
+						px: { xs: 1, md: 2 },
+						minHeight: 52,
+						'& .MuiTabs-indicator': {
+							height: 3,
+							borderRadius: 2,
+						},
+						'& .MuiTab-root': {
+							textTransform: 'none',
+							fontWeight: 600,
+							minHeight: 52,
+							px: 2,
+						},
+					}}
 				>
 					<Tab label='Формы' {...a11yProps(0)} />
 					<Tab
@@ -186,11 +297,9 @@ const AdminPage: React.FC = () => {
 					/>
 					<Tab label='База данных' {...a11yProps(2)} />
 					<Tab label='Битрикс24' {...a11yProps(3)} />
-					<Tab label='Резервные копии' {...a11yProps(4)} />
-					<Tab label='Настройки' {...a11yProps(5)} />
-					<Tab label='Пользователи' {...a11yProps(6)} />
+					<Tab label='Настройки' {...a11yProps(4)} />
 				</Tabs>
-			</Box>
+			</Paper>
 
 			<TabPanel value={tabValue} index={0}>
 				{loading ? (
@@ -227,7 +336,7 @@ const AdminPage: React.FC = () => {
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={2}>
-				<SimpleDatabase />
+				<SimpleDatabase forms={forms} formsLoading={loading} />
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={3}>
@@ -235,15 +344,7 @@ const AdminPage: React.FC = () => {
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={4}>
-				<BackupManagement />
-			</TabPanel>
-
-			<TabPanel value={tabValue} index={5}>
 				<Settings />
-			</TabPanel>
-
-			<TabPanel value={tabValue} index={6}>
-				<UsersPage />
 			</TabPanel>
 		</Container>
 	)
