@@ -310,11 +310,41 @@ class ElasticsearchService {
 										keyword: { type: 'keyword' },
 									},
 								},
-								formData: { type: 'object' },
+								formData: {
+								type: 'object',
+								dynamic: true,
+								properties: {
+									_periodMetadata: {
+										type: 'object',
+										enabled: true,
+									},
+								},
 							},
 						},
-						settings: {
-							// Оптимизация для производительности
+						dynamic_templates: [
+							{
+								// _periodMetadata как объект (должен идти первым!)
+								periodmetadata_as_object: {
+									path_match: 'formData._periodMetadata',
+									mapping: {
+										type: 'object',
+										enabled: true,
+									},
+								},
+							},
+							{
+								// Все остальные поля formData как text (избегаем float parsing)
+								formdata_fields_as_text: {
+									path_match: 'formData.*',
+									mapping: {
+										type: 'text',
+									},
+								},
+							},
+						],
+					},
+					settings: {
+						// Оптимизация для производительности
 							number_of_shards: 1,
 							number_of_replicas: 0, // Отключаем реплики для single-node кластера
 							refresh_interval: '30s', // Увеличиваем интервал обновления для лучшей производительности
@@ -371,28 +401,27 @@ class ElasticsearchService {
 										type: 'stemmer',
 										language: 'russian',
 									},
-									// Расширенные синонимы для товаров
+									// Синонимы для товаров (только однословные термины)
 									product_synonyms: {
 										type: 'synonym',
 										synonyms: [
-											'бетон,цемент,смесь', // Убираем раствор из синонимов бетона
-											'раствор,строительный раствор,цементный раствор', // Отдельная группа для растворов
-											'песок,песчаный,песчаная,песок речной',
-											'щебень,гравий,камень,каменная крошка',
+											'бетон,цемент,смесь',
+											'раствор,цементный',
+											'песок,песчаный',
+											'щебень,гравий',
 											'арматура,металл,сталь,железо',
 											'доставка,транспорт,перевозка,логистика',
-											// Специальные синонимы для марок бетона
-											'в25,в-25,бетон в25,бетон в-25,марка в25',
-											'в30,в-30,бетон в30,бетон в-30,марка в30',
-											'в35,в-35,бетон в35,бетон в-35,марка в35',
-											'в40,в-40,бетон в40,бетон в-40,марка в40',
-											'м300,м-300,марка 300,бетон м300',
-											'м400,м-400,марка 400,бетон м400',
-											'м500,м-500,марка 500,бетон м500',
-											'фундамент,основание,база,фундаментный',
-											'строительство,стройка,возведение,строительный',
-											'кирпич,кирпичный,камень,блок',
-											'блок,блочный,газобетон,пенобетон',
+											'в25,в-25',
+											'в30,в-30',
+											'в35,в-35',
+											'в40,в-40',
+											'м300,м-300',
+											'м400,м-400',
+											'м500,м-500',
+											'фундамент,основание,фундаментный',
+											'строительство,стройка,строительный',
+											'кирпич,кирпичный,блок',
+											'газобетон,пенобетон',
 											'плита,плитный,перекрытие,панель',
 											'труба,трубный,водопровод,канализация',
 										],
@@ -475,7 +504,7 @@ class ElasticsearchService {
 				: {}
 
 			const document: SearchDocument = {
-				id: submission.id,
+				id: `submission_${submission.id}`,
 				name: submission.title || submission.submissionNumber,
 				description: submission.notes,
 				type: 'submission',
@@ -1407,7 +1436,16 @@ class ElasticsearchService {
 							status: { type: 'keyword' },
 							priority: { type: 'keyword' },
 							tags: { type: 'keyword' },
-							formData: { type: 'object' },
+							formData: {
+								type: 'object',
+								dynamic: true,
+								properties: {
+									_periodMetadata: {
+										type: 'object',
+										enabled: true,
+									},
+								},
+							},
 							submissionNumber: { type: 'keyword' },
 							userName: { type: 'text' },
 							userEmail: { type: 'keyword' },
@@ -1421,6 +1459,25 @@ class ElasticsearchService {
 								analyzer: 'product_search',
 							},
 						},
+						dynamic_templates: [
+							{
+								periodmetadata_as_object: {
+									path_match: 'formData._periodMetadata',
+									mapping: {
+										type: 'object',
+										enabled: true,
+									},
+								},
+							},
+							{
+								formdata_fields_as_text: {
+									path_match: 'formData.*',
+									mapping: {
+										type: 'text',
+									},
+								},
+							},
+						],
 					},
 					settings: {
 						number_of_replicas: 0, // Отключаем реплики для single-node кластера
@@ -1614,10 +1671,25 @@ class ElasticsearchService {
 				doc,
 			])
 
-			await this.client.bulk({
+			const response = await this.client.bulk({
 				body,
 				refresh: false, // Не обновляем индекс сразу для производительности
 			})
+
+			// Проверяем наличие ошибок в ответе
+			if (response.errors) {
+				const failedItems = response.items.filter(
+					(item: any) => item.index?.error || item.create?.error || item.update?.error
+				)
+				if (failedItems.length > 0) {
+					logger.error(`Bulk upsert had ${failedItems.length} failures:`,
+						failedItems.slice(0, 5).map((item: any) => ({
+							id: item.index?._id || item.create?._id || item.update?._id,
+							error: item.index?.error || item.create?.error || item.update?.error
+						}))
+					)
+				}
+			}
 
 			logger.info(`Bulk upserted ${documents.length} documents`)
 		} catch (error) {
@@ -1709,7 +1781,13 @@ class ElasticsearchService {
 	): Promise<Record<string, any> | null> {
 		try {
 			const documentId = `submission_${submissionId}`
+			logger.info(`[ELASTICSEARCH] Получение formData для заявки: ${submissionId} (documentId: ${documentId})`)
 			const document = await this.getDocumentById(documentId)
+
+			logger.info(`[ELASTICSEARCH] Документ найден: ${!!document}, formData есть: ${!!document?.formData}`)
+			if (document?.formData) {
+				logger.info(`[ELASTICSEARCH] formData keys: ${Object.keys(document.formData).join(', ')}`)
+			}
 
 			if (document && document.formData) {
 				return document.formData
