@@ -69,6 +69,8 @@ export interface SubmissionFilters {
 	dateTo?: string
 	search?: string
 	tags?: string[]
+	sortBy?: 'shipmentDate' | 'createdAt'
+	sortOrder?: 'asc' | 'desc'
 }
 
 export interface SubmissionResponse {

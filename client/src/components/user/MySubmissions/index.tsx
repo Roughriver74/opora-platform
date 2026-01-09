@@ -3,12 +3,6 @@ import {
 	Box,
 	Paper,
 	Typography,
-	Table,
-	TableBody,
-	TableCell,
-	TableContainer,
-	TableHead,
-	TableRow,
 	TablePagination,
 	Chip,
 	IconButton,
@@ -49,6 +43,7 @@ import {
 	Business as BusinessIcon,
 	Description as DescriptionIcon,
 	FileCopy as FileCopyIcon,
+	Sort as SortIcon,
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
@@ -65,7 +60,12 @@ import { useAuth } from '../../../contexts/auth'
 import { useNotificationHelpers } from '../../../contexts/notification'
 import api from '../../../services/api'
 import elasticsearchService from '../../../services/elasticsearchService'
-import { DEFAULT_STATUS_FILTER } from './constants'
+import {
+	DEFAULT_STATUS_FILTER,
+	SORT_OPTIONS,
+	DEFAULT_SORT_BY,
+	DEFAULT_SORT_ORDER,
+} from './constants'
 
 // Константы перенесены в отдельный файл
 
@@ -75,7 +75,6 @@ const MySubmissions = () => {
 	const { showError, showSuccess } = useNotificationHelpers()
 	const theme = useTheme()
 	const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-	const isSmallMobile = useMediaQuery('(max-width:480px)')
 
 	// Состояния
 	const [submissions, setSubmissions] = useState<Submission[]>([])
@@ -88,9 +87,11 @@ const MySubmissions = () => {
 	const [bitrixStages, setBitrixStages] = useState<BitrixStage[]>([])
 	const [filters, setFilters] = useState<SubmissionFilters>({
 		status: DEFAULT_STATUS_FILTER,
+		sortBy: DEFAULT_SORT_BY,
+		sortOrder: DEFAULT_SORT_ORDER,
 	})
 	const [page, setPage] = useState(0)
-	const [rowsPerPage, setRowsPerPage] = useState(10)
+	const [rowsPerPage, setRowsPerPage] = useState(12)
 	const [total, setTotal] = useState(0)
 	const [users, setUsers] = useState<any[]>([])
 	const [submissionFormFields, setSubmissionFormFields] = useState<
@@ -121,6 +122,22 @@ const MySubmissions = () => {
 	const handleFilterChange = useCallback(
 		(newFilters: Partial<SubmissionFilters>) => {
 			setFilters(prevFilters => ({ ...prevFilters, ...newFilters }))
+			setPage(0)
+		},
+		[]
+	)
+
+	// Обработчик изменения сортировки
+	const handleSortChange = useCallback(
+		(sortBy: 'shipmentDate' | 'createdAt') => {
+			setFilters(prev => ({
+				...prev,
+				sortBy,
+				// При смене поля сортировки устанавливаем логичный порядок:
+				// - для даты отгрузки: ASC (ближайшие сверху)
+				// - для даты создания: DESC (новые сверху)
+				sortOrder: sortBy === 'shipmentDate' ? 'asc' : 'desc',
+			}))
 			setPage(0)
 		},
 		[]
@@ -582,7 +599,7 @@ const MySubmissions = () => {
 	// Получение значения поля заявки
 	// Функция больше не нужна, так как formData убрано
 
-	// Мобильная карточка заявки
+	// Карточка заявки (для всех устройств)
 	const SubmissionCard = ({ submission }: { submission: Submission }) => {
 		// Проверяем, является ли статус "Отгружено" (C1:WON)
 		const isShipped = submission.status === 'C1:WON'
@@ -644,192 +661,155 @@ const MySubmissions = () => {
 		return (
 			<Card
 				sx={{
-					mb: 2,
 					border: '1px solid',
 					borderColor: 'divider',
+					height: '100%',
+					display: 'flex',
+					flexDirection: 'column',
 					'&:hover': {
-						boxShadow: 2,
+						boxShadow: 3,
 						borderColor: 'primary.main',
 					},
+					transition: 'all 0.2s ease-in-out',
 				}}
 			>
-				<CardContent sx={{ pb: 1 }}>
+				<CardContent sx={{ pb: 1, flex: 1, display: 'flex', flexDirection: 'column' }}>
 					{/* Заголовок карточки */}
 					<Box
 						sx={{
 							display: 'flex',
 							justifyContent: 'space-between',
 							alignItems: 'flex-start',
-							mb: 2,
+							mb: 1.5,
 						}}
 					>
 						<Box>
 							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
 								<Typography
-									variant='h6'
+									variant='subtitle1'
 									component='div'
 									sx={{ fontWeight: 'bold', color: 'primary.main' }}
 								>
-									Bitrix ID: {submission.bitrixDealId || 'Не указан'}
+									#{submission.bitrixDealId || 'Н/Д'}
 								</Typography>
 								{submission.isPeriodSubmission && (
 									<Tooltip title='Периодическая заявка'>
 										<ScheduleIcon
 											sx={{
-												fontSize: 20,
+												fontSize: 18,
 												color: 'primary.main',
 											}}
 										/>
 									</Tooltip>
 								)}
 							</Box>
-							<Typography variant='body2' color='text.secondary'>
-								User: {submission.userEmail || 'Анонимная заявка'}
+							<Typography variant='caption' color='text.secondary'>
+								{submission.userEmail || 'Анонимная заявка'}
 							</Typography>
 						</Box>
-						<Chip
-							label={getStatusName(submission.status)}
-							color='primary'
-							size='small'
-							sx={{ ml: 1 }}
-						/>
+						{/* Битрикс24 статус */}
+						{submission.bitrixDealId ? (
+							<Chip
+								icon={
+									submission.bitrixSyncStatus === 'synced' ? (
+										<CheckCircleIcon />
+									) : submission.bitrixSyncStatus === 'failed' ? (
+										<ErrorIcon />
+									) : (
+										<PendingIcon />
+									)
+								}
+								label={
+									submission.bitrixSyncStatus === 'synced'
+										? 'Синхр.'
+										: submission.bitrixSyncStatus === 'failed'
+										? 'Ошибка'
+										: 'Ожидает'
+								}
+								color={
+									submission.bitrixSyncStatus === 'synced'
+										? 'success'
+										: submission.bitrixSyncStatus === 'failed'
+										? 'error'
+										: 'warning'
+								}
+								size='small'
+							/>
+						) : (
+							<Chip label='Не созд.' color='default' size='small' />
+						)}
 					</Box>
 
-					{/* Основная информация */}
-					<Stack spacing={1} sx={{ mb: 2 }}>
-						{/* Битрикс24 статус */}
-						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-							<BusinessIcon fontSize='small' color='action' />
-							{submission.bitrixDealId ? (
-								<Chip
-									icon={
-										submission.bitrixSyncStatus === 'synced' ? (
-											<CheckCircleIcon />
-										) : submission.bitrixSyncStatus === 'failed' ? (
-											<ErrorIcon />
-										) : (
-											<PendingIcon />
-										)
-									}
-									label={
-										submission.bitrixSyncStatus === 'synced'
-											? 'Синхронизировано'
-											: submission.bitrixSyncStatus === 'failed'
-											? 'Ошибка синхронизации'
-											: 'Ожидает синхронизации'
-									}
-									color={
-										submission.bitrixSyncStatus === 'synced'
-											? 'success'
-											: submission.bitrixSyncStatus === 'failed'
-											? 'error'
-											: 'warning'
-									}
-									size='small'
-									variant='outlined'
-								/>
-							) : (
-								<Chip
-									label='Не создано в Битрикс24'
-									color='default'
-									size='small'
-									variant='outlined'
-								/>
-							)}
-						</Box>
-
-						{/* Название заявки */}
-						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-							<DescriptionIcon fontSize='small' color='action' />
-							<Typography variant='body2' sx={{ fontWeight: 'medium' }}>
-								{submission.title}
+					{/* Детали заявки */}
+					<Box sx={{ flex: 1 }}>
+						{/* Компания */}
+						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
+							<BusinessIcon fontSize='small' color='action' sx={{ flexShrink: 0 }} />
+							<Typography
+								variant='body2'
+								sx={{
+									fontWeight: 'medium',
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+								}}
+								title={getCompanyName('field_1750266840204')}
+							>
+								{getCompanyName('field_1750266840204')}
 							</Typography>
 						</Box>
 
-						{/* Поля формы */}
-						{Object.keys(formFieldsData).length > 0 && (
-							<Box sx={{ mt: 1 }}>
-								<Typography
-									variant='caption'
-									color='text.secondary'
-									sx={{ mb: 1, display: 'block' }}
-								>
-									Детали заявки:
-								</Typography>
-								<Stack spacing={0.5}>
-									{/* Компания */}
-									{formFieldsData.field_1750266840204 && (
-										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-											<BusinessIcon fontSize='small' color='action' />
-											<Typography variant='caption' color='text.secondary'>
-												Компания:
-											</Typography>
-											<Typography
-												variant='caption'
-												sx={{ fontWeight: 'medium' }}
-											>
-												{getCompanyName('field_1750266840204')}
-											</Typography>
-										</Box>
-									)}
+						{/* Бетон */}
+						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
+							<DescriptionIcon fontSize='small' color='action' sx={{ flexShrink: 0 }} />
+							<Typography
+								variant='body2'
+								sx={{
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+								}}
+								title={getProductName('field_1750264442280')}
+							>
+								{getProductName('field_1750264442280')}
+							</Typography>
+						</Box>
 
-									{/* Бетон */}
-									{formFieldsData.field_1750264442280 && (
-										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-											<DescriptionIcon fontSize='small' color='action' />
-											<Typography variant='caption' color='text.secondary'>
-												Бетон:
-											</Typography>
-											<Typography
-												variant='caption'
-												sx={{ fontWeight: 'medium' }}
-											>
-												{getProductName('field_1750264442280')}
-											</Typography>
-										</Box>
-									)}
+						{/* Объем и Дата отгрузки в одну строку */}
+						<Box
+							sx={{
+								display: 'flex',
+								gap: 2,
+								flexWrap: 'wrap',
+							}}
+						>
+							{/* Объем бетона */}
+							{formFieldsData.field_1750266620544 && (
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+									<Typography variant='caption' color='text.secondary'>
+										Объем:
+									</Typography>
+									<Typography variant='caption' sx={{ fontWeight: 'medium' }}>
+										{getFieldValue('field_1750266620544')} м³
+									</Typography>
+								</Box>
+							)}
 
-									{/* Объем бетона */}
-									{formFieldsData.field_1750266620544 && (
-										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-											<DescriptionIcon fontSize='small' color='action' />
-											<Typography variant='caption' color='text.secondary'>
-												Объем:
-											</Typography>
-											<Typography
-												variant='caption'
-												sx={{ fontWeight: 'medium' }}
-											>
-												{getFieldValue('field_1750266620544')}
-											</Typography>
-										</Box>
-									)}
-
-									{/* Дата и время отгрузки */}
-									{formFieldsData.field_1750311865385 && (
-										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-											<ScheduleIcon fontSize='small' color='action' />
-											<Typography variant='caption' color='text.secondary'>
-												Отгрузка:
-											</Typography>
-											<Typography
-												variant='caption'
-												sx={{ fontWeight: 'medium' }}
-											>
-												{format(
-													new Date(getFieldValue('field_1750311865385')),
-													'dd.MM.yyyy HH:mm',
-													{
-														locale: ru,
-													}
-												)}
-											</Typography>
-										</Box>
-									)}
-								</Stack>
-							</Box>
-						)}
-					</Stack>
+							{/* Дата и время отгрузки */}
+							{formFieldsData.field_1750311865385 && (
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+									<ScheduleIcon sx={{ fontSize: 14, color: 'action.active' }} />
+									<Typography variant='caption' sx={{ fontWeight: 'medium' }}>
+										{format(
+											new Date(getFieldValue('field_1750311865385')),
+											'dd.MM.yy HH:mm',
+											{ locale: ru }
+										)}
+									</Typography>
+								</Box>
+							)}
+						</Box>
+					</Box>
 
 					{/* Действия */}
 					<Box
@@ -837,61 +817,69 @@ const MySubmissions = () => {
 							display: 'flex',
 							justifyContent: 'space-between',
 							alignItems: 'center',
-							mt: 2,
-							pt: 1,
+							mt: 'auto',
+							pt: 1.5,
 							borderTop: '1px solid',
 							borderColor: 'divider',
 						}}
 					>
-						<ButtonGroup size='small' variant='outlined'>
-							<Button
-								startIcon={<VisibilityIcon />}
-								onClick={() => handleShowDetails(submission)}
+						{/* Статус */}
+						<FormControl size='small' sx={{ minWidth: 100, maxWidth: 130 }}>
+							<Select
+								value={submission.status}
+								onChange={(e: any) =>
+									handleStatusChange(submission.id, e.target.value)
+								}
+								displayEmpty
+								size='small'
+								sx={{ fontSize: '0.75rem' }}
+								renderValue={(value: any) => {
+									const statusName = getStatusName(submission.status)
+									return statusName || 'Не указан'
+								}}
 							>
-								{isSmallMobile ? '' : ''}
-							</Button>
-							{!isShipped && settings.allowUserEdit && (
-								<Button
-									startIcon={<EditIcon />}
-									onClick={() => handleEditSubmission(submission)}
-									color='primary'
+								{bitrixStages.map(stage => (
+									<MenuItem key={stage.id} value={stage.id}>
+										{stage.name}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+
+						{/* Кнопки действий */}
+						<ButtonGroup size='small' variant='outlined'>
+							<Tooltip title='Подробнее'>
+								<IconButton
+									size='small'
+									onClick={() => handleShowDetails(submission)}
+									color='info'
 								>
-									{isSmallMobile ? '' : ''}
-								</Button>
+									<VisibilityIcon fontSize='small' />
+								</IconButton>
+							</Tooltip>
+							{!isShipped && settings.allowUserEdit && (
+								<Tooltip title='Редактировать'>
+									<IconButton
+										size='small'
+										onClick={() => handleEditSubmission(submission)}
+										color='primary'
+									>
+										<EditIcon fontSize='small' />
+									</IconButton>
+								</Tooltip>
 							)}
 							{settings.enableCopying && (
-								<Button
-									startIcon={<FileCopyIcon />}
-									onClick={() => handleCopySubmission(submission)}
-									color='secondary'
-								>
-									{isSmallMobile ? '' : settings.copyButtonText}
-								</Button>
+								<Tooltip title={settings.copyButtonText}>
+									<IconButton
+										size='small'
+										onClick={() => handleCopySubmission(submission)}
+										color='secondary'
+									>
+										<FileCopyIcon fontSize='small' />
+									</IconButton>
+								</Tooltip>
 							)}
 						</ButtonGroup>
-
-						{/* Смена статуса для всех пользователей */}
-						{settings.allowUserStatusChange && (
-							<FormControl size='small' sx={{ minWidth: 120 }}>
-								<Select
-									value={submission.status}
-									onChange={(e: any) =>
-										handleStatusChange(submission.id, e.target.value)
-									}
-									displayEmpty
-									renderValue={(value: any) => {
-										const statusName = getStatusName(submission.status)
-										return statusName || 'Не указан'
-									}}
-								>
-									{bitrixStages.map(stage => (
-										<MenuItem key={stage.id} value={stage.id}>
-											{stage.name}
-										</MenuItem>
-									))}
-								</Select>
-							</FormControl>
-						)}
 					</Box>
 				</CardContent>
 			</Card>
@@ -1022,12 +1010,41 @@ const MySubmissions = () => {
 								</Select>
 							</FormControl>
 
+							{/* Сортировка */}
+							<FormControl
+								size='small'
+								sx={{ minWidth: { xs: '100%', sm: '180px' } }}
+							>
+								<InputLabel>
+									<Box
+										sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+									>
+										<SortIcon sx={{ fontSize: 16 }} />
+										Сортировка
+									</Box>
+								</InputLabel>
+								<Select
+									value={filters.sortBy || DEFAULT_SORT_BY}
+									label='Сортировка'
+									onChange={(e: any) => handleSortChange(e.target.value)}
+								>
+									{SORT_OPTIONS.map(option => (
+										<MenuItem key={option.value} value={option.value}>
+											{option.label}
+										</MenuItem>
+									))}
+								</Select>
+							</FormControl>
+
 							<Button
 								variant='outlined'
 								onClick={() => {
 									setFilters({
 										status: DEFAULT_STATUS_FILTER,
+										sortBy: DEFAULT_SORT_BY,
+										sortOrder: DEFAULT_SORT_ORDER,
 									})
+									setSearchValue('')
 									setPage(0)
 								}}
 								sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
@@ -1073,178 +1090,22 @@ const MySubmissions = () => {
 				</Paper>
 			) : (
 				<>
-					{/* Отображение заявок */}
-					{isMobile ? (
-						// Мобильное отображение - карточки
-						<Box>
-							{submissions.map(submission => (
-								<SubmissionCard key={submission.id} submission={submission} />
-							))}
-						</Box>
-					) : (
-						// Десктопное отображение - таблица
-						<TableContainer component={Paper}>
-							<Table>
-								<TableHead>
-									<TableRow>
-										<TableCell>Bitrix ID</TableCell>
-										<TableCell>User</TableCell>
-										<TableCell>Статус</TableCell>
-										<TableCell>Битрикс24</TableCell>
-										<TableCell>Дата создания</TableCell>
-										<TableCell>Действия</TableCell>
-									</TableRow>
-								</TableHead>
-								<TableBody>
-									{submissions.map(submission => {
-										// Защита от некорректных данных
-										if (!submission || !submission.id) {
-											return null
-										}
-
-										// Проверяем, является ли статус "Отгружено" (C1:WON)
-										const isShipped = submission.status === 'C1:WON'
-
-										return (
-											<TableRow key={submission.id}>
-												<TableCell>
-													<Stack direction='row' spacing={1} alignItems='center'>
-														<Typography variant='body2' fontWeight='bold'>
-															{submission.bitrixDealId || 'Не указан'}
-														</Typography>
-														{submission.isPeriodSubmission && (
-															<Tooltip title='Периодическая заявка'>
-																<ScheduleIcon
-																	sx={{
-																		fontSize: 18,
-																		color: 'primary.main',
-																	}}
-																/>
-															</Tooltip>
-														)}
-													</Stack>
-												</TableCell>
-												<TableCell>
-													<Typography variant='body2'>
-														{submission.userName || 'Анонимная заявка'}
-													</Typography>
-												</TableCell>
-												<TableCell>
-													<FormControl size='small' sx={{ minWidth: 120 }}>
-														<Select
-															value={getCleanStatus(submission.status)}
-															onChange={(e: any) =>
-																handleStatusChange(
-																	submission.id,
-																	e.target.value
-																)
-															}
-															displayEmpty
-															renderValue={(value: any) => {
-																const statusName = getStatusName(
-																	submission.status
-																)
-																return statusName || 'Не указан'
-															}}
-														>
-															{bitrixStages.map(stage => (
-																<MenuItem key={stage.id} value={stage.id}>
-																	{stage.name}
-																</MenuItem>
-															))}
-														</Select>
-													</FormControl>
-												</TableCell>
-												<TableCell>
-													<Stack
-														direction='row'
-														spacing={1}
-														alignItems='center'
-													>
-														{submission.bitrixDealId ? (
-															<Tooltip
-																title={`Сделка ID: ${submission.bitrixDealId}`}
-															>
-																<Chip
-																	icon={
-																		submission.bitrixSyncStatus === 'synced' ? (
-																			<CheckCircleIcon />
-																		) : submission.bitrixSyncStatus ===
-																		  'failed' ? (
-																			<ErrorIcon />
-																		) : (
-																			<PendingIcon />
-																		)
-																	}
-																	label={
-																		submission.bitrixSyncStatus === 'synced'
-																			? 'Синхр.'
-																			: submission.bitrixSyncStatus === 'failed'
-																			? 'Ошибка'
-																			: 'Ожидает'
-																	}
-																	color={
-																		submission.bitrixSyncStatus === 'synced'
-																			? 'success'
-																			: submission.bitrixSyncStatus === 'failed'
-																			? 'error'
-																			: 'warning'
-																	}
-																	size='small'
-																/>
-															</Tooltip>
-														) : (
-															<Chip
-																label='Не создано'
-																color='default'
-																size='small'
-															/>
-														)}
-													</Stack>
-												</TableCell>
-												<TableCell>
-													{format(
-														new Date(submission.createdAt),
-														'dd.MM.yyyy HH:mm',
-														{ locale: ru }
-													)}
-												</TableCell>
-												<TableCell>
-													<ButtonGroup size='small'>
-														<IconButton
-															onClick={() => handleShowDetails(submission)}
-															color='info'
-															title='Подробнее'
-														>
-															<VisibilityIcon />
-														</IconButton>
-														{!isShipped && settings.allowUserEdit && (
-															<IconButton
-																onClick={() => handleEditSubmission(submission)}
-																color='primary'
-																title='Редактировать заявку'
-															>
-																<EditIcon />
-															</IconButton>
-														)}
-														{settings.enableCopying && (
-															<IconButton
-																onClick={() => handleCopySubmission(submission)}
-																color='secondary'
-																title='Копировать заявку'
-															>
-																<FileCopyIcon />
-															</IconButton>
-														)}
-													</ButtonGroup>
-												</TableCell>
-											</TableRow>
-										)
-									})}
-								</TableBody>
-							</Table>
-						</TableContainer>
-					)}
+					{/* Отображение заявок - карточки для всех устройств */}
+					<Box
+						sx={{
+							display: 'grid',
+							gridTemplateColumns: {
+								xs: '1fr',
+								md: 'repeat(2, 1fr)',
+								lg: 'repeat(3, 1fr)',
+							},
+							gap: 2,
+						}}
+					>
+						{submissions.map(submission => (
+							<SubmissionCard key={submission.id} submission={submission} />
+						))}
+					</Box>
 
 					{/* Пагинация */}
 					<Box
@@ -1269,14 +1130,14 @@ const MySubmissions = () => {
 							/>
 						) : (
 							<TablePagination
-								rowsPerPageOptions={[5, 10, 25]}
+								rowsPerPageOptions={[6, 12, 24]}
 								component='div'
 								count={total}
 								rowsPerPage={rowsPerPage}
 								page={page}
 								onPageChange={handleChangePage}
 								onRowsPerPageChange={handleChangeRowsPerPage}
-								labelRowsPerPage='Строк на странице:'
+								labelRowsPerPage='На странице:'
 								labelDisplayedRows={({
 									from,
 									to,

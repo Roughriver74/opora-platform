@@ -439,6 +439,8 @@ export const getMySubmissions = async (req: Request, res: Response) => {
 			dateTo,
 			search,
 			tags,
+			sortBy = 'shipmentDate',
+			sortOrder = 'desc',
 		} = req.query
 		const userId = req.user?.id
 
@@ -448,6 +450,17 @@ export const getMySubmissions = async (req: Request, res: Response) => {
 				message: 'Пользователь не авторизован',
 			})
 		}
+
+		// Валидация параметров сортировки
+		const allowedSortFields = ['shipmentDate', 'createdAt']
+		const validSortBy = allowedSortFields.includes(sortBy as string)
+			? (sortBy as string)
+			: 'shipmentDate'
+		const validSortOrder = ['asc', 'desc'].includes(
+			(sortOrder as string).toLowerCase()
+		)
+			? ((sortOrder as string).toUpperCase() as 'ASC' | 'DESC')
+			: 'DESC'
 
 		// Подготовка фильтров
 		const filters = {
@@ -469,11 +482,15 @@ export const getMySubmissions = async (req: Request, res: Response) => {
 		const pagination = {
 			page: Number(page),
 			limit: Number(limit),
-			sortBy: 'createdAt',
-			sortOrder: 'desc' as const,
+			sortBy: validSortBy,
+			sortOrder: validSortOrder,
 		}
 
-		const result = await submissionService.getUserSubmissions(userId, filters)
+		const result = await submissionService.getUserSubmissions(
+			userId,
+			filters,
+			pagination
+		)
 
 		res.json({
 			success: true,

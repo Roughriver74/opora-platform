@@ -338,15 +338,11 @@ export class SubmissionService extends BaseService<
 				})
 
 				if (submissionIds.length === 0) {
-					return {
-						data: [],
-						total: 0,
-						page: params.page || 1,
-						limit: params.limit || 20,
-						totalPages: 0,
-						hasNext: false,
-						hasPrev: false,
-					}
+					// Если Elasticsearch не нашёл результатов, пробуем PostgreSQL
+					logger.info(
+						'🔄 Elasticsearch вернул 0 результатов, пробуем PostgreSQL fallback'
+					)
+					return this.repository.findWithFilters(params, params)
 				}
 
 				logger.info(
@@ -620,11 +616,17 @@ export class SubmissionService extends BaseService<
 
 	async getUserSubmissions(
 		userId: string,
-		filters?: SubmissionFilters
+		filters?: SubmissionFilters,
+		pagination?: PaginationOptions
 	): Promise<PaginatedResult<Submission>> {
 		return this.repository.findWithFilters(
 			{ ...filters, userId },
-			{ page: 1, limit: 20, sortBy: 'createdAt', sortOrder: 'DESC' }
+			{
+				page: pagination?.page || 1,
+				limit: pagination?.limit || 20,
+				sortBy: pagination?.sortBy || 'shipmentDate',
+				sortOrder: pagination?.sortOrder || 'DESC',
+			}
 		)
 	}
 

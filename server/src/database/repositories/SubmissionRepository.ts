@@ -132,7 +132,8 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 				'(submission.submissionNumber ILIKE :search OR ' +
 					'submission.title ILIKE :search OR ' +
 					'submission.userEmail ILIKE :search OR ' +
-					'submission.userName ILIKE :search)',
+					'submission.userName ILIKE :search OR ' +
+					'submission.bitrixDealId ILIKE :search)',
 				{ search: `%${filters.search}%` }
 			)
 		}
@@ -150,7 +151,24 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 		// Сортировка
 		const sortBy = pagination?.sortBy || 'createdAt'
 		const sortOrder = pagination?.sortOrder || 'DESC'
-		queryBuilder.orderBy(`submission.${sortBy}`, sortOrder)
+
+		if (sortBy === 'shipmentDate') {
+			// Сортировка по JSONB полю даты отгрузки (field_1750311865385)
+			// Используем addSelect для создания вычисляемого поля, затем сортируем по нему
+			queryBuilder.addSelect(
+				`CASE
+					WHEN submission.form_data->>'field_1750311865385' IS NULL
+						OR submission.form_data->>'field_1750311865385' = ''
+					THEN NULL
+					ELSE (submission.form_data->>'field_1750311865385')::timestamp
+				END`,
+				'shipment_date_sort'
+			)
+			// NULLS LAST - заявки без даты отгрузки в конец списка
+			queryBuilder.orderBy('shipment_date_sort', sortOrder, 'NULLS LAST')
+		} else {
+			queryBuilder.orderBy(`submission.${sortBy}`, sortOrder)
+		}
 
 		const data = await queryBuilder.getMany()
 

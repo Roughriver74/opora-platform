@@ -475,6 +475,7 @@ class ElasticsearchService {
 		try {
 			const searchableText = [
 				submission.submissionNumber,
+				submission.bitrixDealId, // Добавлен для поиска по Bitrix ID
 				submission.userName,
 				submission.userEmail,
 				submission.formName,
@@ -514,6 +515,7 @@ class ElasticsearchService {
 				tags: submission.tags || [],
 				// Поля для submissions
 				submissionNumber: submission.submissionNumber,
+				bitrixId: submission.bitrixDealId, // Для точного поиска по Bitrix ID
 				userName: submission.userName,
 				userEmail: submission.userEmail,
 				formName: submission.formName,
