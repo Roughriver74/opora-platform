@@ -145,6 +145,48 @@ export class SettingsService extends BaseService<Settings, SettingsRepository> {
 				category: SettingCategory.SYSTEM,
 				validation: { type: 'boolean' },
 			},
+			{
+				key: 'submissions.material_fields_config',
+				value: {
+					// Поля для бетона (высший приоритет)
+					concrete: {
+						priority: 1,
+						label: 'Бетон',
+						fields: [
+							'field_1750264442280',
+							'field_1750265427938',
+							'field_1750365587259',
+						],
+						volumeFields: [
+							'field_1750266620544',
+							'field_1750365852471',
+							'field_1750365626978',
+						],
+					},
+					// Поля для раствора (средний приоритет)
+					mortar: {
+						priority: 2,
+						label: 'Раствор',
+						fields: [
+							'field_1750366025933',
+							'field_1750365704478',
+						],
+						volumeFields: [
+							'field_1750365827152',
+						],
+					},
+					// Поля для ЦПС (низший приоритет)
+					cps: {
+						priority: 3,
+						label: 'ЦПС',
+						fields: [],
+						volumeFields: [],
+					},
+				},
+				description: 'Конфигурация полей материалов для отображения в карточках заявок',
+				category: SettingCategory.SYSTEM,
+				isPublic: true,
+			},
 		]
 
 		for (const settingData of defaultSettings) {
