@@ -5,7 +5,6 @@ import {
 	Box,
 	CircularProgress,
 	Alert,
-	Stack,
 } from '@mui/material'
 import BetoneForm from '../components/form/BetoneForm'
 import { FormField } from '../types'
@@ -13,7 +12,7 @@ import { useAuth } from '../contexts/auth'
 import { useFormLoader } from '../hooks/useFormLoader'
 
 const HomePage: React.FC = () => {
-	const { user, isAuthenticated } = useAuth()
+	const { user } = useAuth()
 	const { form, fields, loading, error, editData, setFields } = useFormLoader()
 
 	// Проверяем, является ли пользователь администратором
@@ -29,7 +28,7 @@ const HomePage: React.FC = () => {
 	}
 
 	return (
-		<Container maxWidth='xl' sx={{ mt: 4 }}>
+		<Container maxWidth='md' sx={{ mt: 4 }}>
 			{loading ? (
 				<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
 					<CircularProgress />
@@ -42,12 +41,12 @@ const HomePage: React.FC = () => {
 				<Box
 					sx={{
 						display: 'flex',
-						flexDirection: { xs: 'column', lg: 'row' },
-						gap: 3,
+						flexDirection: 'column',
+						alignItems: 'center',
 					}}
 				>
-					{/* Левая колонка - Форма заказа */}
-					<Box sx={{ flex: isAuthenticated ? 2 : 1 }}>
+					{/* Форма заказа */}
+					<Box sx={{ width: '100%', maxWidth: '800px' }}>
 						<Typography variant='h4' component='h1' gutterBottom>
 							Заказ бетона
 						</Typography>
@@ -71,15 +70,6 @@ const HomePage: React.FC = () => {
 							</Alert>
 						)}
 					</Box>
-
-					{/* Правая колонка - Мои заявки (только для авторизованных пользователей) */}
-					{isAuthenticated && (
-						<Box sx={{ flex: 1, minWidth: { lg: '300px' } }}>
-							<Stack spacing={3}>
-								{/* Быстрые действия - компонент QuickActions временно отключен */}
-							</Stack>
-						</Box>
-					)}
 				</Box>
 			)}
 		</Container>
