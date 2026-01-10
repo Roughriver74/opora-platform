@@ -802,11 +802,11 @@ const MySubmissions = () => {
 							mb: 1.5,
 						}}
 					>
-						<Box>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+						<Box sx={{ flex: 1, minWidth: 0, mr: 1 }}>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
 								<Typography
-									variant='subtitle1'
-									component='div'
+									variant='caption'
+									component='span'
 									sx={{ fontWeight: 'bold', color: 'primary.main' }}
 								>
 									#{submission.bitrixDealId || 'Н/Д'}
@@ -815,13 +815,26 @@ const MySubmissions = () => {
 									<Tooltip title='Периодическая заявка'>
 										<ScheduleIcon
 											sx={{
-												fontSize: 18,
+												fontSize: 16,
 												color: 'primary.main',
 											}}
 										/>
 									</Tooltip>
 								)}
 							</Box>
+							<Typography
+								variant='subtitle2'
+								component='div'
+								sx={{
+									fontWeight: 'bold',
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+								}}
+								title={submission.title}
+							>
+								{submission.title || 'Без названия'}
+							</Typography>
 							<Typography variant='caption' color='text.secondary'>
 								{submission.userEmail || 'Анонимная заявка'}
 							</Typography>

@@ -130,15 +130,6 @@ export class OptimizedSubmissionService {
 		const { page, limit, sortBy = 'createdAt', sortOrder = 'desc' } = pagination
 		const skip = (page - 1) * limit
 
-		// Применяем сортировку
-		queryBuilder.orderBy(
-			`submission.${sortBy}`,
-			sortOrder.toUpperCase() as 'ASC' | 'DESC'
-		)
-
-		// Применяем пагинацию
-		queryBuilder.skip(skip).take(limit)
-
 		// Выбираем только нужные поля для уменьшения объема данных
 		queryBuilder.select([
 			'submission.id',
@@ -165,6 +156,34 @@ export class OptimizedSubmissionService {
 			// Данные формы
 			'submission.formData',
 		])
+
+		// Применяем сортировку
+		if (sortBy === 'shipmentDate') {
+			// Сортировка по JSONB полю даты отгрузки (field_1750311865385)
+			// addSelect ПОСЛЕ select() чтобы не перезаписать
+			queryBuilder.addSelect(
+				`CASE
+					WHEN submission.form_data->>'field_1750311865385' IS NULL
+						OR submission.form_data->>'field_1750311865385' = ''
+					THEN NULL
+					ELSE (submission.form_data->>'field_1750311865385')::timestamp
+				END`,
+				'shipment_date_sort'
+			)
+			queryBuilder.orderBy(
+				'shipment_date_sort',
+				sortOrder.toUpperCase() as 'ASC' | 'DESC',
+				'NULLS LAST'
+			)
+		} else {
+			queryBuilder.orderBy(
+				`submission.${sortBy}`,
+				sortOrder.toUpperCase() as 'ASC' | 'DESC'
+			)
+		}
+
+		// Применяем пагинацию
+		queryBuilder.skip(skip).take(limit)
 
 		// Выполнение оптимизированного запроса
 		const submissions = await queryBuilder.getMany()
