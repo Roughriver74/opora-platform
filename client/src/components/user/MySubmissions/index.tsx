@@ -67,6 +67,61 @@ import {
 	DEFAULT_SORT_ORDER,
 } from './constants'
 
+// Конфигурация полей материалов с приоритетом отображения
+// Приоритет: бетон (1) → раствор (2) → ЦПС (3)
+const MATERIAL_FIELDS_CONFIG = {
+	// Поля для бетона (высший приоритет)
+	concrete: {
+		priority: 1,
+		label: 'Бетон',
+		fields: [
+			'field_1750264442280', // Бетон (production)
+			'field_1750265427938', // Бетон*(Завод)
+			'field_1750365587259', // Бетон*(Покупатель)
+		],
+		volumeFields: [
+			'field_1750266620544', // Объем бетона (production)
+			'field_1750365852471', // Объем м3 (завод)
+			'field_1750365626978', // Объем м3
+		],
+	},
+	// Поля для раствора (средний приоритет)
+	mortar: {
+		priority: 2,
+		label: 'Раствор',
+		fields: [
+			'field_1750366025933', // Раствор*(завод)
+			'field_1750365704478', // Раствор*(покупатель)
+		],
+		volumeFields: [
+			'field_1750365827152', // Объем раствора м3
+		],
+	},
+	// Поля для ЦПС (низший приоритет)
+	cps: {
+		priority: 3,
+		label: 'ЦПС',
+		fields: [
+			'field_cps', // ЦПС (placeholder - добавить реальный ID когда будет создано поле)
+		],
+		volumeFields: [
+			'field_cps_volume', // Объем ЦПС (placeholder)
+		],
+	},
+}
+
+// Тип для конфигурации материалов
+type MaterialConfig = typeof MATERIAL_FIELDS_CONFIG
+
+// Получить все ID полей материалов для загрузки названий
+const getAllMaterialFieldIds = (config: MaterialConfig): string[] => {
+	const allFields: string[] = []
+	Object.values(config).forEach(materialConfig => {
+		allFields.push(...materialConfig.fields)
+	})
+	return allFields
+}
+
 // Константы перенесены в отдельный файл
 
 const MySubmissions = () => {
@@ -109,6 +164,9 @@ const MySubmissions = () => {
 		allowUserEdit: true,
 		copyButtonText: 'Копировать заявку',
 	})
+
+	// Конфигурация полей материалов (загружается из настроек или используется дефолтная)
+	const [materialFieldsConfig, setMaterialFieldsConfig] = useState(MATERIAL_FIELDS_CONFIG)
 	const [filtersExpanded, setFiltersExpanded] = useState(false)
 	const [searchValue, setSearchValue] = useState('')
 	const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(
@@ -181,6 +239,7 @@ const MySubmissions = () => {
 				allowUserStatusChange,
 				allowUserEdit,
 				copyButtonText,
+				materialConfig,
 			] = await Promise.all([
 				settingsService.getSettingValue('submissions.enable_copying', true),
 				settingsService.getSettingValue(
@@ -192,6 +251,10 @@ const MySubmissions = () => {
 					'submissions.copy_button_text',
 					'Копировать заявку'
 				),
+				settingsService.getSettingValue(
+					'submissions.material_fields_config',
+					MATERIAL_FIELDS_CONFIG
+				),
 			])
 
 			setSettings({
@@ -200,6 +263,11 @@ const MySubmissions = () => {
 				allowUserEdit,
 				copyButtonText,
 			})
+
+			// Обновляем конфигурацию материалов если получена из настроек
+			if (materialConfig && typeof materialConfig === 'object') {
+				setMaterialFieldsConfig(materialConfig)
+			}
 		} catch (error) {
 			console.error('Ошибка загрузки настроек:', error)
 			// Используем значения по умолчанию при ошибке
@@ -292,6 +360,8 @@ const MySubmissions = () => {
 			const allFormFields = await Promise.all(formFieldsPromises)
 
 			// Теперь собираем ID из загруженных данных
+			const materialFieldIds = getAllMaterialFieldIds(materialFieldsConfig)
+
 			allFormFields.forEach(formFieldsData => {
 				// Компания (field_1750266840204)
 				if (formFieldsData.field_1750266840204) {
@@ -303,15 +373,17 @@ const MySubmissions = () => {
 					}
 				}
 
-				// Бетон (field_1750264442280)
-				if (formFieldsData.field_1750264442280) {
-					const productValue = formFieldsData.field_1750264442280
-					if (typeof productValue === 'object' && productValue.ID) {
-						productIds.add(productValue.ID.toString())
-					} else if (typeof productValue === 'string' && productValue.trim()) {
-						productIds.add(productValue.trim())
+				// Собираем ID всех материалов (бетон, раствор, ЦПС)
+				materialFieldIds.forEach(fieldId => {
+					const fieldValue = formFieldsData[fieldId]
+					if (fieldValue) {
+						if (typeof fieldValue === 'object' && fieldValue.ID) {
+							productIds.add(fieldValue.ID.toString())
+						} else if (typeof fieldValue === 'string' && fieldValue.trim()) {
+							productIds.add(fieldValue.trim())
+						}
 					}
-				}
+				})
 			})
 
 			// Загружаем названия параллельно
@@ -640,7 +712,7 @@ const MySubmissions = () => {
 			return companyNames[companyId] || companyId
 		}
 
-		// Функция для получения названия продукта по ID
+		// Функция для получения названия продукта по ID поля
 		const getProductName = (fieldName: string): string => {
 			const value = formFieldsData[fieldName]
 			if (!value) return 'Не указано'
@@ -657,6 +729,53 @@ const MySubmissions = () => {
 			// Возвращаем название из кэша или ID если название не найдено
 			return productNames[productId] || productId
 		}
+
+		// Функция для получения материала с учетом приоритета (бетон → раствор → ЦПС)
+		const getMaterialInfo = (): { name: string; type: string; volume: string | null } => {
+			// Сортируем конфигурации по приоритету (используем materialFieldsConfig из настроек)
+			const sortedConfigs = Object.entries(materialFieldsConfig)
+				.sort(([, a], [, b]) => a.priority - b.priority)
+
+			for (const [materialType, config] of sortedConfigs) {
+				// Проверяем каждое поле материала
+				for (const fieldId of config.fields) {
+					const value = formFieldsData[fieldId]
+					if (value) {
+						let productId: string | null = null
+						if (typeof value === 'object' && value.ID) {
+							productId = value.ID.toString()
+						} else if (typeof value === 'string' && value.trim()) {
+							productId = value.trim()
+						}
+
+						if (productId) {
+							// Находим объем для этого типа материала
+							let volume: string | null = null
+							for (const volumeFieldId of config.volumeFields) {
+								const volumeValue = formFieldsData[volumeFieldId]
+								if (volumeValue) {
+									volume = typeof volumeValue === 'object'
+										? volumeValue.toString()
+										: String(volumeValue)
+									break
+								}
+							}
+
+							return {
+								name: productNames[productId] || productId,
+								type: materialType,
+								volume,
+							}
+						}
+					}
+				}
+			}
+
+			return { name: 'Не указано', type: '', volume: null }
+		}
+
+		// Получаем информацию о материале для карточки
+		const materialInfo = getMaterialInfo()
 
 		return (
 			<Card
@@ -759,7 +878,7 @@ const MySubmissions = () => {
 							</Typography>
 						</Box>
 
-						{/* Бетон */}
+						{/* Материал (бетон/раствор/ЦПС) с приоритетом */}
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
 							<DescriptionIcon fontSize='small' color='action' sx={{ flexShrink: 0 }} />
 							<Typography
@@ -769,9 +888,9 @@ const MySubmissions = () => {
 									textOverflow: 'ellipsis',
 									whiteSpace: 'nowrap',
 								}}
-								title={getProductName('field_1750264442280')}
+								title={materialInfo.name}
 							>
-								{getProductName('field_1750264442280')}
+								{materialInfo.name}
 							</Typography>
 						</Box>
 
@@ -783,14 +902,14 @@ const MySubmissions = () => {
 								flexWrap: 'wrap',
 							}}
 						>
-							{/* Объем бетона */}
-							{formFieldsData.field_1750266620544 && (
+							{/* Объем материала */}
+							{materialInfo.volume && (
 								<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
 									<Typography variant='caption' color='text.secondary'>
 										Объем:
 									</Typography>
 									<Typography variant='caption' sx={{ fontWeight: 'medium' }}>
-										{getFieldValue('field_1750266620544')} м³
+										{materialInfo.volume} м³
 									</Typography>
 								</Box>
 							)}

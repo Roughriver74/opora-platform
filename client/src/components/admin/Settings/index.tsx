@@ -29,6 +29,7 @@ import {
 	SettingUpdate,
 } from '../../../services/settingsService'
 import SyncManager from '../SyncManager'
+import MaterialFieldsConfigEditor from './MaterialFieldsConfigEditor'
 
 interface CategorySettings {
 	[key: string]: Setting[]
@@ -37,6 +38,7 @@ interface CategorySettings {
 const categoryNames: { [key: string]: string } = {
 	general: 'Общие',
 	submissions: 'Заявки',
+	materials: 'Материалы в карточках',
 	forms: 'Формы',
 	integrations: 'Интеграции',
 	ui: 'Интерфейс',
@@ -96,6 +98,11 @@ const Settings: React.FC = () => {
 			// Добавляем категорию синхронизации, даже если в ней нет настроек
 			if (!grouped['sync']) {
 				grouped['sync'] = []
+			}
+
+			// Добавляем категорию материалов для редактора полей
+			if (!grouped['materials']) {
+				grouped['materials'] = []
 			}
 
 			setSettings(grouped)
@@ -321,6 +328,8 @@ const Settings: React.FC = () => {
 					<AccordionDetails>
 						{category === 'sync' ? (
 							<SyncManager />
+						) : category === 'materials' ? (
+							<MaterialFieldsConfigEditor onSave={loadSettings} />
 						) : (
 							<Box
 								sx={{
