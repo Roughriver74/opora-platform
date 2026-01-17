@@ -3,21 +3,21 @@ import { BaseEntity } from './BaseEntity'
 import { User } from '../User.entity'
 
 export abstract class AuditableEntity extends BaseEntity {
-	@Column({ type: 'uuid', nullable: true })
+	@Column({ name: 'created_by', type: 'uuid', nullable: true })
 	createdBy: string | null
 
-	@Column({ type: 'uuid', nullable: true })
+	@Column({ name: 'updated_by', type: 'uuid', nullable: true })
 	updatedBy: string | null
 
 	@ManyToOne(() => User, { nullable: true })
-	@JoinColumn({ name: 'createdBy' })
+	@JoinColumn({ name: 'created_by' })
 	creator?: User
 
 	@ManyToOne(() => User, { nullable: true })
-	@JoinColumn({ name: 'updatedBy' })
+	@JoinColumn({ name: 'updated_by' })
 	updater?: User
 
-	@Column({ type: 'jsonb', nullable: true })
+	@Column({ name: 'change_history', type: 'jsonb', nullable: true })
 	changeHistory: ChangeHistoryEntry[]
 
 	private currentUserId: string | null = null

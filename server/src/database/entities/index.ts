@@ -8,3 +8,8 @@ export { SubmissionHistory, HistoryActionType } from './SubmissionHistory.entity
 export { SubmissionPeriodGroup, PeriodGroupStatus } from './SubmissionPeriodGroup.entity'
 export { AdminToken } from './AdminToken.entity'
 export { Settings, SettingCategory } from './Settings.entity'
+
+// Nomenclature entities
+export { Nomenclature, NomenclatureType, NomenclatureSyncStatus } from './Nomenclature.entity'
+export { NomenclatureCategory } from './NomenclatureCategory.entity'
+export { NomenclatureUnit } from './NomenclatureUnit.entity'

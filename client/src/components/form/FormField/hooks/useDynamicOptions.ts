@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { FormFieldOption } from '../../../../types'
 import { FormFieldService } from '../../../../services/formFieldService'
+import { NomenclatureService } from '../../../../services/nomenclatureService'
 import { FIELD_CONSTANTS } from '../constants'
 import { useSmartSearch } from './useSmartSearch'
 
@@ -42,6 +43,29 @@ export const useDynamicOptions = (
 
 			switch (dynamicSource.source) {
 				case 'catalog':
+					// Сначала пробуем загрузить из локальной базы номенклатуры
+					try {
+						const localResponse = await NomenclatureService.search('', 100)
+						if (localResponse?.result && localResponse.result.length > 0) {
+							dataOptions = localResponse.result.map((item: any) => ({
+								value: item.metadata?.bitrixId || item.id,
+								label: item.label,
+								metadata: {
+									localId: item.metadata?.localId || item.id,
+									bitrixId: item.metadata?.bitrixId,
+									sku: item.metadata?.sku,
+									price: item.metadata?.price,
+									unit: item.metadata?.unit,
+									category: item.metadata?.category,
+								},
+							}))
+							break
+						}
+					} catch (localError) {
+						console.log('Локальная БД номенклатуры недоступна, используем Bitrix24')
+					}
+
+					// Fallback на Bitrix24 API если локальная база пуста
 					response = await FormFieldService.getProducts('')
 					if (response?.result) {
 						dataOptions = response.result.map((product: any) => ({
@@ -54,7 +78,7 @@ export const useDynamicOptions = (
 									: ''
 							}`,
 							metadata: {
-								bitrixId: product.bitrixId || product.ID, // Добавляем Bitrix ID
+								bitrixId: product.bitrixId || product.ID,
 							},
 						}))
 					}
@@ -288,6 +312,29 @@ export const useDynamicOptions = (
 
 				switch (dynamicSource.source) {
 					case 'catalog':
+						// Сначала пробуем поиск в локальной базе номенклатуры
+						try {
+							const localResponse = await NomenclatureService.search(trimmedQuery, 50)
+							if (localResponse?.result && localResponse.result.length > 0) {
+								dataOptions = localResponse.result.map((item: any) => ({
+									value: item.metadata?.bitrixId || item.id,
+									label: item.label,
+									metadata: {
+										localId: item.metadata?.localId || item.id,
+										bitrixId: item.metadata?.bitrixId,
+										sku: item.metadata?.sku,
+										price: item.metadata?.price,
+										unit: item.metadata?.unit,
+										category: item.metadata?.category,
+									},
+								}))
+								break
+							}
+						} catch (localError) {
+							console.log('Локальная БД номенклатуры недоступна, используем Bitrix24')
+						}
+
+						// Fallback на Bitrix24 API если локальная база пуста или произошла ошибка
 						response = await FormFieldService.getProducts(trimmedQuery)
 						if (response?.result) {
 							dataOptions = response.result.map((product: any) => ({
@@ -300,7 +347,7 @@ export const useDynamicOptions = (
 										: ''
 								}`,
 								metadata: {
-									bitrixId: product.bitrixId || product.ID, // Добавляем Bitrix ID
+									bitrixId: product.bitrixId || product.ID,
 								},
 							}))
 						}
