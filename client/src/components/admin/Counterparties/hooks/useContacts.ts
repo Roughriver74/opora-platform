@@ -56,3 +56,15 @@ export const useDeleteContact = () => {
 		},
 	})
 }
+
+export const useImportContacts = () => {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: (file: File) => ContactService.importExcel(file),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.contacts] })
+			queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.contactStats] })
+		},
+	})
+}

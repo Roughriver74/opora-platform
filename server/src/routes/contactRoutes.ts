@@ -1,8 +1,28 @@
 import { Router } from 'express'
+import multer from 'multer'
 import * as contactController from '../controllers/contactController'
 import { authMiddleware, requireAdmin } from '../middleware/authMiddleware'
 
 const router = Router()
+
+// Настройка multer для загрузки файлов
+const upload = multer({
+	dest: 'uploads/',
+	limits: {
+		fileSize: 10 * 1024 * 1024, // 10MB
+	},
+	fileFilter: (req, file, cb) => {
+		const allowedMimes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			'application/vnd.ms-excel',
+		]
+		if (allowedMimes.includes(file.mimetype)) {
+			cb(null, true)
+		} else {
+			cb(new Error('Только файлы Excel (.xlsx, .xls) разрешены'))
+		}
+	},
+})
 
 // === Публичные маршруты (требуют авторизации, но не админ) ===
 
@@ -10,6 +30,12 @@ const router = Router()
 router.get('/search', authMiddleware, contactController.search)
 
 // === Административные маршруты ===
+
+// Экспорт в Excel (до :id чтобы не перехватывался)
+router.get('/export', authMiddleware, requireAdmin, contactController.exportToExcel)
+
+// Скачать шаблон Excel
+router.get('/template', authMiddleware, requireAdmin, contactController.downloadTemplate)
 
 // Получить статистику (до :id чтобы не перехватывался)
 router.get('/stats', authMiddleware, requireAdmin, contactController.getStats)
@@ -44,5 +70,14 @@ router.delete('/:id/hard', authMiddleware, requireAdmin, contactController.hardD
 
 // Установить основной контакт
 router.post('/:id/set-primary', authMiddleware, requireAdmin, contactController.setPrimary)
+
+// Импорт из Excel
+router.post(
+	'/import',
+	authMiddleware,
+	requireAdmin,
+	upload.single('file'),
+	contactController.importFromExcel
+)
 
 export default router

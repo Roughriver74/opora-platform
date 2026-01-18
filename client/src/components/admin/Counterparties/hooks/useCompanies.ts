@@ -56,3 +56,15 @@ export const useDeleteCompany = () => {
 		},
 	})
 }
+
+export const useImportCompanies = () => {
+	const queryClient = useQueryClient()
+
+	return useMutation({
+		mutationFn: (file: File) => CompanyService.importExcel(file),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.companies] })
+			queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.companyStats] })
+		},
+	})
+}

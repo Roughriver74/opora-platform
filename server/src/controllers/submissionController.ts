@@ -4,6 +4,7 @@ import { getSubmissionService } from '../services/SubmissionService'
 import { getUserService } from '../services/UserService'
 import bitrix24Service from '../services/bitrix24Service'
 import { elasticsearchService } from '../services/elasticsearchService'
+import { submissionSyncService } from '../services/submissionSyncService'
 import {
 	BitrixSyncStatus,
 	SubmissionPriority,
@@ -87,110 +88,114 @@ export const submitForm = async (req: Request, res: Response) => {
 		const categoryId = form.bitrixDealCategory || '1'
 		dealData.CATEGORY_ID = categoryId
 
-		let submission: any = null
-		let dealResponse: any = null
+		// ========================================================================
+		// DB-FIRST: Сначала сохраняем в PostgreSQL, потом асинхронно в Bitrix24
+		// ========================================================================
 
 		try {
-			// ШАГ 1: Сначала создаем сделку в Bitrix24
-			console.log('[SUBMIT_FORM] Шаг 1: Создание сделки в Bitrix24...')
-			dealResponse = await bitrix24Service.createDeal(dealData)
-			const bitrixDealId = dealResponse.result?.toString?.()
-			console.log(
-				`[SUBMIT_FORM] ✅ Сделка создана в Bitrix24, ID: ${bitrixDealId}`
-			)
+			// ШАГ 1: СНАЧАЛА сохраняем заявку в PostgreSQL (источник истины)
+			console.log('[SUBMIT_FORM] Шаг 1: Сохранение заявки в PostgreSQL...')
 
-			// ШАГ 2: Только после успешного создания в Bitrix сохраняем в БД
-			console.log('[SUBMIT_FORM] Шаг 2: Сохранение заявки в БД...')
 			const submissionData = {
 				formId: formId,
 				userId: userId,
 				title: dealTitle,
 				notes: 'Заявка создана через форму',
 				formData: formData,
-				bitrixDealId: bitrixDealId,
-				// Добавляем денормализованные данные пользователя
+				bitrixCategoryId: categoryId,
+				// Денормализованные данные
 				userName: userName,
 				userEmail: userEmail,
+				formName: form.name,
+				formTitle: form.title,
+				// DB-First: начинаем с PENDING статуса
+				bitrixSyncStatus: BitrixSyncStatus.PENDING,
+				bitrixDealId: null,
+				bitrixSyncAttempts: 0,
 			}
 
-			submission = await submissionService.createSubmission(submissionData)
+			const submission = await submissionService.createSubmission(submissionData)
 			console.log(
 				`[SUBMIT_FORM] ✅ Заявка сохранена в БД, ID: ${submission.id}, номер: ${submission.submissionNumber}`
 			)
 
-			// ШАГ 3: Обновляем Bitrix24 с ID заявки для обратной связи
-			console.log('[SUBMIT_FORM] Шаг 3: Обновление Bitrix24 с ID заявки...')
-			try {
-				await bitrix24Service.updateDeal(bitrixDealId, {
-					UF_CRM_1750107484181: submission.id,
-				})
-				console.log(
-					`[SUBMIT_FORM] ✅ Bitrix24 обновлен с ID заявки: ${submission.id}`
-				)
-			} catch (updateError: any) {
-				// Не критично, если не удалось обновить поле - заявка уже создана
-				console.warn(
-					`[SUBMIT_FORM] ⚠️ Не удалось обновить поле UF_CRM_1750107484181 в Bitrix24:`,
-					updateError.message
-				)
-			}
+			// ШАГ 2: Асинхронная индексация в Elasticsearch (не блокирует ответ)
+			setImmediate(async () => {
+				try {
+					const cleanedFormData = submission.formData
+						? Object.fromEntries(
+								Object.entries(submission.formData).filter(
+									([_, value]) =>
+										value !== null && value !== undefined && value !== ''
+								)
+						  )
+						: {}
 
-			await submissionService.updateSyncStatus(
-				submission.id,
-				BitrixSyncStatus.SYNCED,
-				bitrixDealId
-			)
+					const esDocument = {
+						id: `submission_${submission.id}`,
+						localId: submission.id,
+						name: submission.title || `Заявка #${submission.submissionNumber}`,
+						description: submission.notes || '',
+						type: 'submission' as const,
+						status: submission.status,
+						priority: submission.priority,
+						tags: submission.tags || [],
+						formData: cleanedFormData,
+						submissionNumber: submission.submissionNumber,
+						userName: submission.userName,
+						userEmail: submission.userEmail,
+						formName: form.name,
+						formTitle: form.title,
+						assignedToName: submission.assignedToName,
+						createdAt: submission.createdAt.toISOString(),
+						updatedAt: submission.updatedAt.toISOString(),
+						searchableText: `${submission.title || ''} ${
+							submission.notes || ''
+						} ${submission.submissionNumber || ''} ${submission.userName || ''} ${
+							form.name || ''
+						}`.toLowerCase(),
+					}
 
-			// Автоматическая индексация заявки в Elasticsearch
-			try {
-				// Очищаем formData от пустых значений
-				const cleanedFormData = submission.formData
-					? Object.fromEntries(
-							Object.entries(submission.formData).filter(
-								([key, value]) =>
-									value !== null && value !== undefined && value !== ''
-							)
-					  )
-					: {}
-
-				const submissionData = {
-					id: `submission_${submission.id}`,
-					name: submission.title || `Заявка #${submission.submissionNumber}`,
-					description: submission.notes || '',
-					type: 'submission' as const,
-					status: submission.status,
-					priority: submission.priority,
-					tags: submission.tags || [],
-					formData: cleanedFormData,
-					submissionNumber: submission.submissionNumber,
-					userName: submission.userName,
-					userEmail: submission.userEmail,
-					formName: form.name,
-					formTitle: form.title,
-					assignedToName: submission.assignedToName,
-					createdAt: submission.createdAt.toISOString(),
-					updatedAt: submission.updatedAt.toISOString(),
-					searchableText: `${submission.title || ''} ${
-						submission.notes || ''
-					} ${submission.submissionNumber || ''} ${submission.userName || ''} ${
-						form.name || ''
-					}`.toLowerCase(),
+					await elasticsearchService.indexDocument(esDocument)
+					console.log(
+						`[SUBMIT_FORM] ✅ Заявка ${submission.submissionNumber} проиндексирована в Elasticsearch`
+					)
+				} catch (indexError) {
+					console.error(
+						`[SUBMIT_FORM] ⚠️ Ошибка индексации заявки ${submission.submissionNumber}:`,
+						indexError
+					)
 				}
+			})
 
-				await elasticsearchService.indexDocument(submissionData)
+			// ШАГ 3: Асинхронная синхронизация с Bitrix24 (не блокирует ответ)
+			setImmediate(async () => {
 				console.log(
-					`✅ Заявка ${submission.submissionNumber} автоматически проиндексирована в Elasticsearch`
+					`[SUBMIT_FORM] Шаг 3: Асинхронная синхронизация с Bitrix24 для заявки ${submission.id}...`
 				)
-			} catch (indexError) {
-				console.error(
-					`❌ Ошибка при автоматической индексации заявки ${submission.submissionNumber}:`,
-					indexError
-				)
-				// Не прерываем выполнение, если индексация не удалась
-			}
+				try {
+					const syncResult = await submissionSyncService.syncSubmission(submission.id)
+					if (syncResult.success) {
+						console.log(
+							`[SUBMIT_FORM] ✅ Заявка ${submission.submissionNumber} синхронизирована с Bitrix24, Deal ID: ${syncResult.bitrixDealId}`
+						)
+					} else {
+						console.warn(
+							`[SUBMIT_FORM] ⚠️ Не удалось синхронизировать заявку ${submission.submissionNumber} с Bitrix24: ${syncResult.error}`
+						)
+					}
+				} catch (syncError: any) {
+					console.error(
+						`[SUBMIT_FORM] ❌ Ошибка синхронизации заявки ${submission.submissionNumber}:`,
+						syncError.message
+					)
+				}
+			})
 
+			// ШАГ 4: Немедленно возвращаем успех клиенту
+			// Заявка ГАРАНТИРОВАННО сохранена в PostgreSQL
 			console.log(
-				`[SUBMIT_FORM] ✅ Заявка успешно создана. ID: ${submission.id}, Bitrix Deal: ${dealResponse.result?.toString?.()}`
+				`[SUBMIT_FORM] ✅ Заявка успешно создана (DB-First). ID: ${submission.id}, номер: ${submission.submissionNumber}`
 			)
 
 			return res.status(200).json({
@@ -199,120 +204,19 @@ export const submitForm = async (req: Request, res: Response) => {
 					form.successMessage || 'Спасибо! Ваша заявка успешно отправлена.',
 				submissionId: submission.id,
 				submissionNumber: submission.submissionNumber,
-				dealId: dealResponse.result?.toString?.(),
+				// dealId будет доступен после асинхронной синхронизации
+				syncStatus: 'pending',
 			})
 		} catch (error: any) {
-			// Логируем детали ошибки
-			console.error('[SUBMIT_FORM] ❌ Ошибка при создании заявки:', {
-				stage: submission ? 'after_db_save' : 'before_db_save',
-				bitrixDealCreated: !!dealResponse?.result,
-				bitrixDealId: dealResponse?.result?.toString?.(),
-				submissionCreated: !!submission?.id,
-				submissionId: submission?.id,
+			// Ошибка сохранения в БД - критическая ошибка
+			console.error('[SUBMIT_FORM] ❌ Ошибка сохранения заявки в БД:', {
 				error: error.message,
 				stack: error.stack,
 			})
 
-			// Если заявка была создана в БД, но произошла ошибка после - НЕ УДАЛЯЕМ
-			// Это может быть ошибка индексации или обновления Bitrix, но данные уже сохранены
-			if (submission?.id) {
-				console.warn(
-					`[SUBMIT_FORM] ⚠️ Заявка ${submission.id} создана в БД и Bitrix, но произошла ошибка на финальном этапе. Заявка сохранена.`
-				)
-
-				// Проверяем, есть ли у нас Bitrix Deal ID - если да, то основная синхронизация прошла успешно
-				const hasBitrixDealId = !!dealResponse?.result
-
-				// Некритичные ошибки (Elasticsearch, обновление дополнительных полей) - статус SYNCED
-				// Критичные ошибки (нет Bitrix Deal ID) - статус FAILED
-				try {
-					await submissionService.updateSyncStatus(
-						submission.id,
-						hasBitrixDealId ? BitrixSyncStatus.SYNCED : BitrixSyncStatus.FAILED,
-						dealResponse?.result?.toString?.(),
-						hasBitrixDealId ? undefined : `Финальная ошибка: ${error.message}`
-					)
-					console.log(
-						`[SUBMIT_FORM] ℹ️ Статус синхронизации: ${hasBitrixDealId ? 'SYNCED (есть Bitrix ID)' : 'FAILED (нет Bitrix ID)'}`
-					)
-				} catch {}
-
-				// Возвращаем успех, т.к. основные данные сохранены
-				return res.status(200).json({
-					success: true,
-					message:
-						form.successMessage ||
-						'Спасибо! Ваша заявка успешно отправлена.',
-					submissionId: submission.id,
-					submissionNumber: submission.submissionNumber,
-					dealId: dealResponse?.result?.toString?.(),
-					warning: hasBitrixDealId ? undefined : 'Заявка создана, но индексация может быть неполной',
-				})
-			}
-
-			// Если сделка создана в Bitrix, но не удалось сохранить в БД
-			if (dealResponse?.result) {
-				console.error(
-					`[SUBMIT_FORM] ❌ КРИТИЧЕСКАЯ ОШИБКА: Сделка создана в Bitrix24 (ID: ${dealResponse.result}), но не сохранена в БД!`
-				)
-				// Попытаемся создать заявку еще раз
-				try {
-					const recoverySubmissionData = {
-						formId: formId,
-						userId: userId,
-						title: dealTitle,
-						notes:
-							'Заявка создана через форму (восстановлена после ошибки БД)',
-						formData: formData,
-						bitrixDealId: dealResponse.result?.toString?.(),
-						userName: userName,
-						userEmail: userEmail,
-					}
-					const recoveredSubmission = await submissionService.createSubmission(
-						recoverySubmissionData
-					)
-					console.log(
-						`[SUBMIT_FORM] ✅ Заявка восстановлена в БД: ${recoveredSubmission.id}`
-					)
-
-					return res.status(200).json({
-						success: true,
-						message:
-							form.successMessage ||
-							'Спасибо! Ваша заявка успешно отправлена.',
-						submissionId: recoveredSubmission.id,
-						submissionNumber: recoveredSubmission.submissionNumber,
-						dealId: dealResponse.result?.toString?.(),
-					})
-				} catch (recoveryError: any) {
-					console.error(
-						`[SUBMIT_FORM] ❌ Не удалось восстановить заявку в БД:`,
-						recoveryError
-					)
-					// Сохраняем информацию для ручного восстановления, но сообщаем пользователю об успехе
-					// т.к. заявка уже создана в Bitrix24 и её можно восстановить вручную
-					return res.status(500).json({
-						success: false,
-						message:
-							'Заявка создана в Bitrix24, но произошла ошибка сохранения в системе. Обратитесь в поддержку с указанием номера сделки.',
-						bitrixDealId: dealResponse.result?.toString?.(),
-						error: error.message,
-						recoveryData: {
-							formId,
-							dealTitle,
-							formData,
-						},
-					})
-				}
-			}
-
-			// Если ошибка на этапе создания Bitrix сделки - ничего не создано
-			console.error(
-				`[SUBMIT_FORM] ❌ Ошибка создания сделки в Bitrix24, ничего не сохранено`
-			)
 			return res.status(500).json({
 				success: false,
-				message: 'Ошибка создания заявки в системе. Пожалуйста, попробуйте еще раз.',
+				message: 'Ошибка сохранения заявки. Пожалуйста, попробуйте еще раз.',
 				error: error?.message,
 			})
 		}
@@ -1770,6 +1674,251 @@ export const syncSubmissionFromBitrix = async (
 		res.status(500).json({
 			success: false,
 			message: 'Ошибка создания заявки из Bitrix24',
+			error: error.message,
+		})
+	}
+}
+
+// ====================================================================
+// API Endpoints для синхронизации с Bitrix24 (DB-First архитектура)
+// ====================================================================
+
+/**
+ * Получение статистики синхронизации
+ * GET /api/submissions/sync/stats
+ */
+export const getSyncStats = async (req: Request, res: Response) => {
+	try {
+		const stats = await submissionSyncService.getSyncStats()
+
+		res.json({
+			success: true,
+			data: stats,
+		})
+	} catch (error: any) {
+		console.error('[SYNC_STATS] Ошибка получения статистики:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка получения статистики синхронизации',
+			error: error.message,
+		})
+	}
+}
+
+/**
+ * Повторная синхронизация неудачных заявок
+ * POST /api/submissions/sync/retry
+ */
+export const retrySyncForSubmissions = async (req: Request, res: Response) => {
+	try {
+		const { maxAttempts, batchSize, delayBetweenRequests } = req.body
+
+		console.log('[SYNC_RETRY] Запуск повторной синхронизации неудачных заявок')
+
+		const results = await submissionSyncService.retryFailedSubmissions({
+			maxAttempts: maxAttempts || 5,
+			batchSize: batchSize || 10,
+			delayBetweenRequests: delayBetweenRequests || 500,
+		})
+
+		const successful = results.filter(r => r.success).length
+		const failed = results.filter(r => !r.success).length
+
+		console.log(`[SYNC_RETRY] Завершено: ${successful} успешно, ${failed} неудачно`)
+
+		res.json({
+			success: true,
+			message: `Повторная синхронизация завершена: ${successful} успешно, ${failed} неудачно`,
+			data: {
+				total: results.length,
+				successful,
+				failed,
+				results,
+			},
+		})
+	} catch (error: any) {
+		console.error('[SYNC_RETRY] Ошибка:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка повторной синхронизации',
+			error: error.message,
+		})
+	}
+}
+
+/**
+ * Синхронизация всех ожидающих заявок
+ * POST /api/submissions/sync/pending
+ */
+export const syncPendingSubmissions = async (req: Request, res: Response) => {
+	try {
+		const { batchSize, delayBetweenRequests } = req.body
+
+		console.log('[SYNC_PENDING] Запуск синхронизации ожидающих заявок')
+
+		const results = await submissionSyncService.syncPendingSubmissions({
+			batchSize: batchSize || 10,
+			delayBetweenRequests: delayBetweenRequests || 500,
+		})
+
+		const successful = results.filter(r => r.success).length
+		const failed = results.filter(r => !r.success).length
+
+		console.log(`[SYNC_PENDING] Завершено: ${successful} успешно, ${failed} неудачно`)
+
+		res.json({
+			success: true,
+			message: `Синхронизация завершена: ${successful} успешно, ${failed} неудачно`,
+			data: {
+				total: results.length,
+				successful,
+				failed,
+				results,
+			},
+		})
+	} catch (error: any) {
+		console.error('[SYNC_PENDING] Ошибка:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка синхронизации ожидающих заявок',
+			error: error.message,
+		})
+	}
+}
+
+/**
+ * Ручная синхронизация конкретной заявки
+ * POST /api/submissions/:id/sync
+ */
+export const manualSyncSubmission = async (req: Request, res: Response) => {
+	try {
+		const { id } = req.params
+
+		console.log(`[SYNC_MANUAL] Ручная синхронизация заявки ${id}`)
+
+		const submission = await submissionService.findById(id)
+		if (!submission) {
+			return res.status(404).json({
+				success: false,
+				message: 'Заявка не найдена',
+			})
+		}
+
+		// Если заявка уже синхронизирована, предупреждаем
+		if (submission.bitrixSyncStatus === BitrixSyncStatus.SYNCED && submission.bitrixDealId) {
+			return res.status(400).json({
+				success: false,
+				message: 'Заявка уже синхронизирована с Bitrix24',
+				data: {
+					bitrixDealId: submission.bitrixDealId,
+					bitrixSyncedAt: submission.bitrixSyncedAt,
+				},
+			})
+		}
+
+		const result = await submissionSyncService.syncSubmission(id)
+
+		if (result.success) {
+			console.log(`[SYNC_MANUAL] ✅ Заявка ${submission.submissionNumber} синхронизирована, Deal ID: ${result.bitrixDealId}`)
+			res.json({
+				success: true,
+				message: 'Заявка успешно синхронизирована с Bitrix24',
+				data: result,
+			})
+		} else {
+			console.log(`[SYNC_MANUAL] ❌ Ошибка синхронизации заявки ${submission.submissionNumber}: ${result.error}`)
+			res.status(500).json({
+				success: false,
+				message: 'Ошибка синхронизации заявки с Bitrix24',
+				error: result.error,
+				data: result,
+			})
+		}
+	} catch (error: any) {
+		console.error('[SYNC_MANUAL] Ошибка:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка синхронизации заявки',
+			error: error.message,
+		})
+	}
+}
+
+/**
+ * Сброс статуса синхронизации для повторной попытки
+ * POST /api/submissions/sync/reset
+ */
+export const resetSyncStatusForSubmissions = async (req: Request, res: Response) => {
+	try {
+		const { submissionIds } = req.body
+
+		if (!submissionIds || !Array.isArray(submissionIds) || submissionIds.length === 0) {
+			return res.status(400).json({
+				success: false,
+				message: 'Необходимо указать массив ID заявок (submissionIds)',
+			})
+		}
+
+		console.log(`[SYNC_RESET] Сброс статуса синхронизации для ${submissionIds.length} заявок`)
+
+		const affectedCount = await submissionSyncService.resetSyncStatus(submissionIds)
+
+		console.log(`[SYNC_RESET] Сброшен статус для ${affectedCount} заявок`)
+
+		res.json({
+			success: true,
+			message: `Статус синхронизации сброшен для ${affectedCount} заявок`,
+			data: {
+				requested: submissionIds.length,
+				affected: affectedCount,
+			},
+		})
+	} catch (error: any) {
+		console.error('[SYNC_RESET] Ошибка:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка сброса статуса синхронизации',
+			error: error.message,
+		})
+	}
+}
+
+/**
+ * Синхронизация всех несинхронизированных заявок (pending + failed)
+ * POST /api/submissions/sync/all
+ */
+export const syncAllUnsyncedSubmissions = async (req: Request, res: Response) => {
+	try {
+		const { maxAttempts, batchSize, delayBetweenRequests } = req.body
+
+		console.log('[SYNC_ALL] Запуск полной синхронизации всех несинхронизированных заявок')
+
+		const results = await submissionSyncService.syncAllUnsyncedSubmissions({
+			maxAttempts: maxAttempts || 5,
+			batchSize: batchSize || 10,
+			delayBetweenRequests: delayBetweenRequests || 500,
+		})
+
+		const successful = results.filter(r => r.success).length
+		const failed = results.filter(r => !r.success).length
+
+		console.log(`[SYNC_ALL] Завершено: ${successful} успешно, ${failed} неудачно`)
+
+		res.json({
+			success: true,
+			message: `Полная синхронизация завершена: ${successful} успешно, ${failed} неудачно`,
+			data: {
+				total: results.length,
+				successful,
+				failed,
+				results,
+			},
+		})
+	} catch (error: any) {
+		console.error('[SYNC_ALL] Ошибка:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка полной синхронизации',
 			error: error.message,
 		})
 	}

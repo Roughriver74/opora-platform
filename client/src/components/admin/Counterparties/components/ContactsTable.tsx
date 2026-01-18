@@ -26,9 +26,12 @@ import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import PersonIcon from '@mui/icons-material/Person'
 import StarIcon from '@mui/icons-material/Star'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
+import DownloadIcon from '@mui/icons-material/Download'
 import { useContacts, useDeleteContact } from '../hooks/useContacts'
-import { Contact, ContactType, ContactSyncStatus } from '../../../../services/contactService'
+import { Contact, ContactType, ContactSyncStatus, ContactService } from '../../../../services/contactService'
 import { ContactForm } from './ContactForm'
+import { ContactImportDialog } from './ContactImportDialog'
 
 const contactTypeLabels: Record<ContactType, string> = {
 	[ContactType.DECISION_MAKER]: 'ЛПР',
@@ -52,6 +55,7 @@ export const ContactsTable: React.FC = () => {
 	const [search, setSearch] = useState('')
 	const [editingContact, setEditingContact] = useState<Contact | null>(null)
 	const [isFormOpen, setIsFormOpen] = useState(false)
+	const [isImportOpen, setIsImportOpen] = useState(false)
 
 	const { data, isLoading, error } = useContacts({
 		page: page + 1,
@@ -95,6 +99,24 @@ export const ContactsTable: React.FC = () => {
 		setEditingContact(null)
 	}
 
+	const handleExport = async () => {
+		try {
+			const blob = await ContactService.exportExcel()
+			ContactService.downloadFile(blob, `contacts_${new Date().toISOString().split('T')[0]}.xlsx`)
+		} catch (error: any) {
+			alert(`Ошибка экспорта: ${error.message}`)
+		}
+	}
+
+	const handleDownloadTemplate = async () => {
+		try {
+			const blob = await ContactService.downloadTemplate()
+			ContactService.downloadFile(blob, 'contacts_template.xlsx')
+		} catch (error: any) {
+			alert(`Ошибка загрузки шаблона: ${error.message}`)
+		}
+	}
+
 	const getFullName = (contact: Contact) => {
 		return [contact.lastName, contact.firstName, contact.middleName]
 			.filter(Boolean)
@@ -127,6 +149,33 @@ export const ContactsTable: React.FC = () => {
 					sx={{ minWidth: 300 }}
 				/>
 				<Box sx={{ flexGrow: 1 }} />
+				<Tooltip title='Скачать шаблон Excel'>
+					<Button
+						variant='outlined'
+						size='small'
+						startIcon={<DownloadIcon />}
+						onClick={handleDownloadTemplate}
+					>
+						Шаблон
+					</Button>
+				</Tooltip>
+				<Tooltip title='Экспорт в Excel'>
+					<Button
+						variant='outlined'
+						size='small'
+						startIcon={<DownloadIcon />}
+						onClick={handleExport}
+					>
+						Экспорт
+					</Button>
+				</Tooltip>
+				<Button
+					variant='outlined'
+					startIcon={<UploadFileIcon />}
+					onClick={() => setIsImportOpen(true)}
+				>
+					Импорт
+				</Button>
 				<Button
 					variant='contained'
 					startIcon={<AddIcon />}
@@ -252,6 +301,11 @@ export const ContactsTable: React.FC = () => {
 				open={isFormOpen}
 				onClose={handleFormClose}
 				contact={editingContact}
+			/>
+
+			<ContactImportDialog
+				open={isImportOpen}
+				onClose={() => setIsImportOpen(false)}
 			/>
 		</Box>
 	)

@@ -72,20 +72,51 @@ export interface SearchDocument {
 	name: string
 	description?: string
 	type: 'product' | 'company' | 'contact' | 'submission'
-	price?: number
-	currency?: string
-	industry?: string
-	phone?: string
-	email?: string
-	address?: string
-	inn?: string // ИНН компании
-	bitrixId?: string // Bitrix ID для прямого поиска
-	assignedById?: string // ID ответственного пользователя
+	// Поля общие
+	localId?: string // UUID из PostgreSQL (primary source of truth)
+	bitrixId?: string // Bitrix ID для связи с внешней системой
 	createdAt: string
 	updatedAt: string
-	// Дополнительные поля для поиска
 	searchableText: string
 	tags?: string[]
+	attributes?: Record<string, any> // Дополнительные атрибуты
+	// Поля для продуктов (Nomenclature)
+	sku?: string // Артикул
+	price?: number
+	currency?: string
+	categoryId?: string
+	categoryName?: string
+	unitCode?: string // Код единицы измерения (m3, t, pcs)
+	unitName?: string // Название единицы (м³, т, шт)
+	// Поля для компаний (Company)
+	shortName?: string // Краткое название
+	companyType?: string // customer, supplier, partner, contractor, other
+	industry?: string
+	phone?: string
+	additionalPhones?: string[]
+	email?: string
+	website?: string
+	address?: string
+	legalAddress?: string
+	postalAddress?: string
+	inn?: string // ИНН
+	kpp?: string // КПП
+	ogrn?: string // ОГРН
+	bankName?: string
+	bankBik?: string
+	bankAccount?: string
+	// Поля для контактов (Contact)
+	firstName?: string
+	lastName?: string
+	middleName?: string
+	contactType?: string // decision_maker, manager, accountant, director, dispatcher, other
+	position?: string // Должность
+	department?: string // Отдел
+	companyId?: string // UUID компании
+	companyName?: string // Название компании (для поиска)
+	companyInn?: string // ИНН компании (для связи)
+	isPrimary?: boolean // Основной контакт компании
+	assignedById?: string // ID ответственного пользователя
 	// Поля для submissions
 	submissionNumber?: string
 	userName?: string
@@ -103,25 +134,62 @@ export interface SearchResult {
 	name: string
 	description?: string
 	type: 'product' | 'company' | 'contact' | 'submission'
-	price?: number
-	currency?: string
-	industry?: string
-	phone?: string
-	email?: string
-	address?: string
-	inn?: string // ИНН компании
-	bitrixId?: string // Bitrix ID для прямого поиска
-	assignedById?: string // ID ответственного пользователя
 	score: number
 	highlight?: {
 		name?: string[]
 		description?: string[]
 		searchableText?: string[]
+		sku?: string[]
+		inn?: string[]
+		phone?: string[]
+		email?: string[]
 		submissionNumber?: string[]
 		userName?: string[]
 		formName?: string[]
 		notes?: string[]
 	}
+	// Поля общие
+	localId?: string
+	bitrixId?: string
+	tags?: string[]
+	attributes?: Record<string, any>
+	// Поля для продуктов
+	sku?: string
+	price?: number
+	currency?: string
+	categoryId?: string
+	categoryName?: string
+	unitCode?: string
+	unitName?: string
+	// Поля для компаний
+	shortName?: string
+	companyType?: string
+	industry?: string
+	phone?: string
+	additionalPhones?: string[]
+	email?: string
+	website?: string
+	address?: string
+	legalAddress?: string
+	postalAddress?: string
+	inn?: string
+	kpp?: string
+	ogrn?: string
+	bankName?: string
+	bankBik?: string
+	bankAccount?: string
+	// Поля для контактов
+	firstName?: string
+	lastName?: string
+	middleName?: string
+	contactType?: string
+	position?: string
+	department?: string
+	companyId?: string
+	companyName?: string
+	companyInn?: string
+	isPrimary?: boolean
+	assignedById?: string
 	// Поля для submissions
 	submissionNumber?: string
 	userName?: string
@@ -271,7 +339,92 @@ class ElasticsearchService {
 									},
 								},
 								tags: { type: 'keyword' },
-								// Поля для submissions
+								attributes: { type: 'object', dynamic: true },
+								// Поле localId для связи с PostgreSQL (primary source of truth)
+								localId: { type: 'keyword' },
+								// === Поля для продуктов (Nomenclature) ===
+								sku: {
+									type: 'text',
+									analyzer: 'product_search',
+									fields: {
+										keyword: { type: 'keyword' },
+										exact: { type: 'text', analyzer: 'keyword' },
+									},
+								},
+								categoryId: { type: 'keyword' },
+								categoryName: {
+									type: 'text',
+									analyzer: 'product_search',
+									fields: { keyword: { type: 'keyword' } },
+								},
+								unitCode: { type: 'keyword' },
+								unitName: { type: 'keyword' },
+								// === Поля для компаний (Company) ===
+								shortName: {
+									type: 'text',
+									analyzer: 'product_search',
+									fields: { keyword: { type: 'keyword' } },
+								},
+								companyType: { type: 'keyword' },
+								additionalPhones: { type: 'keyword' },
+								website: { type: 'keyword' },
+								legalAddress: {
+									type: 'text',
+									analyzer: 'product_search',
+									fields: { keyword: { type: 'keyword' } },
+								},
+								postalAddress: {
+									type: 'text',
+									analyzer: 'product_search',
+									fields: { keyword: { type: 'keyword' } },
+								},
+								kpp: {
+									type: 'keyword',
+									fields: { text: { type: 'text', analyzer: 'keyword' } },
+								},
+								ogrn: {
+									type: 'keyword',
+									fields: { text: { type: 'text', analyzer: 'keyword' } },
+								},
+								bankName: { type: 'keyword' },
+								bankBik: { type: 'keyword' },
+								bankAccount: { type: 'keyword' },
+								// === Поля для контактов (Contact) ===
+								firstName: {
+									type: 'text',
+									analyzer: 'product_search',
+									fields: { keyword: { type: 'keyword' } },
+								},
+								lastName: {
+									type: 'text',
+									analyzer: 'product_search',
+									fields: { keyword: { type: 'keyword' } },
+								},
+								middleName: {
+									type: 'text',
+									analyzer: 'product_search',
+									fields: { keyword: { type: 'keyword' } },
+								},
+								contactType: { type: 'keyword' },
+								position: {
+									type: 'text',
+									analyzer: 'product_search',
+									fields: { keyword: { type: 'keyword' } },
+								},
+								department: {
+									type: 'text',
+									analyzer: 'product_search',
+									fields: { keyword: { type: 'keyword' } },
+								},
+								companyId: { type: 'keyword' },
+								companyName: {
+									type: 'text',
+									analyzer: 'product_search',
+									fields: { keyword: { type: 'keyword' } },
+								},
+								companyInn: { type: 'keyword' },
+								isPrimary: { type: 'boolean' },
+								// === Поля для submissions ===
 								submissionNumber: {
 									type: 'text',
 									analyzer: 'product_search',
@@ -1438,6 +1591,38 @@ class ElasticsearchService {
 							status: { type: 'keyword' },
 							priority: { type: 'keyword' },
 							tags: { type: 'keyword' },
+							attributes: { type: 'object', dynamic: true },
+							// Поле localId для связи с PostgreSQL
+							localId: { type: 'keyword' },
+							// Поля для продуктов
+							sku: { type: 'text', fields: { keyword: { type: 'keyword' } } },
+							categoryId: { type: 'keyword' },
+							categoryName: { type: 'text' },
+							unitCode: { type: 'keyword' },
+							unitName: { type: 'keyword' },
+							// Поля для компаний
+							shortName: { type: 'text' },
+							companyType: { type: 'keyword' },
+							additionalPhones: { type: 'keyword' },
+							website: { type: 'keyword' },
+							legalAddress: { type: 'text' },
+							postalAddress: { type: 'text' },
+							kpp: { type: 'keyword' },
+							ogrn: { type: 'keyword' },
+							bankName: { type: 'keyword' },
+							bankBik: { type: 'keyword' },
+							bankAccount: { type: 'keyword' },
+							// Поля для контактов
+							firstName: { type: 'text' },
+							lastName: { type: 'text' },
+							middleName: { type: 'text' },
+							contactType: { type: 'keyword' },
+							position: { type: 'text' },
+							department: { type: 'text' },
+							companyId: { type: 'keyword' },
+							companyName: { type: 'text' },
+							companyInn: { type: 'keyword' },
+							isPrimary: { type: 'boolean' },
 							formData: {
 								type: 'object',
 								dynamic: true,

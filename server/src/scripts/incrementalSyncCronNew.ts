@@ -8,6 +8,7 @@
 import dotenv from 'dotenv'
 import { initializeDatabase } from '../database/config/database.config'
 import { incrementalSyncService } from '../services/incrementalSyncService'
+import { submissionSyncService } from '../services/submissionSyncService'
 import { logger } from '../utils/logger'
 
 // Загружаем переменные окружения
@@ -68,6 +69,34 @@ async function incrementalSyncCronNew() {
 
 		if (allErrors.length > 0) {
 			logger.warn(`⚠️ Ошибки: ${allErrors.join('; ')}`)
+		}
+
+		// =====================================================
+		// Автоматическая синхронизация заявок с Bitrix24
+		// (DB-First: повторная попытка для failed и pending)
+		// =====================================================
+		logger.info('🔄 Запуск повторной синхронизации заявок с Bitrix24...')
+		try {
+			const syncResults = await submissionSyncService.syncAllUnsyncedSubmissions({
+				maxAttempts: 5,
+				batchSize: 20,
+				delayBetweenRequests: 500,
+			})
+
+			const syncSuccessful = syncResults.filter(r => r.success).length
+			const syncFailed = syncResults.filter(r => !r.success).length
+
+			logger.info(`📋 Синхронизация заявок: ${syncSuccessful} успешно, ${syncFailed} неудачно (всего: ${syncResults.length})`)
+
+			if (syncFailed > 0) {
+				const failedErrors = syncResults
+					.filter(r => !r.success)
+					.map(r => `${r.submissionNumber}: ${r.error}`)
+				logger.warn(`⚠️ Ошибки синхронизации заявок: ${failedErrors.join('; ')}`)
+			}
+		} catch (syncError: any) {
+			logger.error(`❌ Ошибка при синхронизации заявок с Bitrix24: ${syncError.message}`)
+			errors.push(`Bitrix24 sync: ${syncError.message}`)
 		}
 	} catch (error: any) {
 		logger.error('❌ Критическая ошибка при выполнении cron-скрипта:', error)

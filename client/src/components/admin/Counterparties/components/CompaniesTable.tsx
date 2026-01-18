@@ -25,9 +25,12 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import BusinessIcon from '@mui/icons-material/Business'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
+import DownloadIcon from '@mui/icons-material/Download'
 import { useCompanies, useDeleteCompany } from '../hooks/useCompanies'
-import { Company, CompanyType, CompanySyncStatus } from '../../../../services/companyService'
+import { Company, CompanyType, CompanySyncStatus, CompanyService } from '../../../../services/companyService'
 import { CompanyForm } from './CompanyForm'
+import { CompanyImportDialog } from './CompanyImportDialog'
 
 const companyTypeLabels: Record<CompanyType, string> = {
 	[CompanyType.CUSTOMER]: 'Клиент',
@@ -50,6 +53,7 @@ export const CompaniesTable: React.FC = () => {
 	const [search, setSearch] = useState('')
 	const [editingCompany, setEditingCompany] = useState<Company | null>(null)
 	const [isFormOpen, setIsFormOpen] = useState(false)
+	const [isImportOpen, setIsImportOpen] = useState(false)
 
 	const { data, isLoading, error } = useCompanies({
 		page: page + 1,
@@ -93,6 +97,24 @@ export const CompaniesTable: React.FC = () => {
 		setEditingCompany(null)
 	}
 
+	const handleExport = async () => {
+		try {
+			const blob = await CompanyService.exportExcel()
+			CompanyService.downloadFile(blob, `companies_${new Date().toISOString().split('T')[0]}.xlsx`)
+		} catch (error: any) {
+			alert(`Ошибка экспорта: ${error.message}`)
+		}
+	}
+
+	const handleDownloadTemplate = async () => {
+		try {
+			const blob = await CompanyService.downloadTemplate()
+			CompanyService.downloadFile(blob, 'companies_template.xlsx')
+		} catch (error: any) {
+			alert(`Ошибка загрузки шаблона: ${error.message}`)
+		}
+	}
+
 	if (error) {
 		return (
 			<Alert severity='error'>
@@ -119,6 +141,33 @@ export const CompaniesTable: React.FC = () => {
 					sx={{ minWidth: 300 }}
 				/>
 				<Box sx={{ flexGrow: 1 }} />
+				<Tooltip title='Скачать шаблон Excel'>
+					<Button
+						variant='outlined'
+						size='small'
+						startIcon={<DownloadIcon />}
+						onClick={handleDownloadTemplate}
+					>
+						Шаблон
+					</Button>
+				</Tooltip>
+				<Tooltip title='Экспорт в Excel'>
+					<Button
+						variant='outlined'
+						size='small'
+						startIcon={<DownloadIcon />}
+						onClick={handleExport}
+					>
+						Экспорт
+					</Button>
+				</Tooltip>
+				<Button
+					variant='outlined'
+					startIcon={<UploadFileIcon />}
+					onClick={() => setIsImportOpen(true)}
+				>
+					Импорт
+				</Button>
 				<Button
 					variant='contained'
 					startIcon={<AddIcon />}
@@ -235,6 +284,11 @@ export const CompaniesTable: React.FC = () => {
 				open={isFormOpen}
 				onClose={handleFormClose}
 				company={editingCompany}
+			/>
+
+			<CompanyImportDialog
+				open={isImportOpen}
+				onClose={() => setIsImportOpen(false)}
 			/>
 		</Box>
 	)

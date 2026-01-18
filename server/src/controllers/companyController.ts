@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express'
+import * as fs from 'fs'
 import { getCompanyService } from '../services/CompanyService'
+import { companyExcelService } from '../services/CompanyExcelService'
 import { CompanyType, CompanySyncStatus } from '../database/entities'
+import { logger } from '../utils/logger'
 
 const companyService = getCompanyService()
 
@@ -300,6 +303,90 @@ export const getPendingSync = async (req: Request, res: Response, next: NextFunc
 	}
 }
 
+/**
+ * Импорт компаний из Excel
+ * POST /api/companies/import
+ */
+export const importFromExcel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+	try {
+		if (!req.file) {
+			res.status(400).json({
+				success: false,
+				error: 'Файл не загружен',
+			})
+			return
+		}
+
+		// Читаем файл в Buffer
+		const fileBuffer = fs.readFileSync(req.file.path)
+
+		// Удаляем временный файл после чтения
+		fs.unlinkSync(req.file.path)
+
+		const result = await companyExcelService.importFromExcel(fileBuffer)
+
+		res.json({
+			success: result.success,
+			message: result.success
+				? `Импорт завершен: ${result.created} создано, ${result.updated} обновлено`
+				: `Импорт завершен с ошибками: ${result.failed} ошибок`,
+			data: result,
+		})
+	} catch (error: any) {
+		logger.error('[CompanyController] Ошибка импорта Excel:', error)
+		res.status(500).json({
+			success: false,
+			error: 'Ошибка импорта',
+			message: error.message,
+		})
+	}
+}
+
+/**
+ * Экспорт компаний в Excel
+ * GET /api/companies/export
+ */
+export const exportToExcel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+	try {
+		const { companyType, isActive } = req.query
+
+		const buffer = await companyExcelService.exportToExcel({
+			companyType: companyType as CompanyType | undefined,
+			isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
+		})
+
+		const filename = `companies_${new Date().toISOString().split('T')[0]}.xlsx`
+
+		res.setHeader(
+			'Content-Type',
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+		)
+		res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+		res.send(buffer)
+	} catch (error) {
+		next(error)
+	}
+}
+
+/**
+ * Скачать шаблон Excel для импорта компаний
+ * GET /api/companies/template
+ */
+export const downloadTemplate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+	try {
+		const buffer = await companyExcelService.generateTemplate()
+
+		res.setHeader(
+			'Content-Type',
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+		)
+		res.setHeader('Content-Disposition', 'attachment; filename="companies_template.xlsx"')
+		res.send(buffer)
+	} catch (error) {
+		next(error)
+	}
+}
+
 export default {
 	getAll,
 	search,
@@ -312,4 +399,7 @@ export default {
 	getStats,
 	getSyncErrors,
 	getPendingSync,
+	importFromExcel,
+	exportToExcel,
+	downloadTemplate,
 }

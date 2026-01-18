@@ -147,6 +147,20 @@ export interface CompanyStats {
 }
 
 /**
+ * Результат импорта из Excel
+ */
+export interface CompanyImportResult {
+	success: boolean
+	message?: string
+	totalRows: number
+	created: number
+	updated: number
+	skipped: number
+	failed: number
+	errors: { row: number; field?: string; message: string; data?: any }[]
+}
+
+/**
  * Сервис для работы с компаниями
  */
 export const CompanyService = {
@@ -244,6 +258,61 @@ export const CompanyService = {
 	async getStats(): Promise<CompanyStats> {
 		const response = await api.get('/api/companies/stats')
 		return response.data.data
+	},
+
+	// === Excel импорт/экспорт ===
+
+	/**
+	 * Импорт компаний из Excel
+	 */
+	async importExcel(file: File): Promise<CompanyImportResult> {
+		const formData = new FormData()
+		formData.append('file', file)
+
+		const response = await api.post('/api/companies/import', formData, {
+			headers: {
+				'Content-Type': 'multipart/form-data',
+			},
+		})
+		return response.data.data
+	},
+
+	/**
+	 * Экспорт компаний в Excel
+	 */
+	async exportExcel(params?: {
+		companyType?: CompanyType
+		isActive?: boolean
+	}): Promise<Blob> {
+		const response = await api.get('/api/companies/export', {
+			params,
+			responseType: 'blob',
+		})
+		return response.data
+	},
+
+	/**
+	 * Скачать шаблон Excel для импорта
+	 */
+	async downloadTemplate(): Promise<Blob> {
+		const response = await api.get('/api/companies/template', {
+			responseType: 'blob',
+		})
+		return response.data
+	},
+
+	/**
+	 * Скачать файл (вспомогательный метод)
+	 */
+	downloadFile(blob: Blob, filename: string): void {
+		const url = window.URL.createObjectURL(blob)
+		const link = document.createElement('a')
+		link.href = url
+		link.download = filename
+		document.body.appendChild(link)
+		link.click()
+		document.body.removeChild(link)
+		window.URL.revokeObjectURL(url)
 	},
 }
 

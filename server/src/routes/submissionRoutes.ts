@@ -54,6 +54,41 @@ router.get(
 	}
 )
 
+// ====================================================================
+// Sync API endpoints (DB-First архитектура)
+// Важно: эти роуты должны быть ДО /:id, чтобы не перехватывались
+// ====================================================================
+
+// Получение статистики синхронизации (только админы)
+router.get('/sync/stats', requireAdmin, (req: Request, res: Response) => {
+	submissionController.getSyncStats(req, res)
+})
+
+// Повторная синхронизация неудачных заявок (только админы)
+router.post('/sync/retry', requireAdmin, (req: Request, res: Response) => {
+	submissionController.retrySyncForSubmissions(req, res)
+})
+
+// Синхронизация всех ожидающих заявок (только админы)
+router.post('/sync/pending', requireAdmin, (req: Request, res: Response) => {
+	submissionController.syncPendingSubmissions(req, res)
+})
+
+// Сброс статуса синхронизации для заявок (только админы)
+router.post('/sync/reset', requireAdmin, (req: Request, res: Response) => {
+	submissionController.resetSyncStatusForSubmissions(req, res)
+})
+
+// Полная синхронизация всех несинхронизированных заявок (только админы)
+router.post('/sync/all', requireAdmin, (req: Request, res: Response) => {
+	submissionController.syncAllUnsyncedSubmissions(req, res)
+})
+
+// Ручная синхронизация конкретной заявки с Bitrix24 (только админы)
+router.post('/:id/sync', requireAdmin, (req: Request, res: Response) => {
+	submissionController.manualSyncSubmission(req, res)
+})
+
 // Получение заявки по ID (должен быть последним, чтобы не перехватывать другие маршруты)
 router.get('/:id', requireAuth, (req: Request, res: Response) => {
 	submissionController.getSubmissionById(req, res)

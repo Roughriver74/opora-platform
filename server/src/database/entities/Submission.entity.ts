@@ -114,6 +114,15 @@ export class Submission extends BaseEntity {
 	@IsString()
 	bitrixSyncError?: string
 
+	@Column({ type: 'timestamp', name: 'bitrix_synced_at', nullable: true })
+	@IsOptional()
+	bitrixSyncedAt?: Date
+
+	@Column({ type: 'int', name: 'bitrix_sync_attempts', default: 0 })
+	@IsOptional()
+	@IsNumber()
+	bitrixSyncAttempts: number = 0
+
 	@Column({ type: 'text', nullable: true })
 	@IsOptional()
 	@IsString()
@@ -283,6 +292,37 @@ export class Submission extends BaseEntity {
 
 	isSyncedWithBitrix(): boolean {
 		return this.bitrixSyncStatus === BitrixSyncStatus.SYNCED
+	}
+
+	needsBitrixSync(): boolean {
+		return this.bitrixSyncStatus === BitrixSyncStatus.PENDING ||
+			this.bitrixSyncStatus === BitrixSyncStatus.FAILED
+	}
+
+	canRetrySync(maxAttempts: number = 5): boolean {
+		return this.needsBitrixSync() && this.bitrixSyncAttempts < maxAttempts
+	}
+
+	markSyncSuccess(bitrixDealId: string, bitrixCategoryId?: string): void {
+		this.bitrixDealId = bitrixDealId
+		if (bitrixCategoryId) {
+			this.bitrixCategoryId = bitrixCategoryId
+		}
+		this.bitrixSyncStatus = BitrixSyncStatus.SYNCED
+		this.bitrixSyncedAt = new Date()
+		this.bitrixSyncError = undefined
+		this.bitrixSyncAttempts = (this.bitrixSyncAttempts || 0) + 1
+	}
+
+	markSyncFailed(error: string): void {
+		this.bitrixSyncStatus = BitrixSyncStatus.FAILED
+		this.bitrixSyncError = error
+		this.bitrixSyncAttempts = (this.bitrixSyncAttempts || 0) + 1
+	}
+
+	markSyncPending(): void {
+		this.bitrixSyncStatus = BitrixSyncStatus.PENDING
+		this.bitrixSyncError = undefined
 	}
 
 	getDaysOpen(): number {

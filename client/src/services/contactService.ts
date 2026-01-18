@@ -144,6 +144,20 @@ export interface ContactStats {
 }
 
 /**
+ * Результат импорта из Excel
+ */
+export interface ContactImportResult {
+	success: boolean
+	message?: string
+	totalRows: number
+	created: number
+	updated: number
+	skipped: number
+	failed: number
+	errors: { row: number; field?: string; message: string; data?: any }[]
+}
+
+/**
  * Сервис для работы с контактами
  */
 export const ContactService = {
@@ -283,6 +297,62 @@ export const ContactService = {
 		return [contact.lastName, contact.firstName, contact.middleName]
 			.filter(Boolean)
 			.join(' ')
+	},
+
+	// === Excel импорт/экспорт ===
+
+	/**
+	 * Импорт контактов из Excel
+	 */
+	async importExcel(file: File): Promise<ContactImportResult> {
+		const formData = new FormData()
+		formData.append('file', file)
+
+		const response = await api.post('/api/contacts/import', formData, {
+			headers: {
+				'Content-Type': 'multipart/form-data',
+			},
+		})
+		return response.data.data
+	},
+
+	/**
+	 * Экспорт контактов в Excel
+	 */
+	async exportExcel(params?: {
+		companyId?: string
+		contactType?: ContactType
+		isActive?: boolean
+	}): Promise<Blob> {
+		const response = await api.get('/api/contacts/export', {
+			params,
+			responseType: 'blob',
+		})
+		return response.data
+	},
+
+	/**
+	 * Скачать шаблон Excel для импорта
+	 */
+	async downloadTemplate(): Promise<Blob> {
+		const response = await api.get('/api/contacts/template', {
+			responseType: 'blob',
+		})
+		return response.data
+	},
+
+	/**
+	 * Скачать файл (вспомогательный метод)
+	 */
+	downloadFile(blob: Blob, filename: string): void {
+		const url = window.URL.createObjectURL(blob)
+		const link = document.createElement('a')
+		link.href = url
+		link.download = filename
+		document.body.appendChild(link)
+		link.click()
+		document.body.removeChild(link)
+		window.URL.revokeObjectURL(url)
 	},
 }
 

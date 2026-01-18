@@ -93,32 +93,53 @@ class IncrementalSyncService {
 	}
 
 	/**
-	 * Полная синхронизация продуктов
+	 * Полная синхронизация продуктов (из локальной БД)
 	 */
 	private async performFullProductSync(
 		result: IncrementalSyncResult,
 		options: IncrementalSyncOptions
 	): Promise<void> {
 		try {
-			// Получаем все продукты из Bitrix24
-			const products = await bitrix24Service.getAllProducts()
-			logger.info(`Найдено ${products.length} продуктов для синхронизации`)
+			// Получаем все продукты из локальной БД (PostgreSQL)
+			const { AppDataSource } = await import(
+				'../database/config/database.config'
+			)
+			const { Nomenclature } = await import(
+				'../database/entities/Nomenclature.entity'
+			)
+
+			const nomenclatureRepository = AppDataSource.getRepository(Nomenclature)
+			const products = await nomenclatureRepository.find({
+				where: { isActive: true },
+				relations: ['category', 'unit'],
+				order: { sortOrder: 'ASC', name: 'ASC' },
+			})
+
+			logger.info(`Найдено ${products.length} продуктов в локальной БД для индексации`)
 
 			result.totalProcessed = products.length
 
-			// Подготавливаем документы
-			const documents: SearchDocument[] = products.map((product: any) => ({
-				id: `product_${product.ID}`,
-				name: product.NAME || '',
-				description: product.DESCRIPTION || '',
+			// Подготавливаем документы для Elasticsearch
+			const documents: SearchDocument[] = products.map((product) => ({
+				id: `product_${product.id}`,
+				localId: product.id,
+				name: product.name || '',
+				description: product.description || '',
 				type: 'product' as const,
-				price: product.PRICE ? parseFloat(product.PRICE) : undefined,
-				currency: product.CURRENCY_ID || 'RUB',
-				industry: 'строительство',
-				bitrixId: product.ID,
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				searchableText: this.buildSearchableText(product),
+				sku: product.sku,
+				price: product.price ? Number(product.price) : undefined,
+				currency: product.currency || 'RUB',
+				industry: product.category?.name || 'строительство',
+				categoryId: product.categoryId || undefined,
+				categoryName: product.category?.name || undefined,
+				unitCode: product.unit?.code || undefined,
+				unitName: product.unit?.shortName || product.unit?.name || undefined,
+				bitrixId: product.bitrixProductId || undefined,
+				tags: product.tags || [],
+				attributes: product.attributes || undefined,
+				createdAt: product.createdAt.toISOString(),
+				updatedAt: product.updatedAt.toISOString(),
+				searchableText: this.buildProductSearchableText(product),
 			}))
 
 			// Используем bulkUpsert для перезаписи данных
@@ -241,33 +262,59 @@ class IncrementalSyncService {
 	}
 
 	/**
-	 * Полная синхронизация компаний
+	 * Полная синхронизация компаний (из локальной БД)
 	 */
 	private async performFullCompanySync(
 		result: IncrementalSyncResult,
 		options: IncrementalSyncOptions
 	): Promise<void> {
 		try {
-			const companies = await bitrix24Service.getAllCompaniesWithRequisites()
-			logger.info(`Найдено ${companies.length} компаний для синхронизации`)
+			// Получаем все компании из локальной БД (PostgreSQL)
+			const { AppDataSource } = await import(
+				'../database/config/database.config'
+			)
+			const { Company } = await import(
+				'../database/entities/Company.entity'
+			)
+
+			const companyRepository = AppDataSource.getRepository(Company)
+			const companies = await companyRepository.find({
+				where: { isActive: true },
+				order: { name: 'ASC' },
+			})
+
+			logger.info(`Найдено ${companies.length} компаний в локальной БД для индексации`)
 
 			result.totalProcessed = companies.length
 
-			const documents: SearchDocument[] = companies.map((company: any) => ({
-				id: `company_${company.ID}`,
-				name: company.TITLE || '',
-				description: company.COMMENTS || '',
+			const documents: SearchDocument[] = companies.map((company) => ({
+				id: `company_${company.id}`,
+				localId: company.id,
+				name: company.name || '',
+				shortName: company.shortName || undefined,
+				description: company.notes || '',
 				type: 'company' as const,
-				industry: company.INDUSTRY || '',
-				phone: company.PHONE?.[0]?.VALUE || '',
-				email: company.EMAIL?.[0]?.VALUE || '',
-				address: company.ADDRESS || '',
-				inn: company.RQ_INN || '',
-				bitrixId: company.ID,
-				assignedById: company.ASSIGNED_BY_ID,
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				searchableText: this.buildSearchableText(company),
+				companyType: company.companyType,
+				industry: company.industry || '',
+				phone: company.phone || '',
+				additionalPhones: company.additionalPhones || [],
+				email: company.email || '',
+				website: company.website || undefined,
+				address: company.actualAddress || company.legalAddress || '',
+				legalAddress: company.legalAddress || undefined,
+				postalAddress: company.postalAddress || undefined,
+				inn: company.inn || '',
+				kpp: company.kpp || undefined,
+				ogrn: company.ogrn || undefined,
+				bankName: company.bankName || undefined,
+				bankBik: company.bankBik || undefined,
+				bankAccount: company.bankAccount || undefined,
+				bitrixId: company.bitrixCompanyId || undefined,
+				tags: company.tags || [],
+				attributes: company.attributes || undefined,
+				createdAt: company.createdAt.toISOString(),
+				updatedAt: company.updatedAt.toISOString(),
+				searchableText: this.buildCompanySearchableText(company),
 			}))
 
 			// Используем инкрементальное обновление для компаний
@@ -296,11 +343,147 @@ class IncrementalSyncService {
 		result: IncrementalSyncResult,
 		options: IncrementalSyncOptions
 	): Promise<void> {
-		// Аналогично продуктам, пока что делаем полную синхронизацию
-		logger.warn(
-			'Bitrix24 API не поддерживает инкрементальную синхронизацию, выполняем полную синхронизацию'
-		)
+		// Для локальной БД делаем полную синхронизацию
+		logger.info('Выполняем полную синхронизацию компаний из локальной БД')
 		await this.performFullCompanySync(result, options)
+	}
+
+	/**
+	 * Инкрементальная синхронизация контактов
+	 */
+	async syncContacts(
+		options: IncrementalSyncOptions = {}
+	): Promise<IncrementalSyncResult> {
+		const startTime = Date.now()
+		const entityType = 'contacts'
+
+		const result: IncrementalSyncResult = {
+			entityType,
+			totalProcessed: 0,
+			successful: 0,
+			failed: 0,
+			errors: [],
+			duration: 0,
+			isFullSync: false,
+		}
+
+		try {
+			logger.info(`🔄 Начинаем синхронизацию контактов...`)
+
+			await syncMetadataService.updateStatus(entityType, 'running')
+
+			const needsFullSync =
+				options.forceFullSync ||
+				(await syncMetadataService.needsFullSync(
+					entityType,
+					options.maxAgeHours || this.DEFAULT_MAX_AGE_HOURS
+				))
+
+			result.isFullSync = needsFullSync
+
+			logger.info('👤 Выполняем полную синхронизацию контактов...')
+			await this.performFullContactSync(result, options)
+
+			await syncMetadataService.upsertMetadata({
+				entityType,
+				lastSyncTime: new Date(),
+				lastFullSyncTime: needsFullSync ? new Date() : undefined,
+				totalProcessed: result.totalProcessed,
+				successful: result.successful,
+				status: 'completed',
+			})
+
+			result.duration = Date.now() - startTime
+			logger.info(
+				`✅ Синхронизация контактов завершена за ${result.duration}ms: ${result.successful}/${result.totalProcessed}`
+			)
+		} catch (error) {
+			logger.error('❌ Ошибка при синхронизации контактов:', error)
+			result.errors.push(`Contacts sync failed: ${error.message}`)
+			result.duration = Date.now() - startTime
+
+			await syncMetadataService.updateStatus(
+				entityType,
+				'failed',
+				error.message
+			)
+		}
+
+		return result
+	}
+
+	/**
+	 * Полная синхронизация контактов (из локальной БД)
+	 */
+	private async performFullContactSync(
+		result: IncrementalSyncResult,
+		options: IncrementalSyncOptions
+	): Promise<void> {
+		try {
+			// Получаем все контакты из локальной БД (PostgreSQL)
+			const { AppDataSource } = await import(
+				'../database/config/database.config'
+			)
+			const { Contact } = await import(
+				'../database/entities/Contact.entity'
+			)
+
+			const contactRepository = AppDataSource.getRepository(Contact)
+			const contacts = await contactRepository.find({
+				where: { isActive: true },
+				relations: ['company'],
+				order: { lastName: 'ASC', firstName: 'ASC' },
+			})
+
+			logger.info(`Найдено ${contacts.length} контактов в локальной БД для индексации`)
+
+			result.totalProcessed = contacts.length
+
+			const documents: SearchDocument[] = contacts.map((contact) => ({
+				id: `contact_${contact.id}`,
+				localId: contact.id,
+				name: this.buildContactFullName(contact),
+				firstName: contact.firstName,
+				lastName: contact.lastName || undefined,
+				middleName: contact.middleName || undefined,
+				description: contact.notes || '',
+				type: 'contact' as const,
+				contactType: contact.contactType,
+				position: contact.position || undefined,
+				department: contact.department || undefined,
+				phone: contact.phone || '',
+				additionalPhones: contact.additionalPhones || [],
+				email: contact.email || '',
+				address: contact.address || undefined,
+				companyId: contact.companyId || undefined,
+				companyName: contact.company?.name || undefined,
+				companyInn: contact.company?.inn || undefined,
+				isPrimary: contact.isPrimary,
+				bitrixId: contact.bitrixContactId || undefined,
+				tags: contact.tags || [],
+				attributes: contact.attributes || undefined,
+				createdAt: contact.createdAt.toISOString(),
+				updatedAt: contact.updatedAt.toISOString(),
+				searchableText: this.buildContactSearchableText(contact),
+			}))
+
+			// Используем инкрементальное обновление для контактов
+			const batchSize = options.batchSize || this.DEFAULT_BATCH_SIZE
+			for (let i = 0; i < documents.length; i += batchSize) {
+				const batch = documents.slice(i, i + batchSize)
+				await elasticsearchService.bulkUpsert(batch)
+				logger.info(
+					`Обработано ${Math.min(i + batchSize, documents.length)}/${
+						documents.length
+					} контактов`
+				)
+			}
+
+			result.successful = documents.length
+		} catch (error) {
+			logger.error('Ошибка при полной синхронизации контактов:', error)
+			throw error
+		}
 	}
 
 	/**
@@ -577,28 +760,32 @@ class IncrementalSyncService {
 		options: IncrementalSyncOptions = {}
 	): Promise<IncrementalSyncResult[]> {
 		logger.info(
-			'🚀 Начинаем полную инкрементальную синхронизацию всех данных...'
+			'🚀 Начинаем полную синхронизацию всех данных из локальной БД...'
 		)
 
 		const results: IncrementalSyncResult[] = []
 
 		try {
-			// Синхронизируем продукты
+			// Синхронизируем продукты (из Nomenclature entity)
 			const productsResult = await this.syncProducts(options)
 			results.push(productsResult)
 
-			// Синхронизируем компании
+			// Синхронизируем компании (из Company entity)
 			const companiesResult = await this.syncCompanies(options)
 			results.push(companiesResult)
 
-			// Синхронизируем заявки
+			// Синхронизируем контакты (из Contact entity)
+			const contactsResult = await this.syncContacts(options)
+			results.push(contactsResult)
+
+			// Синхронизируем заявки (из Submission entity)
 			const submissionsResult = await this.syncSubmissions(options)
 			results.push(submissionsResult)
 
 			// Обновляем индекс для поиска
 			await elasticsearchService.refreshIndex()
 
-			logger.info('✅ Полная инкрементальная синхронизация завершена')
+			logger.info('✅ Полная синхронизация из локальной БД завершена')
 		} catch (error) {
 			logger.error('❌ Ошибка при полной синхронизации:', error)
 			throw error
@@ -608,7 +795,88 @@ class IncrementalSyncService {
 	}
 
 	/**
-	 * Построение поискового текста из объекта
+	 * Построение ФИО контакта
+	 */
+	private buildContactFullName(contact: any): string {
+		const parts = [contact.lastName, contact.firstName, contact.middleName].filter(Boolean)
+		return parts.join(' ') || 'Без имени'
+	}
+
+	/**
+	 * Построение поискового текста для продукта (Nomenclature)
+	 */
+	private buildProductSearchableText(product: any): string {
+		const searchableFields = [
+			product.sku || '',
+			product.name || '',
+			product.description || '',
+			product.category?.name || '',
+			product.unit?.name || '',
+			product.unit?.shortName || '',
+			...(product.tags || []),
+		]
+
+		return searchableFields
+			.filter(field => field && String(field).trim())
+			.join(' ')
+			.trim()
+	}
+
+	/**
+	 * Построение поискового текста для компании (Company)
+	 */
+	private buildCompanySearchableText(company: any): string {
+		const searchableFields = [
+			company.name || '',
+			company.shortName || '',
+			company.inn || '',
+			company.kpp || '',
+			company.ogrn || '',
+			company.phone || '',
+			company.email || '',
+			company.actualAddress || '',
+			company.legalAddress || '',
+			company.industry || '',
+			company.notes || '',
+			...(company.additionalPhones || []),
+			...(company.tags || []),
+		]
+
+		return searchableFields
+			.filter(field => field && String(field).trim())
+			.join(' ')
+			.trim()
+	}
+
+	/**
+	 * Построение поискового текста для контакта (Contact)
+	 */
+	private buildContactSearchableText(contact: any): string {
+		const searchableFields = [
+			contact.lastName || '',
+			contact.firstName || '',
+			contact.middleName || '',
+			contact.phone || '',
+			contact.email || '',
+			contact.position || '',
+			contact.department || '',
+			contact.address || '',
+			contact.company?.name || '',
+			contact.company?.inn || '',
+			contact.notes || '',
+			...(contact.additionalPhones || []),
+			...(contact.tags || []),
+		]
+
+		return searchableFields
+			.filter(field => field && String(field).trim())
+			.join(' ')
+			.trim()
+	}
+
+	/**
+	 * Построение поискового текста из объекта Bitrix24 (legacy)
+	 * @deprecated Используйте buildProductSearchableText, buildCompanySearchableText, buildContactSearchableText
 	 */
 	private buildSearchableText(obj: any): string {
 		const searchableFields = [
