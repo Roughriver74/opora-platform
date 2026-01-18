@@ -13,3 +13,7 @@ export { Settings, SettingCategory } from './Settings.entity'
 export { Nomenclature, NomenclatureType, NomenclatureSyncStatus } from './Nomenclature.entity'
 export { NomenclatureCategory } from './NomenclatureCategory.entity'
 export { NomenclatureUnit } from './NomenclatureUnit.entity'
+
+// Counterparty entities
+export { Company, CompanyType, CompanySyncStatus } from './Company.entity'
+export { Contact, ContactType, ContactSyncStatus } from './Contact.entity'

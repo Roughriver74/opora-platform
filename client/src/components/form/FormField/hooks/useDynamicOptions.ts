@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { FormFieldOption } from '../../../../types'
 import { FormFieldService } from '../../../../services/formFieldService'
 import { NomenclatureService } from '../../../../services/nomenclatureService'
+import { CompanyService } from '../../../../services/companyService'
+import { ContactService } from '../../../../services/contactService'
 import { FIELD_CONSTANTS } from '../constants'
 import { useSmartSearch } from './useSmartSearch'
 
@@ -85,6 +87,30 @@ export const useDynamicOptions = (
 					break
 
 				case 'companies':
+					// Сначала пробуем загрузить из локальной базы компаний
+					try {
+						const localCompanies = await CompanyService.search('', 100)
+						if (localCompanies && localCompanies.length > 0) {
+							dataOptions = localCompanies.map((item: any) => ({
+								value: item.metadata?.bitrixId || item.value,
+								label: item.label,
+								metadata: {
+									localId: item.metadata?.localId,
+									bitrixId: item.metadata?.bitrixId,
+									inn: item.metadata?.inn,
+									phone: item.metadata?.phone,
+									email: item.metadata?.email,
+									shortName: item.metadata?.shortName,
+									originalTitle: item.label.split(' (ИНН')[0],
+								},
+							}))
+							break
+						}
+					} catch (localError) {
+						console.log('Локальная БД компаний недоступна, используем Bitrix24')
+					}
+
+					// Fallback на Bitrix24 API
 					response = await FormFieldService.getCompanies('')
 					if (response?.result) {
 						const baseOptions = response.result.map((company: any) => ({
@@ -95,12 +121,11 @@ export const useDynamicOptions = (
 								email: company.EMAIL,
 								type: company.COMPANY_TYPE,
 								requisites: company.REQUISITES,
-								bitrixId: company.bitrixId || company.ID, // Добавляем Bitrix ID
-								rqInn: company.RQ_INN, // Добавляем ИНН напрямую из API
+								bitrixId: company.bitrixId || company.ID,
+								rqInn: company.RQ_INN,
 							},
 						}))
 
-						// Подсчитываем количество компаний с одинаковыми названиями
 						const titleCounts = baseOptions.reduce(
 							(acc: Record<string, number>, option: any) => {
 								acc[option.title] = (acc[option.title] || 0) + 1
@@ -109,7 +134,6 @@ export const useDynamicOptions = (
 							{} as Record<string, number>
 						)
 
-						// Формируем финальные опции с ИНН
 						dataOptions = baseOptions.map((option: any) => {
 							const hasInn = option.metadata?.rqInn
 							let label = option.title
@@ -135,6 +159,32 @@ export const useDynamicOptions = (
 					break
 
 				case 'contacts':
+					// Сначала пробуем загрузить из локальной базы контактов
+					try {
+						const localContacts = await ContactService.search('', 100)
+						if (localContacts && localContacts.length > 0) {
+							dataOptions = localContacts.map((item: any) => ({
+								value: item.metadata?.bitrixId || item.value,
+								label: item.label,
+								metadata: {
+									localId: item.metadata?.localId,
+									bitrixId: item.metadata?.bitrixId,
+									firstName: item.metadata?.firstName,
+									lastName: item.metadata?.lastName,
+									phone: item.metadata?.phone,
+									email: item.metadata?.email,
+									position: item.metadata?.position,
+									companyId: item.metadata?.companyId,
+									companyName: item.metadata?.companyName,
+								},
+							}))
+							break
+						}
+					} catch (localError) {
+						console.log('Локальная БД контактов недоступна, используем Bitrix24')
+					}
+
+					// Fallback на Bitrix24 API
 					response = await FormFieldService.getContacts('')
 					if (response?.result) {
 						dataOptions = response.result.map((contact: any) => ({
@@ -354,6 +404,30 @@ export const useDynamicOptions = (
 						break
 
 					case 'companies':
+						// Сначала пробуем поиск в локальной базе компаний
+						try {
+							const localCompanies = await CompanyService.search(trimmedQuery, 50)
+							if (localCompanies && localCompanies.length > 0) {
+								dataOptions = localCompanies.map((item: any) => ({
+									value: item.metadata?.bitrixId || item.value,
+									label: item.label,
+									metadata: {
+										localId: item.metadata?.localId,
+										bitrixId: item.metadata?.bitrixId,
+										inn: item.metadata?.inn,
+										phone: item.metadata?.phone,
+										email: item.metadata?.email,
+										shortName: item.metadata?.shortName,
+										originalTitle: item.label.split(' (ИНН')[0],
+									},
+								}))
+								break
+							}
+						} catch (localError) {
+							console.log('Локальная БД компаний недоступна, используем Bitrix24')
+						}
+
+						// Fallback на Bitrix24 API
 						response = await FormFieldService.getCompanies(trimmedQuery)
 						if (response?.result) {
 							const baseOptions = response.result.map((company: any) => ({
@@ -364,8 +438,8 @@ export const useDynamicOptions = (
 									email: company.EMAIL,
 									type: company.COMPANY_TYPE,
 									requisites: company.REQUISITES,
-									bitrixId: company.bitrixId || company.ID, // Добавляем Bitrix ID
-									rqInn: company.RQ_INN, // Добавляем ИНН напрямую из API
+									bitrixId: company.bitrixId || company.ID,
+									rqInn: company.RQ_INN,
 								},
 							}))
 
@@ -378,7 +452,6 @@ export const useDynamicOptions = (
 							)
 
 							dataOptions = baseOptions.map((option: any) => {
-								// Получаем ИНН из RQ_INN поля компании
 								const hasInn = option.metadata?.rqInn
 								let label = option.title
 
@@ -386,7 +459,6 @@ export const useDynamicOptions = (
 									label = `${option.title} (ID: ${option.value})`
 								}
 
-								// Добавляем ИНН через запятую, если он есть
 								if (hasInn && hasInn.trim()) {
 									label = `${label}, ${option.metadata.rqInn}`
 								}
@@ -404,6 +476,32 @@ export const useDynamicOptions = (
 						break
 
 					case 'contacts':
+						// Сначала пробуем поиск в локальной базе контактов
+						try {
+							const localContacts = await ContactService.search(trimmedQuery, 50)
+							if (localContacts && localContacts.length > 0) {
+								dataOptions = localContacts.map((item: any) => ({
+									value: item.metadata?.bitrixId || item.value,
+									label: item.label,
+									metadata: {
+										localId: item.metadata?.localId,
+										bitrixId: item.metadata?.bitrixId,
+										firstName: item.metadata?.firstName,
+										lastName: item.metadata?.lastName,
+										phone: item.metadata?.phone,
+										email: item.metadata?.email,
+										position: item.metadata?.position,
+										companyId: item.metadata?.companyId,
+										companyName: item.metadata?.companyName,
+									},
+								}))
+								break
+							}
+						} catch (localError) {
+							console.log('Локальная БД контактов недоступна, используем Bitrix24')
+						}
+
+						// Fallback на Bitrix24 API
 						response = await FormFieldService.getContacts(trimmedQuery)
 						if (response?.result) {
 							dataOptions = response.result.map((contact: any) => ({

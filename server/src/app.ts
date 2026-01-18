@@ -17,6 +17,8 @@ import searchRoutes from './routes/searchRoutes'
 import incrementalSyncRoutes from './routes/incrementalSyncRoutes'
 import cronRoutes from './routes/cronRoutes'
 import nomenclatureRoutes from './routes/nomenclatureRoutes'
+import companyRoutes from './routes/companyRoutes'
+import contactRoutes from './routes/contactRoutes'
 // Utility for checking database connection status
 // Re-importing to fix potential resolution issues
 import { checkDatabaseConnection } from './utils/dbCheck'
@@ -104,5 +106,7 @@ app.use('/api/backups', backupRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/search', searchRoutes)
 app.use('/api/nomenclature', nomenclatureRoutes)
+app.use('/api/companies', companyRoutes)
+app.use('/api/contacts', contactRoutes)
 
 export default app

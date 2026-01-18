@@ -9,6 +9,10 @@ export { NomenclatureRepository, nomenclatureRepository } from './NomenclatureRe
 export { NomenclatureCategoryRepository, nomenclatureCategoryRepository } from './NomenclatureCategoryRepository'
 export { NomenclatureUnitRepository, nomenclatureUnitRepository } from './NomenclatureUnitRepository'
 
+// Counterparty repositories
+export { CompanyRepository, companyRepository, CompanyFilterOptions } from './CompanyRepository'
+export { ContactRepository, contactRepository, ContactFilterOptions } from './ContactRepository'
+
 // Создание синглтонов репозиториев
 import { UserRepository } from './UserRepository'
 import { FormRepository } from './FormRepository'
@@ -17,6 +21,8 @@ import { SubmissionRepository } from './SubmissionRepository'
 import { NomenclatureRepository } from './NomenclatureRepository'
 import { NomenclatureCategoryRepository } from './NomenclatureCategoryRepository'
 import { NomenclatureUnitRepository } from './NomenclatureUnitRepository'
+import { CompanyRepository } from './CompanyRepository'
+import { ContactRepository } from './ContactRepository'
 
 let userRepository: UserRepository | null = null
 let formRepository: FormRepository | null = null
@@ -25,6 +31,8 @@ let submissionRepository: SubmissionRepository | null = null
 let nomenclatureRepository_singleton: NomenclatureRepository | null = null
 let nomenclatureCategoryRepository_singleton: NomenclatureCategoryRepository | null = null
 let nomenclatureUnitRepository_singleton: NomenclatureUnitRepository | null = null
+let companyRepository_singleton: CompanyRepository | null = null
+let contactRepository_singleton: ContactRepository | null = null
 
 export const getUserRepository = (): UserRepository => {
 	if (!userRepository) {
@@ -75,6 +83,20 @@ export const getNomenclatureUnitRepository = (): NomenclatureUnitRepository => {
 	return nomenclatureUnitRepository_singleton
 }
 
+export const getCompanyRepository = (): CompanyRepository => {
+	if (!companyRepository_singleton) {
+		companyRepository_singleton = new CompanyRepository()
+	}
+	return companyRepository_singleton
+}
+
+export const getContactRepository = (): ContactRepository => {
+	if (!contactRepository_singleton) {
+		contactRepository_singleton = new ContactRepository()
+	}
+	return contactRepository_singleton
+}
+
 // Функция для закрытия всех соединений
 export const closeAllRepositories = async (): Promise<void> => {
 	const promises: Promise<void>[] = []
@@ -112,6 +134,16 @@ export const closeAllRepositories = async (): Promise<void> => {
 	if (nomenclatureUnitRepository_singleton) {
 		promises.push(nomenclatureUnitRepository_singleton.disconnect())
 		nomenclatureUnitRepository_singleton = null
+	}
+
+	if (companyRepository_singleton) {
+		promises.push(companyRepository_singleton.disconnect())
+		companyRepository_singleton = null
+	}
+
+	if (contactRepository_singleton) {
+		promises.push(contactRepository_singleton.disconnect())
+		contactRepository_singleton = null
 	}
 
 	await Promise.all(promises)

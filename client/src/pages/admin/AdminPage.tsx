@@ -22,6 +22,7 @@ import BitrixIntegration from '../../components/admin/BitrixIntegration'
 import Settings from '../../components/admin/Settings'
 import { SimpleDatabase } from '../../components/admin/SimpleDatabase'
 import { Nomenclature } from '../../components/admin/Nomenclature'
+import { Counterparties } from '../../components/admin/Counterparties'
 import { useNavigate } from 'react-router-dom'
 import { Form } from '../../types'
 import { FormService } from '../../services/formService'
@@ -298,8 +299,9 @@ const AdminPage: React.FC = () => {
 					/>
 					<Tab label='База данных' {...a11yProps(2)} />
 					<Tab label='Номенклатура' {...a11yProps(3)} />
-					<Tab label='Битрикс24' {...a11yProps(4)} />
-					<Tab label='Настройки' {...a11yProps(5)} />
+					<Tab label='Контрагенты' {...a11yProps(4)} />
+					<Tab label='Битрикс24' {...a11yProps(5)} />
+					<Tab label='Настройки' {...a11yProps(6)} />
 				</Tabs>
 			</Paper>
 
@@ -346,10 +348,14 @@ const AdminPage: React.FC = () => {
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={4}>
-				<BitrixIntegration />
+				<Counterparties />
 			</TabPanel>
 
 			<TabPanel value={tabValue} index={5}>
+				<BitrixIntegration />
+			</TabPanel>
+
+			<TabPanel value={tabValue} index={6}>
 				<Settings />
 			</TabPanel>
 		</Container>

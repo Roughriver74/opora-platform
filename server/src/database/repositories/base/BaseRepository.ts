@@ -155,6 +155,12 @@ export abstract class BaseRepository<T extends BaseEntity> {
 		return saved
 	}
 
+	async save(entity: T): Promise<T> {
+		const saved = await this.repository.save(entity)
+		await this.invalidateCache(saved.id)
+		return saved
+	}
+
 	async update(id: string, data: DeepPartial<T>): Promise<T | null> {
 		const entity = await this.findById(id)
 		if (!entity) return null
