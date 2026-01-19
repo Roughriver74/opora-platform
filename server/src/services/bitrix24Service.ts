@@ -31,15 +31,22 @@ const retryRequest = async <T>(
 
 class Bitrix24Service {
 	private webhookUrl: string
+	private enabled: boolean
 
 	constructor() {
+		this.enabled = config.bitrix24Enabled
 		this.webhookUrl = config.bitrix24WebhookUrl
-		this.validateConfiguration()
+
+		if (this.enabled) {
+			this.validateConfiguration()
+		} else {
+			logger.info('[Bitrix24Service] 🔌 Интеграция отключена (BITRIX24_ENABLED=false)')
+		}
 	}
 
 	private validateConfiguration() {
 		if (!this.webhookUrl) {
-			throw new Error('BITRIX24_WEBHOOK_URL не настроен в переменных окружения')
+			throw new Error('BITRIX24_ENABLED=true требует BITRIX24_WEBHOOK_URL')
 		}
 		try {
 			const url = new URL(this.webhookUrl)
@@ -53,6 +60,13 @@ class Bitrix24Service {
 		}
 	}
 
+	/**
+	 * Проверка, включена ли интеграция с Bitrix24
+	 */
+	isEnabled(): boolean {
+		return this.enabled
+	}
+
 	// Deals: fields and creation
 	async getDealFields() {
 		const response = await retryRequest(() =>
@@ -62,6 +76,11 @@ class Bitrix24Service {
 	}
 
 	async createDeal(dealData: any) {
+		if (!this.enabled) {
+			logger.debug('[Bitrix24Service] Пропуск createDeal - интеграция отключена')
+			return null
+		}
+
 		const response = await retryRequest(() =>
 			axios.post(
 				`${this.webhookUrl}crm.deal.add`,
@@ -76,6 +95,11 @@ class Bitrix24Service {
 	}
 
 	async updateDeal(dealId: string, dealData: any) {
+		if (!this.enabled) {
+			logger.debug('[Bitrix24Service] Пропуск updateDeal - интеграция отключена')
+			return null
+		}
+
 		const response = await axios.post(`${this.webhookUrl}crm.deal.update`, {
 			id: dealId,
 			fields: dealData,
@@ -88,6 +112,11 @@ class Bitrix24Service {
 		newStatus: string,
 		_categoryId?: string
 	) {
+		if (!this.enabled) {
+			logger.debug('[Bitrix24Service] Пропуск updateDealStatus - интеграция отключена')
+			return null
+		}
+
 		const response = await axios.post(`${this.webhookUrl}crm.deal.update`, {
 			id: dealId,
 			fields: { STAGE_ID: newStatus },
@@ -96,6 +125,11 @@ class Bitrix24Service {
 	}
 
 	async getDeal(dealId: string) {
+		if (!this.enabled) {
+			logger.debug('[Bitrix24Service] Пропуск getDeal - интеграция отключена')
+			return null
+		}
+
 		const response = await axios.post(`${this.webhookUrl}crm.deal.get`, {
 			id: dealId,
 		})
@@ -254,7 +288,17 @@ class Bitrix24Service {
 						`${this.webhookUrl}crm.product.list`,
 						{
 							filter: { ACTIVE: 'Y' },
-							select: ['ID', 'NAME', 'PRICE', 'CURRENCY_ID', 'DESCRIPTION'],
+							select: [
+								'ID',
+								'NAME',
+								'PRICE',
+								'CURRENCY_ID',
+								'DESCRIPTION',
+								'XML_ID',
+								'ACTIVE',
+								'SORT',
+								'SECTION_ID',
+							],
 							start: start,
 							limit: limit,
 							order: { NAME: 'ASC' },
@@ -502,6 +546,11 @@ class Bitrix24Service {
 	}
 
 	async getContacts(query = '', limit = 50) {
+		if (!this.enabled) {
+			logger.debug('[Bitrix24Service] Пропуск getContacts - интеграция отключена')
+			return { result: [], total: 0 }
+		}
+
 		let filter: any = {}
 		if (query) {
 			const isNumericId = /^\d+$/.test(query.trim())
@@ -827,6 +876,11 @@ class Bitrix24Service {
 	 * Получение всех компаний из Bitrix24 (пагинация)
 	 */
 	async getAllCompanies(): Promise<any[]> {
+		if (!this.enabled) {
+			logger.debug('[Bitrix24Service] Пропуск getAllCompanies - интеграция отключена')
+			return []
+		}
+
 		const allCompanies: any[] = []
 		let start = 0
 		const limit = 50 // Размер страницы
@@ -919,6 +973,11 @@ class Bitrix24Service {
 	}
 
 	async getAllCompaniesWithRequisites(): Promise<any[]> {
+		if (!this.enabled) {
+			logger.debug('[Bitrix24Service] Пропуск getAllCompaniesWithRequisites - интеграция отключена')
+			return []
+		}
+
 		try {
 			// Сначала получаем все компании
 			const companies = await this.getAllCompanies()

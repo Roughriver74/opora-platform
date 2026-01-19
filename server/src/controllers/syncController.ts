@@ -155,8 +155,8 @@ export class SyncController {
 				'../services/incrementalSyncService'
 			)
 
-			// Получаем параметры из запроса
-			const { forceFullSync, batchSize, maxAgeHours } = req.body
+			// Получаем параметры из запроса (с fallback на пустой объект)
+			const { forceFullSync, batchSize, maxAgeHours } = req.body || {}
 
 			// Выполняем полную инкрементальную синхронизацию
 			const results = await incrementalSyncService.syncAllData({

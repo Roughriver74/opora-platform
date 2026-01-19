@@ -136,7 +136,7 @@ export class Nomenclature extends AuditableEntity {
 
 	@Column({ type: 'varchar', array: true, default: [] })
 	@IsArray({ message: 'Теги должны быть массивом' })
-	tags: string[]
+	tags: string[] = []
 
 	@Column({ name: 'image_url', type: 'varchar', length: 500, nullable: true })
 	@IsOptional()

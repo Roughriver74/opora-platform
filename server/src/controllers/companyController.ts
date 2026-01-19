@@ -59,6 +59,30 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 /**
  * Поиск компаний (для автокомплита в формах)
  * GET /api/companies/search
+ *
+ * @swagger
+ * /api/companies/search:
+ *   get:
+ *     summary: Поиск компаний (для автокомплита)
+ *     tags: [Companies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Поисковый запрос
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Результаты поиска компаний
+ *       401:
+ *         description: Не авторизован
  */
 export const search = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
@@ -118,6 +142,28 @@ export const getById = async (req: Request, res: Response, next: NextFunction): 
 /**
  * Найти компанию по ИНН
  * GET /api/companies/by-inn/:inn
+ *
+ * @swagger
+ * /api/companies/by-inn/{inn}:
+ *   get:
+ *     summary: Найти компанию по ИНН
+ *     tags: [Companies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: inn
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ИНН компании
+ *     responses:
+ *       200:
+ *         description: Компания найдена
+ *       404:
+ *         description: Компания не найдена
+ *       401:
+ *         description: Не авторизован
  */
 export const getByInn = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {

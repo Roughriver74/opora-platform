@@ -49,6 +49,30 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 /**
  * Поиск номенклатуры (для автокомплита в формах)
  * GET /api/nomenclature/search
+ *
+ * @swagger
+ * /api/nomenclature/search:
+ *   get:
+ *     summary: Поиск номенклатуры (для автокомплита)
+ *     tags: [Nomenclature]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         schema:
+ *           type: string
+ *         description: Поисковый запрос
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Результаты поиска
+ *       401:
+ *         description: Не авторизован
  */
 export const search = async (req: Request, res: Response, next: NextFunction) => {
 	try {

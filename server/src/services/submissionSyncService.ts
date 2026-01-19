@@ -63,6 +63,14 @@ class SubmissionSyncService {
 			success: false,
 		}
 
+		// Проверка, включена ли интеграция с Bitrix24
+		if (!bitrix24Service.isEnabled()) {
+			logger.debug(`[SYNC] ⏭️ Пропуск синхронизации ${submission.submissionNumber} - Bitrix24 отключен`)
+			result.success = true
+			result.error = 'Bitrix24 integration disabled'
+			return result
+		}
+
 		try {
 			logger.info(
 				`[SYNC] Синхронизация заявки ${submission.submissionNumber} с Bitrix24...`
@@ -104,18 +112,83 @@ class SubmissionSyncService {
 				`[SYNC] ✅ Заявка ${submission.submissionNumber} синхронизирована, Bitrix Deal ID: ${bitrixDealId}`
 			)
 		} catch (error: any) {
-			const errorMessage = error.message || 'Unknown error'
-			submission.markSyncFailed(errorMessage)
+			const errorInfo = this.classifyBitrixError(error)
+
+			// Логирование по уровню серьезности
+			if (errorInfo.severity === 'high') {
+				logger.error(`[SYNC] ❌ ${submission.submissionNumber}: ${errorInfo.techMessage}`)
+			} else if (errorInfo.severity === 'medium') {
+				logger.warn(`[SYNC] ⚠️ ${submission.submissionNumber}: ${errorInfo.techMessage}`)
+			} else {
+				logger.debug(`[SYNC] 🔄 ${submission.submissionNumber}: ${errorInfo.techMessage} (retry available)`)
+			}
+
+			// Обновление статуса в БД
+			submission.markSyncFailed(errorInfo.userMessage)
 			await repository.save(submission)
 
-			result.error = errorMessage
+			result.success = false
+			result.error = errorInfo.userMessage
 
-			logger.error(
-				`[SYNC] ❌ Ошибка синхронизации заявки ${submission.submissionNumber}: ${errorMessage}`
-			)
 		}
 
 		return result
+	}
+
+	/**
+	 * Классификация ошибок Bitrix24 для умной обработки
+	 */
+	private classifyBitrixError(error: any): {
+		category: 'network' | 'api_client' | 'api_server' | 'validation' | 'unknown'
+		severity: 'low' | 'medium' | 'high'
+		retryable: boolean
+		userMessage: string
+		techMessage: string
+	} {
+		// Сетевые ошибки (ECONNABORTED, ENOTFOUND, ETIMEDOUT, ECONNRESET)
+		if (error.code?.includes?.('ECONN') || error.code?.includes?.('ETIMEDOUT')) {
+			return {
+				category: 'network',
+				severity: 'low',
+				retryable: true,
+				userMessage: 'Bitrix24 временно недоступен',
+				techMessage: `Сетевая ошибка: ${error.code}`,
+			}
+		}
+
+		const status = error.response?.status
+		const bitrixError = error.response?.data?.error_description || error.response?.data?.error
+
+		// Клиентские ошибки (4xx)
+		if (status >= 400 && status < 500) {
+			return {
+				category: 'api_client',
+				severity: status === 429 ? 'medium' : 'high',
+				retryable: status === 429,
+				userMessage: status === 429 ? 'Превышен лимит запросов к Bitrix24' : 'Ошибка запроса к Bitrix24',
+				techMessage: `Ошибка API (${status}): ${bitrixError || 'Unknown'}`,
+			}
+		}
+
+		// Серверные ошибки (5xx)
+		if (status >= 500) {
+			return {
+				category: 'api_server',
+				severity: 'medium',
+				retryable: true,
+				userMessage: 'Bitrix24 временно недоступен',
+				techMessage: `Ошибка сервера Bitrix24 (${status})`,
+			}
+		}
+
+		// Неизвестная ошибка
+		return {
+			category: 'unknown',
+			severity: 'medium',
+			retryable: true,
+			userMessage: 'Ошибка синхронизации с Bitrix24',
+			techMessage: error.message || 'Unknown error',
+		}
 	}
 
 	/**

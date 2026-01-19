@@ -37,6 +37,44 @@ export const authMiddleware = async (
 	next: NextFunction
 ) => {
 	try {
+		// НОВОЕ: Проверка API ключа (для внешних систем)
+		const apiKey = req.headers['x-api-key'] as string
+
+		if (apiKey) {
+			const tokenRepository = AppDataSource.getRepository(AdminToken)
+			const adminToken = await tokenRepository.findOne({
+				where: { token: apiKey },
+				relations: ['user'],
+			})
+
+			if (adminToken && adminToken.isValid()) {
+				// Обновляем время использования
+				const ipAddress = req.ip || req.socket.remoteAddress
+				const userAgent = req.headers['user-agent']
+				adminToken.markAsUsed(ipAddress, userAgent)
+				await tokenRepository.save(adminToken)
+
+				// Устанавливаем пользователя
+				req.user = {
+					id: adminToken.userId,
+					role: 'admin',
+					isAdmin: true,
+					isUser: false,
+					tokenType: 'access',
+				}
+				req.isAdmin = true
+
+				return next()
+			} else {
+				res.status(401).json({
+					success: false,
+					message: 'Недействительный или истекший API ключ',
+				})
+				return
+			}
+		}
+
+		// Существующая логика JWT токенов
 		// Получаем токен из заголовков Authorization
 		const authHeader = req.headers.authorization
 		const token = authHeader && authHeader.split(' ')[1]

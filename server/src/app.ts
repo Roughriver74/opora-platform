@@ -20,6 +20,8 @@ import nomenclatureRoutes from './routes/nomenclatureRoutes'
 import companyRoutes from './routes/companyRoutes'
 import contactRoutes from './routes/contactRoutes'
 import syncManagerRoutes from './routes/syncManagerRoutes'
+import apiTokenRoutes from './routes/apiTokenRoutes'
+import { setupSwagger } from './config/swagger'
 // Utility for checking database connection status
 // Re-importing to fix potential resolution issues
 import { checkDatabaseConnection } from './utils/dbCheck'
@@ -46,6 +48,9 @@ app.use((req, res, next) => {
 	res.setTimeout(300000)
 	next()
 })
+
+// Swagger документация (должна быть до authMiddleware)
+setupSwagger(app)
 
 // Public Routes
 app.use('/api/auth', authRoutes)
@@ -110,5 +115,6 @@ app.use('/api/nomenclature', nomenclatureRoutes)
 app.use('/api/companies', companyRoutes)
 app.use('/api/contacts', contactRoutes)
 app.use('/api/sync-manager', syncManagerRoutes)
+app.use('/api/tokens', apiTokenRoutes)
 
 export default app

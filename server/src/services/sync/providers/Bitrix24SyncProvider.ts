@@ -22,6 +22,26 @@ import { NomenclatureUnit } from '../../../database/entities/NomenclatureUnit.en
 import { logger } from '../../../utils/logger'
 import { In } from 'typeorm'
 
+const getErrorMessage = (error: any): string => {
+	if (error?.response?.data?.error_description) {
+		return String(error.response.data.error_description)
+	}
+	if (error?.response?.data?.error) {
+		return String(error.response.data.error)
+	}
+	if (error?.detail) {
+		return String(error.detail)
+	}
+	if (error?.message) {
+		return String(error.message)
+	}
+	try {
+		return JSON.stringify(error)
+	} catch {
+		return String(error)
+	}
+}
+
 export class Bitrix24SyncProvider implements ISyncProvider {
 	readonly id = 'bitrix24'
 	readonly name = 'Bitrix24 CRM'
@@ -242,14 +262,15 @@ export class Bitrix24SyncProvider implements ISyncProvider {
 							created++
 						}
 					} catch (error: any) {
+						const message = getErrorMessage(error)
 						failed++
 						errors.push({
 							externalId: String(bitrixCompany.ID),
-							message: error.message,
+							message,
 						})
 						logger.error(
 							`[Bitrix24SyncProvider] Ошибка импорта компании ${bitrixCompany.ID}:`,
-							error.message
+							message
 						)
 					}
 				}
@@ -267,7 +288,7 @@ export class Bitrix24SyncProvider implements ISyncProvider {
 			return { total, created, updated, failed, errors }
 		} catch (error: any) {
 			logger.error(`[Bitrix24SyncProvider] ❌ Ошибка импорта компаний:`, error)
-			errors.push({ message: error.message })
+			errors.push({ message: getErrorMessage(error) })
 			return { total: 0, created, updated, failed: failed + 1, errors }
 		}
 	}
@@ -342,14 +363,15 @@ export class Bitrix24SyncProvider implements ISyncProvider {
 							created++
 						}
 					} catch (error: any) {
+						const message = getErrorMessage(error)
 						failed++
 						errors.push({
 							externalId: String(bitrixContact.ID),
-							message: error.message,
+							message,
 						})
 						logger.error(
 							`[Bitrix24SyncProvider] Ошибка импорта контакта ${bitrixContact.ID}:`,
-							error.message
+							message
 						)
 					}
 				}
@@ -366,7 +388,7 @@ export class Bitrix24SyncProvider implements ISyncProvider {
 			return { total, created, updated, failed, errors }
 		} catch (error: any) {
 			logger.error(`[Bitrix24SyncProvider] ❌ Ошибка импорта контактов:`, error)
-			errors.push({ message: error.message })
+			errors.push({ message: getErrorMessage(error) })
 			return { total: 0, created, updated, failed: failed + 1, errors }
 		}
 	}
@@ -455,14 +477,15 @@ export class Bitrix24SyncProvider implements ISyncProvider {
 							created++
 						}
 					} catch (error: any) {
+						const message = getErrorMessage(error)
 						failed++
 						errors.push({
 							externalId: String(bitrixProduct.ID),
-							message: error.message,
+							message,
 						})
 						logger.error(
 							`[Bitrix24SyncProvider] Ошибка импорта товара ${bitrixProduct.ID}:`,
-							error.message
+							message
 						)
 					}
 				}
@@ -479,7 +502,7 @@ export class Bitrix24SyncProvider implements ISyncProvider {
 			return { total, created, updated, failed, errors }
 		} catch (error: any) {
 			logger.error(`[Bitrix24SyncProvider] ❌ Ошибка импорта номенклатуры:`, error)
-			errors.push({ message: error.message })
+			errors.push({ message: getErrorMessage(error) })
 			return { total: 0, created, updated, failed: failed + 1, errors }
 		}
 	}
@@ -570,9 +593,11 @@ export class Bitrix24SyncProvider implements ISyncProvider {
 	}
 
 	private mapBitrixProductToEntity(bitrixProduct: any): Partial<Nomenclature> {
+		const sku = bitrixProduct.XML_ID || `BX-${bitrixProduct.ID}`
+
 		return {
 			name: bitrixProduct.NAME || `Товар ${bitrixProduct.ID}`,
-			sku: bitrixProduct.XML_ID || null,
+			sku: sku || null,
 			description: bitrixProduct.DESCRIPTION || null,
 			price: bitrixProduct.PRICE ? parseFloat(bitrixProduct.PRICE) : null,
 			isActive: bitrixProduct.ACTIVE === 'Y',

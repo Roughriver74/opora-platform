@@ -20,6 +20,26 @@ import { NomenclatureFilterOptions } from '../database/repositories/Nomenclature
 import bitrix24Service from './bitrix24Service'
 import { logger } from '../utils/logger'
 
+const getErrorMessage = (error: any): string => {
+	if (error?.response?.data?.error_description) {
+		return String(error.response.data.error_description)
+	}
+	if (error?.response?.data?.error) {
+		return String(error.response.data.error)
+	}
+	if (error?.detail) {
+		return String(error.detail)
+	}
+	if (error?.message) {
+		return String(error.message)
+	}
+	try {
+		return JSON.stringify(error)
+	} catch {
+		return String(error)
+	}
+}
+
 /**
  * DTO для создания номенклатуры
  */
@@ -299,12 +319,13 @@ export class NomenclatureService extends BaseService<Nomenclature, NomenclatureR
 						result.created++
 					}
 				} catch (error: any) {
+					const message = getErrorMessage(error)
 					result.errors++
 					result.errorDetails.push({
 						id: String(product.ID),
-						message: error.message,
+						message,
 					})
-					logger.error(`Ошибка синхронизации товара ${product.ID}:`, error.message)
+					logger.error(`Ошибка синхронизации товара ${product.ID}:`, message)
 				}
 			}
 

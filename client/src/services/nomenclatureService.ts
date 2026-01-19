@@ -69,7 +69,7 @@ export interface Nomenclature {
 	bitrixSectionId?: string
 	syncStatus: NomenclatureSyncStatus
 	lastSyncAt?: string
-	syncError?: string
+	syncError?: { message: string; timestamp: string; code?: string } | string
 	attributes?: Record<string, any>
 	tags?: string[]
 	imageUrl?: string

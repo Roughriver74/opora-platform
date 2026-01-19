@@ -4,6 +4,7 @@ import { initializeDatabase, closeDatabaseConnection } from './database/config/d
 import redisClient from './config/redis'
 import { initializeDefaultSettings } from './controllers/settingsController'
 import { initializeElasticsearch } from './scripts/initializeElasticsearch'
+import { initializeSyncSystem } from './services/sync'
 import { getSubmissionQueueWorker } from './queue/SubmissionQueueWorker'
 import { getSubmissionSchedulerService } from './services/SubmissionSchedulerService'
 import app from './app'
@@ -25,6 +26,9 @@ const initializeServer = async () => {
 
 		// Инициализация Elasticsearch
 		await initializeElasticsearch()
+
+		// Инициализация системы синхронизации с Bitrix24
+		await initializeSyncSystem()
 
 		// Инициализация планировщика синхронизации
 		logger.info('🕐 Инициализация планировщика синхронизации...')

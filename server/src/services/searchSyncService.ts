@@ -80,23 +80,35 @@ class SearchSyncService {
 		}
 
 		try {
-			// Получаем ВСЕ продукты из Bitrix24 с пагинацией
-			logger.info('Загружаем все продукты из Bitrix24...')
-			const products = await bitrix24Service.getAllProducts()
+			// Получаем ВСЕ продукты из PostgreSQL (локальная БД)
+			logger.info('Загружаем все продукты из PostgreSQL...')
+
+			const { AppDataSource } = await import(
+				'../database/config/database.config'
+			)
+			const { Nomenclature } = await import(
+				'../database/entities/Nomenclature.entity'
+			)
+
+			const nomenclatureRepository = AppDataSource.getRepository(Nomenclature)
+			const products = await nomenclatureRepository.find({
+				where: { isActive: true },
+				order: { name: 'ASC' },
+			})
 
 			logger.info(`Found ${products.length} products to sync`)
 
 			const documents: SearchDocument[] = products.map((product: any) => ({
-				id: `product_${product.ID}`,
-				name: product.NAME || '',
-				description: product.DESCRIPTION || '',
+				id: `product_${product.bitrixProductId || product.id}`,
+				name: product.name || '',
+				description: product.description || '',
 				type: 'product' as const,
-				price: product.PRICE ? parseFloat(product.PRICE) : undefined,
-				currency: product.CURRENCY_ID || 'RUB',
-				bitrixId: product.ID, // Добавляем Bitrix ID
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				searchableText: this.buildSearchableText(product),
+				price: product.price ? parseFloat(product.price.toString()) : undefined,
+				currency: product.currency || 'RUB',
+				bitrixId: product.bitrixProductId || product.id, // Bitrix ID из PostgreSQL
+				createdAt: product.createdAt?.toISOString() || new Date().toISOString(),
+				updatedAt: product.updatedAt?.toISOString() || new Date().toISOString(),
+				searchableText: this.buildProductSearchableText(product),
 			}))
 
 			stats.totalProcessed = documents.length
@@ -129,27 +141,38 @@ class SearchSyncService {
 		}
 
 		try {
-			// Получаем ВСЕ компании из Bitrix24 с реквизитами (включая ИНН)
-			logger.info('Загружаем все компании из Bitrix24 с реквизитами...')
-			const companies = await bitrix24Service.getAllCompaniesWithRequisites()
+			// Получаем ВСЕ компании из PostgreSQL (локальная БД)
+			logger.info('Загружаем все компании из PostgreSQL...')
+
+			const { AppDataSource } = await import(
+				'../database/config/database.config'
+			)
+			const { Company } = await import(
+				'../database/entities/Company.entity'
+			)
+
+			const companyRepository = AppDataSource.getRepository(Company)
+			const companies = await companyRepository.find({
+				where: { isActive: true },
+				order: { name: 'ASC' },
+			})
 
 			logger.info(`Found ${companies.length} companies to sync`)
 
 			const documents: SearchDocument[] = companies.map((company: any) => ({
-				id: `company_${company.ID}`,
-				name: company.TITLE || '',
-				description: company.COMMENTS || '',
+				id: `company_${company.bitrixCompanyId || company.id}`,
+				name: company.name || '',
+				description: company.notes || '',
 				type: 'company' as const,
-				industry: company.INDUSTRY || '',
-				phone: company.PHONE?.[0]?.VALUE || '',
-				email: company.EMAIL?.[0]?.VALUE || '',
-				address: company.ADDRESS || '',
-				inn: company.RQ_INN || '', // Исправляем маппинг ИНН
-				bitrixId: company.ID, // Добавляем Bitrix ID
-				assignedById: company.ASSIGNED_BY_ID, // Добавляем ответственного пользователя
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				searchableText: this.buildSearchableText(company),
+				industry: company.industry || '',
+				phone: company.phone || '',
+				email: company.email || '',
+				address: company.actualAddress || company.legalAddress || '',
+				inn: company.inn || '', // ИНН из PostgreSQL
+				bitrixId: company.bitrixCompanyId || company.id,
+				createdAt: company.createdAt?.toISOString() || new Date().toISOString(),
+				updatedAt: company.updatedAt?.toISOString() || new Date().toISOString(),
+				searchableText: this.buildCompanySearchableText(company),
 			}))
 
 			stats.totalProcessed = documents.length
@@ -448,6 +471,52 @@ class SearchSyncService {
 
 		return searchableFields
 			.filter(field => field && field.trim())
+			.join(' ')
+			.trim()
+	}
+
+	/**
+	 * Построение поискового текста для продукта из PostgreSQL
+	 */
+	private buildProductSearchableText(product: any): string {
+		const searchableFields = [
+			product.name || '',
+			product.description || '',
+			product.article || '',
+			product.barcode || '',
+			product.category || '',
+			product.manufacturer || '',
+			product.tags?.join(' ') || '',
+		]
+
+		return searchableFields
+			.filter(field => field && field.trim())
+			.join(' ')
+			.trim()
+	}
+
+	/**
+	 * Построение поискового текста для компании из PostgreSQL
+	 */
+	private buildCompanySearchableText(company: any): string {
+		const searchableFields = [
+			company.name || '',
+			company.shortName || '',
+			company.inn || '',
+			company.kpp || '',
+			company.ogrn || '',
+			company.phone || '',
+			company.email || '',
+			company.actualAddress || '',
+			company.legalAddress || '',
+			company.industry || '',
+			company.notes || '',
+			...(company.additionalPhones || []),
+			...(company.tags || []),
+		]
+
+		return searchableFields
+			.filter(field => field && String(field).trim())
 			.join(' ')
 			.trim()
 	}

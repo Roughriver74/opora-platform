@@ -488,14 +488,6 @@ export const getSubmissionById = async (req: Request, res: Response) => {
 								console.log(
 									`[GET_SUBMISSION] Field has dynamic source: ${field.dynamicSource.source}`
 								)
-								// Проверяем, включена ли интеграция с Bitrix24
-								if (!bitrix24Service.isEnabled()) {
-									console.log(`[GET_SUBMISSION] ⏭️ Пропуск обогащения данных - Bitrix24 отключен`)
-									// Используем исходное значение без обогащения
-									enrichedFormData[field.name] = value
-									continue
-								}
-
 								if (
 									field.dynamicSource.source === 'catalog' &&
 									typeof value === 'string'

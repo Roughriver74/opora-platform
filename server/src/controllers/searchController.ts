@@ -181,28 +181,30 @@ export const searchProducts = async (
 				searchEngine: 'elasticsearch',
 			}
 		} else {
-			// Fallback: если нет результатов в Elasticsearch, ищем через Bitrix24 API
-			const bitrixResults = await bitrix24Service.searchProducts(query, limit)
+			// Fallback: если нет результатов в Elasticsearch, ищем в PostgreSQL
+			const { NomenclatureService } = await import('../services/NomenclatureService')
+			const nomenclatureService = new NomenclatureService()
+			const dbResults = await nomenclatureService.search(query, limit)
 
-			// Преобразуем результаты Bitrix24 в нужный формат
-			const formattedBitrixResults = bitrixResults.map((product: any) => ({
-				ID: product.ID,
-				NAME: product.NAME,
-				DESCRIPTION: product.DESCRIPTION || '',
-				PRICE: product.PRICE || '0',
-				CURRENCY_ID: product.CURRENCY_ID || 'RUB',
+			// Преобразуем результаты PostgreSQL в нужный формат
+			const formattedDbResults = dbResults.map((product: any) => ({
+				ID: product.bitrixProductId || product.id,
+				NAME: product.name,
+				DESCRIPTION: product.description || '',
+				PRICE: product.price?.toString() || '0',
+				CURRENCY_ID: product.currency || 'RUB',
 				_score: 1.0,
 				highlight: {
-					name: [product.NAME],
-					description: [product.DESCRIPTION || ''],
+					name: [product.name],
+					description: [product.description || ''],
 				},
 			}))
 
 			result = {
-				result: formattedBitrixResults,
-				total: formattedBitrixResults.length,
+				result: formattedDbResults,
+				total: formattedDbResults.length,
 				query,
-				searchEngine: 'bitrix24_fallback',
+				searchEngine: 'postgresql_fallback',
 			}
 		}
 

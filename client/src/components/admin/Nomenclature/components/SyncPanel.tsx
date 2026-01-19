@@ -202,7 +202,7 @@ export const SyncPanel: React.FC = () => {
 										{lastResult.errorDetails.slice(0, 10).map((err, index) => (
 											<TableRow key={index}>
 												<TableCell>{err.id}</TableCell>
-												<TableCell>{err.message}</TableCell>
+												<TableCell>{err.message || 'Неизвестная ошибка'}</TableCell>
 											</TableRow>
 										))}
 									</TableBody>
@@ -257,7 +257,9 @@ export const SyncPanel: React.FC = () => {
 										<TableCell>{item.bitrixProductId || '-'}</TableCell>
 										<TableCell>
 											<Typography variant='body2' color='error'>
-												{item.syncError || 'Неизвестная ошибка'}
+												{(typeof item.syncError === 'string'
+													? item.syncError
+													: item.syncError?.message) || 'Неизвестная ошибка'}
 											</Typography>
 										</TableCell>
 										<TableCell>
