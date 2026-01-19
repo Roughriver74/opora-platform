@@ -927,19 +927,6 @@ export const updateSubmission = async (req: Request, res: Response) => {
 				// Синхронизация не удалась, но данные УЖЕ СОХРАНЕНЫ в БД!
 			}
 
-				console.warn(
-					`[UPDATE_SUBMISSION] ⚠️ Ошибка синхронизации с Bitrix24 для заявки ${id}:`,
-					error.message
-				)
-				await submissionService.updateSyncStatus(
-					id,
-					BitrixSyncStatus.FAILED,
-					undefined,
-					`Bitrix24: ${error?.message || 'Ошибка сети'}`
-				)
-				// НЕ прерываем выполнение - данные сохранены!
-
-			}
 
 			// ШАГ 3: Автоматическая переиндексация заявки в Elasticsearch
 			console.log(

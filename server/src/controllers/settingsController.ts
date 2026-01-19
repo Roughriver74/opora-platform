@@ -1,6 +1,10 @@
 import { Request, Response } from 'express'
 import { getSettingsService } from '../services/SettingsService'
 import { SettingCategory } from '../database/entities/Settings.entity'
+import { getConfigService } from '../services/ConfigService'
+import { reinitializeSyncSystem } from '../services/sync'
+import bitrix24Service from '../services/bitrix24Service'
+import { maskSensitiveData } from '../utils/encryption'
 
 const settingsService = getSettingsService()
 
@@ -133,6 +137,114 @@ export const deleteSetting = async (
 		res.status(500).json({
 			success: false,
 			message: 'Ошибка удаления настройки',
+		})
+	}
+}
+
+/**
+ * Получить конфигурацию Bitrix24 (без раскрытия webhook URL)
+ * GET /api/settings/bitrix24/config
+ */
+export const getBitrix24Config = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
+	try {
+		const configService = getConfigService()
+		const config = await configService.getBitrix24Config()
+
+		res.json({
+			success: true,
+			data: {
+				enabled: config.enabled,
+				hasWebhookUrl: !!config.webhookUrl,
+				webhookUrl: config.webhookUrl ? maskSensitiveData(config.webhookUrl) : null,
+			},
+		})
+	} catch (error: any) {
+		console.error('[SettingsController] Ошибка получения Bitrix24 конфигурации:', error)
+		res.status(500).json({
+			success: false,
+			message: 'Ошибка получения конфигурации Bitrix24',
+		})
+	}
+}
+
+/**
+ * Тестирование подключения к Bitrix24
+ * POST /api/settings/bitrix24/test-connection
+ */
+export const testBitrix24Connection = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
+	try {
+		const configService = getConfigService()
+		const config = await configService.getBitrix24Config()
+
+		if (!config.enabled) {
+			res.status(400).json({
+				success: false,
+				message: 'Интеграция с Bitrix24 отключена',
+			})
+			return
+		}
+
+		if (!config.webhookUrl) {
+			res.status(400).json({
+				success: false,
+				message: 'Webhook URL не установлен',
+			})
+			return
+		}
+
+		// Пробуем получить поля сделок как тест подключения
+		const result = await bitrix24Service.getDealFields()
+
+		if (result && result.result) {
+			res.json({
+				success: true,
+				message: 'Подключение к Bitrix24 успешно',
+				data: {
+					fieldsCount: Object.keys(result.result).length,
+				},
+			})
+		} else {
+			res.status(500).json({
+				success: false,
+				message: 'Не удалось получить данные из Bitrix24',
+			})
+		}
+	} catch (error: any) {
+		console.error('[SettingsController] Ошибка тестирования Bitrix24:', error)
+		res.status(500).json({
+			success: false,
+			message: `Ошибка подключения к Bitrix24: ${error.message}`,
+		})
+	}
+}
+
+/**
+ * Горячая перезагрузка интеграции Bitrix24
+ * POST /api/settings/bitrix24/reload
+ * Только для администраторов
+ */
+export const reloadBitrix24Integration = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
+	try {
+		await reinitializeSyncSystem()
+
+		res.json({
+			success: true,
+			message: 'Интеграция Bitrix24 успешно перезагружена',
+		})
+	} catch (error: any) {
+		console.error('[SettingsController] Ошибка перезагрузки Bitrix24:', error)
+		res.status(500).json({
+			success: false,
+			message: `Ошибка перезагрузки интеграции: ${error.message}`,
 		})
 	}
 }

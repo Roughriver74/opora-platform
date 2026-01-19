@@ -9,7 +9,7 @@ export * from './interfaces'
 export { syncManager } from './SyncManager'
 
 import { logger } from '../../utils/logger'
-import config from '../../config/config'
+import { getConfigService } from '../ConfigService'
 
 /**
  * Инициализация системы синхронизации с провайдерами по умолчанию
@@ -19,14 +19,18 @@ export async function initializeSyncSystem(): Promise<void> {
 	logger.info('[SyncSystem] 🚀 Инициализация системы синхронизации...')
 
 	try {
+		// Чтение конфигурации из БД с fallback на .env
+		const configService = getConfigService()
+		const bitrix24Config = await configService.getBitrix24Config()
+
 		// Проверка, включена ли интеграция с Bitrix24
-		if (!config.bitrix24Enabled) {
+		if (!bitrix24Config.enabled) {
 			logger.info('[SyncSystem] 🔌 Bitrix24 отключен - режим "только локально"')
 			return
 		}
 
-		if (!config.bitrix24WebhookUrl) {
-			logger.error('[SyncSystem] ❌ BITRIX24_ENABLED=true требует BITRIX24_WEBHOOK_URL')
+		if (!bitrix24Config.webhookUrl) {
+			logger.error('[SyncSystem] ❌ Bitrix24 включен, но WEBHOOK_URL не установлен')
 			logger.warn('[SyncSystem] ⚠️ Переключение в режим "только локально"')
 			return
 		}
@@ -60,5 +64,27 @@ export async function initializeSyncSystem(): Promise<void> {
 		logger.error(`[SyncSystem] ❌ Ошибка: ${error.message}`)
 		logger.warn('[SyncSystem] ⚠️ Переключение в режим "только локально"')
 		// Не бросаем ошибку - сервер продолжит работу в локальном режиме
+	}
+}
+
+/**
+ * Горячая перезагрузка системы синхронизации
+ * Используется при изменении настроек Bitrix24 через UI
+ */
+export async function reinitializeSyncSystem(): Promise<void> {
+	logger.info('[SyncSystem] 🔄 Перезагрузка системы синхронизации...')
+
+	try {
+		// Инвалидируем кеш конфигурации
+		const configService = getConfigService()
+		configService.invalidateCache('bitrix24.config')
+
+		// Переинициализируем систему синхронизации
+		await initializeSyncSystem()
+
+		logger.info('[SyncSystem] ✅ Система синхронизации перезагружена')
+	} catch (error: any) {
+		logger.error(`[SyncSystem] ❌ Ошибка перезагрузки: ${error.message}`)
+		throw error
 	}
 }

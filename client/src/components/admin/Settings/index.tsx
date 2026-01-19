@@ -30,6 +30,7 @@ import {
 } from '../../../services/settingsService'
 import SyncManager from '../SyncManager'
 import MaterialFieldsConfigEditor from './MaterialFieldsConfigEditor'
+import Bitrix24Settings from './Bitrix24Settings'
 
 interface CategorySettings {
 	[key: string]: Setting[]
@@ -41,6 +42,7 @@ const categoryNames: { [key: string]: string } = {
 	materials: 'Материалы в карточках',
 	forms: 'Формы',
 	integrations: 'Интеграции',
+	bitrix: 'Bitrix24 Интеграция',
 	ui: 'Интерфейс',
 	system: 'Система',
 	sync: 'Синхронизация',
@@ -103,6 +105,11 @@ const Settings: React.FC = () => {
 			// Добавляем категорию материалов для редактора полей
 			if (!grouped['materials']) {
 				grouped['materials'] = []
+			}
+
+			// Добавляем категорию Bitrix24 для управления интеграцией
+			if (!grouped['bitrix']) {
+				grouped['bitrix'] = []
 			}
 
 			setSettings(grouped)
@@ -330,6 +337,8 @@ const Settings: React.FC = () => {
 							<SyncManager />
 						) : category === 'materials' ? (
 							<MaterialFieldsConfigEditor onSave={loadSettings} />
+						) : category === 'bitrix' ? (
+							<Bitrix24Settings />
 						) : (
 							<Box
 								sx={{

@@ -2,6 +2,7 @@ import axios from 'axios'
 import config from '../config/config'
 import { bitrixCache } from './cacheService'
 import { logger } from '../utils/logger'
+import { getConfigService } from './ConfigService'
 
 const MAX_RETRIES = 3
 const RETRY_DELAY = 1000
@@ -30,23 +31,49 @@ const retryRequest = async <T>(
 }
 
 class Bitrix24Service {
-	private webhookUrl: string
-	private enabled: boolean
+	private webhookUrl: string | null = null
+	private enabled: boolean = false
+	private initialized: boolean = false
 
 	constructor() {
-		this.enabled = config.bitrix24Enabled
-		this.webhookUrl = config.bitrix24WebhookUrl
+		// Ленивая инициализация - конфигурация загружается при первом использовании
+		// Это позволяет читать настройки из БД вместо .env
+	}
 
-		if (this.enabled) {
-			this.validateConfiguration()
-		} else {
-			logger.info('[Bitrix24Service] 🔌 Интеграция отключена (BITRIX24_ENABLED=false)')
+	/**
+	 * Ленивая инициализация - загрузка конфигурации при первом использовании
+	 * Приоритет: База данных > Environment переменные
+	 */
+	private async ensureInitialized(): Promise<void> {
+		if (this.initialized) {
+			return
+		}
+
+		try {
+			const configService = getConfigService()
+			const bitrix24Config = await configService.getBitrix24Config()
+
+			this.enabled = bitrix24Config.enabled
+			this.webhookUrl = bitrix24Config.webhookUrl
+
+			if (this.enabled) {
+				this.validateConfiguration()
+				logger.info('[Bitrix24Service] ✅ Интеграция включена')
+			} else {
+				logger.info('[Bitrix24Service] 🔌 Интеграция отключена')
+			}
+
+			this.initialized = true
+		} catch (error: any) {
+			logger.error(`[Bitrix24Service] Ошибка инициализации: ${error.message}`)
+			this.enabled = false
+			this.initialized = true
 		}
 	}
 
 	private validateConfiguration() {
 		if (!this.webhookUrl) {
-			throw new Error('BITRIX24_ENABLED=true требует BITRIX24_WEBHOOK_URL')
+			throw new Error('Bitrix24 включен, но WEBHOOK_URL не установлен')
 		}
 		try {
 			const url = new URL(this.webhookUrl)
@@ -62,13 +89,18 @@ class Bitrix24Service {
 
 	/**
 	 * Проверка, включена ли интеграция с Bitrix24
+	 * Выполняет ленивую инициализацию при первом вызове
 	 */
-	isEnabled(): boolean {
+	async isEnabled(): Promise<boolean> {
+		await this.ensureInitialized()
 		return this.enabled
 	}
 
 	// Deals: fields and creation
 	async getDealFields() {
+		await this.ensureInitialized()
+		if (!this.enabled || !this.webhookUrl) return null
+
 		const response = await retryRequest(() =>
 			axios.post(`${this.webhookUrl}crm.deal.fields`, {}, { timeout: 15000 })
 		)
@@ -76,7 +108,8 @@ class Bitrix24Service {
 	}
 
 	async createDeal(dealData: any) {
-		if (!this.enabled) {
+		await this.ensureInitialized()
+		if (!this.enabled || !this.webhookUrl) {
 			logger.debug('[Bitrix24Service] Пропуск createDeal - интеграция отключена')
 			return null
 		}
@@ -95,7 +128,8 @@ class Bitrix24Service {
 	}
 
 	async updateDeal(dealId: string, dealData: any) {
-		if (!this.enabled) {
+		await this.ensureInitialized()
+		if (!this.enabled || !this.webhookUrl) {
 			logger.debug('[Bitrix24Service] Пропуск updateDeal - интеграция отключена')
 			return null
 		}
@@ -112,7 +146,8 @@ class Bitrix24Service {
 		newStatus: string,
 		_categoryId?: string
 	) {
-		if (!this.enabled) {
+		await this.ensureInitialized()
+		if (!this.enabled || !this.webhookUrl) {
 			logger.debug('[Bitrix24Service] Пропуск updateDealStatus - интеграция отключена')
 			return null
 		}
@@ -125,7 +160,8 @@ class Bitrix24Service {
 	}
 
 	async getDeal(dealId: string) {
-		if (!this.enabled) {
+		await this.ensureInitialized()
+		if (!this.enabled || !this.webhookUrl) {
 			logger.debug('[Bitrix24Service] Пропуск getDeal - интеграция отключена')
 			return null
 		}

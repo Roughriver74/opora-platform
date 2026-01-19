@@ -13,6 +13,11 @@ router.get('/', settingsController.getAllSettings)
 router.get('/category/:category', settingsController.getSettingsByCategory)
 router.get('/:key', settingsController.getSetting)
 
+// Bitrix24 специфичные endpoints
+router.get('/bitrix24/config', settingsController.getBitrix24Config)
+router.post('/bitrix24/test-connection', settingsController.testBitrix24Connection)
+router.post('/bitrix24/reload', adminMiddleware, settingsController.reloadBitrix24Integration)
+
 // Изменение настроек (только для админов)
 router.put('/:key', adminMiddleware, settingsController.updateSetting)
 router.delete('/:key', adminMiddleware, settingsController.deleteSetting)

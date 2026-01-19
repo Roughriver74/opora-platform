@@ -21,7 +21,7 @@ import companyRoutes from './routes/companyRoutes'
 import contactRoutes from './routes/contactRoutes'
 import syncManagerRoutes from './routes/syncManagerRoutes'
 import apiTokenRoutes from './routes/apiTokenRoutes'
-import { setupSwagger } from './config/swagger'
+// import { setupSwagger } from './config/swagger' // Временно отключено
 // Utility for checking database connection status
 // Re-importing to fix potential resolution issues
 import { checkDatabaseConnection } from './utils/dbCheck'
@@ -50,7 +50,7 @@ app.use((req, res, next) => {
 })
 
 // Swagger документация (должна быть до authMiddleware)
-setupSwagger(app)
+// setupSwagger(app) // Временно отключено
 
 // Public Routes
 app.use('/api/auth', authRoutes)
