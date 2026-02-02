@@ -266,6 +266,124 @@ export class SyncController {
 			})
 		}
 	}
+
+	/**
+	 * Переиндексация заявок, отсутствующих в Elasticsearch
+	 * Находит заявки с formData в PostgreSQL, которых нет в ES, и индексирует их
+	 */
+	async reindexMissingSubmissions(
+		req: Request,
+		res: Response
+	): Promise<void> {
+		try {
+			logger.info(
+				'🔍 Начинаем поиск заявок, отсутствующих в Elasticsearch...'
+			)
+
+			const { AppDataSource } = await import(
+				'../database/config/database.config'
+			)
+			const { Submission } = await import(
+				'../database/entities/Submission.entity'
+			)
+
+			const submissionRepository = AppDataSource.getRepository(Submission)
+			const submissions = await submissionRepository.find({
+				order: { createdAt: 'DESC' },
+			})
+
+			logger.info(
+				`📊 Всего заявок в PostgreSQL: ${submissions.length}`
+			)
+
+			// Проверяем каждую заявку на наличие в ES
+			const missingSubmissions: typeof submissions = []
+
+			for (const submission of submissions) {
+				try {
+					const docId = `submission_${submission.id}`
+					const esDoc =
+						await elasticsearchService.getDocumentById(docId)
+
+					if (!esDoc || !esDoc.formData) {
+						missingSubmissions.push(submission)
+					}
+				} catch {
+					// Документ не найден в ES
+					missingSubmissions.push(submission)
+				}
+			}
+
+			logger.info(
+				`⚠️ Найдено ${missingSubmissions.length} заявок, отсутствующих в ES`
+			)
+
+			if (missingSubmissions.length === 0) {
+				res.json({
+					success: true,
+					message: 'Все заявки уже проиндексированы в Elasticsearch',
+					data: {
+						totalInPostgres: submissions.length,
+						missingInES: 0,
+						reindexed: 0,
+					},
+				})
+				return
+			}
+
+			// Индексируем пропущенные заявки
+			let reindexed = 0
+			let failed = 0
+			const errors: string[] = []
+
+			for (const submission of missingSubmissions) {
+				try {
+					await elasticsearchService.indexSubmission(submission)
+					reindexed++
+					logger.info(
+						`✅ Переиндексирована заявка #${submission.submissionNumber} (${submission.id})`
+					)
+				} catch (error: any) {
+					failed++
+					errors.push(
+						`#${submission.submissionNumber}: ${error.message}`
+					)
+					logger.error(
+						`❌ Ошибка переиндексации заявки #${submission.submissionNumber}:`,
+						error
+					)
+				}
+			}
+
+			logger.info(
+				`🎉 Переиндексация пропущенных заявок завершена: ${reindexed} успешно, ${failed} ошибок`
+			)
+
+			res.json({
+				success: true,
+				message: `Переиндексировано ${reindexed} заявок из ${missingSubmissions.length} пропущенных`,
+				data: {
+					totalInPostgres: submissions.length,
+					missingInES: missingSubmissions.length,
+					reindexed,
+					failed,
+					errors: errors.length > 0 ? errors : undefined,
+				},
+				timestamp: new Date().toISOString(),
+			})
+		} catch (error: any) {
+			logger.error(
+				'❌ Ошибка при переиндексации пропущенных заявок:',
+				error
+			)
+			res.status(500).json({
+				success: false,
+				message: 'Ошибка при переиндексации пропущенных заявок',
+				error: error.message,
+				timestamp: new Date().toISOString(),
+			})
+		}
+	}
 }
 
 export const syncController = new SyncController()

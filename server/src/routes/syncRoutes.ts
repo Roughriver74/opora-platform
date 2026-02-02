@@ -22,6 +22,12 @@ router.post(
 	syncController.reindexWithBitrixId.bind(syncController)
 )
 
+// Переиндексация только пропущенных заявок (быстрая починка)
+router.post(
+	'/reindex-missing',
+	syncController.reindexMissingSubmissions.bind(syncController)
+)
+
 /**
  * Все маршруты синхронизации временно без аутентификации для тестирования
  */
