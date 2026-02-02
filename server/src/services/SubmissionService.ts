@@ -686,16 +686,72 @@ export class SubmissionService extends BaseService<
 
 	/**
 	 * Получение данных полей формы для заявки из Elasticsearch
+	 * с fallback на PostgreSQL если документ не найден в ES
 	 */
 	async getSubmissionFormFields(
 		submissionId: string
 	): Promise<Record<string, any> | null> {
 		try {
 			const elasticsearchService = new ElasticsearchService()
-			return await elasticsearchService.getSubmissionFormFields(submissionId)
+			const esResult = await elasticsearchService.getSubmissionFormFields(submissionId)
+
+			if (esResult) {
+				return esResult
+			}
+
+			// Fallback на PostgreSQL если ES не содержит данных
+			logger.warn(
+				`[FALLBACK] ES не содержит formData для submission ${submissionId}, используем PostgreSQL`
+			)
+			const submission = await this.repository.findById(submissionId)
+
+			if (submission?.formData) {
+				// Асинхронно переиндексируем в ES чтобы следующий запрос шёл из ES
+				this.reindexSubmissionInES(submissionId, elasticsearchService).catch(
+					err =>
+						logger.error(
+							`Ошибка переиндексации submission ${submissionId} в ES:`,
+							err
+						)
+				)
+				return submission.formData
+			}
+
+			return null
 		} catch (error) {
 			logger.error('Ошибка получения данных полей формы:', error)
-			return null
+
+			// Fallback на PostgreSQL при ошибке ES
+			try {
+				const submission = await this.repository.findById(submissionId)
+				return submission?.formData || null
+			} catch (pgError) {
+				logger.error('Ошибка fallback на PostgreSQL:', pgError)
+				return null
+			}
+		}
+	}
+
+	/**
+	 * Переиндексация заявки в Elasticsearch из PostgreSQL
+	 */
+	private async reindexSubmissionInES(
+		submissionId: string,
+		elasticsearchService: ElasticsearchService
+	): Promise<void> {
+		try {
+			const submission = await this.repository.findById(submissionId)
+			if (!submission) return
+
+			await elasticsearchService.indexSubmission(submission)
+			logger.info(
+				`[REINDEX] Заявка ${submissionId} успешно переиндексирована в ES`
+			)
+		} catch (error) {
+			logger.error(
+				`[REINDEX] Ошибка переиндексации submission ${submissionId}:`,
+				error
+			)
 		}
 	}
 }
