@@ -1,7 +1,7 @@
 {
-	"name": "beton-crm",
+	"name": "opora-platform",
 	"version": "1.0.0",
-	"description": "Система оформления заявок на покупку бетона с интеграцией Битрикс24",
+	"description": "ОПОРА — Облачная Платформа Организации Рабочих Активностей",
 	"main": "index.js",
 	"scripts": {
 		"install:all": "npm install && cd client && npm install && cd ../server && npm install",
