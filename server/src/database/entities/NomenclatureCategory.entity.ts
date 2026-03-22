@@ -16,14 +16,25 @@ import {
 } from 'class-validator'
 import { AuditableEntity } from './base/AuditableEntity'
 import type { Nomenclature } from './Nomenclature.entity'
+import { Organization } from './Organization.entity'
 
 @Entity('nomenclature_categories')
-@Index(['code'], { unique: true })
 @Index(['parentId'])
 @Index(['isActive'])
 @Index(['bitrixSectionId'])
+@Index(['organizationId'])
+@Index(['organizationId', 'code'], { unique: true })
 export class NomenclatureCategory extends AuditableEntity {
-	@Column({ type: 'varchar', length: 100, unique: true })
+	@Column({ type: 'uuid', name: 'organization_id', nullable: true })
+	@IsOptional()
+	@IsUUID()
+	organizationId?: string
+
+	@ManyToOne(() => Organization)
+	@JoinColumn({ name: 'organization_id' })
+	organization?: Organization
+
+	@Column({ type: 'varchar', length: 100 })
 	@IsNotEmpty({ message: 'Код категории обязателен' })
 	@Length(1, 100, { message: 'Код должен быть от 1 до 100 символов' })
 	code: string

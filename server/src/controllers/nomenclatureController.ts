@@ -25,6 +25,8 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 			priceMax,
 		} = req.query
 
+		const orgId = req.organizationId
+
 		const result = await nomenclatureService.findWithFilters({
 			page: Number(page),
 			limit: Math.min(Number(limit), 100),
@@ -38,6 +40,8 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 			tags: tags ? (tags as string).split(',') : undefined,
 			priceMin: priceMin ? Number(priceMin) : undefined,
 			priceMax: priceMax ? Number(priceMax) : undefined,
+			// Мультитенантность
+			organizationId: orgId,
 		})
 
 		res.json(result)
@@ -77,10 +81,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const search = async (req: Request, res: Response, next: NextFunction) => {
 	try {
 		const { query = '', limit = 20 } = req.query
+		const orgId = req.organizationId
 
 		logger.info(`🔍 Nomenclature search: query="${query}", limit=${limit}`)
 
-		const results = await nomenclatureService.search(String(query), Number(limit))
+		const results = await nomenclatureService.search(String(query), Number(limit), orgId)
 		logger.info(`🔍 Nomenclature search results: ${results.length} items found`)
 
 		// Форматируем для использования в формах
@@ -153,7 +158,8 @@ export const getBySku = async (req: Request, res: Response, next: NextFunction) 
  */
 export const create = async (req: Request, res: Response, next: NextFunction) => {
 	try {
-		const item = await nomenclatureService.create(req.body)
+		const orgId = req.organizationId
+		const item = await nomenclatureService.create({ ...req.body, organizationId: orgId })
 		res.status(201).json(item)
 	} catch (error: any) {
 		if (error.message?.includes('уже существует')) {

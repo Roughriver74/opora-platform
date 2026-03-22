@@ -47,15 +47,33 @@ export class ContactService {
 	 * Получить все контакты с фильтрацией и пагинацией
 	 */
 	async findAll(
-		options: PaginationOptions & ContactFilterOptions = {}
+		options: PaginationOptions & ContactFilterOptions = {},
+		organizationId?: string
 	): Promise<PaginatedResult<Contact>> {
+		if (organizationId) {
+			return this.repository.findWithFilters({ ...options, organizationId } as any)
+		}
 		return this.repository.findWithFilters(options)
 	}
 
 	/**
 	 * Получить контакт по ID
 	 */
-	async findById(id: string): Promise<Contact | null> {
+	async findById(id: string, organizationId?: string): Promise<Contact | null> {
+		if (organizationId) {
+			// Контакт фильтруется через компанию
+			return this.repository.findOne({
+				where: { id },
+				relations: ['company'],
+			}).then(contact => {
+				if (!contact) return null
+				// Если контакт привязан к компании, проверяем организацию компании
+				if (contact.company && contact.company.organizationId !== organizationId) {
+					return null
+				}
+				return contact
+			})
+		}
 		return this.repository.findOne({
 			where: { id },
 			relations: ['company'],
@@ -86,15 +104,28 @@ export class ContactService {
 	/**
 	 * Поиск контактов (для автокомплита в формах)
 	 */
-	async search(query: string, limit: number = 20): Promise<Contact[]> {
+	async search(query: string, limit: number = 20, organizationId?: string): Promise<Contact[]> {
 		if (!query || query.trim().length === 0) {
 			// Возвращаем последние активные контакты
-			const result = await this.repository.findWithFilters({
+			const filterOptions: any = {
 				isActive: true,
 				limit,
 				sortBy: 'lastName',
 				sortOrder: 'ASC',
-			})
+			}
+			if (organizationId) {
+				filterOptions.organizationId = organizationId
+			}
+			const result = await this.repository.findWithFilters(filterOptions)
+			return result.data
+		}
+		if (organizationId) {
+			const result = await this.repository.findWithFilters({
+				search: query,
+				isActive: true,
+				limit,
+				organizationId,
+			} as any)
 			return result.data
 		}
 		return this.repository.search(query, limit)
@@ -120,7 +151,7 @@ export class ContactService {
 	/**
 	 * Создать новый контакт
 	 */
-	async create(data: CreateContactDTO): Promise<Contact> {
+	async create(data: CreateContactDTO, _organizationId?: string): Promise<Contact> {
 		// Проверка уникальности Bitrix ID
 		if (data.bitrixContactId) {
 			const existingByBitrix = await this.repository.isBitrixIdExists(data.bitrixContactId)
@@ -149,11 +180,16 @@ export class ContactService {
 	/**
 	 * Обновить контакт
 	 */
-	async update(id: string, data: UpdateContactDTO): Promise<Contact> {
+	async update(id: string, data: UpdateContactDTO, organizationId?: string): Promise<Contact> {
 		const contact = await this.repository.findOne({
 			where: { id },
 			relations: ['company'],
 		})
+
+		// Проверка принадлежности к организации через компанию
+		if (contact && organizationId && contact.company && contact.company.organizationId !== organizationId) {
+			throw new Error('Контакт не найден')
+		}
 		if (!contact) {
 			throw new Error('Контакт не найден')
 		}
@@ -180,8 +216,10 @@ export class ContactService {
 	/**
 	 * Удалить контакт (soft delete - деактивация)
 	 */
-	async delete(id: string): Promise<void> {
-		const contact = await this.repository.findById(id)
+	async delete(id: string, organizationId?: string): Promise<void> {
+		const contact = organizationId
+			? await this.findById(id, organizationId)
+			: await this.repository.findById(id)
 		if (!contact) {
 			throw new Error('Контакт не найден')
 		}
@@ -193,8 +231,10 @@ export class ContactService {
 	/**
 	 * Полностью удалить контакт (hard delete)
 	 */
-	async hardDelete(id: string): Promise<void> {
-		const contact = await this.repository.findById(id)
+	async hardDelete(id: string, organizationId?: string): Promise<void> {
+		const contact = organizationId
+			? await this.findById(id, organizationId)
+			: await this.repository.findById(id)
 		if (!contact) {
 			throw new Error('Контакт не найден')
 		}

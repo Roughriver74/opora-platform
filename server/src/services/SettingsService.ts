@@ -29,16 +29,29 @@ export class SettingsService extends BaseService<Settings, SettingsRepository> {
 		super(repo)
 	}
 
-	async findByKey(key: string): Promise<Settings | null> {
+	async findByKey(key: string, organizationId?: string): Promise<Settings | null> {
+		if (organizationId) {
+			// Ищем настройку для организации, если не найдена — глобальную (orgId = null)
+			const orgSetting = await this.repository.findOne({
+				where: { key, organizationId } as any,
+			})
+			if (orgSetting) return orgSetting
+			// Fallback: глобальная настройка
+		}
 		return this.repository.findByKey(key)
 	}
 
-	async findByCategory(category: SettingCategory): Promise<Settings[]> {
+	async findByCategory(category: SettingCategory, organizationId?: string): Promise<Settings[]> {
+		if (organizationId) {
+			return this.repository.findAll({
+				where: { category, organizationId } as any,
+			})
+		}
 		return this.repository.findByCategory(category)
 	}
 
-	async getSettingValue<T = any>(key: string, defaultValue?: T): Promise<T | undefined> {
-		const setting = await this.findByKey(key)
+	async getSettingValue<T = any>(key: string, defaultValue?: T, organizationId?: string): Promise<T | undefined> {
+		const setting = await this.findByKey(key, organizationId)
 		return setting ? setting.getValue<T>() : defaultValue
 	}
 
@@ -69,8 +82,8 @@ export class SettingsService extends BaseService<Settings, SettingsRepository> {
 		return value as T
 	}
 
-	async createSetting(data: CreateSettingDTO): Promise<Settings> {
-		const existingSetting = await this.findByKey(data.key)
+	async createSetting(data: CreateSettingDTO & { organizationId?: string }): Promise<Settings> {
+		const existingSetting = await this.findByKey(data.key, data.organizationId)
 		if (existingSetting) {
 			this.throwValidationError(`Настройка с ключом ${data.key} уже существует`)
 		}
@@ -89,13 +102,14 @@ export class SettingsService extends BaseService<Settings, SettingsRepository> {
 			isPublic: data.isPublic || false,
 			isEncrypted: data.isEncrypted || false,
 			validation: data.validation,
-		})
+			organizationId: data.organizationId,
+		} as any)
 
 		return setting
 	}
 
-	async updateSetting(key: string, data: UpdateSettingDTO): Promise<Settings | null> {
-		const setting = await this.findByKey(key)
+	async updateSetting(key: string, data: UpdateSettingDTO, organizationId?: string): Promise<Settings | null> {
+		const setting = await this.findByKey(key, organizationId)
 		if (!setting) {
 			this.throwNotFound('Настройка', key)
 		}
@@ -110,8 +124,8 @@ export class SettingsService extends BaseService<Settings, SettingsRepository> {
 		return updated
 	}
 
-	async upsertSetting(key: string, value: any, options?: Partial<CreateSettingDTO>): Promise<Settings> {
-		const existingSetting = await this.findByKey(key)
+	async upsertSetting(key: string, value: any, options?: Partial<CreateSettingDTO> & { organizationId?: string }): Promise<Settings> {
+		const existingSetting = await this.findByKey(key, options?.organizationId)
 
 		if (existingSetting) {
 			// Автошифрование при обновлении зашифрованной настройки
@@ -192,43 +206,19 @@ export class SettingsService extends BaseService<Settings, SettingsRepository> {
 			},
 			{
 				key: 'submissions.material_fields_config',
+				value: {},
+				description: 'Конфигурация полей материалов для отображения в карточках заявок. Каждая организация настраивает свои материалы через UI.',
+				category: SettingCategory.SYSTEM,
+				isPublic: true,
+			},
+			{
+				key: 'submissions.special_fields_config',
 				value: {
-					// Поля для бетона (высший приоритет)
-					concrete: {
-						priority: 1,
-						label: 'Бетон',
-						fields: [
-							'field_1750264442280',
-							'field_1750265427938',
-							'field_1750365587259',
-						],
-						volumeFields: [
-							'field_1750266620544',
-							'field_1750365852471',
-							'field_1750365626978',
-						],
-					},
-					// Поля для раствора (средний приоритет)
-					mortar: {
-						priority: 2,
-						label: 'Раствор',
-						fields: [
-							'field_1750366025933',
-							'field_1750365704478',
-						],
-						volumeFields: [
-							'field_1750365827152',
-						],
-					},
-					// Поля для ЦПС (низший приоритет)
-					cps: {
-						priority: 3,
-						label: 'ЦПС',
-						fields: [],
-						volumeFields: [],
-					},
+					clientField: '',
+					shipmentDateField: '',
+					abnTimeField: '',
 				},
-				description: 'Конфигурация полей материалов для отображения в карточках заявок',
+				description: 'Конфигурация специальных полей формы (поле клиента, даты отгрузки и др.). Каждая организация настраивает свои поля через UI.',
 				category: SettingCategory.SYSTEM,
 				isPublic: true,
 			},

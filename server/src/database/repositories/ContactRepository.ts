@@ -13,6 +13,8 @@ export interface ContactFilterOptions {
 	isPrimary?: boolean
 	search?: string
 	tags?: string[]
+	// Мультитенантность (фильтрация через компанию)
+	organizationId?: string
 }
 
 /**
@@ -212,6 +214,13 @@ export class ContactRepository extends BaseRepository<Contact> {
 		// Фильтр по тегам
 		if (options.tags && options.tags.length > 0) {
 			qb.andWhere('c.tags && :tags', { tags: options.tags })
+		}
+
+		// Фильтр по организации (через компанию)
+		if ((options as any).organizationId) {
+			qb.andWhere('company.organization_id = :organizationId', {
+				organizationId: (options as any).organizationId,
+			})
 		}
 
 		// Сортировка - используем имена свойств сущности (camelCase) для getManyAndCount

@@ -3,17 +3,30 @@ import {
 	Column,
 	Index,
 	OneToMany,
+	ManyToOne,
+	JoinColumn,
 } from 'typeorm'
-import { IsString, IsBoolean, IsOptional } from 'class-validator'
+import { IsString, IsBoolean, IsOptional, IsUUID } from 'class-validator'
 import { BaseEntity } from './base/BaseEntity'
 import { FormField } from './FormField.entity'
 import { Submission } from './Submission.entity'
+import { Organization } from './Organization.entity'
 
 @Entity('forms')
-@Index(['name'], { unique: true })
 @Index(['isActive'])
+@Index(['organizationId'])
+@Index(['organizationId', 'name'], { unique: true })
 export class Form extends BaseEntity {
-	@Column({ type: 'varchar', length: 255, unique: true })
+	@Column({ type: 'uuid', name: 'organization_id', nullable: true })
+	@IsOptional()
+	@IsUUID()
+	organizationId?: string
+
+	@ManyToOne(() => Organization)
+	@JoinColumn({ name: 'organization_id' })
+	organization?: Organization
+
+	@Column({ type: 'varchar', length: 255 })
 	@IsString()
 	name: string
 

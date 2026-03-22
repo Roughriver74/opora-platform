@@ -7,6 +7,8 @@ import { getUserService } from '../services/UserService'
 
 const userService = getUserService()
 
+import { OrganizationRole } from '../database/entities/UserOrganization.entity'
+
 // Интерфейс для пользователя в токене
 interface AuthUser {
 	id?: string
@@ -16,6 +18,10 @@ interface AuthUser {
 	tokenType: 'access'
 	bitrixUserId?: string
 	settings?: Record<string, any>
+	// Мультитенант поля
+	isSuperAdmin?: boolean
+	organizationId?: string
+	organizationRole?: OrganizationRole
 }
 
 // Расширяем интерфейс Request для добавления пользовательских свойств
@@ -24,6 +30,10 @@ declare global {
 		interface Request {
 			user?: AuthUser
 			isAdmin?: boolean
+			// Мультитенант поля
+			organizationId?: string
+			organizationRole?: OrganizationRole
+			isSuperAdmin?: boolean
 		}
 	}
 }
@@ -145,17 +155,28 @@ export const authMiddleware = async (
 							settings: user.settings,
 						})
 
+						const isSuperAdmin = user.isSuperAdmin || false
+						const organizationId = decoded.organizationId || undefined
+						const organizationRole = decoded.organizationRole || undefined
+
 						req.user = {
 							id: user.id,
 							role: user.role,
-							isAdmin: user.role === 'admin',
+							isAdmin: isSuperAdmin || user.role === 'admin' || organizationRole === OrganizationRole.ORG_ADMIN,
 							isUser: user.role === 'user',
 							tokenType: 'access',
 							// Приоритет: сначала из JWT токена, затем из БД
 							bitrixUserId: decoded.bitrixUserId || user.bitrixUserId,
 							settings: user.settings,
+							// Мультитенант
+							isSuperAdmin,
+							organizationId,
+							organizationRole,
 						}
-						req.isAdmin = user.role === 'admin'
+						req.isAdmin = isSuperAdmin || user.role === 'admin' || organizationRole === OrganizationRole.ORG_ADMIN
+						req.isSuperAdmin = isSuperAdmin
+						req.organizationId = organizationId
+						req.organizationRole = organizationRole
 					} else {
 						console.log(`❌ User not found or not active for userId: ${userId}`)
 						req.isAdmin = false

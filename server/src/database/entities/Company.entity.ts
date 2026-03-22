@@ -2,6 +2,8 @@ import {
 	Entity,
 	Column,
 	OneToMany,
+	ManyToOne,
+	JoinColumn,
 	Index,
 } from 'typeorm'
 import type { Contact } from './Contact.entity'
@@ -13,8 +15,10 @@ import {
 	IsEnum,
 	IsArray,
 	IsEmail,
+	IsUUID,
 } from 'class-validator'
 import { AuditableEntity } from './base/AuditableEntity'
+import { Organization } from './Organization.entity'
 
 /**
  * Тип компании
@@ -39,7 +43,17 @@ export enum CompanySyncStatus {
 
 @Entity('companies')
 @Index('idx_companies_search_vector', { synchronize: false }) // GIN index создаётся в миграции
+@Index(['organizationId'])
 export class Company extends AuditableEntity {
+	@Column({ type: 'uuid', name: 'organization_id', nullable: true })
+	@IsOptional()
+	@IsUUID()
+	organizationId?: string
+
+	@ManyToOne(() => Organization)
+	@JoinColumn({ name: 'organization_id' })
+	organization?: Organization
+
 	// === Основные реквизиты ===
 
 	@Column({ type: 'varchar', length: 500 })

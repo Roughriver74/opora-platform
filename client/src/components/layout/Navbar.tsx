@@ -16,6 +16,9 @@ import {
 	ListItemText,
 	useMediaQuery,
 	useTheme,
+	Chip,
+	Divider,
+	ListSubheader,
 } from '@mui/material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
@@ -25,17 +28,27 @@ import AssignmentIcon from '@mui/icons-material/Assignment'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
 import LogoutIcon from '@mui/icons-material/Logout'
 import MenuIcon from '@mui/icons-material/Menu'
+import BusinessIcon from '@mui/icons-material/Business'
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
 import { useAuth } from '../../contexts/auth'
 import Logo from '../common/Logo'
 
 const Navbar: React.FC = () => {
-	const { user, logout, isAuthenticated } = useAuth()
+	const {
+		user,
+		logout,
+		isAuthenticated,
+		currentOrganization,
+		organizations,
+		selectOrganization,
+	} = useAuth()
 	const navigate = useNavigate()
 	const location = useLocation()
 	const theme = useTheme()
 	const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 
 	const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
+	const [orgAnchorEl, setOrgAnchorEl] = React.useState<null | HTMLElement>(null)
 	const [mobileOpen, setMobileOpen] = React.useState(false)
 
 	const handleMenu = useCallback((event: React.MouseEvent<HTMLElement>) => {
@@ -45,6 +58,25 @@ const Navbar: React.FC = () => {
 	const handleClose = useCallback(() => {
 		setAnchorEl(null)
 	}, [])
+
+	const handleOrgMenuOpen = useCallback(
+		(event: React.MouseEvent<HTMLElement>) => {
+			setOrgAnchorEl(event.currentTarget)
+		},
+		[]
+	)
+
+	const handleOrgMenuClose = useCallback(() => {
+		setOrgAnchorEl(null)
+	}, [])
+
+	const handleOrgSwitch = useCallback(
+		async (orgId: string) => {
+			handleOrgMenuClose()
+			await selectOrganization(orgId)
+		},
+		[selectOrganization, handleOrgMenuClose]
+	)
 
 	const handleMobileToggle = useCallback(() => {
 		setMobileOpen(prev => !prev)
@@ -60,13 +92,10 @@ const Navbar: React.FC = () => {
 	// Обработчик клика по навигационным элементам
 	const handleNavClick = useCallback(
 		(path: string) => {
-			// Закрываем мобильное меню
 			setMobileOpen(false)
 
-			// Попробуем обычную навигацию
 			navigate(path)
 
-			// Если navigate не работает, используем window.location как fallback
 			setTimeout(() => {
 				if (location.pathname !== path) {
 					window.location.href = path
@@ -94,6 +123,8 @@ const Navbar: React.FC = () => {
 		})
 	}
 
+	const hasMultipleOrgs = organizations.length > 1
+
 	const drawer = (
 		<Box sx={{ width: 250 }}>
 			<Box
@@ -107,6 +138,16 @@ const Navbar: React.FC = () => {
 			>
 				<Logo size={32} variant='default' />
 			</Box>
+			{currentOrganization && (
+				<Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+					<Typography variant='caption' color='text.secondary'>
+						Организация
+					</Typography>
+					<Typography variant='body2' fontWeight={600}>
+						{currentOrganization.name}
+					</Typography>
+				</Box>
+			)}
 			<List>
 				{menuItems.map(item => (
 					<ListItem
@@ -120,7 +161,6 @@ const Navbar: React.FC = () => {
 							textDecoration: 'none',
 							color: 'inherit',
 							cursor: 'pointer',
-							// Подсвечиваем активную страницу
 							backgroundColor:
 								location.pathname === item.path
 									? 'rgba(0,0,0,0.1)'
@@ -134,6 +174,41 @@ const Navbar: React.FC = () => {
 						<ListItemText primary={item.text} />
 					</ListItem>
 				))}
+				{hasMultipleOrgs && (
+					<>
+						<Divider />
+						<ListSubheader>Переключить организацию</ListSubheader>
+						{organizations.map(org => (
+							<ListItem
+								key={org.id}
+								component='div'
+								onClick={() => {
+									setMobileOpen(false)
+									handleOrgSwitch(org.id)
+								}}
+								sx={{
+									cursor: 'pointer',
+									backgroundColor:
+										currentOrganization?.id === org.id
+											? 'rgba(0,0,0,0.08)'
+											: 'transparent',
+									'&:hover': {
+										backgroundColor: 'rgba(0,0,0,0.1)',
+									},
+								}}
+							>
+								<ListItemIcon>
+									<BusinessIcon />
+								</ListItemIcon>
+								<ListItemText
+									primary={org.name}
+									secondary={org.slug}
+								/>
+							</ListItem>
+						))}
+					</>
+				)}
+				<Divider />
 				<ListItem onClick={handleLogout} sx={{ cursor: 'pointer' }}>
 					<ListItemIcon>
 						<LogoutIcon />
@@ -202,6 +277,74 @@ const Navbar: React.FC = () => {
 							<Logo size={isMobile ? 32 : 40} variant='white' />
 						</Typography>
 
+						{/* Название текущей организации */}
+						{!isMobile && currentOrganization && (
+							<Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
+								{hasMultipleOrgs ? (
+									<Chip
+										icon={<BusinessIcon />}
+										label={currentOrganization.name}
+										onClick={handleOrgMenuOpen}
+										onDelete={handleOrgMenuOpen}
+										deleteIcon={<SwapHorizIcon />}
+										variant='outlined'
+										size='small'
+										sx={{
+											color: 'white',
+											borderColor: 'rgba(255,255,255,0.4)',
+											'& .MuiChip-icon': { color: 'white' },
+											'& .MuiChip-deleteIcon': {
+												color: 'rgba(255,255,255,0.7)',
+											},
+											'&:hover': {
+												borderColor: 'rgba(255,255,255,0.7)',
+											},
+										}}
+									/>
+								) : (
+									<Chip
+										icon={<BusinessIcon />}
+										label={currentOrganization.name}
+										variant='outlined'
+										size='small'
+										sx={{
+											color: 'white',
+											borderColor: 'rgba(255,255,255,0.4)',
+											'& .MuiChip-icon': { color: 'white' },
+										}}
+									/>
+								)}
+								{/* Меню переключения организаций */}
+								<Menu
+									anchorEl={orgAnchorEl}
+									open={Boolean(orgAnchorEl)}
+									onClose={handleOrgMenuClose}
+									anchorOrigin={{
+										vertical: 'bottom',
+										horizontal: 'left',
+									}}
+								>
+									{organizations.map(org => (
+										<MenuItem
+											key={org.id}
+											selected={
+												currentOrganization?.id === org.id
+											}
+											onClick={() => handleOrgSwitch(org.id)}
+										>
+											<ListItemIcon>
+												<BusinessIcon fontSize='small' />
+											</ListItemIcon>
+											<ListItemText
+												primary={org.name}
+												secondary={org.slug}
+											/>
+										</MenuItem>
+									))}
+								</Menu>
+							</Box>
+						)}
+
 						{!isMobile && <Box sx={{ flexGrow: 1 }} />}
 
 						{isMobile ? (
@@ -225,7 +368,6 @@ const Navbar: React.FC = () => {
 											my: 2,
 											display: 'flex',
 											mx: 1,
-											// Подсвечиваем активную страницу
 											backgroundColor:
 												location.pathname === item.path
 													? 'rgba(255,255,255,0.1)'
@@ -291,7 +433,7 @@ const Navbar: React.FC = () => {
 				onClose={handleMobileToggle}
 				sx={{ zIndex: 1200 }}
 				ModalProps={{
-					keepMounted: true, // Better open performance on mobile.
+					keepMounted: true,
 				}}
 			>
 				{drawer}

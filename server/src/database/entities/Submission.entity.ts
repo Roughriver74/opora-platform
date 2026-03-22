@@ -14,10 +14,12 @@ import {
 	IsArray,
 	IsNumber,
 	IsBoolean,
+	IsUUID,
 } from 'class-validator'
 import { BaseEntity } from './base/BaseEntity'
 import { User } from './User.entity'
 import { Form } from './Form.entity'
+import { Organization } from './Organization.entity'
 import { getSubmissionRepository } from '../repositories'
 
 export enum SubmissionPriority {
@@ -46,7 +48,17 @@ export enum BitrixSyncStatus {
 @Index(['formName', 'createdAt'])
 @Index(['yearCreated', 'monthOfYear'])
 @Index(['assignedToName', 'status'])
+@Index(['organizationId'])
 export class Submission extends BaseEntity {
+	@Column({ type: 'uuid', name: 'organization_id', nullable: true })
+	@IsOptional()
+	@IsUUID()
+	organizationId?: string
+
+	@ManyToOne(() => Organization)
+	@JoinColumn({ name: 'organization_id' })
+	organization?: Organization
+
 	@Column({ type: 'varchar', length: 50, unique: true })
 	@IsOptional()
 	@IsString()

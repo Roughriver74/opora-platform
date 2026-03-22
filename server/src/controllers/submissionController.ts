@@ -96,7 +96,8 @@ export const submitForm = async (req: Request, res: Response) => {
 			// ШАГ 1: СНАЧАЛА сохраняем заявку в PostgreSQL (источник истины)
 			console.log('[SUBMIT_FORM] Шаг 1: Сохранение заявки в PostgreSQL...')
 
-			const submissionData = {
+			const orgId = req.organizationId
+			const submissionData: any = {
 				formId: formId,
 				userId: userId,
 				title: dealTitle,
@@ -112,6 +113,8 @@ export const submitForm = async (req: Request, res: Response) => {
 				bitrixSyncStatus: BitrixSyncStatus.PENDING,
 				bitrixDealId: null,
 				bitrixSyncAttempts: 0,
+				// Мультитенантность
+				organizationId: orgId,
 			}
 
 			const submission = await submissionService.createSubmission(submissionData)
@@ -277,8 +280,10 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 			sortOrder,
 		})
 
+		const orgId = req.organizationId
+
 		// Подготовка фильтров
-		const filters = {
+		const filters: any = {
 			status: status as string,
 			priority: priority as SubmissionPriority,
 			assignedToId: assignedTo as string,
@@ -293,6 +298,8 @@ export const getAllSubmissions = async (req: Request, res: Response) => {
 				: undefined,
 			formId: formId as string,
 			bitrixSyncStatus: bitrixSyncStatus as BitrixSyncStatus,
+			// Мультитенантность
+			organizationId: orgId,
 		}
 
 		// Подготовка пагинации
@@ -373,8 +380,10 @@ export const getMySubmissions = async (req: Request, res: Response) => {
 			? ((sortOrder as string).toUpperCase() as 'ASC' | 'DESC')
 			: 'DESC'
 
+		const orgId = req.organizationId
+
 		// Подготовка фильтров
-		const filters = {
+		const filters: any = {
 			userId,
 			status: status as string,
 			priority: priority as SubmissionPriority,
@@ -387,6 +396,8 @@ export const getMySubmissions = async (req: Request, res: Response) => {
 				: tags
 				? [tags as string]
 				: undefined,
+			// Мультитенантность
+			organizationId: orgId,
 		}
 
 		// Подготовка пагинации
@@ -1072,38 +1083,44 @@ export const deleteSubmission = async (req: Request, res: Response) => {
 	}
 }
 
-// Получение статусов из Битрикс24
+// Получение статусов заявок (из настроек организации или default)
 export const getBitrixStages = async (req: Request, res: Response) => {
 	try {
 		const { categoryId } = req.params
+		const orgId = req.organizationId
 
-		// Возвращаем только нужные статусы
-		const allowedStages = [
-			{
-				id: 'C1:NEW',
-				name: 'Новая',
-				sort: 10,
-			},
-			{
-				id: 'C1:UC_GJLIZP',
-				name: 'Отправлено',
-				sort: 20,
-			},
-			{
-				id: 'C1:WON',
-				name: 'Отгружено',
-				sort: 30,
-			},
-			{
-				id: 'C1:LOSE',
-				name: 'Отменено',
-				sort: 40,
-			},
+		// Дефолтные статусы (используются если организация не настроила свои)
+		const defaultStages = [
+			{ id: 'NEW', name: 'Новая', sort: 10 },
+			{ id: 'IN_PROGRESS', name: 'В работе', sort: 20 },
+			{ id: 'COMPLETED', name: 'Выполнено', sort: 30 },
+			{ id: 'CANCELLED', name: 'Отменено', sort: 40 },
 		]
+
+		// Если есть организация, пробуем получить её кастомные статусы
+		if (orgId) {
+			const { getOrganizationService } = await import('../services/OrganizationService')
+			const orgService = getOrganizationService()
+			const settings = await orgService.getSettings(orgId)
+
+			if (settings.bitrixStatuses && Object.keys(settings.bitrixStatuses).length > 0) {
+				const customStages = Object.entries(settings.bitrixStatuses)
+					.filter(([_, value]) => value)
+					.map(([key, value], index) => ({
+						id: value as string,
+						name: key.charAt(0).toUpperCase() + key.slice(1),
+						sort: (index + 1) * 10,
+					}))
+
+				if (customStages.length > 0) {
+					return res.json({ success: true, data: customStages })
+				}
+			}
+		}
 
 		res.json({
 			success: true,
-			data: allowedStages,
+			data: defaultStages,
 		})
 	} catch (error: any) {
 		console.error('Ошибка получения статусов:', error)

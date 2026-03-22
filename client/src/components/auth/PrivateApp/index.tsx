@@ -4,19 +4,21 @@ import { Box, CircularProgress } from '@mui/material'
 import { useAuth } from '../../../contexts/auth'
 import { LoginForm } from '../LoginForm'
 import { ProtectedRoute } from '../ProtectedRoute'
+import { OrganizationSelector } from '../OrganizationSelector'
 import Layout from '../../layout/Layout'
 import HomePage from '../../../pages/HomePage'
 import AdminPage from '../../../pages/admin/AdminPage'
+import OrganizationsPage from '../../../pages/admin/Organizations'
 import DashboardPage from '../../../pages/DashboardPage'
 import MySubmissions from '../../user/MySubmissions'
 import AnimatedLogo from '../../common/AnimatedLogo'
 
 export const PrivateApp: React.FC = () => {
-	const { isAuthenticated, isLoading, checkAuth } = useAuth()
+	const { isAuthenticated, isLoading, checkAuth, needsOrganizationSelection } =
+		useAuth()
 
 	// Проверяем авторизацию при загрузке приложения
 	useEffect(() => {
-		// Инициализация авторизации только при первом запуске
 		const initAuth = async () => {
 			try {
 				await checkAuth()
@@ -25,10 +27,9 @@ export const PrivateApp: React.FC = () => {
 			}
 		}
 
-		// Выполняем проверку авторизации при монтировании компонента
 		initAuth()
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []) // Намеренно исключаем зависимости для выполнения только при монтировании
+	}, [])
 
 	// Показываем загрузку только при первичной инициализации
 	if (isLoading) {
@@ -52,6 +53,11 @@ export const PrivateApp: React.FC = () => {
 		return <LoginForm />
 	}
 
+	// Если нужно выбрать организацию
+	if (needsOrganizationSelection) {
+		return <OrganizationSelector />
+	}
+
 	// Пользователь авторизован - показываем основное приложение
 	return (
 		<Layout>
@@ -70,6 +76,14 @@ export const PrivateApp: React.FC = () => {
 					element={
 						<ProtectedRoute requiredRole='admin'>
 							<AdminPage />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
+					path='/admin/organizations'
+					element={
+						<ProtectedRoute requiredRole='admin'>
+							<OrganizationsPage />
 						</ProtectedRoute>
 					}
 				/>

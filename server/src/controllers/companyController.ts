@@ -26,6 +26,8 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 			sortOrder = 'ASC',
 		} = req.query
 
+		const orgId = req.organizationId
+
 		const result = await companyService.findAll({
 			page: parseInt(page as string),
 			limit: parseInt(limit as string),
@@ -37,7 +39,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 			tags: tags ? (tags as string).split(',') : undefined,
 			sortBy: sortBy as string,
 			sortOrder: sortOrder as 'ASC' | 'DESC',
-		})
+		}, orgId)
 
 		res.json({
 			success: true,
@@ -88,7 +90,8 @@ export const search = async (req: Request, res: Response, next: NextFunction): P
 	try {
 		const { q = '', limit = '20' } = req.query
 
-		const companies = await companyService.search(q as string, parseInt(limit as string))
+		const orgId = req.organizationId
+		const companies = await companyService.search(q as string, parseInt(limit as string), orgId)
 
 		// Форматируем для использования в формах
 		const options = companies.map(company => ({
@@ -120,8 +123,9 @@ export const search = async (req: Request, res: Response, next: NextFunction): P
 export const getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
 		const { id } = req.params
+		const orgId = req.organizationId
 
-		const company = await companyService.findById(id)
+		const company = await companyService.findById(id, orgId)
 		if (!company) {
 			res.status(404).json({
 				success: false,
@@ -193,7 +197,8 @@ export const getByInn = async (req: Request, res: Response, next: NextFunction):
  */
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
-		const company = await companyService.create(req.body)
+		const orgId = req.organizationId
+		const company = await companyService.create(req.body, orgId)
 
 		res.status(201).json({
 			success: true,
@@ -219,8 +224,9 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
 		const { id } = req.params
+		const orgId = req.organizationId
 
-		const company = await companyService.update(id, req.body)
+		const company = await companyService.update(id, req.body, orgId)
 
 		res.json({
 			success: true,
@@ -253,8 +259,9 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
 export const remove = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
 		const { id } = req.params
+		const orgId = req.organizationId
 
-		await companyService.delete(id)
+		await companyService.delete(id, orgId)
 
 		res.json({
 			success: true,
@@ -279,8 +286,9 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
 export const hardDelete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
 		const { id } = req.params
+		const orgId = req.organizationId
 
-		await companyService.hardDelete(id)
+		await companyService.hardDelete(id, orgId)
 
 		res.json({
 			success: true,

@@ -13,12 +13,14 @@ import {
 	IsDate,
 	IsNumber,
 	IsObject,
+	IsUUID,
 } from 'class-validator'
 import { BaseEntity } from './base/BaseEntity'
 import { User } from './User.entity'
 import { Form } from './Form.entity'
 import { SubmissionPeriodGroup } from './SubmissionPeriodGroup.entity'
 import { Submission } from './Submission.entity'
+import { Organization } from './Organization.entity'
 
 export enum ScheduledSubmissionStatus {
 	PENDING = 'pending',
@@ -38,7 +40,17 @@ export enum ScheduledSubmissionStatus {
 @Index(['status', 'scheduledDate'])
 @Index(['formId', 'status'])
 @Index(['assignedToId', 'status'])
+@Index(['organizationId'])
 export class ScheduledSubmission extends BaseEntity {
+	@Column({ type: 'uuid', name: 'organization_id', nullable: true })
+	@IsOptional()
+	@IsUUID()
+	organizationId?: string
+
+	@ManyToOne(() => Organization)
+	@JoinColumn({ name: 'organization_id' })
+	organization?: Organization
+
 	@ManyToOne(() => SubmissionPeriodGroup, { nullable: true })
 	@JoinColumn({ name: 'period_group_id' })
 	periodGroup?: SubmissionPeriodGroup

@@ -43,6 +43,8 @@ export interface CreateSubmissionDTO {
 	periodGroupId?: string
 	periodStartDate?: Date
 	periodEndDate?: Date
+	// Мультитенантность
+	organizationId?: string
 }
 
 export interface UpdateSubmissionDTO {
@@ -57,7 +59,10 @@ export interface UpdateSubmissionDTO {
 
 export interface SubmissionSearchParams
 	extends SubmissionFilters,
-		PaginationOptions {}
+		PaginationOptions {
+	// Мультитенантность
+	organizationId?: string
+}
 
 export class SubmissionService extends BaseService<
 	Submission,
@@ -120,6 +125,8 @@ export class SubmissionService extends BaseService<
 					periodGroupId: data.periodGroupId,
 					periodStartDate: data.periodStartDate,
 					periodEndDate: data.periodEndDate,
+					// Мультитенантность
+					organizationId: data.organizationId,
 				})
 
 				// Убеждаемся, что submissionNumber сгенерирован
@@ -295,6 +302,10 @@ export class SubmissionService extends BaseService<
 	async searchSubmissions(
 		params: SubmissionSearchParams
 	): Promise<PaginatedResult<Submission>> {
+		// Если указан organizationId, добавляем его в фильтры
+		// Это будет работать для обычного поиска через repository.findWithFilters
+		// Для Elasticsearch поиска мы дополнительно фильтруем результаты
+
 		// Если есть поисковый запрос, используем Elasticsearch
 		if (params.search && params.search.trim()) {
 			try {

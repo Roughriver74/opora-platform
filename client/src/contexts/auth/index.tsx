@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react'
 import { authService } from '../../services/authService'
+import { organizationService } from '../../services/organizationService'
 import { User } from '../../types/user'
+import { OrganizationInfo } from '../../types/organization'
 
 // Типы для состояния аутентификации
 interface AuthState {
@@ -8,6 +10,9 @@ interface AuthState {
 	isLoading: boolean
 	error: string | null
 	isAuthenticated: boolean
+	currentOrganization: OrganizationInfo | null
+	organizations: OrganizationInfo[]
+	needsOrganizationSelection: boolean
 }
 
 // Типы для действий
@@ -18,13 +23,27 @@ type AuthAction =
 	| { type: 'AUTH_LOGOUT' }
 	| { type: 'SET_LOADING'; payload: boolean }
 	| { type: 'CLEAR_ERROR' }
+	| {
+			type: 'SET_ORGANIZATIONS'
+			payload: {
+				organizations: OrganizationInfo[]
+				needsSelection: boolean
+			}
+	  }
+	| {
+			type: 'SET_CURRENT_ORGANIZATION'
+			payload: OrganizationInfo
+	  }
 
 // Начальное состояние
 const initialState: AuthState = {
 	user: null,
-	isLoading: true, // Изначально true, чтобы показать загрузку при проверке токена
+	isLoading: true,
 	error: null,
 	isAuthenticated: false,
+	currentOrganization: null,
+	organizations: [],
+	needsOrganizationSelection: false,
 }
 
 // Редьюсер для управления состоянием
@@ -57,6 +76,9 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 				user: null,
 				isAuthenticated: false,
 				error: null,
+				currentOrganization: null,
+				organizations: [],
+				needsOrganizationSelection: false,
 			}
 		case 'SET_LOADING':
 			return {
@@ -68,21 +90,37 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 				...state,
 				error: null,
 			}
+		case 'SET_ORGANIZATIONS':
+			return {
+				...state,
+				organizations: action.payload.organizations,
+				needsOrganizationSelection: action.payload.needsSelection,
+			}
+		case 'SET_CURRENT_ORGANIZATION':
+			return {
+				...state,
+				currentOrganization: action.payload,
+				needsOrganizationSelection: false,
+			}
 		default:
 			return state
 	}
 }
 
-// Интерфейс для контекста - изменяю чтобы свойства были доступны напрямую
+// Интерфейс для контекста
 interface AuthContextType {
 	user: User | null
 	isLoading: boolean
 	error: string | null
 	isAuthenticated: boolean
+	currentOrganization: OrganizationInfo | null
+	organizations: OrganizationInfo[]
+	needsOrganizationSelection: boolean
 	login: (credentials: { email: string; password: string }) => Promise<boolean>
 	logout: () => void
 	clearError: () => void
 	checkAuth: () => Promise<boolean>
+	selectOrganization: (orgId: string) => Promise<void>
 }
 
 // Создание контекста
@@ -105,7 +143,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 	const [state, dispatch] = useReducer(authReducer, initialState)
 
-	// Функция для входа в систему - возвращаю boolean
+	// Функция для входа в систему
 	const login = async (credentials: {
 		email: string
 		password: string
@@ -116,7 +154,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 			const data = await authService.login(credentials)
 
 			// Сохраняем данные пользователя и токены
-			// Сервер возвращает accessToken и refreshToken
 			localStorage.setItem('user', JSON.stringify(data.user))
 			localStorage.setItem('token', data.accessToken)
 			localStorage.setItem('refreshToken', data.refreshToken)
@@ -125,6 +162,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 				type: 'AUTH_SUCCESS',
 				payload: { user: data.user, token: data.accessToken },
 			})
+
+			// Проверяем наличие организаций в ответе
+			const responseData = data as any
+			if (
+				responseData.organizations &&
+				Array.isArray(responseData.organizations)
+			) {
+				const orgs: OrganizationInfo[] = responseData.organizations
+
+				if (responseData.needsOrganizationSelection && orgs.length > 1) {
+					// Нужно выбрать организацию
+					dispatch({
+						type: 'SET_ORGANIZATIONS',
+						payload: {
+							organizations: orgs,
+							needsSelection: true,
+						},
+					})
+				} else if (orgs.length === 1) {
+					// Одна организация — выбираем автоматически
+					dispatch({
+						type: 'SET_CURRENT_ORGANIZATION',
+						payload: orgs[0],
+					})
+					localStorage.setItem(
+						'currentOrganization',
+						JSON.stringify(orgs[0])
+					)
+				} else if (orgs.length > 1) {
+					// Несколько организаций, но сервер уже выбрал
+					dispatch({
+						type: 'SET_ORGANIZATIONS',
+						payload: { organizations: orgs, needsSelection: false },
+					})
+				}
+
+				// Если сервер уже прислал текущую организацию
+				if (responseData.currentOrganization) {
+					dispatch({
+						type: 'SET_CURRENT_ORGANIZATION',
+						payload: responseData.currentOrganization,
+					})
+					localStorage.setItem(
+						'currentOrganization',
+						JSON.stringify(responseData.currentOrganization)
+					)
+				}
+			}
 
 			return true
 		} catch (error: any) {
@@ -136,11 +221,55 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 		}
 	}
 
+	// Функция для выбора организации
+	const selectOrganization = async (orgId: string): Promise<void> => {
+		try {
+			dispatch({ type: 'SET_LOADING', payload: true })
+
+			const data = await organizationService.selectOrganization(orgId)
+
+			// Обновляем токены
+			if (data.accessToken) {
+				localStorage.setItem('token', data.accessToken)
+			}
+			if (data.refreshToken) {
+				localStorage.setItem('refreshToken', data.refreshToken)
+			}
+			if (data.user) {
+				localStorage.setItem('user', JSON.stringify(data.user))
+				dispatch({
+					type: 'AUTH_SUCCESS',
+					payload: { user: data.user, token: data.accessToken },
+				})
+			}
+
+			// Устанавливаем текущую организацию
+			const org =
+				data.currentOrganization ||
+				state.organizations.find(o => o.id === orgId)
+			if (org) {
+				dispatch({ type: 'SET_CURRENT_ORGANIZATION', payload: org })
+				localStorage.setItem('currentOrganization', JSON.stringify(org))
+			}
+		} catch (error: any) {
+			dispatch({
+				type: 'AUTH_FAILURE',
+				payload: {
+					error:
+						error.message || 'Ошибка при выборе организации',
+				},
+			})
+		} finally {
+			dispatch({ type: 'SET_LOADING', payload: false })
+		}
+	}
+
 	// Функция для выхода из системы
 	const logout = () => {
 		localStorage.removeItem('user')
 		localStorage.removeItem('token')
 		localStorage.removeItem('refreshToken')
+		localStorage.removeItem('currentOrganization')
 		dispatch({ type: 'AUTH_LOGOUT' })
 	}
 
@@ -156,39 +285,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 			const userStr = localStorage.getItem('user')
 
 			if (!token || !userStr) {
-				// Если нет токена, просто устанавливаем isLoading в false
 				dispatch({ type: 'SET_LOADING', payload: false })
 				return false
 			}
 
-			// Если токен есть, начинаем проверку
 			const user = JSON.parse(userStr)
 
-			// Проверяем токен только если он не истек (базовая проверка)
+			// Проверяем токен только если он не истек
 			const tokenExp = JSON.parse(atob(token.split('.')[1])).exp
 			const now = Date.now() / 1000
 
 			if (tokenExp < now) {
-				// Токен истек - очищаем данные
 				localStorage.removeItem('user')
 				localStorage.removeItem('token')
 				localStorage.removeItem('refreshToken')
+				localStorage.removeItem('currentOrganization')
 				dispatch({ type: 'AUTH_LOGOUT' })
 				return false
 			}
 
-			// Токен валиден - устанавливаем пользователя
+			// Токен валиден — устанавливаем пользователя
 			dispatch({
 				type: 'AUTH_SUCCESS',
 				payload: { user, token },
 			})
+
+			// Восстанавливаем данные организации из localStorage
+			const orgStr = localStorage.getItem('currentOrganization')
+			if (orgStr) {
+				try {
+					const org = JSON.parse(orgStr)
+					dispatch({ type: 'SET_CURRENT_ORGANIZATION', payload: org })
+				} catch {
+					// Если данные организации повреждены — игнорируем
+				}
+			}
+
 			return true
 		} catch (error) {
 			console.error('Ошибка проверки авторизации:', error)
-			// При ошибке очищаем данные
 			localStorage.removeItem('user')
 			localStorage.removeItem('token')
 			localStorage.removeItem('refreshToken')
+			localStorage.removeItem('currentOrganization')
 			dispatch({ type: 'AUTH_LOGOUT' })
 			return false
 		} finally {
@@ -196,16 +335,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 		}
 	}
 
-	// Предоставляю свойства напрямую вместо объекта state
 	const contextValue: AuthContextType = {
 		user: state.user,
 		isLoading: state.isLoading,
 		error: state.error,
 		isAuthenticated: state.isAuthenticated,
+		currentOrganization: state.currentOrganization,
+		organizations: state.organizations,
+		needsOrganizationSelection: state.needsOrganizationSelection,
 		login,
 		logout,
 		clearError,
 		checkAuth,
+		selectOrganization,
 	}
 
 	return (

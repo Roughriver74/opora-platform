@@ -8,7 +8,7 @@ export interface CacheOptions {
 
 export class CacheService {
 	private defaultTTL = 3600 // 1 hour
-	private defaultPrefix = 'beton-crm'
+	private defaultPrefix = 'opora'
 
 	/**
 	 * Get cached data by key

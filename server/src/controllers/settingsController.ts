@@ -14,9 +14,10 @@ export const getAllSettings = async (
 	res: Response
 ): Promise<void> => {
 	try {
+		const orgId = req.organizationId
 		// Get all settings - use getPublicSettings to avoid exposing sensitive settings
 		const publicSettings = await settingsService.getPublicSettings()
-		const allSettings = await settingsService.findByCategory(SettingCategory.SYSTEM)
+		const allSettings = await settingsService.findByCategory(SettingCategory.SYSTEM, orgId)
 			.then(system => [...publicSettings, ...system.filter(s => !s.isPublic)])
 		res.json({
 			success: true,
@@ -38,7 +39,8 @@ export const getSettingsByCategory = async (
 ): Promise<void> => {
 	try {
 		const { category } = req.params
-		const settings = await settingsService.findByCategory(category as SettingCategory)
+		const orgId = req.organizationId
+		const settings = await settingsService.findByCategory(category as SettingCategory, orgId)
 		res.json({
 			success: true,
 			data: settings,
@@ -59,7 +61,8 @@ export const getSetting = async (
 ): Promise<void> => {
 	try {
 		const { key } = req.params
-		const setting = await settingsService.findByKey(key)
+		const orgId = req.organizationId
+		const setting = await settingsService.findByKey(key, orgId)
 
 		if (!setting) {
 			res.status(404).json({
@@ -90,11 +93,13 @@ export const updateSetting = async (
 	try {
 		const { key } = req.params
 		const { value, description, category, type } = req.body
+		const orgId = req.organizationId
 
 		const setting = await settingsService.upsertSetting(key, value, {
 			description,
 			category,
 			validation: type ? { type } : undefined,
+			organizationId: orgId,
 		})
 
 		res.json({

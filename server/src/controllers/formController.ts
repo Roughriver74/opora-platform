@@ -18,8 +18,9 @@ export const getAllForms = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		// Получаем все активные формы с полями
-		const forms = await formService.findActive()
+		const orgId = req.organizationId
+		// Получаем все активные формы с полями (фильтруем по организации)
+		const forms = await formService.findActive(orgId)
 
 		// Загружаем поля для каждой формы (только активные поля для публичных форм)
 		const formsWithFields = await Promise.all(
@@ -46,11 +47,21 @@ export const getFormById = async (
 ): Promise<void> => {
 	try {
 		const { id } = req.params
+		const orgId = req.organizationId
 
 		// Получаем форму с полями через сервис (включая неактивные для админки)
 		const form = await formService.findWithFields(id, true) // includeInactive = true для админки
 
 		if (!form) {
+			res.status(404).json({
+				message: 'Форма не найдена',
+				success: false,
+			})
+			return
+		}
+
+		// Проверяем принадлежность к организации
+		if (orgId && form.organizationId && form.organizationId !== orgId) {
 			res.status(404).json({
 				message: 'Форма не найдена',
 				success: false,
@@ -74,7 +85,8 @@ export const createForm = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		const form = await formService.createForm(req.body)
+		const orgId = req.organizationId
+		const form = await formService.createForm(req.body, orgId)
 
 		res.status(201).json({
 			success: true,
@@ -105,6 +117,19 @@ export const updateForm = async (
 ): Promise<void> => {
 	try {
 		const { id } = req.params
+		const orgId = req.organizationId
+
+		// Проверяем принадлежность к организации перед обновлением
+		if (orgId) {
+			const existingForm = await formService.findByIdForOrg(id, orgId)
+			if (!existingForm) {
+				res.status(404).json({
+					message: 'Форма не найдена',
+					success: false,
+				})
+				return
+			}
+		}
 
 		const updatedForm = await formService.updateForm(id, req.body)
 
@@ -150,6 +175,19 @@ export const deleteForm = async (
 ): Promise<void> => {
 	try {
 		const { id } = req.params
+		const orgId = req.organizationId
+
+		// Проверяем принадлежность к организации перед удалением
+		if (orgId) {
+			const existingForm = await formService.findByIdForOrg(id, orgId)
+			if (!existingForm) {
+				res.status(404).json({
+					message: 'Форма не найдена',
+					success: false,
+				})
+				return
+			}
+		}
 
 		const deleted = await formService.delete(id)
 
@@ -405,9 +443,10 @@ export const submitForm = async (
 		dealData.CATEGORY_ID = categoryId
 
 		let submission: any = null
+		const orgId = req.organizationId
 
 		try {
-			const submissionData = {
+			const submissionData: any = {
 				formId: formId,
 				userId: userId,
 				title: dealTitle,
@@ -416,18 +455,33 @@ export const submitForm = async (
 				// Добавляем денормализованные данные пользователя
 				userName: userName,
 				userEmail: userEmail,
+				// Мультитенантность
+				organizationId: orgId,
 			}
 
 			submission = await submissionService.createSubmission(submissionData)
-			dealData.UF_CRM_1750107484181 = submission.id
 
-			const dealResponse = await bitrix24Service.createDeal(dealData)
+			let dealId: string | undefined
 
-			await submissionService.updateSyncStatus(
-				submission.id,
-				BitrixSyncStatus.SYNCED,
-				dealResponse.result?.toString?.()
-			)
+			// Синхронизация с Bitrix24 (если интеграция включена)
+			if (await bitrix24Service.isEnabled()) {
+				try {
+					dealData.UF_CRM_SUBMISSION_ID = submission.id
+					const dealResponse = await bitrix24Service.createDeal(dealData)
+
+					if (dealResponse?.result) {
+						dealId = dealResponse.result.toString()
+						await submissionService.updateSyncStatus(
+							submission.id,
+							BitrixSyncStatus.SYNCED,
+							dealId
+						)
+					}
+				} catch (bitrixError: any) {
+					// Bitrix ошибка НЕ критична — заявка уже сохранена в БД
+					console.error('Ошибка синхронизации с Bitrix24:', bitrixError?.message)
+				}
+			}
 
 			res.status(200).json({
 				success: true,
@@ -435,18 +489,13 @@ export const submitForm = async (
 					form.successMessage || 'Спасибо! Ваша заявка успешно отправлена.',
 				submissionId: submission.id,
 				submissionNumber: submission.submissionNumber,
-				dealId: dealResponse.result?.toString?.(),
+				dealId,
 			})
-		} catch (bitrixError: any) {
-			if (submission && submission.id) {
-				try {
-					await submissionService.delete(submission.id)
-				} catch {}
-			}
-
+		} catch (dbError: any) {
+			// Ошибка сохранения в БД — критическая
 			res.status(500).json({
 				message: 'Ошибка создания заявки в системе',
-				error: bitrixError?.message,
+				error: dbError?.message,
 			})
 		}
 	} catch (error: any) {

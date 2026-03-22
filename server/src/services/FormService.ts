@@ -59,7 +59,7 @@ export class FormService extends BaseService<Form, FormRepository> {
 		super(getFormRepository())
 	}
 
-	async createForm(data: CreateFormDTO): Promise<Form> {
+	async createForm(data: CreateFormDTO, organizationId?: string): Promise<Form> {
 		// Валидация уникальности имени
 		const nameExists = await this.repository.findByName(data.name)
 		if (nameExists) {
@@ -67,7 +67,7 @@ export class FormService extends BaseService<Form, FormRepository> {
 		}
 
 		// Подготовка данных формы
-		const formData = {
+		const formData: any = {
 			name: data.name,
 			title: data.title,
 			description: data.description,
@@ -75,6 +75,11 @@ export class FormService extends BaseService<Form, FormRepository> {
 			successMessage:
 				data.successMessage || 'Спасибо! Ваша заявка успешно отправлена.',
 			isActive: true,
+		}
+
+		// Устанавливаем organizationId при создании
+		if (organizationId) {
+			formData.organizationId = organizationId
 		}
 
 		// Создание формы с полями
@@ -100,7 +105,14 @@ export class FormService extends BaseService<Form, FormRepository> {
 		return this.repository.findByName(name)
 	}
 
-	async findActive(): Promise<Form[]> {
+	async findActive(organizationId?: string): Promise<Form[]> {
+		if (organizationId) {
+			// Фильтруем активные формы по organizationId
+			return this.repository.findAll({
+				where: { isActive: true, organizationId } as any,
+				order: { createdAt: 'DESC' } as any,
+			})
+		}
 		return this.repository.findActive()
 	}
 
@@ -109,6 +121,15 @@ export class FormService extends BaseService<Form, FormRepository> {
 		includeInactive = false
 	): Promise<Form | null> {
 		return this.repository.findWithFields(formId, includeInactive)
+	}
+
+	/**
+	 * Получить форму по ID с проверкой принадлежности к организации
+	 */
+	async findByIdForOrg(formId: string, organizationId: string): Promise<Form | null> {
+		return this.repository.findOne({
+			where: { id: formId, organizationId } as any,
+		})
 	}
 
 	async toggleActive(formId: string): Promise<boolean> {
@@ -120,7 +141,7 @@ export class FormService extends BaseService<Form, FormRepository> {
 		return this.repository.toggleActive(formId)
 	}
 
-	async duplicateForm(formId: string, newName: string): Promise<Form | null> {
+	async duplicateForm(formId: string, newName: string, organizationId?: string): Promise<Form | null> {
 		// Проверка существования оригинальной формы
 		const originalForm = await this.repository.findById(formId)
 		if (!originalForm) {

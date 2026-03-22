@@ -54,15 +54,24 @@ export class CompanyService {
 	 * Получить все компании с фильтрацией и пагинацией
 	 */
 	async findAll(
-		options: PaginationOptions & CompanyFilterOptions = {}
+		options: PaginationOptions & CompanyFilterOptions = {},
+		organizationId?: string
 	): Promise<PaginatedResult<Company>> {
+		if (organizationId) {
+			return this.repository.findWithFilters({ ...options, organizationId } as any)
+		}
 		return this.repository.findWithFilters(options)
 	}
 
 	/**
 	 * Получить компанию по ID
 	 */
-	async findById(id: string): Promise<Company | null> {
+	async findById(id: string, organizationId?: string): Promise<Company | null> {
+		if (organizationId) {
+			return this.repository.findOne({
+				where: { id, organizationId } as any,
+			})
+		}
 		return this.repository.findById(id)
 	}
 
@@ -83,15 +92,29 @@ export class CompanyService {
 	/**
 	 * Поиск компаний (для автокомплита в формах)
 	 */
-	async search(query: string, limit: number = 20): Promise<Company[]> {
+	async search(query: string, limit: number = 20, organizationId?: string): Promise<Company[]> {
 		if (!query || query.trim().length === 0) {
 			// Возвращаем последние активные компании
-			const result = await this.repository.findWithFilters({
+			const filterOptions: any = {
 				isActive: true,
 				limit,
 				sortBy: 'name',
 				sortOrder: 'ASC',
-			})
+			}
+			if (organizationId) {
+				filterOptions.organizationId = organizationId
+			}
+			const result = await this.repository.findWithFilters(filterOptions)
+			return result.data
+		}
+		if (organizationId) {
+			// Поиск с фильтрацией по организации
+			const result = await this.repository.findWithFilters({
+				search: query,
+				isActive: true,
+				limit,
+				organizationId,
+			} as any)
 			return result.data
 		}
 		return this.repository.search(query, limit)
@@ -100,7 +123,7 @@ export class CompanyService {
 	/**
 	 * Создать новую компанию
 	 */
-	async create(data: CreateCompanyDTO): Promise<Company> {
+	async create(data: CreateCompanyDTO, organizationId?: string): Promise<Company> {
 		// Проверка уникальности ИНН
 		if (data.inn) {
 			const existingByInn = await this.repository.isInnExists(data.inn)
@@ -122,6 +145,7 @@ export class CompanyService {
 			...data,
 			isActive: true,
 			syncStatus: data.bitrixCompanyId ? CompanySyncStatus.SYNCED : CompanySyncStatus.LOCAL_ONLY,
+			organizationId: organizationId,
 		})
 
 		return this.repository.save(company)
@@ -130,8 +154,10 @@ export class CompanyService {
 	/**
 	 * Обновить компанию
 	 */
-	async update(id: string, data: UpdateCompanyDTO): Promise<Company> {
-		const company = await this.repository.findById(id)
+	async update(id: string, data: UpdateCompanyDTO, organizationId?: string): Promise<Company> {
+		const company = organizationId
+			? await this.findById(id, organizationId)
+			: await this.repository.findById(id)
 		if (!company) {
 			throw new Error('Компания не найдена')
 		}
@@ -159,8 +185,10 @@ export class CompanyService {
 	/**
 	 * Удалить компанию (soft delete - деактивация)
 	 */
-	async delete(id: string): Promise<void> {
-		const company = await this.repository.findById(id)
+	async delete(id: string, organizationId?: string): Promise<void> {
+		const company = organizationId
+			? await this.findById(id, organizationId)
+			: await this.repository.findById(id)
 		if (!company) {
 			throw new Error('Компания не найдена')
 		}
@@ -172,8 +200,10 @@ export class CompanyService {
 	/**
 	 * Полностью удалить компанию (hard delete)
 	 */
-	async hardDelete(id: string): Promise<void> {
-		const company = await this.repository.findById(id)
+	async hardDelete(id: string, organizationId?: string): Promise<void> {
+		const company = organizationId
+			? await this.findById(id, organizationId)
+			: await this.repository.findById(id)
 		if (!company) {
 			throw new Error('Компания не найдена')
 		}

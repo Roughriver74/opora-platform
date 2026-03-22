@@ -4,12 +4,24 @@ import {
 	PrimaryColumn,
 	CreateDateColumn,
 	UpdateDateColumn,
+	Index,
+	ManyToOne,
+	JoinColumn,
 } from 'typeorm'
+import { Organization } from './Organization.entity'
 
 @Entity('sync_metadata')
+@Index(['organizationId'])
 export class SyncMetadata {
 	@PrimaryColumn({ type: 'varchar', length: 50 })
 	entityType: string
+
+	@Column({ type: 'uuid', name: 'organization_id', nullable: true })
+	organizationId?: string
+
+	@ManyToOne(() => Organization)
+	@JoinColumn({ name: 'organization_id' })
+	organization?: Organization
 
 	@Column({ type: 'timestamp', nullable: true })
 	lastSyncTime?: Date

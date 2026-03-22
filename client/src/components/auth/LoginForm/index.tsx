@@ -37,7 +37,7 @@ export const LoginForm: React.FC = () => {
 					</div>
 					<h1 className='login-form-title'>Вход в систему</h1>
 					<p className='login-form-subtitle'>
-						Введите пароль для доступа к системе Beton CRM
+						Введите пароль для доступа к системе CRM Platform
 					</p>
 				</div>
 

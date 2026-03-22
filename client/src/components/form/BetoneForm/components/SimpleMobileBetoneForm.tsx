@@ -143,6 +143,7 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 			periodEndDate,
 			periodTime,
 			dateFieldName,
+			timeFieldName,
 			dateRangeError,
 			hasDateField,
 			togglePeriodMode,
@@ -180,8 +181,8 @@ const SimpleMobileBetoneForm: React.FC<BetoneFormProps> = React.memo(
 					// Очищаем поле "Время АБН" перед отправкой периодических заявок,
 					// так как оно не должно копироваться во все заявки периода
 					const cleanedValues = { ...formik.values }
-					if (cleanedValues['field_1750311670121']) {
-						delete cleanedValues['field_1750311670121']
+					if (timeFieldName && cleanedValues[timeFieldName]) {
+						delete cleanedValues[timeFieldName]
 					}
 
 					const result = await submitPeriodSubmissions(

@@ -11,6 +11,7 @@ import { IsEmail, IsEnum, IsBoolean, IsOptional, IsString } from 'class-validato
 import { BaseEntity } from './base/BaseEntity'
 import { Exclude, Expose } from 'class-transformer'
 import { Submission } from './Submission.entity'
+import { UserOrganization } from './UserOrganization.entity'
 
 export enum UserRole {
 	USER = 'user',
@@ -76,6 +77,10 @@ export class User extends BaseEntity {
 	@IsBoolean()
 	isActive: boolean
 
+	@Column({ type: 'boolean', default: false, name: 'is_super_admin' })
+	@IsBoolean()
+	isSuperAdmin: boolean
+
 	@Column({
 		type: 'jsonb',
 		default: { onlyMyCompanies: false },
@@ -93,6 +98,9 @@ export class User extends BaseEntity {
 
 	@OneToMany(() => Submission, submission => submission.assignedTo)
 	assignedSubmissions: Submission[]
+
+	@OneToMany(() => UserOrganization, uo => uo.user)
+	organizationMemberships: UserOrganization[]
 
 	@BeforeInsert()
 	@BeforeUpdate()

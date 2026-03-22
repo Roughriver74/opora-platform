@@ -2,11 +2,14 @@ import {
 	Entity,
 	Column,
 	Index,
+	ManyToOne,
+	JoinColumn,
 	BeforeInsert,
 	BeforeUpdate,
 } from 'typeorm'
-import { IsString, IsObject, IsOptional } from 'class-validator'
+import { IsString, IsObject, IsOptional, IsUUID } from 'class-validator'
 import { BaseEntity } from './base/BaseEntity'
+import { Organization } from './Organization.entity'
 
 export enum SettingCategory {
 	SYSTEM = 'system',
@@ -20,7 +23,17 @@ export enum SettingCategory {
 @Entity('settings')
 @Index(['key'], { unique: true })
 @Index(['category'])
+@Index(['organizationId'])
 export class Settings extends BaseEntity {
+	@Column({ type: 'uuid', name: 'organization_id', nullable: true })
+	@IsOptional()
+	@IsUUID()
+	organizationId?: string
+
+	@ManyToOne(() => Organization)
+	@JoinColumn({ name: 'organization_id' })
+	organization?: Organization
+
 	@Column({ type: 'varchar', length: 255, unique: true })
 	@IsString()
 	key: string

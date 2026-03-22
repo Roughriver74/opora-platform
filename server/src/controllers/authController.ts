@@ -103,6 +103,8 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 			accessToken: authResult.token,
 			refreshToken: authResult.token, // В реальном приложении нужен отдельный refresh token
 			user: authResult.user,
+			organizations: authResult.organizations,
+			needsOrganizationSelection: authResult.needsOrganizationSelection,
 		})
 	} catch (error: any) {
 		console.error('Ошибка при логине пользователя:', error)
@@ -110,6 +112,68 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 			success: false,
 			message: error.message || 'Внутренняя ошибка сервера',
 		})
+	}
+}
+
+/**
+ * Выбор организации — возвращает новый JWT с контекстом организации
+ */
+export const selectOrganization = async (req: Request, res: Response): Promise<void> => {
+	try {
+		const userId = req.user?.id
+		const { organizationId } = req.body
+
+		if (!userId) {
+			res.status(401).json({ success: false, message: 'Требуется авторизация' })
+			return
+		}
+
+		if (!organizationId) {
+			res.status(400).json({ success: false, message: 'organizationId обязателен' })
+			return
+		}
+
+		const result = await userService.selectOrganization(userId, organizationId)
+
+		if (!result) {
+			res.status(403).json({ success: false, message: 'Нет доступа к этой организации' })
+			return
+		}
+
+		res.json({
+			success: true,
+			accessToken: result.token,
+			refreshToken: result.token,
+			user: result.user,
+			organizations: result.organizations,
+		})
+	} catch (error: any) {
+		console.error('Ошибка при выборе организации:', error)
+		res.status(500).json({ success: false, message: error.message || 'Внутренняя ошибка сервера' })
+	}
+}
+
+/**
+ * Получить список организаций текущего пользователя
+ */
+export const getMyOrganizations = async (req: Request, res: Response): Promise<void> => {
+	try {
+		const userId = req.user?.id
+
+		if (!userId) {
+			res.status(401).json({ success: false, message: 'Требуется авторизация' })
+			return
+		}
+
+		const organizations = await userService.getUserOrganizations(userId)
+
+		res.json({
+			success: true,
+			data: organizations,
+		})
+	} catch (error: any) {
+		console.error('Ошибка при получении организаций:', error)
+		res.status(500).json({ success: false, message: error.message || 'Внутренняя ошибка сервера' })
 	}
 }
 

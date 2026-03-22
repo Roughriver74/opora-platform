@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import bodyParser from 'body-parser'
 import { authMiddleware } from './middleware/authMiddleware'
+import { tenantMiddleware } from './middleware/tenantMiddleware'
 import formFieldRoutes from './routes/formFieldRoutes'
 import formRoutes from './routes/formRoutes'
 import submissionRoutes from './routes/submissionRoutes'
@@ -21,6 +22,7 @@ import companyRoutes from './routes/companyRoutes'
 import contactRoutes from './routes/contactRoutes'
 import syncManagerRoutes from './routes/syncManagerRoutes'
 import apiTokenRoutes from './routes/apiTokenRoutes'
+import organizationRoutes from './routes/organizationRoutes'
 // import { setupSwagger } from './config/swagger' // Временно отключено
 // Utility for checking database connection status
 // Re-importing to fix potential resolution issues
@@ -100,6 +102,7 @@ app.get('/', (req, res) => {
 
 // Protected Routes
 app.use(authMiddleware)
+app.use(tenantMiddleware)
 
 app.use('/api/form-fields', formFieldRoutes)
 app.use('/api/forms', formRoutes)
@@ -116,5 +119,6 @@ app.use('/api/companies', companyRoutes)
 app.use('/api/contacts', contactRoutes)
 app.use('/api/sync-manager', syncManagerRoutes)
 app.use('/api/tokens', apiTokenRoutes)
+app.use('/api/organizations', organizationRoutes)
 
 export default app

@@ -2,6 +2,7 @@ import { logger } from '../utils/logger'
 import { AppDataSource } from '../database/config/database.config'
 import { Submission, BitrixSyncStatus } from '../database/entities/Submission.entity'
 import bitrix24Service from './bitrix24Service'
+import { getOrganizationService } from './OrganizationService'
 import { In, LessThanOrEqual } from 'typeorm'
 
 export interface SyncOptions {
@@ -63,12 +64,24 @@ class SubmissionSyncService {
 			success: false,
 		}
 
-		// Проверка, включена ли интеграция с Bitrix24
-		if (!bitrix24Service.isEnabled()) {
-			logger.debug(`[SYNC] ⏭️ Пропуск синхронизации ${submission.submissionNumber} - Bitrix24 отключен`)
-			result.success = true
-			result.error = 'Bitrix24 integration disabled'
-			return result
+		// Per-organization проверка: если заявка привязана к организации, проверяем её настройки
+		if (submission.organizationId) {
+			const orgService = getOrganizationService()
+			const isBitrixEnabled = await orgService.isBitrixEnabled(submission.organizationId)
+			if (!isBitrixEnabled) {
+				logger.debug(`[SYNC] ⏭️ Пропуск синхронизации ${submission.submissionNumber} - Bitrix24 отключен для организации`)
+				result.success = true
+				result.error = 'Bitrix24 integration disabled for organization'
+				return result
+			}
+		} else {
+			// Глобальная проверка для заявок без организации (legacy)
+			if (!await bitrix24Service.isEnabled()) {
+				logger.debug(`[SYNC] ⏭️ Пропуск синхронизации ${submission.submissionNumber} - Bitrix24 отключен`)
+				result.success = true
+				result.error = 'Bitrix24 integration disabled'
+				return result
+			}
 		}
 
 		try {
@@ -76,8 +89,15 @@ class SubmissionSyncService {
 				`[SYNC] Синхронизация заявки ${submission.submissionNumber} с Bitrix24...`
 			)
 
+			// Получаем маппинг полей из настроек организации
+			let fieldMapping: Record<string, string> | undefined
+			if (submission.organizationId) {
+				const orgService = getOrganizationService()
+				fieldMapping = await orgService.getBitrixFieldMapping(submission.organizationId)
+			}
+
 			// Подготавливаем данные для Bitrix24
-			const dealData = this.prepareDealData(submission)
+			const dealData = this.prepareDealData(submission, fieldMapping)
 
 			// Создаем сделку в Bitrix24
 			const dealResponse = await bitrix24Service.createDeal(dealData)
@@ -193,8 +213,10 @@ class SubmissionSyncService {
 
 	/**
 	 * Подготовка данных для создания сделки в Bitrix24
+	 * @param submission - заявка
+	 * @param fieldMapping - динамический маппинг полей из настроек организации
 	 */
-	private prepareDealData(submission: Submission): any {
+	private prepareDealData(submission: Submission, fieldMapping?: Record<string, string>): any {
 		const formData = submission.formData || {}
 
 		// Базовые поля сделки
@@ -231,20 +253,8 @@ class SubmissionSyncService {
 			dealData.CURRENCY_ID = formData.currency || 'RUB'
 		}
 
-		// Добавляем кастомные поля формы в UF_ поля Bitrix24
-		const customFieldsMapping: Record<string, string> = {
-			// Поля материалов
-			material: 'UF_CRM_MATERIAL',
-			materialName: 'UF_CRM_MATERIAL_NAME',
-			quantity: 'UF_CRM_QUANTITY',
-			volume: 'UF_CRM_VOLUME',
-			deliveryAddress: 'UF_CRM_DELIVERY_ADDRESS',
-			address: 'UF_CRM_ADDRESS',
-			deliveryDate: 'UF_CRM_DELIVERY_DATE',
-			// Поля из CRM
-			notes: 'UF_CRM_NOTES',
-			comment: 'UF_CRM_COMMENT',
-		}
+		// Кастомные UF_ поля из динамического маппинга организации
+		const customFieldsMapping = fieldMapping || {}
 
 		for (const [formField, bitrixField] of Object.entries(customFieldsMapping)) {
 			if (formData[formField] !== undefined && formData[formField] !== null && formData[formField] !== '') {

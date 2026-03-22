@@ -32,6 +32,8 @@ export const getOptimizedSubmissions = async (
 			sortOrder = 'desc',
 		} = req.query
 
+		const orgId = req.organizationId
+
 		// Подготовка фильтров
 		const filters = {
 			status: status as string,
@@ -48,6 +50,8 @@ export const getOptimizedSubmissions = async (
 				: undefined,
 			formId: formId as string,
 			bitrixSyncStatus: bitrixSyncStatus as string,
+			// Мультитенантность
+			organizationId: orgId,
 		}
 
 		// Подготовка пагинации
@@ -114,6 +118,8 @@ export const getOptimizedUserSubmissions = async (
 				: tags
 				? [tags as string]
 				: undefined,
+			// Мультитенантность
+			organizationId: req.organizationId,
 		}
 
 		const pagination = {
@@ -154,6 +160,8 @@ export const getSubmissionStats = async (
 			dateFrom: dateFrom as string,
 			dateTo: dateTo as string,
 			formId: formId as string,
+			// Мультитенантность
+			organizationId: req.organizationId,
 		}
 
 		const stats = await optimizedSubmissionService.getSubmissionStats(filters)

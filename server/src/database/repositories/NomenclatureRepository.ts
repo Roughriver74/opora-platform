@@ -15,6 +15,8 @@ export interface NomenclatureFilterOptions {
 	tags?: string[]
 	priceMin?: number
 	priceMax?: number
+	// Мультитенантность
+	organizationId?: string
 }
 
 /**
@@ -199,6 +201,11 @@ export class NomenclatureRepository extends BaseRepository<Nomenclature> {
 		}
 		if (options.priceMax !== undefined) {
 			qb.andWhere('n.price <= :priceMax', { priceMax: options.priceMax })
+		}
+
+		// Фильтр по организации (мультитенантность)
+		if (options.organizationId) {
+			qb.andWhere('n.organizationId = :organizationId', { organizationId: options.organizationId })
 		}
 
 		// Сортировка

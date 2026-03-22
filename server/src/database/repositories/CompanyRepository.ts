@@ -12,6 +12,8 @@ export interface CompanyFilterOptions {
 	search?: string
 	tags?: string[]
 	industry?: string
+	// Мультитенантность
+	organizationId?: string
 }
 
 /**
@@ -163,6 +165,11 @@ export class CompanyRepository extends BaseRepository<Company> {
 		// Фильтр по отрасли
 		if (options.industry) {
 			qb.andWhere('c.industry = :industry', { industry: options.industry })
+		}
+
+		// Фильтр по организации (мультитенантность)
+		if (options.organizationId) {
+			qb.andWhere('c.organization_id = :organizationId', { organizationId: options.organizationId })
 		}
 
 		// Сортировка

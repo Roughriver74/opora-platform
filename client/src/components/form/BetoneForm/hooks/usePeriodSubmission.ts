@@ -15,16 +15,11 @@ export const usePeriodSubmission = (fields: FormFieldType[]) => {
 	const [timeFieldName, setTimeFieldName] = useState<string>('')
 	const [dateRangeError, setDateRangeError] = useState<string | null>(null)
 
-	// Находим поле "Дата отгрузки" (field_1750311865385) или любое поле с типом "date"
+	// Находим поле с типом "date" для даты отгрузки
 	// И поле времени (ищем по label или bitrixFieldId, содержащим "время" или "time")
 	useEffect(() => {
-		// Сначала ищем конкретное поле "Дата отгрузки"
-		let dateField = fields.find(f => f.name === 'field_1750311865385')
-
-		// Если не найдено, ищем любое поле с типом "date"
-		if (!dateField) {
-			dateField = fields.find(f => f.type === 'date')
-		}
+		// Ищем любое поле с типом "date"
+		const dateField = fields.find(f => f.type === 'date')
 
 		if (dateField) {
 			setDateFieldName(dateField.name)

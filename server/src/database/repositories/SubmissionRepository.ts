@@ -21,6 +21,10 @@ export interface SubmissionFilters {
 	dateFrom?: Date
 	dateTo?: Date
 	search?: string
+	// Мультитенантность
+	organizationId?: string
+	// Конфигурируемое поле даты отгрузки для сортировки
+	shipmentDateField?: string
 }
 
 export interface SubmissionStatistics {
@@ -105,6 +109,12 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 			})
 		}
 
+		if (filters.organizationId) {
+			queryBuilder.andWhere('submission.organizationId = :organizationId', {
+				organizationId: filters.organizationId,
+			})
+		}
+
 		if (filters.bitrixSyncStatus) {
 			queryBuilder.andWhere('submission.bitrixSyncStatus = :syncStatus', {
 				syncStatus: filters.bitrixSyncStatus,
@@ -152,20 +162,24 @@ export class SubmissionRepository extends BaseRepository<Submission> {
 		const sortBy = pagination?.sortBy || 'createdAt'
 		const sortOrder = pagination?.sortOrder || 'DESC'
 
-		if (sortBy === 'shipmentDate') {
-			// Сортировка по JSONB полю даты отгрузки (field_1750311865385)
-			// Используем addSelect для создания вычисляемого поля, затем сортируем по нему
+		if (sortBy === 'shipmentDate' && filters.shipmentDateField) {
+			// Сортировка по JSONB полю даты отгрузки (динамическое поле из настроек)
+			const dateField = filters.shipmentDateField
 			queryBuilder.addSelect(
 				`CASE
-					WHEN submission.form_data->>'field_1750311865385' IS NULL
-						OR submission.form_data->>'field_1750311865385' = ''
+					WHEN submission.form_data->>:dateField IS NULL
+						OR submission.form_data->>:dateField = ''
 					THEN NULL
-					ELSE (submission.form_data->>'field_1750311865385')::timestamp
+					ELSE (submission.form_data->>:dateField)::timestamp
 				END`,
 				'shipment_date_sort'
 			)
+			queryBuilder.setParameter('dateField', dateField)
 			// NULLS LAST - заявки без даты отгрузки в конец списка
 			queryBuilder.orderBy('shipment_date_sort', sortOrder, 'NULLS LAST')
+		} else if (sortBy === 'shipmentDate' && !filters.shipmentDateField) {
+			// Если поле не сконфигурировано, fallback на дату создания
+			queryBuilder.orderBy('submission.createdAt', sortOrder)
 		} else {
 			queryBuilder.orderBy(`submission.${sortBy}`, sortOrder)
 		}

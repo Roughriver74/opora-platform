@@ -19,6 +19,7 @@ import {
 import { AuditableEntity } from './base/AuditableEntity'
 import { NomenclatureCategory } from './NomenclatureCategory.entity'
 import { NomenclatureUnit } from './NomenclatureUnit.entity'
+import { Organization } from './Organization.entity'
 
 /**
  * Тип номенклатуры
@@ -40,10 +41,21 @@ export enum NomenclatureSyncStatus {
 }
 
 @Entity('nomenclatures')
+@Index(['organizationId'])
+@Index(['organizationId', 'sku'], { unique: true })
 export class Nomenclature extends AuditableEntity {
+	@Column({ type: 'uuid', name: 'organization_id', nullable: true })
+	@IsOptional()
+	@IsUUID()
+	organizationId?: string
+
+	@ManyToOne(() => Organization)
+	@JoinColumn({ name: 'organization_id' })
+	organization?: Organization
+
 	// === Основные поля ===
 
-	@Column({ type: 'varchar', length: 100, unique: true })
+	@Column({ type: 'varchar', length: 100 })
 	@IsNotEmpty({ message: 'Артикул (SKU) обязателен' })
 	@Length(1, 100, { message: 'Артикул должен быть от 1 до 100 символов' })
 	sku: string

@@ -22,4 +22,10 @@ router.post('/refresh', authController.refreshToken)
 // Выход
 router.post('/logout', authMiddleware, requireAdmin, authController.logout)
 
+// Мультитенант: выбор организации
+router.post('/select-organization', authMiddleware, authController.selectOrganization)
+
+// Мультитенант: мои организации
+router.get('/organizations', authMiddleware, authController.getMyOrganizations)
+
 export default router

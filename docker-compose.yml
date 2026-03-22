@@ -1,12 +1,12 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: beton_postgres
+    container_name: opora_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: beton_crm
-      POSTGRES_USER: beton_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-beton_password}
+      POSTGRES_DB: opora
+      POSTGRES_USER: opora_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-opora_password}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       # Доступ только через localhost (туннель)
@@ -15,16 +15,16 @@ services:
       - postgres_data:/var/lib/postgresql/data
       # - ./server/src/database/scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U beton_user -d beton_crm']
+      test: ['CMD-SHELL', 'pg_isready -U opora_user -d opora']
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - beton_network
+      - opora_network
 
   redis:
     image: redis:7-alpine
-    container_name: beton_redis
+    container_name: opora_redis
     restart: unless-stopped
     # Убираем внешний доступ - Redis доступен только внутри Docker сети
     # ports:
@@ -38,11 +38,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - beton_network
+      - opora_network
 
   elasticsearch:
     image: elasticsearch:8.11.0
-    container_name: beton_elasticsearch
+    container_name: opora_elasticsearch
     restart: unless-stopped
     environment:
       - discovery.type=single-node
@@ -64,13 +64,13 @@ services:
       timeout: 10s
       retries: 5
     networks:
-      - beton_network
+      - opora_network
 
   backend:
     build:
       context: ./server
       dockerfile: Dockerfile.production
-    container_name: beton_backend
+    container_name: opora_backend
     restart: unless-stopped
     ports:
       - '${PORT:-5001}:5001'
@@ -79,9 +79,9 @@ services:
       PORT: ${PORT:-5001}
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USERNAME: beton_user
-      DB_PASSWORD: ${DB_PASSWORD:-beton_password}
-      DB_NAME: beton_crm
+      DB_USERNAME: opora_user
+      DB_PASSWORD: ${DB_PASSWORD:-opora_password}
+      DB_NAME: opora
       REDIS_HOST: redis
       REDIS_PORT: 6379
       ELASTICSEARCH_HOST: elasticsearch
@@ -103,13 +103,13 @@ services:
     #   - ./server:/app
     #   - /app/node_modules
     networks:
-      - beton_network
+      - opora_network
 
   frontend:
     build:
       context: ./client
       dockerfile: Dockerfile.production
-    container_name: beton_frontend
+    container_name: opora_frontend
     restart: unless-stopped
     ports:
       - '${CLIENT_PORT:-3000}:3000'
@@ -122,14 +122,14 @@ services:
     #   - ./client:/app
     #   - /app/node_modules
     networks:
-      - beton_network
+      - opora_network
 
   # === МОНИТОРИНГ ===
-  
+
   # Promtail - сбор и отправка логов в Loki
   promtail:
     image: grafana/promtail:2.9.2
-    container_name: beton_promtail
+    container_name: opora_promtail
     restart: unless-stopped
     volumes:
       - /var/log:/var/log:ro
@@ -139,7 +139,7 @@ services:
       - promtail_positions:/tmp
     command: -config.file=/etc/promtail/config.yml
     networks:
-      - beton_network
+      - opora_network
     depends_on:
       - backend
       - frontend
@@ -147,7 +147,7 @@ services:
   # Node Exporter - метрики системы (CPU, RAM, Disk, Network)
   node-exporter:
     image: prom/node-exporter:latest
-    container_name: beton_node_exporter
+    container_name: opora_node_exporter
     restart: unless-stopped
     ports:
       - '9100:9100'
@@ -160,12 +160,12 @@ services:
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     networks:
-      - beton_network
+      - opora_network
 
   # cAdvisor - метрики Docker контейнеров
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
-    container_name: beton_cadvisor
+    container_name: opora_cadvisor
     restart: unless-stopped
     ports:
       - '8081:8080'
@@ -179,7 +179,7 @@ services:
     devices:
       - /dev/kmsg
     networks:
-      - beton_network
+      - opora_network
 
 volumes:
   postgres_data:
@@ -192,5 +192,5 @@ volumes:
     driver: local
 
 networks:
-  beton_network:
+  opora_network:
     driver: bridge

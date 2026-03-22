@@ -586,17 +586,8 @@ export class CreateNomenclatureTables1758000000000 implements MigrationInterface
 			('service', 'Услуга', 'усл', 876);
 		`)
 
-		// 15. Заполняем базовые категории для бетона
-		await queryRunner.query(`
-			INSERT INTO nomenclature_categories (code, name, description, sort_order) VALUES
-			('BETON', 'Бетон товарный', 'Бетонные смеси различных классов', 1),
-			('RASTVORY', 'Растворы', 'Строительные растворы', 2),
-			('KERAMZITOBETON', 'Керамзитобетон', 'Керамзитобетонные смеси', 3),
-			('DOBAVKI', 'Добавки', 'Добавки и пластификаторы', 4),
-			('USLUGI', 'Услуги', 'Дополнительные услуги', 5),
-			('DOSTAVKA', 'Доставка', 'Услуги доставки', 6),
-			('NASOS', 'Услуги автобетононасоса', 'Услуги подачи бетона', 7);
-		`)
+		// 15. Базовые категории создаются через админ-панель организации
+		// Бетонные категории (BETON, RASTVORY и т.д.) были удалены при универсализации платформы
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {

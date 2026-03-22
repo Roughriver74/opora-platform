@@ -27,6 +27,8 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 			sortOrder = 'ASC',
 		} = req.query
 
+		const orgId = req.organizationId
+
 		const result = await contactService.findAll({
 			page: parseInt(page as string),
 			limit: parseInt(limit as string),
@@ -39,7 +41,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 			tags: tags ? (tags as string).split(',') : undefined,
 			sortBy: sortBy as string,
 			sortOrder: sortOrder as 'ASC' | 'DESC',
-		})
+		}, orgId)
 
 		res.json({
 			success: true,
@@ -65,6 +67,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 export const search = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
 		const { q = '', limit = '20', companyId } = req.query
+		const orgId = req.organizationId
 
 		let contacts
 		if (companyId) {
@@ -74,7 +77,7 @@ export const search = async (req: Request, res: Response, next: NextFunction): P
 			})
 			contacts = result.data
 		} else {
-			contacts = await contactService.search(q as string, parseInt(limit as string))
+			contacts = await contactService.search(q as string, parseInt(limit as string), orgId)
 		}
 
 		// Форматируем для использования в формах
@@ -116,8 +119,9 @@ export const search = async (req: Request, res: Response, next: NextFunction): P
 export const getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
 		const { id } = req.params
+		const orgId = req.organizationId
 
-		const contact = await contactService.findById(id)
+		const contact = await contactService.findById(id, orgId)
 		if (!contact) {
 			res.status(404).json({
 				success: false,
@@ -250,7 +254,8 @@ export const getPrimaryByCompany = async (req: Request, res: Response, next: Nex
  */
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
-		const contact = await contactService.create(req.body)
+		const orgId = req.organizationId
+		const contact = await contactService.create(req.body, orgId)
 
 		res.status(201).json({
 			success: true,
@@ -276,8 +281,9 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
 		const { id } = req.params
+		const orgId = req.organizationId
 
-		const contact = await contactService.update(id, req.body)
+		const contact = await contactService.update(id, req.body, orgId)
 
 		res.json({
 			success: true,
@@ -310,8 +316,9 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
 export const remove = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
 		const { id } = req.params
+		const orgId = req.organizationId
 
-		await contactService.delete(id)
+		await contactService.delete(id, orgId)
 
 		res.json({
 			success: true,
@@ -336,8 +343,9 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
 export const hardDelete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 	try {
 		const { id } = req.params
+		const orgId = req.organizationId
 
-		await contactService.hardDelete(id)
+		await contactService.hardDelete(id, orgId)
 
 		res.json({
 			success: true,

@@ -39,6 +39,7 @@ export interface CreatePeriodSubmissionsDTO {
 	userEmail?: string
 	assignedToId?: string // ID ответственного пользователя
 	priority?: SubmissionPriority
+	abnTimeField?: string // ID поля "Время АБН" (настраивается для каждой организации)
 }
 
 /**
@@ -228,8 +229,8 @@ export class PeriodSubmissionService {
 				// Очищаем поле "Время АБН(дата/время)" если оно есть,
 				// так как оно не должно копироваться из исходной заявки
 				// (это поле должно заполняться отдельно, не из периодических заявок)
-				if (periodFormData['field_1750311670121']) {
-					delete periodFormData['field_1750311670121']
+				if (data.abnTimeField && periodFormData[data.abnTimeField]) {
+					delete periodFormData[data.abnTimeField!]
 				}
 
 				// Устанавливаем дату с временем или только дату

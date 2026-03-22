@@ -2,6 +2,8 @@ import { BaseService } from './base/BaseService'
 import { User, UserRole, UserStatus } from '../database/entities/User.entity'
 import { UserRepository } from '../database/repositories/UserRepository'
 import { getUserRepository } from '../database/repositories'
+import { UserOrganization, OrganizationRole } from '../database/entities/UserOrganization.entity'
+import { AppDataSource } from '../database/config/database.config'
 import * as jwt from 'jsonwebtoken'
 import * as bcrypt from 'bcrypt'
 import { DeepPartial } from 'typeorm'
@@ -34,9 +36,18 @@ export interface LoginDTO {
 	password: string
 }
 
+export interface OrganizationInfo {
+	id: string
+	name: string
+	slug: string
+	role: OrganizationRole
+}
+
 export interface AuthResponse {
 	token: string
 	user: Partial<User>
+	organizations?: OrganizationInfo[]
+	needsOrganizationSelection?: boolean
 }
 
 export class UserService extends BaseService<User, UserRepository> {
@@ -93,13 +104,87 @@ export class UserService extends BaseService<User, UserRepository> {
 		// Обновление последнего входа
 		await this.repository.updateLastLogin(user.id)
 
-		// Генерация JWT токена
+		// Загрузить организации пользователя
+		const memberships = await this.getUserOrganizations(user.id)
+
+		if (user.isSuperAdmin || memberships.length === 0) {
+			// Суперадмин или пользователь без организаций — токен без организации
+			const token = this.generateToken(user)
+			return {
+				token,
+				user: user.toSafeObject(),
+				organizations: memberships,
+				needsOrganizationSelection: memberships.length > 1,
+			}
+		}
+
+		if (memberships.length === 1) {
+			// Одна организация — автоматически подставляем
+			const token = this.generateToken(user, memberships[0].id, memberships[0].role)
+			return {
+				token,
+				user: user.toSafeObject(),
+				organizations: memberships,
+			}
+		}
+
+		// Несколько организаций — требуется выбор
 		const token = this.generateToken(user)
+		return {
+			token,
+			user: user.toSafeObject(),
+			organizations: memberships,
+			needsOrganizationSelection: true,
+		}
+	}
+
+	/**
+	 * Выбор организации — возвращает новый JWT с контекстом организации
+	 */
+	async selectOrganization(userId: string, organizationId: string): Promise<AuthResponse | null> {
+		const user = await this.repository.findById(userId)
+		if (!user || !user.isActive) return null
+
+		// Проверить, что пользователь состоит в этой организации
+		const uoRepo = AppDataSource.getRepository(UserOrganization)
+		const membership = await uoRepo.findOne({
+			where: { userId, organizationId, isActive: true },
+			relations: ['organization'],
+		})
+
+		if (!membership && !user.isSuperAdmin) {
+			return null
+		}
+
+		const role = membership?.role
+		const token = this.generateToken(user, organizationId, role)
+		const memberships = await this.getUserOrganizations(userId)
 
 		return {
 			token,
 			user: user.toSafeObject(),
+			organizations: memberships,
 		}
+	}
+
+	/**
+	 * Получить список организаций пользователя
+	 */
+	async getUserOrganizations(userId: string): Promise<OrganizationInfo[]> {
+		const uoRepo = AppDataSource.getRepository(UserOrganization)
+		const memberships = await uoRepo.find({
+			where: { userId, isActive: true },
+			relations: ['organization'],
+		})
+
+		return memberships
+			.filter(m => m.organization && m.organization.isActive)
+			.map(m => ({
+				id: m.organization.id,
+				name: m.organization.name,
+				slug: m.organization.slug,
+				role: m.role,
+			}))
 	}
 
 	async updateUser(id: string, data: UpdateUserDTO): Promise<User | null> {
@@ -223,12 +308,20 @@ export class UserService extends BaseService<User, UserRepository> {
 		})
 	}
 
-	private generateToken(user: User): string {
-		const payload = {
+	private generateToken(user: User, organizationId?: string, organizationRole?: OrganizationRole): string {
+		const payload: Record<string, any> = {
 			id: user.id,
 			email: user.email,
 			role: user.role,
-			bitrixUserId: user.bitrixUserId, // Включаем bitrixUserId в JWT токен
+			isSuperAdmin: user.isSuperAdmin || false,
+			bitrixUserId: user.bitrixUserId,
+		}
+
+		if (organizationId) {
+			payload.organizationId = organizationId
+		}
+		if (organizationRole) {
+			payload.organizationRole = organizationRole
 		}
 
 		const secret = process.env.JWT_SECRET || 'secret'

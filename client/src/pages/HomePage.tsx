@@ -48,10 +48,10 @@ const HomePage: React.FC = () => {
 					{/* Форма заказа */}
 					<Box sx={{ width: '100%', maxWidth: '800px' }}>
 						<Typography variant='h4' component='h1' gutterBottom>
-							Заказ бетона
+							Новая заявка
 						</Typography>
 						<Typography variant='body1' color='text.secondary' sx={{ mb: 3 }}>
-							Заполните форму для создания новой заявки на поставку бетона
+							Заполните форму для создания новой заявки
 						</Typography>
 
 						{form ? (

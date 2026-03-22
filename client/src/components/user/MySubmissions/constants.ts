@@ -1,13 +1,25 @@
 export const STATUS_COLORS = {
-	'С1:NEW': 'primary',
+	'NEW': 'primary',
+	'IN_PROGRESS': 'warning',
+	'COMPLETED': 'success',
+	'CANCELLED': 'error',
+	// Legacy Bitrix24 статусы (обратная совместимость)
+	'C1:NEW': 'primary',
 	'C1:UC_GJLIZP': 'warning',
 	'C1:WON': 'success',
+	'C1:LOSE': 'error',
 } as const
 
 export const DEFAULT_STATUS_LABELS = {
+	'NEW': 'Новая',
+	'IN_PROGRESS': 'В работе',
+	'COMPLETED': 'Выполнено',
+	'CANCELLED': 'Отменено',
+	// Legacy
 	'C1:NEW': 'Новая',
-	'C1:UC_GJLIZP': 'Отправлено',
-	'C1:WON': 'Отгружено',
+	'C1:UC_GJLIZP': 'В работе',
+	'C1:WON': 'Выполнено',
+	'C1:LOSE': 'Отменено',
 }
 
 export const ITEMS_PER_PAGE_OPTIONS = [6, 12, 24]
