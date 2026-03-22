@@ -15,16 +15,16 @@ const Logo: React.FC<LogoProps> = ({
 }) => {
 	const colors = {
 		default: {
-			hexagon1: '#54C3C3',
-			hexagon2: 'black',
+			primary: '#1B4965',
+			accent: '#5FA8D3',
 		},
 		white: {
-			hexagon1: '#FFFFFF',
-			hexagon2: '#54C3C3',
+			primary: '#FFFFFF',
+			accent: '#5FA8D3',
 		},
 		dark: {
-			hexagon1: '#54C3C3',
-			hexagon2: '#FFFFFF',
+			primary: '#1B4965',
+			accent: '#FFFFFF',
 		},
 	}
 
@@ -35,17 +35,19 @@ const Logo: React.FC<LogoProps> = ({
 			<svg
 				width={size}
 				height={size}
-				viewBox='0 1800 2902 2082'
+				viewBox='0 0 64 64'
 				xmlns='http://www.w3.org/2000/svg'
 			>
-				<polygon
-					points='1011.17,1828.11 417.29,2856.83 802.78,3524.55 802.79,3524.56 1437.69,3524.56 1437.67,3524.55 1573.46,3524.55 1958.92,2856.92 1627.98,2283.72 2045.16,2283.72 2376.05,2856.83 1782.13,3885.53 593.9,3885.53 297.06,3371.34 0,2856.83 593.9,1828.11'
-					fill={colorScheme.hexagon1}
-				/>
-				<polygon
-					points='2308.21,1828.11 1119.99,1828.11 526.09,2856.83 856.95,3429.92 1274.24,3429.92 943.38,2856.83 1328.88,2189.08 2099.54,2189.08 2485.06,2856.83 1891.14,3885.53 2308.21,3885.53 2902.13,2856.83'
-					fill={colorScheme.hexagon2}
-				/>
+				{/* Base slab */}
+				<rect x='6' y='54' width='52' height='7' rx='2' fill={colorScheme.primary} />
+				{/* Plinth */}
+				<rect x='12' y='48' width='40' height='7' rx='1' fill={colorScheme.primary} />
+				{/* Shaft */}
+				<rect x='20' y='14' width='24' height='35' fill={colorScheme.accent} />
+				{/* Capital */}
+				<rect x='12' y='8' width='40' height='7' rx='1' fill={colorScheme.primary} />
+				{/* Abacus top */}
+				<rect x='6' y='3' width='52' height='6' rx='2' fill={colorScheme.primary} />
 			</svg>
 		</div>
 	)
