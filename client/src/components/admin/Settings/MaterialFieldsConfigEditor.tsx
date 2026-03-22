@@ -35,26 +35,7 @@ interface Props {
 	onSave?: () => void
 }
 
-const defaultConfig: MaterialFieldsConfig = {
-	concrete: {
-		priority: 1,
-		label: 'Бетон',
-		fields: [],
-		volumeFields: [],
-	},
-	mortar: {
-		priority: 2,
-		label: 'Раствор',
-		fields: [],
-		volumeFields: [],
-	},
-	cps: {
-		priority: 3,
-		label: 'ЦПС',
-		fields: [],
-		volumeFields: [],
-	},
-}
+const defaultConfig: MaterialFieldsConfig = {}
 
 const MaterialFieldsConfigEditor: React.FC<Props> = ({ onSave }) => {
 	const [config, setConfig] = useState<MaterialFieldsConfig>(defaultConfig)

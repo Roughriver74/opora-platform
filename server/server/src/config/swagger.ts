@@ -6,13 +6,13 @@ const options: swaggerJsdoc.Options = {
 	definition: {
 		openapi: '3.0.0',
 		info: {
-			title: 'Beton CRM API',
+			title: 'OPORA API',
 			version: '1.0.0',
 			description:
-				'API документация для Beton CRM - системы управления заказами бетона с интеграцией Bitrix24',
+				'API документация для OPORA - системы управления заказами и визитами с интеграцией Bitrix24',
 			contact: {
 				name: 'API Support',
-				email: 'crm@betonexpress.pro',
+				email: 'support@opora.ru',
 			},
 		},
 		servers: [
@@ -87,7 +87,7 @@ export function setupSwagger(app: Express): void {
 		swaggerUi.setup(swaggerSpec, {
 			explorer: true,
 			customCss: '.swagger-ui .topbar { display: none }',
-			customSiteTitle: 'Beton CRM API Docs',
+			customSiteTitle: 'OPORA API Docs',
 		})
 	)
 

@@ -113,7 +113,7 @@ export class NomenclatureService extends BaseService<Nomenclature, NomenclatureR
 	/**
 	 * Создать новую номенклатуру
 	 */
-	async create(data: CreateNomenclatureDto): Promise<Nomenclature> {
+	async create(data: CreateNomenclatureDto & { organizationId?: string }): Promise<Nomenclature> {
 		// Проверка уникальности SKU
 		const existingSku = await this.repository.findBySku(data.sku)
 		if (existingSku) {
@@ -238,7 +238,16 @@ export class NomenclatureService extends BaseService<Nomenclature, NomenclatureR
 	/**
 	 * Поиск номенклатуры (комбинированный: полнотекстовый + ILIKE)
 	 */
-	async search(query: string, limit: number = 20): Promise<Nomenclature[]> {
+	async search(query: string, limit: number = 20, organizationId?: string): Promise<Nomenclature[]> {
+		if (organizationId) {
+			const result = await this.repository.findWithFilters({
+				search: query,
+				isActive: true,
+				limit,
+				organizationId,
+			} as any)
+			return result.data
+		}
 		return this.repository.search(query, limit)
 	}
 
@@ -246,9 +255,9 @@ export class NomenclatureService extends BaseService<Nomenclature, NomenclatureR
 	 * Получить номенклатуру с фильтрами и пагинацией
 	 */
 	async findWithFilters(
-		options: PaginationOptions & NomenclatureFilterOptions
+		options: PaginationOptions & NomenclatureFilterOptions & { organizationId?: string }
 	): Promise<PaginatedResult<Nomenclature>> {
-		return this.repository.findWithFilters(options)
+		return this.repository.findWithFilters(options as any)
 	}
 
 	/**
@@ -281,7 +290,7 @@ export class NomenclatureService extends BaseService<Nomenclature, NomenclatureR
 			const bitrixProducts = await bitrix24Service.getAllProducts()
 			logger.info(`Получено ${bitrixProducts.length} товаров из Bitrix24`)
 
-			// Получаем единицу измерения по умолчанию (м³ для бетона)
+			// Получаем единицу измерения по умолчанию
 			const defaultUnit = await this.unitRepository.findByCode('m3')
 			if (!defaultUnit) {
 				throw new Error('Единица измерения по умолчанию (m3) не найдена')

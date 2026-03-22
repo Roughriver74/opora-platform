@@ -68,47 +68,13 @@ import {
 } from './constants'
 
 // Конфигурация полей материалов с приоритетом отображения
-// Приоритет: бетон (1) → раствор (2) → ЦПС (3)
-const MATERIAL_FIELDS_CONFIG = {
-	// Поля для бетона (высший приоритет)
-	concrete: {
-		priority: 1,
-		label: 'Бетон',
-		fields: [
-			'field_1750264442280', // Бетон (production)
-			'field_1750265427938', // Бетон*(Завод)
-			'field_1750365587259', // Бетон*(Покупатель)
-		],
-		volumeFields: [
-			'field_1750266620544', // Объем бетона (production)
-			'field_1750365852471', // Объем м3 (завод)
-			'field_1750365626978', // Объем м3
-		],
-	},
-	// Поля для раствора (средний приоритет)
-	mortar: {
-		priority: 2,
-		label: 'Раствор',
-		fields: [
-			'field_1750366025933', // Раствор*(завод)
-			'field_1750365704478', // Раствор*(покупатель)
-		],
-		volumeFields: [
-			'field_1750365827152', // Объем раствора м3
-		],
-	},
-	// Поля для ЦПС (низший приоритет)
-	cps: {
-		priority: 3,
-		label: 'ЦПС',
-		fields: [
-			'field_cps', // ЦПС (placeholder - добавить реальный ID когда будет создано поле)
-		],
-		volumeFields: [
-			'field_cps_volume', // Объем ЦПС (placeholder)
-		],
-	},
-}
+// Загружается из API через настройки формы. Дефолтный конфиг пустой.
+const MATERIAL_FIELDS_CONFIG: Record<string, {
+	priority: number
+	label: string
+	fields: string[]
+	volumeFields: string[]
+}> = {}
 
 // Тип для конфигурации материалов
 type MaterialConfig = typeof MATERIAL_FIELDS_CONFIG
@@ -167,6 +133,13 @@ const MySubmissions = () => {
 
 	// Конфигурация полей материалов (загружается из настроек или используется дефолтная)
 	const [materialFieldsConfig, setMaterialFieldsConfig] = useState(MATERIAL_FIELDS_CONFIG)
+
+	// Конфигурация специальных полей (clientField, shipmentDateField и др.) - загружается из настроек
+	const [specialFieldsConfig, setSpecialFieldsConfig] = useState<{
+		clientField?: string
+		shipmentDateField?: string
+		abnTimeField?: string
+	}>({})
 	const [filtersExpanded, setFiltersExpanded] = useState(false)
 	const [searchValue, setSearchValue] = useState('')
 	const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(
@@ -240,6 +213,7 @@ const MySubmissions = () => {
 				allowUserEdit,
 				copyButtonText,
 				materialConfig,
+				specialFields,
 			] = await Promise.all([
 				settingsService.getSettingValue('submissions.enable_copying', true),
 				settingsService.getSettingValue(
@@ -255,6 +229,10 @@ const MySubmissions = () => {
 					'submissions.material_fields_config',
 					MATERIAL_FIELDS_CONFIG
 				),
+				settingsService.getSettingValue(
+					'submissions.special_fields_config',
+					{}
+				),
 			])
 
 			setSettings({
@@ -267,6 +245,11 @@ const MySubmissions = () => {
 			// Обновляем конфигурацию материалов если получена из настроек
 			if (materialConfig && typeof materialConfig === 'object') {
 				setMaterialFieldsConfig(materialConfig)
+			}
+
+			// Обновляем конфигурацию специальных полей
+			if (specialFields && typeof specialFields === 'object') {
+				setSpecialFieldsConfig(specialFields)
 			}
 		} catch (error) {
 			console.error('Ошибка загрузки настроек:', error)
@@ -362,10 +345,11 @@ const MySubmissions = () => {
 			// Теперь собираем ID из загруженных данных
 			const materialFieldIds = getAllMaterialFieldIds(materialFieldsConfig)
 
+			const clientFieldId = specialFieldsConfig.clientField
 			allFormFields.forEach(formFieldsData => {
-				// Компания (field_1750266840204)
-				if (formFieldsData.field_1750266840204) {
-					const companyValue = formFieldsData.field_1750266840204
+				// Компания (динамическое поле из настроек)
+				if (clientFieldId && formFieldsData[clientFieldId]) {
+					const companyValue = formFieldsData[clientFieldId]
 					if (typeof companyValue === 'object' && companyValue.ID) {
 						companyIds.add(companyValue.ID.toString())
 					} else if (typeof companyValue === 'string' && companyValue.trim()) {
@@ -373,7 +357,7 @@ const MySubmissions = () => {
 					}
 				}
 
-				// Собираем ID всех материалов (бетон, раствор, ЦПС)
+				// Собираем ID всех материалов
 				materialFieldIds.forEach(fieldId => {
 					const fieldValue = formFieldsData[fieldId]
 					if (fieldValue) {
@@ -730,7 +714,7 @@ const MySubmissions = () => {
 			return productNames[productId] || productId
 		}
 
-		// Функция для получения материала с учетом приоритета (бетон → раствор → ЦПС)
+		// Функция для получения материала с учетом приоритета
 		const getMaterialInfo = (): { name: string; type: string; volume: string | null } => {
 			// Сортируем конфигурации по приоритету (используем materialFieldsConfig из настроек)
 			const sortedConfigs = Object.entries(materialFieldsConfig)
@@ -885,13 +869,13 @@ const MySubmissions = () => {
 									textOverflow: 'ellipsis',
 									whiteSpace: 'nowrap',
 								}}
-								title={getCompanyName('field_1750266840204')}
+								title={getCompanyName(specialFieldsConfig.clientField || '')}
 							>
-								{getCompanyName('field_1750266840204')}
+								{getCompanyName(specialFieldsConfig.clientField || '')}
 							</Typography>
 						</Box>
 
-						{/* Материал (бетон/раствор/ЦПС) с приоритетом */}
+						{/* Материал с приоритетом */}
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
 							<DescriptionIcon fontSize='small' color='action' sx={{ flexShrink: 0 }} />
 							<Typography
@@ -928,12 +912,12 @@ const MySubmissions = () => {
 							)}
 
 							{/* Дата и время отгрузки */}
-							{formFieldsData.field_1750311865385 && (
+							{specialFieldsConfig.shipmentDateField && formFieldsData[specialFieldsConfig.shipmentDateField] && (
 								<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
 									<ScheduleIcon sx={{ fontSize: 14, color: 'action.active' }} />
 									<Typography variant='caption' sx={{ fontWeight: 'medium' }}>
 										{format(
-											new Date(getFieldValue('field_1750311865385')),
+											new Date(getFieldValue(specialFieldsConfig.shipmentDateField || '')),
 											'dd.MM.yy HH:mm',
 											{ locale: ru }
 										)}

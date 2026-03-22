@@ -4,6 +4,21 @@ import { User } from '../database/entities/User.entity'
 import { Form } from '../database/entities/Form.entity'
 import { SelectQueryBuilder } from 'typeorm'
 
+export interface SpecialFields {
+	/** ID поля даты отгрузки в formData (настраивается для каждой организации) */
+	shipmentDateField?: string
+	/** ID поля клиента в formData (настраивается для каждой организации) */
+	clientField?: string
+	/** Статусы, означающие завершение заявки */
+	completedStatuses?: string[]
+	/** Статусы, означающие отмену заявки */
+	cancelledStatuses?: string[]
+	/** Ключевые слова для поиска полей с товарами в label (настраивается per организация) */
+	productLabelKeywords?: string[]
+	/** Ключевые слова для определения товара по названию поля */
+	productFieldKeywords?: string[]
+}
+
 export interface SubmissionFilters {
 	status?: string | string[]
 	priority?: string | string[]
@@ -15,6 +30,10 @@ export interface SubmissionFilters {
 	tags?: string[]
 	formId?: string
 	bitrixSyncStatus?: string
+	// Мультитенантность
+	organizationId?: string
+	// Конфигурируемые специальные поля
+	specialFields?: SpecialFields
 }
 
 export interface PaginationOptions {
@@ -90,6 +109,12 @@ export class OptimizedSubmissionService {
 			})
 		}
 
+		if (filters.organizationId) {
+			queryBuilder.andWhere('submission.organizationId = :organizationId', {
+				organizationId: filters.organizationId,
+			})
+		}
+
 		if (filters.tags && filters.tags.length > 0) {
 			queryBuilder.andWhere('submission.tags && ARRAY[:...tags]', {
 				tags: filters.tags,
@@ -158,22 +183,30 @@ export class OptimizedSubmissionService {
 		])
 
 		// Применяем сортировку
-		if (sortBy === 'shipmentDate') {
-			// Сортировка по JSONB полю даты отгрузки (field_1750311865385)
+		const shipmentDateField = filters.specialFields?.shipmentDateField
+		if (sortBy === 'shipmentDate' && shipmentDateField) {
+			// Сортировка по JSONB полю даты отгрузки (конфигурируемое поле)
 			// addSelect ПОСЛЕ select() чтобы не перезаписать
 			queryBuilder.addSelect(
 				`CASE
-					WHEN submission.form_data->>'field_1750311865385' IS NULL
-						OR submission.form_data->>'field_1750311865385' = ''
+					WHEN submission.form_data->>:shipmentField IS NULL
+						OR submission.form_data->>:shipmentField = ''
 					THEN NULL
-					ELSE (submission.form_data->>'field_1750311865385')::timestamp
+					ELSE (submission.form_data->>:shipmentField)::timestamp
 				END`,
 				'shipment_date_sort'
 			)
+			queryBuilder.setParameter('shipmentField', shipmentDateField)
 			queryBuilder.orderBy(
 				'shipment_date_sort',
 				sortOrder.toUpperCase() as 'ASC' | 'DESC',
 				'NULLS LAST'
+			)
+		} else if (sortBy === 'shipmentDate' && !shipmentDateField) {
+			// Если поле не сконфигурировано, сортируем по дате создания как fallback
+			queryBuilder.orderBy(
+				'submission.createdAt',
+				sortOrder.toUpperCase() as 'ASC' | 'DESC'
 			)
 		} else {
 			queryBuilder.orderBy(
@@ -355,7 +388,7 @@ export class OptimizedSubmissionService {
 		const productCounts = new Map<string, number>()
 
 		// Получаем список полей с товарами из form_fields
-		const productFields = await this.getProductFieldsFromDatabase()
+		const productFields = await this.getProductFieldsFromDatabase(filters)
 
 		// Анализируем formData для поиска товаров
 		for (const submission of submissions) {
@@ -415,9 +448,15 @@ export class OptimizedSubmissionService {
 	}
 
 	/**
-	 * Получение статистики по клиентам из поля field_1750266840204 с использованием Elasticsearch
+	 * Получение статистики по клиентам из конфигурируемого поля с использованием Elasticsearch
 	 */
 	private async getClientStats(filters: SubmissionFilters = {}) {
+		const clientField = filters.specialFields?.clientField
+		if (!clientField) {
+			// Если поле клиента не сконфигурировано, возвращаем пустой массив
+			return []
+		}
+
 		const baseQuery = this.submissionRepository.createQueryBuilder('submission')
 		this.applyFilters(baseQuery, filters)
 
@@ -431,8 +470,7 @@ export class OptimizedSubmissionService {
 		// Анализируем formData для поиска клиентов
 		for (const submission of submissions) {
 			if (submission.formData) {
-				// Ищем поле field_1750266840204
-				const clientValue = submission.formData['field_1750266840204']
+				const clientValue = submission.formData[clientField]
 				if (clientValue && typeof clientValue === 'string') {
 					const clientId = clientValue.trim()
 					if (clientId) {
@@ -468,10 +506,27 @@ export class OptimizedSubmissionService {
 		this.applyFilters(baseQuery, filters)
 
 		// Получаем заявки, которые завершены (отгружены) или отменены
+		// Статусы берутся из конфигурации, с fallback на generic + Bitrix24 коды
+		const configuredCompleted = filters.specialFields?.completedStatuses || []
+		const configuredCancelled = filters.specialFields?.cancelledStatuses || []
+		const terminalStatuses = [
+			...configuredCompleted,
+			...configuredCancelled,
+			// Generic статусы
+			'COMPLETED',
+			'CANCELLED',
+			// Bitrix24 fallback статусы
+			'C1:WON',
+			'C1:LOSE',
+			'C1%3LOSE',
+		]
+		// Убираем дубликаты
+		const uniqueStatuses = [...new Set(terminalStatuses)]
+
 		const completedSubmissions = await baseQuery
 			.clone()
 			.where('submission.status IN (:...statuses)', {
-				statuses: ['C1:WON', 'C1:LOSE', 'C1%3LOSE'], // Отгружено, Отменено, Отменено (другой код)
+				statuses: uniqueStatuses,
 			})
 			.select([
 				'submission.createdAt',
@@ -508,21 +563,27 @@ export class OptimizedSubmissionService {
 	/**
 	 * Получение списка полей с товарами из form_fields
 	 */
-	private async getProductFieldsFromDatabase(): Promise<Set<string>> {
+	private async getProductFieldsFromDatabase(filters?: SubmissionFilters): Promise<Set<string>> {
 		try {
-			// Используем прямой SQL запрос для получения полей с товарами
-			const result = await AppDataSource.query(`
-				SELECT name 
-				FROM form_fields 
-				WHERE type = 'autocomplete' 
-				AND (
-					label ILIKE '%бетон%' OR 
-					label ILIKE '%цемент%' OR 
-					label ILIKE '%раствор%' OR 
-					label ILIKE '%цпс%' OR 
-					label ILIKE '%пмд%'
-				)
-			`)
+			const keywords = filters?.specialFields?.productLabelKeywords
+			if (!keywords || keywords.length === 0) {
+				// Если ключевые слова не сконфигурированы, возвращаем все autocomplete-поля
+				const result = await AppDataSource.query(`
+					SELECT name
+					FROM form_fields
+					WHERE type = 'autocomplete'
+				`)
+				return new Set(result.map((row: any) => row.name))
+			}
+
+			// Строим динамический ILIKE фильтр из конфигурации
+			const conditions = keywords.map((_: string, i: number) => `label ILIKE $${i + 1}`).join(' OR ')
+			const params = keywords.map((kw: string) => `%${kw}%`)
+
+			const result = await AppDataSource.query(
+				`SELECT name FROM form_fields WHERE type = 'autocomplete' AND (${conditions})`,
+				params
+			)
 
 			return new Set(result.map((row: any) => row.name))
 		} catch (error) {
@@ -605,68 +666,33 @@ export class OptimizedSubmissionService {
 	}
 
 	/**
-	 * Проверяет, является ли поле товаром
+	 * Проверяет, является ли поле товаром.
+	 * Ключевые слова берутся из конфигурации specialFields.productFieldKeywords.
+	 * Если ключевые слова не заданы, проверка не выполняется (возвращает false).
 	 */
-	private isProductField(fieldName: string, value: string): boolean {
-		const productKeywords = [
-			'товар',
-			'product',
-			'материал',
-			'material',
-			'бетон',
-			'цемент',
-			'раствор',
-			'песок',
-			'щебень',
-			'арматура',
-			'кирпич',
-			'блок',
-		]
-
-		const fieldNameLower = fieldName.toLowerCase()
-		const valueLower = value.toLowerCase()
-
-		// Проверяем по названию поля
-		for (const keyword of productKeywords) {
-			if (fieldNameLower.includes(keyword)) {
-				return true
-			}
+	private isProductField(fieldName: string, value: string, productFieldKeywords: string[] = []): boolean {
+		if (productFieldKeywords.length === 0) {
+			return false
 		}
 
-		// Проверяем по значению (если содержит марки бетона, например М300, М400)
-		if (
-			/м[0-9]+/i.test(value) ||
-			/бетон/i.test(value) ||
-			/цемент/i.test(value)
-		) {
-			return true
+		const fieldNameLower = fieldName.toLowerCase()
+
+		// Проверяем по названию поля
+		for (const keyword of productFieldKeywords) {
+			if (fieldNameLower.includes(keyword.toLowerCase())) {
+				return true
+			}
 		}
 
 		return false
 	}
 
 	/**
-	 * Извлекает название товара из значения поля
+	 * Извлекает название товара из значения поля.
+	 * Возвращает очищенное значение как есть, без бизнес-специфичной логики.
 	 */
 	private extractProductName(value: string): string | null {
-		// Очищаем значение от лишних символов
-		let productName = value.trim()
-
-		// Если это марка бетона (М300, М400 и т.д.)
-		const concreteMatch = productName.match(/м[0-9]+/i)
-		if (concreteMatch) {
-			return concreteMatch[0].toUpperCase()
-		}
-
-		// Если содержит слово "бетон" или "цемент"
-		if (/бетон/i.test(productName)) {
-			return 'Бетон'
-		}
-		if (/цемент/i.test(productName)) {
-			return 'Цемент'
-		}
-
-		// Возвращаем очищенное название
+		const productName = value.trim()
 		return productName.length > 0 ? productName : null
 	}
 
@@ -710,6 +736,12 @@ export class OptimizedSubmissionService {
 		if (filters.formId) {
 			queryBuilder.andWhere('submission.formId = :formId', {
 				formId: filters.formId,
+			})
+		}
+
+		if (filters.organizationId) {
+			queryBuilder.andWhere('submission.organizationId = :organizationId', {
+				organizationId: filters.organizationId,
 			})
 		}
 

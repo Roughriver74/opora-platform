@@ -268,7 +268,7 @@ export const CategoryManager: React.FC = () => {
 											fullWidth
 											error={!!errors.code}
 											helperText={errors.code?.message}
-											placeholder='BETON'
+											placeholder='CATEGORY_CODE'
 										/>
 									)}
 								/>
