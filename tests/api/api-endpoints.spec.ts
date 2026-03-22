@@ -4,7 +4,7 @@ import { ApiUtils } from '../utils/api-utils';
 
 test.describe('API Endpoint Testing', () => {
   const ADMIN_CREDENTIALS = {
-    email: 'admin@betoncrm.ru',
+    email: 'admin@opora.local',
     password: 'qawsed12345'
   };
 

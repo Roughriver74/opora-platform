@@ -14,10 +14,10 @@ export class DockerUtils {
     unhealthy: string[];
   }> {
     const requiredContainers = [
-      'beton_frontend',
-      'beton_backend', 
-      'beton_postgres',
-      'beton_redis'
+      'opora_frontend',
+      'opora_backend',
+      'opora_postgres',
+      'opora_redis'
     ];
 
     const running: string[] = [];
@@ -79,7 +79,7 @@ export class DockerUtils {
       const lines = stdout.split('\n').slice(1); // Skip header
       
       for (const line of lines) {
-        if (line.trim() && line.includes('beton_')) {
+        if (line.trim() && line.includes('opora_')) {
           const parts = line.split(/\s+/);
           const name = parts[0];
           const cpu = parts[1];
@@ -174,7 +174,7 @@ export class DockerUtils {
       const lines = stdout.split('\n').slice(1); // Skip header
       
       for (const line of lines) {
-        if (line.trim() && line.includes('beton')) {
+        if (line.trim() && line.includes('opora')) {
           const parts = line.split(/\s+/);
           const name = parts[0];
           const status = parts[2] || 'unknown';

@@ -5,7 +5,7 @@ import { DockerUtils } from './utils/docker-utils';
 
 test.describe('Comprehensive System Health Report', () => {
   const ADMIN_CREDENTIALS = {
-    email: 'crm@betonexpress.pro',
+    email: 'admin@opora.local',
     password: 'qawsed12345'
   };
 
@@ -406,7 +406,7 @@ test.describe('Comprehensive System Health Report', () => {
   function generateReadableReport(report: any): string {
     let output = '';
     output += '='.repeat(60) + '\n';
-    output += 'BETON CRM - COMPREHENSIVE SYSTEM HEALTH REPORT\n';
+    output += 'OPORA - COMPREHENSIVE SYSTEM HEALTH REPORT\n';
     output += '='.repeat(60) + '\n';
     output += `Timestamp: ${report.timestamp}\n`;
     output += `Overall Status: ${report.overallHealth.status}\n`;

@@ -206,7 +206,7 @@ test.describe('Docker Environment Testing', () => {
   test('should check container logs for errors', async () => {
     console.log('Checking container logs for critical errors...');
     
-    const containers = ['beton_frontend', 'beton_backend', 'beton_postgres', 'beton_redis'];
+    const containers = ['opora_frontend', 'opora_backend', 'opora_postgres', 'opora_redis'];
     const criticalErrors: string[] = [];
     
     for (const container of containers) {

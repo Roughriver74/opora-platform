@@ -2,7 +2,7 @@ import { test as setup } from '@playwright/test';
 import { AuthUtils } from './utils/auth-utils';
 
 const ADMIN_CREDENTIALS = {
-	email: 'crm@betonexpress.pro',
+	email: 'admin@opora.local',
 	password: 'qawsed12345',
 }
 
