@@ -28,7 +28,7 @@ interface DashboardChartsProps {
 
 export const DashboardCharts: React.FC<DashboardChartsProps> = ({ data }) => {
 	const COLORS = [
-		'#4c1130',
+		'#1B4965',
 		'#f50057',
 		'#1976d2',
 		'#2e7d32',
@@ -104,7 +104,7 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ data }) => {
 								<XAxis dataKey='name' />
 								<YAxis />
 								<Tooltip content={<CustomTooltip />} />
-								<Bar dataKey='value' fill='#4c1130' />
+								<Bar dataKey='value' fill='#1B4965' />
 							</BarChart>
 						</ResponsiveContainer>
 					) : (

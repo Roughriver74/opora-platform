@@ -35,7 +35,7 @@
 	],
 	"start_url": ".",
 	"display": "standalone",
-	"theme_color": "#4c1130",
+	"theme_color": "#1B4965",
 	"background_color": "#ffffff",
 	"description": "Облачная платформа для управления заказами и визитами полевых сотрудников"
 }

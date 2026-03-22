@@ -59,7 +59,7 @@ export const DashboardInsights: React.FC<DashboardInsightsProps> = ({
 			value: `${Math.round(stats.totalSubmissions / 30)}`,
 			description: 'Заявок в день',
 			icon: <Assignment />,
-			color: '#4c1130',
+			color: '#1B4965',
 		},
 		{
 			title: 'Рост активности',

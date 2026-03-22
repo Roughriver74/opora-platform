@@ -58,7 +58,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
 		growth?: number
 		subtitle?: string
 		color?: string
-	}> = ({ title, value, icon, growth, subtitle, color = '#4c1130' }) => (
+	}> = ({ title, value, icon, growth, subtitle, color = '#1B4965' }) => (
 		<Card sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
 			<CardContent>
 				<Box
@@ -124,7 +124,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
 				<StatCard
 					title='Всего заявок'
 					value={formatNumber(data.totalSubmissions)}
-					icon={<Assignment sx={{ color: '#4c1130' }} />}
+					icon={<Assignment sx={{ color: '#1B4965' }} />}
 					growth={data.monthlyGrowth}
 					subtitle='За выбранный период'
 				/>

@@ -31,13 +31,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 					py: 2,
 					px: 2,
 					mt: 'auto',
-					backgroundColor: '#4c1130',
+					backgroundColor: '#1B4965',
 					color: 'white',
 					textAlign: 'center',
 				}}
 			>
 				<Container maxWidth='lg'>
-					© {new Date().getFullYear()} БетонЭкспресс. Все права защищены. Create
+					© {new Date().getFullYear()} ОПОРА. Все права защищены. Create
 					by shknv.
 				</Container>
 			</Box>

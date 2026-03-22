@@ -72,7 +72,7 @@ class DashboardService {
 				submissionsByMonth: this.formatMonthData(
 					data?.byMonth || [],
 					'Заявки по месяцам',
-					'#4c1130'
+					'#1B4965'
 				),
 				submissionsByStatus: this.formatChartData(
 					data?.byStatus || [],
@@ -114,7 +114,7 @@ class DashboardService {
 			return {
 				topForms: [], // Убираем топ форм
 				topManagers: this.formatTopListData(data?.byUser || []), // Показываем авторов заявок
-				topClients: this.formatTopListData(data?.byClients || []), // Используем данные из field_1750266840204
+				topClients: this.formatTopListData(data?.byClients || []), // Используем данные из настраиваемого поля клиента
 				topProducts: this.formatTopListData(data?.byProducts || []), // Используем данные из formData
 				topStatuses: [], // Убираем топ статусов
 				topPriorities: [], // Убираем топ приоритетов
