@@ -41,6 +41,7 @@ export interface OrganizationSettings {
 		primaryColor?: string
 		secondaryColor?: string
 		logoUrl?: string
+		faviconUrl?: string  // Pro plan: custom favicon URL
 	}
 	[key: string]: any
 }
