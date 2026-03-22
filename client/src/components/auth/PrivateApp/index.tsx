@@ -17,6 +17,7 @@ import VisitCreatePage from '../../../pages/visits/VisitCreatePage'
 import VisitDetailsPage from '../../../pages/visits/VisitDetailsPage'
 import VisitCalendarPage from '../../../pages/visits/VisitCalendarPage'
 import BillingPage from '../../../pages/settings/BillingPage'
+import SetupWizard from '../../../pages/onboarding/SetupWizard'
 
 export const PrivateApp: React.FC = () => {
 	const { isAuthenticated, isLoading, checkAuth, needsOrganizationSelection } =
@@ -105,6 +106,7 @@ export const PrivateApp: React.FC = () => {
 				<Route path='/visits/calendar' element={<VisitCalendarPage />} />
 				<Route path='/visits/:id' element={<VisitDetailsPage />} />
 				<Route path='/settings/billing' element={<BillingPage />} />
+				<Route path='/onboarding' element={<SetupWizard />} />
 				<Route path='*' element={<Navigate to='/' replace />} />
 			</Routes>
 		</Layout>
