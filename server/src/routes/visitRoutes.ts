@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express'
+import express from 'express'
 import { moduleGuard } from '../middleware/moduleGuard'
 import { planLimitsGuard } from '../middleware/planLimitsGuard'
 import {
@@ -15,12 +15,12 @@ const router = express.Router()
 
 router.use(moduleGuard('visits'))
 
-router.get('/calendar', (req: Request, res: Response) => getVisitCalendar(req, res))
-router.get('/', (req: Request, res: Response) => getVisits(req, res))
-router.post('/', planLimitsGuard('visits'), (req: Request, res: Response) => createVisit(req, res))
-router.get('/:id', (req: Request, res: Response) => getVisitById(req, res))
-router.put('/:id', (req: Request, res: Response) => updateVisit(req, res))
-router.patch('/:id/status', (req: Request, res: Response) => updateVisitStatus(req, res))
-router.delete('/:id', (req: Request, res: Response) => deleteVisit(req, res))
+router.get('/calendar', getVisitCalendar as any)
+router.get('/', getVisits as any)
+router.post('/', planLimitsGuard('visits'), createVisit as any)
+router.get('/:id', getVisitById as any)
+router.put('/:id', updateVisit as any)
+router.patch('/:id/status', updateVisitStatus as any)
+router.delete('/:id', deleteVisit as any)
 
 export default router

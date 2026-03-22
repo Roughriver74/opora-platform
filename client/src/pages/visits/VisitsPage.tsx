@@ -164,7 +164,7 @@ const VisitsPage: React.FC = () => {
 				<>
 					<Grid container spacing={2}>
 						{visits.map(visit => (
-							<Grid item xs={12} sm={6} md={4} key={visit.id}>
+							<Grid size={{ xs: 12, sm: 6, md: 4 }} key={visit.id}>
 								<VisitCard visit={visit} />
 							</Grid>
 						))}

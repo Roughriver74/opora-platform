@@ -17,3 +17,4 @@ grafana.json
 
 # Auto Claude data directory
 .auto-claude/
+landing

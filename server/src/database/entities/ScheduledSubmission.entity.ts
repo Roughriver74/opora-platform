@@ -37,7 +37,6 @@ export enum ScheduledSubmissionStatus {
 @Entity('scheduled_submissions')
 @Index(['scheduledDate', 'status'])
 @Index(['periodGroupId', 'status'])
-@Index(['status', 'scheduledDate'])
 @Index(['formId', 'status'])
 @Index(['assignedToId', 'status'])
 @Index(['organizationId'])

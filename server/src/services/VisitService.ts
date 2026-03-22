@@ -55,7 +55,7 @@ export class VisitService extends BaseService<Visit, VisitRepository> {
 		return this.repository.update(id, { status } as any)
 	}
 
-	async findWithFilters(options: VisitFilterOptions): Promise<Visit[]> {
+	async findWithFilters(options: VisitFilterOptions) {
 		return this.repository.findWithFilters(options)
 	}
 
