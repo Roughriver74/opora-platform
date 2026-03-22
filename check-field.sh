@@ -5,7 +5,7 @@ echo ""
 
 # Получаем токен
 echo "🔐 Получение токена..."
-TOKEN=$(curl -s -X POST http://localhost:5001/api/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:4201/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"crm@betonexpress.pro","password":"admin123"}' | jq -r '.accessToken')
 
@@ -19,7 +19,7 @@ echo ""
 
 # Получаем список форм
 echo "📋 Получение списка форм..."
-FORMS=$(curl -s -H "Authorization: Bearer $TOKEN" http://localhost:5001/api/forms)
+FORMS=$(curl -s -H "Authorization: Bearer $TOKEN" http://localhost:4201/api/forms)
 echo "$FORMS" | jq -r '.[] | "\(.id) - \(.name)"' | head -5
 echo ""
 
@@ -29,7 +29,7 @@ echo "📝 Получение полей формы $FORM_ID..."
 echo ""
 
 # Получаем поля формы
-FIELDS=$(curl -s -H "Authorization: Bearer $TOKEN" http://localhost:5001/api/forms/${FORM_ID}/fields)
+FIELDS=$(curl -s -H "Authorization: Bearer $TOKEN" http://localhost:4201/api/forms/${FORM_ID}/fields)
 
 # Ищем поле field_1750311670121
 echo "🔍 Поиск поля field_1750311670121:"

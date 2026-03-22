@@ -33,7 +33,7 @@ docker compose logs backend --tail=100 | grep -E "Воркер очереди з
 echo -e "\n${YELLOW}4. Creating test periodic submissions...${NC}"
 
 # Get auth token
-TOKEN=$(curl -s -X POST http://localhost:5001/api/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:4201/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "crm@betonexpress.pro",
@@ -52,7 +52,7 @@ TODAY=$(date +%Y-%m-%d)
 TOMORROW=$(date -v+1d +%Y-%m-%d 2>/dev/null || date -d "+1 day" +%Y-%m-%d)
 
 echo "Creating 2-day test period..."
-RESPONSE=$(curl -s -X POST http://localhost:5001/api/submissions/period \
+RESPONSE=$(curl -s -X POST http://localhost:4201/api/submissions/period \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{

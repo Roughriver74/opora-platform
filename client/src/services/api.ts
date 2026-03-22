@@ -5,7 +5,7 @@ import axios from 'axios'
 const API_URL =
 	process.env.NODE_ENV === 'production'
 		? '' // Пустой baseURL для использования относительных путей через nginx proxy
-		: 'http://localhost:5001' // Прямой URL для разработки
+		: 'http://localhost:4201' // Прямой URL для разработки
 
 const api = axios.create({
 	baseURL: API_URL,

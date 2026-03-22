@@ -3,7 +3,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 const config = {
-	port: process.env.PORT || 5001,
+	port: process.env.PORT || 4201,
 	mongoUri:
 		process.env.MONGODB_URI || 'mongodb://localhost:27017/opora-production',
 	bitrix24Enabled: process.env.BITRIX24_ENABLED === 'true',

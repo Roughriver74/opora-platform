@@ -41,7 +41,7 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Открываем порт
-EXPOSE 5001
+EXPOSE 4201
 
 # Запускаем приложение
 CMD ["node", "dist/index.js"]
