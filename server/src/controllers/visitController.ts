@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { getVisitService } from '../services/VisitService'
 import { VisitStatus } from '../database/entities/Visit.entity'
+import { incrementLimitCounter } from '../middleware/planLimitsGuard'
 
 export const getVisits = async (req: Request, res: Response) => {
 	try {
@@ -107,6 +108,9 @@ export const createVisit = async (req: Request, res: Response) => {
 			comment,
 			dynamicFields,
 		})
+
+		// Increment monthly visit counter for plan limit tracking
+		await incrementLimitCounter(req.organizationId!, 'visits')
 
 		return res.status(201).json({ success: true, data: visit })
 	} catch (error: any) {
