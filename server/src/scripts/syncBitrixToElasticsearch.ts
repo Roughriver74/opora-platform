@@ -214,13 +214,13 @@ const syncBitrixToElasticsearch = async () => {
 		// Test 2: Search with typo (fuzziness)
 		console.log('\n📊 Test 2: Search with typo (fuzziness)')
 		const searchResults2 = await elasticsearchService.search({
-			query: 'бетн м300', // typo in "бетон"
+			query: 'тест', // typo test
 			type: 'product',
 			limit: 3,
 			fuzzy: true,
 		})
 		console.log(
-			`Found ${searchResults2.length} products matching "бетн м300" (with typo)`
+			`Found ${searchResults2.length} products matching "тест" (with typo)`
 		)
 		searchResults2.forEach((result, index) => {
 			console.log(
@@ -231,13 +231,13 @@ const syncBitrixToElasticsearch = async () => {
 		// Test 3: Synonym search
 		console.log('\n📊 Test 3: Synonym search')
 		const searchResults3 = await elasticsearchService.search({
-			query: 'цемент', // synonym for бетон
+			query: 'материал', // synonym test
 			type: 'product',
 			limit: 3,
 			fuzzy: true,
 		})
 		console.log(
-			`Found ${searchResults3.length} products matching "цемент" (synonym)`
+			`Found ${searchResults3.length} products matching "материал" (synonym)`
 		)
 		searchResults3.forEach((result, index) => {
 			console.log(

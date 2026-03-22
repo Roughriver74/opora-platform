@@ -34,13 +34,13 @@ export const adminLogin = async (
 			process.env.JWT_SECRET || 'default-jwt-secret-key-change-in-production'
 
 		const accessToken = jwt.sign(
-			{ adminId: 'admin', email: 'admin@beton.com' },
+			{ adminId: 'admin', email: 'admin@opora.local' },
 			secret,
 			{ expiresIn: '4h' }
 		)
 
 		const refreshToken = jwt.sign(
-			{ adminId: 'admin', email: 'admin@beton.com' },
+			{ adminId: 'admin', email: 'admin@opora.local' },
 			secret,
 			{ expiresIn: '7d' }
 		)
@@ -66,7 +66,7 @@ export const adminLogin = async (
 			refreshToken,
 			user: {
 				role: 'admin',
-				email: 'admin@beton.com',
+				email: 'admin@opora.local',
 			},
 		})
 	} catch (error) {
@@ -270,7 +270,7 @@ export const verifyToken = async (
 						message: 'Токен действителен',
 						user: {
 							role: 'admin',
-							email: 'admin@beton.com',
+							email: 'admin@opora.local',
 						},
 					})
 				} else {

@@ -65,7 +65,7 @@ async function testIncrementalSync() {
 		// Тестируем поиск
 		logger.info('🔍 Тестируем поиск...')
 		const testResults = await elasticsearchService.search({
-			query: 'бетон',
+			query: 'тест',
 			type: 'product',
 			limit: 5,
 		})

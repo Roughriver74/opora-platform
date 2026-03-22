@@ -14,10 +14,11 @@ async function testEncryption() {
 	console.log('='.repeat(60))
 
 	// Тестовые данные
+	const webhookUrl = process.env.BITRIX24_WEBHOOK_URL || '';
 	const testCases = [
 		{
 			name: 'Webhook URL',
-			plainText: 'https://crm.betonexpress.pro/rest/3/74sbx907svrq1v10/',
+			plainText: webhookUrl,
 		},
 		{
 			name: 'API ключ',

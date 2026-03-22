@@ -3,7 +3,7 @@ import { exec } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 
-const PROD_BACKUP_DIR = '/var/www/beton-crm-backups'
+const PROD_BACKUP_DIR = '/var/www/opora-backups'
 const LOCAL_BACKUP_DIR = path.resolve(process.cwd(), '../backups') // Локальная папка для бэкапов
 
 // Хелпер для выполнения Node.js скриптов
