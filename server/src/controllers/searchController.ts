@@ -468,7 +468,7 @@ export const healthCheck = async (
 			stats: {
 				documents: stats?.total?.docs?.count || 0,
 				size: stats?.total?.store?.size_in_bytes || 0,
-				indexName: 'beton_crm_search',
+				indexName: 'opora_search',
 			},
 		})
 	} catch (error: any) {
