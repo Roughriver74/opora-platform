@@ -20,3 +20,6 @@ export { NomenclatureUnit } from './NomenclatureUnit.entity'
 // Counterparty entities
 export { Company, CompanyType, CompanySyncStatus } from './Company.entity'
 export { Contact, ContactType, ContactSyncStatus } from './Contact.entity'
+
+// Visit entities
+export { Visit, VisitStatus, VisitSyncStatus } from './Visit.entity'
