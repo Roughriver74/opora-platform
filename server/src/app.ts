@@ -23,6 +23,7 @@ import contactRoutes from './routes/contactRoutes'
 import syncManagerRoutes from './routes/syncManagerRoutes'
 import apiTokenRoutes from './routes/apiTokenRoutes'
 import organizationRoutes from './routes/organizationRoutes'
+import visitRoutes from './routes/visitRoutes'
 // import { setupSwagger } from './config/swagger' // Временно отключено
 // Utility for checking database connection status
 // Re-importing to fix potential resolution issues
@@ -120,5 +121,6 @@ app.use('/api/contacts', contactRoutes)
 app.use('/api/sync-manager', syncManagerRoutes)
 app.use('/api/tokens', apiTokenRoutes)
 app.use('/api/organizations', organizationRoutes)
+app.use('/api/visits', visitRoutes)
 
 export default app
