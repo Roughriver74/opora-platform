@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
 	AppBar,
 	Box,
@@ -19,7 +19,12 @@ import {
 	Chip,
 	Divider,
 	ListSubheader,
+	Badge,
+	Tooltip,
 } from '@mui/material'
+import CloudOffIcon from '@mui/icons-material/CloudOff'
+import CloudDoneIcon from '@mui/icons-material/CloudDone'
+import CloudQueueIcon from '@mui/icons-material/CloudQueue'
 import { useNavigate, useLocation } from 'react-router-dom'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import DashboardIcon from '@mui/icons-material/Dashboard'
@@ -33,6 +38,38 @@ import BusinessIcon from '@mui/icons-material/Business'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
 import { useAuth } from '../../contexts/auth'
 import Logo from '../common/Logo'
+
+function OnlineStatusIndicator() {
+	const [isOnline, setIsOnline] = useState(navigator.onLine)
+	const [pendingCount] = useState(0)
+
+	useEffect(() => {
+		const handleOnline = () => setIsOnline(true)
+		const handleOffline = () => setIsOnline(false)
+		window.addEventListener('online', handleOnline)
+		window.addEventListener('offline', handleOffline)
+		return () => {
+			window.removeEventListener('online', handleOnline)
+			window.removeEventListener('offline', handleOffline)
+		}
+	}, [])
+
+	const color = !isOnline ? 'error' : pendingCount > 0 ? 'warning' : 'success'
+	const Icon = !isOnline ? CloudOffIcon : pendingCount > 0 ? CloudQueueIcon : CloudDoneIcon
+	const tooltip = !isOnline
+		? 'Оффлайн'
+		: pendingCount > 0
+		? `${pendingCount} действий в очереди`
+		: 'Онлайн'
+
+	return (
+		<Tooltip title={tooltip}>
+			<Badge badgeContent={pendingCount || undefined} color='warning' max={99}>
+				<Icon sx={{ color: `${color}.main`, fontSize: 20 }} />
+			</Badge>
+		</Tooltip>
+	)
+}
 
 const Navbar: React.FC = () => {
 	const {
@@ -350,14 +387,19 @@ const Navbar: React.FC = () => {
 						{!isMobile && <Box sx={{ flexGrow: 1 }} />}
 
 						{isMobile ? (
-							<IconButton
-								color='inherit'
-								aria-label='open drawer'
-								edge='end'
-								onClick={handleMobileToggle}
-							>
-								<MenuIcon />
-							</IconButton>
+							<>
+								<Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+									<OnlineStatusIndicator />
+								</Box>
+								<IconButton
+									color='inherit'
+									aria-label='open drawer'
+									edge='end'
+									onClick={handleMobileToggle}
+								>
+									<MenuIcon />
+								</IconButton>
+							</>
 						) : (
 							<Box sx={{ display: 'flex', alignItems: 'center' }}>
 								{menuItems.map(item => (
@@ -382,6 +424,11 @@ const Navbar: React.FC = () => {
 										{item.text}
 									</Button>
 								))}
+
+								{/* Индикатор онлайн-статуса */}
+								<Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
+									<OnlineStatusIndicator />
+								</Box>
 
 								{/* Меню пользователя */}
 								<Box sx={{ ml: 2 }}>
