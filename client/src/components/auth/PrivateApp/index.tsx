@@ -12,6 +12,10 @@ import OrganizationsPage from '../../../pages/admin/Organizations'
 import DashboardPage from '../../../pages/DashboardPage'
 import MySubmissions from '../../user/MySubmissions'
 import AnimatedLogo from '../../common/AnimatedLogo'
+import VisitsPage from '../../../pages/visits/VisitsPage'
+import VisitCreatePage from '../../../pages/visits/VisitCreatePage'
+import VisitDetailsPage from '../../../pages/visits/VisitDetailsPage'
+import VisitCalendarPage from '../../../pages/visits/VisitCalendarPage'
 
 export const PrivateApp: React.FC = () => {
 	const { isAuthenticated, isLoading, checkAuth, needsOrganizationSelection } =
@@ -95,6 +99,10 @@ export const PrivateApp: React.FC = () => {
 						</ProtectedRoute>
 					}
 				/>
+				<Route path='/visits' element={<VisitsPage />} />
+				<Route path='/visits/create' element={<VisitCreatePage />} />
+				<Route path='/visits/calendar' element={<VisitCalendarPage />} />
+				<Route path='/visits/:id' element={<VisitDetailsPage />} />
 				<Route path='*' element={<Navigate to='/' replace />} />
 			</Routes>
 		</Layout>

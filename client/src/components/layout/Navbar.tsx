@@ -25,6 +25,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import HomeIcon from '@mui/icons-material/Home'
 import AssignmentIcon from '@mui/icons-material/Assignment'
+import EventNoteIcon from '@mui/icons-material/EventNote'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
 import LogoutIcon from '@mui/icons-material/Logout'
 import MenuIcon from '@mui/icons-material/Menu'
@@ -108,6 +109,7 @@ const Navbar: React.FC = () => {
 	const menuItems = [
 		{ text: 'Мои заявки', icon: <AssignmentIcon />, path: '/my-submissions' },
 		{ text: 'Новая заявка', icon: <HomeIcon />, path: '/' },
+		{ text: 'Визиты', icon: <EventNoteIcon />, path: '/visits' },
 	]
 
 	if (user?.role === 'admin') {
