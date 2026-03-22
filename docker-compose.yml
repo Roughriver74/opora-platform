@@ -10,7 +10,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       # Доступ только через localhost (туннель)
-      - '127.0.0.1:${DB_PORT:-5489}:5432'
+      - '127.0.0.1:${DB_PORT:-4202}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # - ./server/src/database/scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
@@ -54,7 +54,7 @@ services:
         soft: -1
         hard: -1
     ports:
-      - '${ELASTICSEARCH_PORT:-9200}:9200'
+      - '${ELASTICSEARCH_PORT:-4204}:9200'
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     healthcheck:
@@ -73,10 +73,10 @@ services:
     container_name: opora_backend
     restart: unless-stopped
     ports:
-      - '${PORT:-5001}:5001'
+      - '${PORT:-4201}:4201'
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${PORT:-5001}
+      PORT: ${PORT:-4201}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USERNAME: opora_user
@@ -91,7 +91,7 @@ services:
       REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN:-30d}
       BITRIX_WEBHOOK: ${BITRIX_WEBHOOK}
       # Разрешаем домен и IP через запятую
-      CORS_ORIGIN: ${CORS_ORIGIN:-https://beton.shknv.ru,http://beton.shknv.ru,https://beton.shknv.ru:3000,http://beton.shknv.ru:3000,http://31.128.39.123:3000,https://31.128.39.123:3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://beton.shknv.ru,http://beton.shknv.ru,https://beton.shknv.ru:4200,http://beton.shknv.ru:4200,http://31.128.39.123:4200,https://31.128.39.123:4200}
     depends_on:
       postgres:
         condition: service_healthy
@@ -112,9 +112,9 @@ services:
     container_name: opora_frontend
     restart: unless-stopped
     ports:
-      - '${CLIENT_PORT:-3000}:3000'
+      - '${CLIENT_PORT:-4200}:4200'
     environment:
-      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5001}
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:4201}
       NODE_ENV: ${NODE_ENV:-production}
     depends_on:
       - backend
@@ -150,7 +150,7 @@ services:
     container_name: opora_node_exporter
     restart: unless-stopped
     ports:
-      - '9100:9100'
+      - '4205:9100'
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -168,7 +168,7 @@ services:
     container_name: opora_cadvisor
     restart: unless-stopped
     ports:
-      - '8081:8080'
+      - '4206:8080'
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
