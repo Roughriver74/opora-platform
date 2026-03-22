@@ -113,7 +113,7 @@ export class CronController {
 			const newCronContent =
 				[
 					...filteredLines,
-					'# Инкрементальная синхронизация Beton CRM',
+					'# Инкрементальная синхронизация OPORA',
 					newCronJob,
 					'# Полная синхронизация ежедневно',
 					fullSyncJob,

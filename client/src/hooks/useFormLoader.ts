@@ -84,7 +84,7 @@ export const useFormLoader = (): UseFormLoaderResult => {
 						setFields(activeForm.fields as FormField[])
 					}
 				} else {
-					setError('Нет активных форм для заказа бетона')
+					setError('Нет активных форм')
 				}
 			} catch (err: any) {
 				setError(`Ошибка при загрузке формы: ${err.message}`)

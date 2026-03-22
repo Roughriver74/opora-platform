@@ -94,7 +94,7 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/', (req, res) => {
 	res.json({
-		message: 'Beton CRM API работает',
+		message: 'OPORA API работает',
 		database: 'PostgreSQL',
 		version: '2.0.0',
 	})

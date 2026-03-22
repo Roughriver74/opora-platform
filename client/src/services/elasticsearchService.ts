@@ -72,7 +72,7 @@ class ElasticsearchService {
 	}
 
 	/**
-	 * Получение названия бетона по ID
+	 * Получение названия товара по ID
 	 */
 	async getProductNameById(productId: string): Promise<string | null> {
 		const cacheKey = `product_${productId}`

@@ -270,7 +270,7 @@ const syncBitrixToElasticsearch = async () => {
 		// Show optimization summary
 		console.log('\n🎯 OPTIMIZATION SUMMARY:')
 		console.log('✅ Enhanced analyzers with edgeNGram')
-		console.log('✅ Product synonyms (бетон=цемент, м300=марка 300, etc.)')
+		console.log('✅ Product synonyms (configurable per organization)')
 		console.log('✅ Function score for relevance boosting')
 		console.log('✅ Fuzzy search for typo handling')
 		console.log('✅ Improved autocomplete')
