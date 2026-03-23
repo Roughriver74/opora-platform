@@ -112,6 +112,25 @@ class SubmissionSyncService {
 			submission.markSyncSuccess(bitrixDealId)
 			await repository.save(submission)
 
+			// Синхронизируем товарные строки в сделку
+			const productItems = this.extractProductTableItems(submission.formData || {})
+			if (productItems.length > 0) {
+				try {
+					const productRows = productItems.map((item: any) => ({
+						PRODUCT_NAME: item.name || 'Товар',
+						PRICE: item.price || 0,
+						QUANTITY: item.quantity || 1,
+						...(item.discount > 0 ? { DISCOUNT_TYPE_ID: 2, DISCOUNT_RATE: item.discount } : {}),
+					}))
+					await bitrix24Service.setDealProductRows(bitrixDealId, productRows)
+				} catch (productRowError: any) {
+					// Не критично — сделка уже создана
+					logger.warn(
+						`[SYNC] Не удалось установить товарные строки для сделки ${bitrixDealId}: ${productRowError.message}`
+					)
+				}
+			}
+
 			// Пытаемся обновить сделку с номером заявки для обратной связи
 			try {
 				await bitrix24Service.updateDeal(bitrixDealId, {
@@ -262,10 +281,26 @@ class SubmissionSyncService {
 			}
 		}
 
+		// Рассчитываем сумму из товарных строк (если есть product_table)
+		const productTableItems = this.extractProductTableItems(formData)
+		if (productTableItems.length > 0) {
+			const totalFromProducts = productTableItems.reduce(
+				(sum: number, item: any) => sum + (item.total || item.quantity * item.price || 0), 0
+			)
+			if (totalFromProducts > 0) {
+				dealData.OPPORTUNITY = totalFromProducts
+				dealData.CURRENCY_ID = 'RUB'
+			}
+		}
+
 		// Добавляем все остальные поля формы как JSON в комментарии
 		if (Object.keys(formData).length > 0) {
 			const formDataComment = Object.entries(formData)
-				.filter(([key, value]) => value !== null && value !== undefined && value !== '')
+				.filter(([key, value]) => {
+					// Пропускаем массивы товаров — они синхронизируются отдельно
+					if (Array.isArray(value) && value.length > 0 && value[0]?.nomenclatureId) return false
+					return value !== null && value !== undefined && value !== ''
+				})
 				.map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
 				.join('\n')
 
@@ -466,6 +501,19 @@ class SubmissionSyncService {
 		)
 
 		return result.affected || 0
+	}
+
+	/**
+	 * Извлекает товарные строки из formData (ищет массивы с nomenclatureId)
+	 */
+	private extractProductTableItems(formData: any): any[] {
+		if (!formData || typeof formData !== 'object') return []
+		for (const value of Object.values(formData)) {
+			if (Array.isArray(value) && value.length > 0 && (value[0] as any)?.nomenclatureId) {
+				return value
+			}
+		}
+		return []
 	}
 
 	private delay(ms: number): Promise<void> {

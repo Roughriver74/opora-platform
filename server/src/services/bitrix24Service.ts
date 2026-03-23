@@ -172,6 +172,48 @@ class Bitrix24Service {
 		return response.data
 	}
 
+	/**
+	 * Установить товарные строки для сделки (crm.deal.productrows.set)
+	 */
+	async setDealProductRows(
+		dealId: string,
+		rows: Array<{
+			PRODUCT_ID?: number
+			PRODUCT_NAME?: string
+			PRICE: number
+			QUANTITY: number
+			DISCOUNT_TYPE_ID?: number // 1 = абсолютная, 2 = процентная
+			DISCOUNT_RATE?: number
+			MEASURE_CODE?: number
+		}>
+	): Promise<boolean> {
+		await this.ensureInitialized()
+		if (!this.enabled || !this.webhookUrl) {
+			logger.debug('[Bitrix24Service] Пропуск setDealProductRows - интеграция отключена')
+			return false
+		}
+
+		try {
+			const response = await retryRequest(() =>
+				axios.post(`${this.webhookUrl}crm.deal.productrows.set`, {
+					id: dealId,
+					rows,
+				})
+			)
+
+			if (response.data?.result) {
+				logger.info(`[Bitrix24Service] ✅ Товарные строки (${rows.length}) установлены для сделки ${dealId}`)
+				return true
+			}
+
+			logger.warn(`[Bitrix24Service] ⚠️ setDealProductRows: неожиданный ответ`, response.data)
+			return false
+		} catch (error: any) {
+			logger.error(`[Bitrix24Service] ❌ Ошибка установки товарных строк для сделки ${dealId}:`, error.message)
+			throw error
+		}
+	}
+
 	// Catalog: products, companies, contacts
 	async getProducts(query = '', limit = 50) {
 		const filterStr = query || 'all'

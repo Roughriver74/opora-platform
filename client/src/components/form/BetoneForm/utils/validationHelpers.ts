@@ -67,6 +67,8 @@ export const generateValidationSchema = (fields: FormFieldType[]) => {
 					yup.object().shape({
 						nomenclatureId: yup.string().required(),
 						quantity: yup.number().positive('Количество должно быть больше 0').required('Укажите количество'),
+						price: yup.number().min(0, 'Цена не может быть отрицательной').required(),
+						discount: yup.number().min(0).max(100).optional(),
 					})
 				)
 				break

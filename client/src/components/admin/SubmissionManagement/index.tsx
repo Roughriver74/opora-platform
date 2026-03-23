@@ -644,6 +644,83 @@ const SubmissionManagement = () => {
 										<Typography variant='h6' gutterBottom>
 											Данные заявки
 										</Typography>
+										{selectedSubmission.formData && (
+											<Box>
+												{Object.entries(selectedSubmission.formData).map(([key, val]: [string, any]) => {
+													// Табличная часть товаров
+													if (Array.isArray(val) && val.length > 0 && val[0]?.nomenclatureId) {
+														const grandTotal = val.reduce((sum: number, item: any) => sum + (item.total || 0), 0)
+														const formatP = (p: number) => p.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+														return (
+															<Box key={key} sx={{ mb: 2 }}>
+																<Typography variant='subtitle2' sx={{ fontWeight: 600, mb: 1 }}>
+																	{getFieldLabel(key)}
+																</Typography>
+																<TableContainer component={Paper} variant='outlined'>
+																	<Table size='small'>
+																		<TableHead>
+																			<TableRow sx={{ bgcolor: 'grey.50' }}>
+																				<TableCell sx={{ fontWeight: 600, width: 40 }}>#</TableCell>
+																				<TableCell sx={{ fontWeight: 600 }}>Товар</TableCell>
+																				<TableCell sx={{ fontWeight: 600, width: 80 }}>Артикул</TableCell>
+																				<TableCell sx={{ fontWeight: 600, width: 70 }} align='right'>Кол-во</TableCell>
+																				<TableCell sx={{ fontWeight: 600, width: 50 }}>Ед.</TableCell>
+																				<TableCell sx={{ fontWeight: 600, width: 100 }} align='right'>Цена</TableCell>
+																				{val.some((item: any) => item.discount > 0) && (
+																					<TableCell sx={{ fontWeight: 600, width: 70 }} align='right'>Скидка</TableCell>
+																				)}
+																				<TableCell sx={{ fontWeight: 600, width: 110 }} align='right'>Сумма</TableCell>
+																			</TableRow>
+																		</TableHead>
+																		<TableBody>
+																			{val.map((item: any, idx: number) => (
+																				<TableRow key={item.nomenclatureId || idx}>
+																					<TableCell>{idx + 1}</TableCell>
+																					<TableCell>{item.name}</TableCell>
+																					<TableCell>{item.sku}</TableCell>
+																					<TableCell align='right'>{item.quantity}</TableCell>
+																					<TableCell>{item.unit}</TableCell>
+																					<TableCell align='right'>{formatP(item.price)} ₽</TableCell>
+																					{val.some((i: any) => i.discount > 0) && (
+																						<TableCell align='right'>
+																							{item.discount > 0 ? `${item.discount}%` : '—'}
+																						</TableCell>
+																					)}
+																					<TableCell align='right' sx={{ fontWeight: 600 }}>
+																						{formatP(item.total)} ₽
+																					</TableCell>
+																				</TableRow>
+																			))}
+																			<TableRow sx={{ bgcolor: 'grey.50' }}>
+																				<TableCell colSpan={val.some((i: any) => i.discount > 0) ? 7 : 6} align='right' sx={{ fontWeight: 700 }}>
+																					Итого:
+																				</TableCell>
+																				<TableCell align='right' sx={{ fontWeight: 700 }}>
+																					{formatP(grandTotal)} ₽
+																				</TableCell>
+																			</TableRow>
+																		</TableBody>
+																	</Table>
+																</TableContainer>
+															</Box>
+														)
+													}
+													// Обычные поля
+													if (val === null || val === undefined || val === '') return null
+													const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val)
+													return (
+														<Box key={key} sx={{ mb: 1 }}>
+															<Typography variant='body2' color='text.secondary' component='span'>
+																{getFieldLabel(key)}:{' '}
+															</Typography>
+															<Typography variant='body2' component='span'>
+																{displayVal}
+															</Typography>
+														</Box>
+													)
+												})}
+											</Box>
+										)}
 									</CardContent>
 								</Card>
 
