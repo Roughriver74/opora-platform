@@ -13,6 +13,13 @@ router.post('/user-login', authController.userLogin)
 // Универсальный маршрут для авторизации (перенаправляет на user-login)
 router.post('/login', authController.userLogin)
 
+// Регистрация нового пользователя
+router.post('/register', authController.register)
+
+// Социальная авторизация
+router.get('/social/:provider', authController.socialAuthRedirect)
+router.get('/social/:provider/callback', authController.socialAuthCallback)
+
 // Проверка текущего состояния авторизации
 router.get('/check', authMiddleware, authController.verifyToken)
 

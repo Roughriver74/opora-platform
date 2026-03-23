@@ -23,6 +23,13 @@ export enum UserStatus {
 	INACTIVE = 'inactive',
 }
 
+export enum AuthProvider {
+	LOCAL = 'local',
+	GOOGLE = 'google',
+	YANDEX = 'yandex',
+	VK = 'vk',
+}
+
 @Entity('users')
 @Index(['email'], { unique: true })
 @Index(['role'])
@@ -33,7 +40,7 @@ export class User extends BaseEntity {
 	@IsEmail()
 	email: string
 
-	@Column({ type: 'varchar', length: 255, select: false })
+	@Column({ type: 'varchar', length: 255, select: false, nullable: true })
 	@Exclude()
 	password: string
 
@@ -80,6 +87,20 @@ export class User extends BaseEntity {
 	@Column({ type: 'boolean', default: false, name: 'is_super_admin' })
 	@IsBoolean()
 	isSuperAdmin: boolean
+
+	@Column({
+		type: 'enum',
+		enum: AuthProvider,
+		default: AuthProvider.LOCAL,
+		name: 'auth_provider',
+	})
+	@IsEnum(AuthProvider)
+	authProvider: AuthProvider
+
+	@Column({ type: 'varchar', length: 255, nullable: true, name: 'auth_provider_id' })
+	@IsOptional()
+	@IsString()
+	authProviderId?: string
 
 	@Column({
 		type: 'jsonb',

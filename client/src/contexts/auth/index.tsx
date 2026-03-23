@@ -117,6 +117,8 @@ interface AuthContextType {
 	organizations: OrganizationInfo[]
 	needsOrganizationSelection: boolean
 	login: (credentials: { email: string; password: string }) => Promise<boolean>
+	register: (credentials: { email: string; password: string; firstName?: string; lastName?: string }) => Promise<boolean>
+	loginWithToken: (token: string, user: User) => void
 	logout: () => void
 	clearError: () => void
 	checkAuth: () => Promise<boolean>
@@ -219,6 +221,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 			})
 			return false
 		}
+	}
+
+	// Функция для регистрации
+	const register = async (credentials: {
+		email: string
+		password: string
+		firstName?: string
+		lastName?: string
+	}): Promise<boolean> => {
+		try {
+			dispatch({ type: 'AUTH_START' })
+
+			const data = await authService.register(credentials)
+
+			localStorage.setItem('user', JSON.stringify(data.user))
+			localStorage.setItem('token', data.accessToken)
+			localStorage.setItem('refreshToken', data.refreshToken)
+
+			dispatch({
+				type: 'AUTH_SUCCESS',
+				payload: { user: data.user, token: data.accessToken },
+			})
+
+			return true
+		} catch (error: any) {
+			dispatch({
+				type: 'AUTH_FAILURE',
+				payload: { error: error.message || 'Ошибка регистрации' },
+			})
+			return false
+		}
+	}
+
+	// Вход через social auth token (после OAuth callback)
+	const loginWithToken = (token: string, user: User) => {
+		localStorage.setItem('user', JSON.stringify(user))
+		localStorage.setItem('token', token)
+		localStorage.setItem('refreshToken', token)
+
+		dispatch({
+			type: 'AUTH_SUCCESS',
+			payload: { user, token },
+		})
 	}
 
 	// Функция для выбора организации
@@ -344,6 +389,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 		organizations: state.organizations,
 		needsOrganizationSelection: state.needsOrganizationSelection,
 		login,
+		register,
+		loginWithToken,
 		logout,
 		clearError,
 		checkAuth,

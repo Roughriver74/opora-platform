@@ -10,7 +10,7 @@ export class UserRepository extends BaseRepository<User> {
 	async findByEmail(email: string): Promise<User | null> {
 		const user = await this.repository.findOne({
 			where: { email: email.toLowerCase() },
-			select: ['id', 'email', 'password', 'firstName', 'lastName', 'phone', 'bitrixUserId', 'status', 'role', 'isActive', 'settings', 'lastLogin', 'createdAt', 'updatedAt']
+			select: ['id', 'email', 'password', 'firstName', 'lastName', 'phone', 'bitrixUserId', 'status', 'role', 'isActive', 'isSuperAdmin', 'settings', 'lastLogin', 'authProvider', 'authProviderId', 'createdAt', 'updatedAt']
 		})
 
 		return user

@@ -1,9 +1,14 @@
 import React from 'react'
 import { useLogin } from './hooks/useLogin'
 import Logo from '../../common/Logo'
+import { SocialAuthButtons } from '../SocialAuthButtons'
 import './LoginForm.css'
 
-export const LoginForm: React.FC = () => {
+interface LoginFormProps {
+	onSwitchToRegister?: () => void
+}
+
+export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
 	const {
 		email,
 		password,
@@ -122,10 +127,32 @@ export const LoginForm: React.FC = () => {
 					</button>
 				</form>
 
+				<SocialAuthButtons />
+
 				<div className='login-form-footer'>
-					<p className='login-form-help'>
-						Если вы забыли пароль, обратитесь к системному администратору
-					</p>
+					{onSwitchToRegister ? (
+						<p className='login-form-help'>
+							Нет аккаунта?{' '}
+							<button
+								onClick={onSwitchToRegister}
+								style={{
+									background: 'none',
+									border: 'none',
+									color: '#4a5fcc',
+									cursor: 'pointer',
+									fontWeight: 600,
+									fontSize: '14px',
+									padding: 0,
+								}}
+							>
+								Зарегистрироваться
+							</button>
+						</p>
+					) : (
+						<p className='login-form-help'>
+							Если вы забыли пароль, обратитесь к системному администратору
+						</p>
+					)}
 				</div>
 			</div>
 		</div>

@@ -1,9 +1,10 @@
 import { Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { getUserService } from '../services/UserService'
+import { getSocialAuthService } from '../services/SocialAuthService'
 import { AppDataSource } from '../database/config/database.config'
 import { AdminToken } from '../database/entities/AdminToken.entity'
-import { User } from '../database/entities/User.entity'
+import { User, AuthProvider } from '../database/entities/User.entity'
 
 const userService = getUserService()
 
@@ -313,6 +314,143 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 			success: false,
 			message: 'Внутренняя ошибка сервера',
 		})
+	}
+}
+
+/**
+ * Регистрация нового пользователя
+ */
+export const register = async (req: Request, res: Response): Promise<void> => {
+	try {
+		const { email, password, firstName, lastName } = req.body
+
+		if (!email || !password) {
+			res.status(400).json({
+				success: false,
+				message: 'Email и пароль обязательны',
+			})
+			return
+		}
+
+		if (password.length < 6) {
+			res.status(400).json({
+				success: false,
+				message: 'Пароль должен содержать минимум 6 символов',
+			})
+			return
+		}
+
+		// Check if user already exists
+		const existingUser = await userService.findByEmail(email)
+		if (existingUser) {
+			res.status(409).json({
+				success: false,
+				message: 'Пользователь с таким email уже существует',
+			})
+			return
+		}
+
+		// Create user
+		const user = await userService.createUser({
+			email,
+			password,
+			firstName,
+			lastName,
+		})
+
+		// Auto-login after registration
+		const authResult = await userService.login({ email, password })
+
+		if (!authResult) {
+			res.status(500).json({
+				success: false,
+				message: 'Ошибка при автоматическом входе после регистрации',
+			})
+			return
+		}
+
+		res.status(201).json({
+			success: true,
+			accessToken: authResult.token,
+			refreshToken: authResult.token,
+			user: authResult.user,
+			organizations: authResult.organizations,
+		})
+	} catch (error: any) {
+		console.error('Ошибка при регистрации:', error)
+		res.status(500).json({
+			success: false,
+			message: error.message || 'Внутренняя ошибка сервера',
+		})
+	}
+}
+
+/**
+ * Social auth — redirect to provider
+ */
+export const socialAuthRedirect = async (req: Request, res: Response): Promise<void> => {
+	try {
+		const { provider } = req.params
+		const socialAuthService = getSocialAuthService()
+
+		const validProviders = ['google', 'yandex', 'vk']
+		if (!validProviders.includes(provider)) {
+			res.status(400).json({ success: false, message: 'Неподдерживаемый провайдер' })
+			return
+		}
+
+		const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`
+		const redirectUri = `${baseUrl}/api/auth/social/${provider}/callback`
+
+		const authUrl = socialAuthService.getAuthUrl(provider as AuthProvider, redirectUri)
+		res.json({ success: true, url: authUrl })
+	} catch (error: any) {
+		console.error('Ошибка при социальной авторизации:', error)
+		res.status(500).json({
+			success: false,
+			message: error.message || 'Провайдер не настроен',
+		})
+	}
+}
+
+/**
+ * Social auth — handle callback from provider
+ */
+export const socialAuthCallback = async (req: Request, res: Response): Promise<void> => {
+	try {
+		const { provider } = req.params
+		const { code } = req.query
+		const socialAuthService = getSocialAuthService()
+
+		if (!code) {
+			// Redirect to frontend with error
+			const frontendUrl = process.env.FRONTEND_URL || ''
+			res.redirect(`${frontendUrl}/auth/social-error?error=no_code`)
+			return
+		}
+
+		const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`
+		const redirectUri = `${baseUrl}/api/auth/social/${provider}/callback`
+
+		const authResult = await socialAuthService.handleCallback(
+			provider as AuthProvider,
+			code as string,
+			redirectUri
+		)
+
+		// Redirect to frontend with token
+		const frontendUrl = process.env.FRONTEND_URL || ''
+		const params = new URLSearchParams({
+			token: authResult.token,
+			user: JSON.stringify(authResult.user),
+		})
+
+		res.redirect(`${frontendUrl}/auth/social-callback?${params.toString()}`)
+	} catch (error: any) {
+		console.error('Ошибка при callback социальной авторизации:', error)
+		const frontendUrl = process.env.FRONTEND_URL || ''
+		const errorMsg = encodeURIComponent(error.message || 'Ошибка авторизации')
+		res.redirect(`${frontendUrl}/auth/social-error?error=${errorMsg}`)
 	}
 }
 

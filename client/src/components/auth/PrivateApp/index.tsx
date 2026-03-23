@@ -1,8 +1,10 @@
-import React, { useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Box, CircularProgress } from '@mui/material'
 import { useAuth } from '../../../contexts/auth'
 import { LoginForm } from '../LoginForm'
+import { RegisterForm } from '../RegisterForm'
+import { SocialAuthCallback, SocialAuthError } from '../SocialAuthCallback'
 import { ProtectedRoute } from '../ProtectedRoute'
 import { OrganizationSelector } from '../OrganizationSelector'
 import Layout from '../../layout/Layout'
@@ -22,6 +24,8 @@ import SetupWizard from '../../../pages/onboarding/SetupWizard'
 export const PrivateApp: React.FC = () => {
 	const { isAuthenticated, isLoading, checkAuth, needsOrganizationSelection } =
 		useAuth()
+	const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+	const location = useLocation()
 
 	// Проверяем авторизацию при загрузке приложения
 	useEffect(() => {
@@ -36,6 +40,15 @@ export const PrivateApp: React.FC = () => {
 		initAuth()
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
+
+	// Handle social auth callback routes even when not authenticated
+	if (location.pathname === '/auth/social-callback') {
+		return <SocialAuthCallback />
+	}
+
+	if (location.pathname === '/auth/social-error') {
+		return <SocialAuthError onBack={() => setAuthMode('login')} />
+	}
 
 	// Показываем загрузку только при первичной инициализации
 	if (isLoading) {
@@ -54,9 +67,12 @@ export const PrivateApp: React.FC = () => {
 		)
 	}
 
-	// Если пользователь не авторизован, показываем форму входа
+	// Если пользователь не авторизован, показываем форму входа или регистрации
 	if (!isAuthenticated) {
-		return <LoginForm />
+		if (authMode === 'register') {
+			return <RegisterForm onSwitchToLogin={() => setAuthMode('login')} />
+		}
+		return <LoginForm onSwitchToRegister={() => setAuthMode('register')} />
 	}
 
 	// Если нужно выбрать организацию
