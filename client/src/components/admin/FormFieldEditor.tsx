@@ -126,6 +126,12 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
 				{ value: 'radio', label: 'Переключатель' },
 			],
 		},
+		{
+			group: 'Табличные',
+			items: [
+				{ value: 'product_table', label: 'Каталог товаров' },
+			],
+		},
 	])
 
 	// Обработчик изменения полей

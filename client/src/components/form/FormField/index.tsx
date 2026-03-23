@@ -13,6 +13,7 @@ import { RadioInput } from './components/inputs/RadioInput'
 import { TextareaInput } from './components/inputs/TextareaInput'
 import { NumberInput } from './components/inputs/NumberInput'
 import { DateInput } from './components/inputs/DateInput'
+import { ProductTableInput } from './components/inputs/ProductTableInput'
 
 // Import display components
 import { DividerField } from './components/display/DividerField'
@@ -186,6 +187,9 @@ const FormField: React.FC<FormFieldProps> = React.memo(
 
 				case FIELD_TYPES.HEADER:
 					return <HeaderField field={field} compact={compact || isMobile} />
+
+				case FIELD_TYPES.PRODUCT_TABLE:
+					return <ProductTableInput {...baseProps} />
 
 				default:
 					return <TextInput {...baseProps} />

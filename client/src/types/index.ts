@@ -50,6 +50,7 @@ export type FieldType =
 	| 'autocomplete' // Автозаполнение
 	| 'checkbox' // Флажок
 	| 'radio' // Переключатель
+	| 'product_table' // Табличная часть товаров
 
 export interface FormField {
 	_id?: string

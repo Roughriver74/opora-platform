@@ -27,4 +27,5 @@ export const FIELD_TYPES = {
 	DATE: 'date',
 	DIVIDER: 'divider',
 	HEADER: 'header',
+	PRODUCT_TABLE: 'product_table',
 } as const

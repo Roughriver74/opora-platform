@@ -62,6 +62,15 @@ export const generateValidationSchema = (fields: FormFieldType[]) => {
 				fieldSchema = yup.string()
 				break
 
+			case 'product_table':
+				fieldSchema = yup.array().of(
+					yup.object().shape({
+						nomenclatureId: yup.string().required(),
+						quantity: yup.number().positive('Количество должно быть больше 0').required('Укажите количество'),
+					})
+				)
+				break
+
 			default:
 				fieldSchema = yup.string()
 		}
@@ -121,6 +130,9 @@ export const generateInitialValues = (
 				break
 			case 'radio':
 				initialValues[field.name] = ''
+				break
+			case 'product_table':
+				initialValues[field.name] = []
 				break
 			case 'text':
 			case 'textarea':
