@@ -402,7 +402,10 @@ export const socialAuthRedirect = async (req: Request, res: Response): Promise<v
 		const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`
 		const redirectUri = `${baseUrl}/api/auth/social/${provider}/callback`
 
-		const authUrl = socialAuthService.getAuthUrl(provider as AuthProvider, redirectUri)
+		// Generate state token for CSRF protection
+		const state = socialAuthService.generateState(provider)
+
+		const authUrl = socialAuthService.getAuthUrl(provider as AuthProvider, redirectUri, state)
 		res.json({ success: true, url: authUrl })
 	} catch (error: any) {
 		console.error('Ошибка при социальной авторизации:', error)
@@ -419,13 +422,19 @@ export const socialAuthRedirect = async (req: Request, res: Response): Promise<v
 export const socialAuthCallback = async (req: Request, res: Response): Promise<void> => {
 	try {
 		const { provider } = req.params
-		const { code } = req.query
+		const { code, state } = req.query
 		const socialAuthService = getSocialAuthService()
 
 		if (!code) {
-			// Redirect to frontend with error
 			const frontendUrl = process.env.FRONTEND_URL || ''
 			res.redirect(`${frontendUrl}/auth/social-error?error=no_code`)
+			return
+		}
+
+		// Validate OAuth state parameter for CSRF protection
+		if (!state || !socialAuthService.validateState(state as string, provider)) {
+			const frontendUrl = process.env.FRONTEND_URL || ''
+			res.redirect(`${frontendUrl}/auth/social-error?error=invalid_state`)
 			return
 		}
 

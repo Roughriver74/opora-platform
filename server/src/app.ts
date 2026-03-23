@@ -1,5 +1,7 @@
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
 import bodyParser from 'body-parser'
 import { authMiddleware } from './middleware/authMiddleware'
 import { tenantMiddleware } from './middleware/tenantMiddleware'
@@ -31,7 +33,13 @@ import { checkDatabaseConnection } from './utils/dbCheck'
 
 const app = express()
 
-// Middleware
+// Security headers
+app.use(helmet({
+	contentSecurityPolicy: false, // CSP отключён — фронтенд обслуживается отдельно через nginx
+	crossOriginEmbedderPolicy: false,
+}))
+
+// CORS
 app.use(
 	cors({
 		origin: true,
@@ -42,8 +50,32 @@ app.use(
 	})
 )
 
-app.use(bodyParser.json())
-app.use(bodyParser.urlencoded({ extended: true }))
+// Rate limiting — общий лимит
+const generalLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000, // 15 минут
+	max: 300, // 300 запросов на окно
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { error: 'Слишком много запросов. Попробуйте позже.' },
+})
+app.use('/api', generalLimiter)
+
+// Rate limiting — строгий лимит для auth-эндпоинтов
+const authLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000, // 15 минут
+	max: 20, // 20 попыток на окно
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { error: 'Слишком много попыток авторизации. Попробуйте через 15 минут.' },
+})
+app.use('/api/auth/login', authLimiter)
+app.use('/api/auth/user-login', authLimiter)
+app.use('/api/auth/admin-login', authLimiter)
+app.use('/api/auth/register', authLimiter)
+app.use('/api/auth/social', authLimiter)
+
+app.use(bodyParser.json({ limit: '10mb' }))
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }))
 
 // Timeout middleware (5 minutes)
 app.use((req, res, next) => {

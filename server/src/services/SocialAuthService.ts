@@ -1,4 +1,5 @@
 import axios from 'axios'
+import crypto from 'crypto'
 import { getUserService } from './UserService'
 import { User, UserRole, UserStatus, AuthProvider } from '../database/entities/User.entity'
 import { getUserRepository } from '../database/repositories'
@@ -13,18 +14,51 @@ interface SocialUserInfo {
 
 export class SocialAuthService {
 	private userService = getUserService()
+	// In-memory store for OAuth state tokens (TTL: 10 minutes)
+	private stateStore = new Map<string, { provider: string; createdAt: number }>()
+	private readonly STATE_TTL_MS = 10 * 60 * 1000
+
+	/**
+	 * Generate a random state token for CSRF protection
+	 */
+	generateState(provider: string): string {
+		this.cleanExpiredStates()
+		const state = crypto.randomBytes(32).toString('hex')
+		this.stateStore.set(state, { provider, createdAt: Date.now() })
+		return state
+	}
+
+	/**
+	 * Validate and consume a state token
+	 */
+	validateState(state: string, provider: string): boolean {
+		const entry = this.stateStore.get(state)
+		if (!entry) return false
+		this.stateStore.delete(state)
+		if (Date.now() - entry.createdAt > this.STATE_TTL_MS) return false
+		return entry.provider === provider
+	}
+
+	private cleanExpiredStates() {
+		const now = Date.now()
+		for (const [key, value] of this.stateStore) {
+			if (now - value.createdAt > this.STATE_TTL_MS) {
+				this.stateStore.delete(key)
+			}
+		}
+	}
 
 	/**
 	 * Get OAuth2 authorization URL for the given provider
 	 */
-	getAuthUrl(provider: AuthProvider, redirectUri: string): string {
+	getAuthUrl(provider: AuthProvider, redirectUri: string, state: string): string {
 		switch (provider) {
 			case AuthProvider.GOOGLE:
-				return this.getGoogleAuthUrl(redirectUri)
+				return this.getGoogleAuthUrl(redirectUri, state)
 			case AuthProvider.YANDEX:
-				return this.getYandexAuthUrl(redirectUri)
+				return this.getYandexAuthUrl(redirectUri, state)
 			case AuthProvider.VK:
-				return this.getVkAuthUrl(redirectUri)
+				return this.getVkAuthUrl(redirectUri, state)
 			default:
 				throw new Error(`Unsupported provider: ${provider}`)
 		}
@@ -59,7 +93,7 @@ export class SocialAuthService {
 
 	// --- Google OAuth2 ---
 
-	private getGoogleAuthUrl(redirectUri: string): string {
+	private getGoogleAuthUrl(redirectUri: string, state: string): string {
 		const clientId = process.env.GOOGLE_CLIENT_ID
 		if (!clientId) throw new Error('GOOGLE_CLIENT_ID not configured')
 
@@ -70,6 +104,7 @@ export class SocialAuthService {
 			scope: 'openid email profile',
 			access_type: 'offline',
 			prompt: 'select_account',
+			state,
 		})
 
 		return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
@@ -109,7 +144,7 @@ export class SocialAuthService {
 
 	// --- Yandex OAuth2 ---
 
-	private getYandexAuthUrl(redirectUri: string): string {
+	private getYandexAuthUrl(redirectUri: string, state: string): string {
 		const clientId = process.env.YANDEX_CLIENT_ID
 		if (!clientId) throw new Error('YANDEX_CLIENT_ID not configured')
 
@@ -118,6 +153,7 @@ export class SocialAuthService {
 			redirect_uri: redirectUri,
 			response_type: 'code',
 			force_confirm: 'yes',
+			state,
 		})
 
 		return `https://oauth.yandex.ru/authorize?${params.toString()}`
@@ -161,7 +197,7 @@ export class SocialAuthService {
 
 	// --- VK OAuth2 ---
 
-	private getVkAuthUrl(redirectUri: string): string {
+	private getVkAuthUrl(redirectUri: string, state: string): string {
 		const clientId = process.env.VK_CLIENT_ID
 		if (!clientId) throw new Error('VK_CLIENT_ID not configured')
 
@@ -172,6 +208,7 @@ export class SocialAuthService {
 			scope: 'email',
 			response_type: 'code',
 			v: '5.131',
+			state,
 		})
 
 		return `https://oauth.vk.com/authorize?${params.toString()}`
