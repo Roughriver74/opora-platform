@@ -90,8 +90,17 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN:-30d}
       BITRIX_WEBHOOK: ${BITRIX_WEBHOOK}
+      # Social Auth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
+      VK_CLIENT_ID: ${VK_CLIENT_ID:-}
+      VK_CLIENT_SECRET: ${VK_CLIENT_SECRET:-}
+      APP_URL: ${APP_URL:-http://localhost:4201}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:4200}
       # Разрешаем домен и IP через запятую
-      CORS_ORIGIN: ${CORS_ORIGIN:-https://beton.shknv.ru,http://beton.shknv.ru,https://beton.shknv.ru:4200,http://beton.shknv.ru:4200,http://31.128.39.123:4200,https://31.128.39.123:4200}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4200,https://localhost:4200}
     depends_on:
       postgres:
         condition: service_healthy

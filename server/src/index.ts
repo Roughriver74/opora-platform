@@ -1,6 +1,6 @@
 import 'reflect-metadata'
 import dotenv from 'dotenv'
-import { initializeDatabase, closeDatabaseConnection } from './database/config/database.config'
+import { initializeDatabase, closeDatabaseConnection, AppDataSource } from './database/config/database.config'
 import redisClient from './config/redis'
 import { initializeDefaultSettings } from './controllers/settingsController'
 import { initializeElasticsearch } from './scripts/initializeElasticsearch'
@@ -17,6 +17,12 @@ const initializeServer = async () => {
 	try {
 		// Инициализация PostgreSQL
 		await initializeDatabase()
+
+		// Автоматический запуск миграций
+		const pendingMigrations = await AppDataSource.runMigrations()
+		if (pendingMigrations.length > 0) {
+			logger.info(`✅ Выполнено ${pendingMigrations.length} миграций`)
+		}
 
 		// Redis временно отключен для стабильной работы
 		// await redisClient.connect()
