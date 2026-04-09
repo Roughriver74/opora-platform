@@ -21,13 +21,151 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # ================================================================
-    # 1. Add new columns as NULLABLE first
+    # 0. Create tables/columns missing from initial migration
+    #    (organizations, network_clinic, company_address were added
+    #     outside alembic in production; here we create them properly)
+    # ================================================================
+
+    # Create organizations table (base version, then extend below)
+    op.create_table(
+        "organizations",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("slug", sa.String(), nullable=True),
+        sa.Column("bitrix24_webhook_url", sa.String(), nullable=True),
+        sa.Column("bitrix24_smart_process_visit_id", sa.Integer(), nullable=True),
+        sa.Column(
+            "settings", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+        ),
+        sa.Column("is_active", sa.Boolean(), server_default="true"),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+        ),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+    )
+    op.create_index(
+        op.f("ix_organizations_id"), "organizations", ["id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_organizations_slug"), "organizations", ["slug"], unique=True
+    )
+
+    # Create network_clinic table
+    op.create_table(
+        "network_clinic",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("bitrix_id", sa.Integer(), nullable=True),
+        sa.Column(
+            "company_id",
+            sa.Integer(),
+            sa.ForeignKey("companies.bitrix_id"),
+            nullable=True,
+        ),
+        sa.Column("name", sa.String(), nullable=True),
+        sa.Column(
+            "doctor_bitrix_id",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=True,
+        ),
+        sa.Column(
+            "dynamic_fields",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=True,
+        ),
+        sa.Column("last_synced", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("sync_status", sa.String(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+    )
+    op.create_index(
+        op.f("ix_network_clinic_id"), "network_clinic", ["id"], unique=False
+    )
+
+    # Create company_address table
+    op.create_table(
+        "company_address",
+        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("country", sa.String(), nullable=True),
+        sa.Column(
+            "company_id",
+            sa.Integer(),
+            sa.ForeignKey("companies.id"),
+            nullable=True,
+        ),
+        sa.Column("city", sa.String(), nullable=True),
+        sa.Column("street", sa.String(), nullable=True),
+        sa.Column("number", sa.String(), nullable=True),
+        sa.Column("postal_code", sa.String(), nullable=True),
+        sa.Column("latitude", sa.Float(), nullable=True),
+        sa.Column("longitude", sa.Float(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("is_network", sa.Boolean(), server_default="false"),
+    )
+    op.create_index(
+        op.f("ix_company_address_id"), "company_address", ["id"], unique=False
+    )
+
+    # Add missing columns to companies (is_network)
+    op.add_column(
+        "companies",
+        sa.Column("is_network", sa.Boolean(), server_default="false"),
+    )
+
+    # Add missing columns to visits (geo)
+    op.add_column(
+        "visits",
+        sa.Column("geo", sa.Boolean(), server_default="false"),
+    )
+
+    # Add organization_id to users (nullable first)
+    op.add_column(
+        "users",
+        sa.Column(
+            "organization_id",
+            sa.Integer(),
+            sa.ForeignKey("organizations.id"),
+            nullable=True,
+        ),
+    )
+
+    # Add organization_id to companies (nullable first)
+    op.add_column(
+        "companies",
+        sa.Column(
+            "organization_id",
+            sa.Integer(),
+            sa.ForeignKey("organizations.id"),
+            nullable=True,
+        ),
+    )
+
+    # Add organization_id to visits (nullable first)
+    op.add_column(
+        "visits",
+        sa.Column(
+            "organization_id",
+            sa.Integer(),
+            sa.ForeignKey("organizations.id"),
+            nullable=True,
+        ),
+    )
+
+    # ================================================================
+    # 1. Add multi-tenancy columns as NULLABLE
     # ================================================================
 
     # Organization extensions
     op.add_column(
         "organizations",
-        sa.Column("owner_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
+        sa.Column(
+            "owner_id",
+            sa.Integer(),
+            sa.ForeignKey("users.id"),
+            nullable=True,
+        ),
     )
     op.add_column(
         "organizations",
@@ -59,11 +197,14 @@ def upgrade() -> None:
     op.add_column(
         "users",
         sa.Column(
-            "invited_by", sa.Integer(), sa.ForeignKey("users.id"), nullable=True
+            "invited_by",
+            sa.Integer(),
+            sa.ForeignKey("users.id"),
+            nullable=True,
         ),
     )
 
-    # organization_id on tables that don't have it yet
+    # organization_id on remaining tables that don't have it yet
     op.add_column(
         "contacts",
         sa.Column(
@@ -135,7 +276,9 @@ def upgrade() -> None:
         sa.Column("value", sa.String(), nullable=True),
         sa.Column("description", sa.String(), nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
         ),
         sa.Column("updated_at", sa.DateTime(timezone=True)),
         comment="Per-organization settings",
@@ -152,7 +295,9 @@ def upgrade() -> None:
         ),
         sa.Column("email", sa.String(), nullable=False),
         sa.Column("role", sa.String(), server_default="user"),
-        sa.Column("token", sa.String(), nullable=False, unique=True, index=True),
+        sa.Column(
+            "token", sa.String(), nullable=False, unique=True, index=True
+        ),
         sa.Column(
             "invited_by",
             sa.Integer(),
@@ -162,7 +307,9 @@ def upgrade() -> None:
         sa.Column("accepted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
         ),
     )
 
@@ -226,20 +373,25 @@ def upgrade() -> None:
         )
     )
 
-    # Set first user as platform_admin (owner of the platform)
+    # Set first user as platform_admin (owner of the platform) -- only if users exist
     conn.execute(
         sa.text(
-            "UPDATE users SET role = 'platform_admin' WHERE id = (SELECT MIN(id) FROM users)"
+            """
+        UPDATE users SET role = 'platform_admin'
+        WHERE id = (SELECT MIN(id) FROM users)
+        AND (SELECT COUNT(*) FROM users) > 0
+    """
         )
     )
 
-    # Set default org owner
+    # Set default org owner -- only if users exist
     conn.execute(
         sa.text(
             """
         UPDATE organizations
         SET owner_id = (SELECT MIN(id) FROM users WHERE organization_id = :org_id)
         WHERE id = :org_id
+        AND (SELECT COUNT(*) FROM users WHERE organization_id = :org_id) > 0
     """
         ),
         {"org_id": default_org_id},
@@ -248,6 +400,10 @@ def upgrade() -> None:
     # ================================================================
     # 3. Now make columns NOT NULL
     # ================================================================
+    # Note: users/companies/visits may have 0 rows, so NOT NULL is safe.
+    # For tables that had organization_id added as nullable, we need to
+    # handle the case where there are no rows -- that's fine, ALTER
+    # just needs no NULL values present.
     op.alter_column("users", "organization_id", nullable=False)
     op.alter_column("users", "role", nullable=False, server_default=None)
     op.alter_column("companies", "organization_id", nullable=False)
@@ -267,17 +423,37 @@ def upgrade() -> None:
     # ================================================================
     # 5. Add indexes for organization_id
     # ================================================================
-    op.create_index("ix_users_organization_id", "users", ["organization_id"])
-    op.create_index("ix_companies_organization_id", "companies", ["organization_id"])
-    op.create_index("ix_visits_organization_id", "visits", ["organization_id"])
-    op.create_index("ix_contacts_organization_id", "contacts", ["organization_id"])
-    op.create_index("ix_doctors_organization_id", "doctors", ["organization_id"])
     op.create_index(
-        "ix_field_mappings_organization_id", "field_mappings", ["organization_id"]
+        "ix_users_organization_id", "users", ["organization_id"]
+    )
+    op.create_index(
+        "ix_companies_organization_id", "companies", ["organization_id"]
+    )
+    op.create_index(
+        "ix_visits_organization_id", "visits", ["organization_id"]
+    )
+    op.create_index(
+        "ix_contacts_organization_id", "contacts", ["organization_id"]
+    )
+    op.create_index(
+        "ix_doctors_organization_id", "doctors", ["organization_id"]
+    )
+    op.create_index(
+        "ix_field_mappings_organization_id",
+        "field_mappings",
+        ["organization_id"],
     )
 
 
 def downgrade() -> None:
+    # Drop indexes
+    op.drop_index("ix_field_mappings_organization_id", table_name="field_mappings")
+    op.drop_index("ix_doctors_organization_id", table_name="doctors")
+    op.drop_index("ix_contacts_organization_id", table_name="contacts")
+    op.drop_index("ix_visits_organization_id", table_name="visits")
+    op.drop_index("ix_companies_organization_id", table_name="companies")
+    op.drop_index("ix_users_organization_id", table_name="users")
+
     # Re-add is_admin column
     op.add_column(
         "users",
@@ -322,14 +498,24 @@ def downgrade() -> None:
     op.alter_column("companies", "organization_id", nullable=True)
     op.alter_column("visits", "organization_id", nullable=True)
 
-    # Drop indexes
-    op.drop_index("ix_users_organization_id", table_name="users")
-    op.drop_index("ix_companies_organization_id", table_name="companies")
-    op.drop_index("ix_visits_organization_id", table_name="visits")
-    op.drop_index("ix_contacts_organization_id", table_name="contacts")
-    op.drop_index("ix_doctors_organization_id", table_name="doctors")
-    op.drop_index("ix_field_mappings_organization_id", table_name="field_mappings")
-
     # Drop new tables
     op.drop_table("invitations")
     op.drop_table("org_settings")
+
+    # Drop organization_id from users, companies, visits (added in step 0)
+    op.drop_column("users", "organization_id")
+    op.drop_column("companies", "organization_id")
+    op.drop_column("visits", "organization_id")
+
+    # Drop columns added to companies and visits
+    op.drop_column("companies", "is_network")
+    op.drop_column("visits", "geo")
+
+    # Drop tables created in step 0
+    op.drop_index(op.f("ix_company_address_id"), table_name="company_address")
+    op.drop_table("company_address")
+    op.drop_index(op.f("ix_network_clinic_id"), table_name="network_clinic")
+    op.drop_table("network_clinic")
+    op.drop_index(op.f("ix_organizations_slug"), table_name="organizations")
+    op.drop_index(op.f("ix_organizations_id"), table_name="organizations")
+    op.drop_table("organizations")
