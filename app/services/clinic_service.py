@@ -59,6 +59,12 @@ class ClinicService:
             last_visit_subquery, Company.id == last_visit_subquery.c.company_id
         )
 
+        # Multi-tenancy: scope to organization
+        if not current_user.is_platform_admin:
+            query = query.where(
+                Company.organization_id == current_user.organization_id
+            )
+
         # Фильтрация по регионам
         query = await self._apply_region_filter(
             query, current_user, filter_params.region
@@ -87,6 +93,11 @@ class ClinicService:
         count_query = select(func.count(Company.id)).outerjoin(
             last_visit_subquery, Company.id == last_visit_subquery.c.company_id
         )
+        # Multi-tenancy: scope count query to organization
+        if not current_user.is_platform_admin:
+            count_query = count_query.where(
+                Company.organization_id == current_user.organization_id
+            )
         count_query = await self._apply_region_filter(
             count_query, current_user, filter_params.region
         )
@@ -363,9 +374,9 @@ class ClinicService:
         return clinics_data
 
     @logger()
-    async def get_clinic_local_db(self, clinic_id: int, sync_with_bitrix: bool):
+    async def get_clinic_local_db(self, clinic_id: int, sync_with_bitrix: bool, current_user=None):
         """Получает клинику из локальной базы данных."""
-        clinic = await self._fetch_clinic_from_db(clinic_id=clinic_id)
+        clinic = await self._fetch_clinic_from_db(clinic_id=clinic_id, current_user=current_user)
         clinic_location = (
             (
                 await self.session.execute(
@@ -390,13 +401,12 @@ class ClinicService:
         return clinic_dict
 
     @logger()
-    async def _fetch_clinic_from_db(self, clinic_id: int, back_none: bool = False):
+    async def _fetch_clinic_from_db(self, clinic_id: int, back_none: bool = False, current_user=None):
         """Получает клинику из базы данных по её ID."""
-        clinic = (
-            (await self.session.execute(select(Company).where(Company.id == clinic_id)))
-            .scalars()
-            .first()
-        )
+        query = select(Company).where(Company.id == clinic_id)
+        if current_user and not current_user.is_platform_admin:
+            query = query.where(Company.organization_id == current_user.organization_id)
+        clinic = (await self.session.execute(query)).scalars().first()
         if back_none:
             return clinic
         if not clinic:
@@ -455,11 +465,11 @@ class ClinicService:
         return dynamic_fields
 
     @logger()
-    async def create_clinic(self, clinic: ClinicCreate):
+    async def create_clinic(self, clinic: ClinicCreate, current_user=None):
         """
         Создает клинику в локальной базе данных и синхронизирует её с Bitrix24.
         """
-        db_clinic = await self._create_clinic_in_db(clinic)
+        db_clinic = await self._create_clinic_in_db(clinic, current_user)
 
         try:
             await self.sync_clinic_with_bitrix_for_create(db_clinic, clinic)
@@ -474,12 +484,16 @@ class ClinicService:
         return db_clinic
 
     @logger()
-    async def _create_clinic_in_db(self, clinic: ClinicCreate):
+    async def _create_clinic_in_db(self, clinic: ClinicCreate, current_user=None):
         """Создает запись клиники в локальной базе данных."""
         clinic_dict = clinic.model_dump(exclude=EXCLUDED_CLINIC_CREATE_SCHEMA_FIELDS)
         filtered_data = {
             k: v for k, v in clinic_dict.items() if k in CREATE_CLINIC_MODEL_FIELDS
         }
+
+        # Set organization_id from current_user
+        if current_user:
+            filtered_data["organization_id"] = current_user.organization_id
 
         db_clinic = Company(**filtered_data, sync_status=SyncStatus.PENDING.value)
 
@@ -542,11 +556,11 @@ class ClinicService:
         return fields
 
     @logger()
-    async def update_clinic(self, clinic_id: int, clinic: ClinicUpdate):
+    async def update_clinic(self, clinic_id: int, clinic: ClinicUpdate, current_user=None):
         """
         Обновляет клинику в локальной базе данных и синхронизирует её с Bitrix24.
         """
-        db_clinic = await self._fetch_clinic_from_db(clinic_id)
+        db_clinic = await self._fetch_clinic_from_db(clinic_id, current_user=current_user)
 
         clinic_data = clinic.model_dump(exclude_unset=True)
         dynamic_fields = clinic_data.pop("dynamic_fields", None)

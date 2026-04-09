@@ -28,8 +28,11 @@ class NetWorkClinicService:
         return require_bitrix24(self.bitrix24)
 
     @logger()
-    async def get_network_clinics(self):
-        return (await self.session.execute(select(NetworkClinic))).scalars().all()
+    async def get_network_clinics(self, current_user=None):
+        query = select(NetworkClinic)
+        if current_user and not current_user.is_platform_admin:
+            query = query.where(NetworkClinic.organization_id == current_user.organization_id)
+        return (await self.session.execute(query)).scalars().all()
 
     @logger()
     async def get_network_clinic(self, bitrix_id):
@@ -89,6 +92,9 @@ class NetWorkClinicService:
         self, data: CreateNetworkClinicSchema, current_user=None
     ):
         clinic_data = data.model_dump(exclude_none=True)
+        # Set organization_id from current_user
+        if current_user:
+            clinic_data["organization_id"] = current_user.organization_id
         if current_user and self.bitrix24 is not None:
             fields = await self.prepare_data_for_bitrix_update(
                 network_clinic=data, bitrix_user_id=current_user.bitrix_user_id

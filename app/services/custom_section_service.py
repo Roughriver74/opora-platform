@@ -14,19 +14,14 @@ class CustomSectionService:
         self.session = session
 
     @logger()
-    async def get_all_custom_sections(self):
+    async def get_all_custom_sections(self, current_user=None):
         """
-        Get all custom sections (globally available for all companies)
+        Get all custom sections for the current organization
         """
-        sections = (
-            (
-                await self.session.execute(
-                    select(CustomSection).order_by(CustomSection.order)
-                )
-            )
-            .scalars()
-            .all()
-        )
+        query = select(CustomSection).order_by(CustomSection.order)
+        if current_user and not current_user.is_platform_admin:
+            query = query.where(CustomSection.organization_id == current_user.organization_id)
+        sections = (await self.session.execute(query)).scalars().all()
         return {"sections": sections}
 
     # Создание новой секции
@@ -34,6 +29,7 @@ class CustomSectionService:
     async def create_custom_section(
         self,
         section: CustomSectionCreate,
+        current_user=None,
     ):
         """
         Create a new custom section
@@ -44,6 +40,7 @@ class CustomSectionService:
                 name=section.name,
                 order=section.order,
                 fields=section.fields,
+                organization_id=current_user.organization_id if current_user else None,
             )
             self.session.add(db_section)
             await self.session.commit()
@@ -63,10 +60,13 @@ class CustomSectionService:
         current_user=None,
     ):
         """
-        Update all custom sections (replaces existing ones)
+        Update all custom sections for the current organization (replaces existing ones)
         """
         try:
-            (await self.session.execute(delete(CustomSection)))
+            del_query = delete(CustomSection)
+            if current_user and not current_user.is_platform_admin:
+                del_query = del_query.where(CustomSection.organization_id == current_user.organization_id)
+            await self.session.execute(del_query)
             db_sections = []
             for section in sections:
                 fields_json = section.fields if section.fields else []
@@ -75,6 +75,7 @@ class CustomSectionService:
                     name=section.name,
                     order=section.order,
                     fields=fields_json,
+                    organization_id=current_user.organization_id if current_user else None,
                 )
                 self.session.add(db_section)
                 db_sections.append(db_section)
@@ -90,14 +91,15 @@ class CustomSectionService:
             )
 
     @logger()
-    async def delete_all_custom_sections(self):
+    async def delete_all_custom_sections(self, current_user=None):
         """
-        Delete all custom sections
+        Delete all custom sections for the current organization
         """
         try:
-            existing_sections = (
-                (await self.session.execute(select(CustomSection))).scalars().all()
-            )
+            query = select(CustomSection)
+            if current_user and not current_user.is_platform_admin:
+                query = query.where(CustomSection.organization_id == current_user.organization_id)
+            existing_sections = (await self.session.execute(query)).scalars().all()
             count = len(existing_sections)
             if existing_sections:
                 for section in existing_sections:
@@ -116,20 +118,21 @@ class CustomSectionService:
             )
 
     @logger()
-    async def get_company_sections(self):
+    async def get_company_sections(self, current_user=None):
         """
         Get custom sections for a company (backward compatibility)
-        Now returns all global sections regardless of company_id
+        Now returns all org sections regardless of company_id
         """
-        return await self.get_all_custom_sections()
+        return await self.get_all_custom_sections(current_user=current_user)
 
     @logger()
     async def update_all_company_sections(
         self,
         sections: List[CustomSectionCreate],
+        current_user=None,
     ):
         """
         Update all custom sections for a company (backward compatibility)
-        Now updates global sections regardless of company_id
+        Now updates org sections regardless of company_id
         """
-        return await self.update_all_custom_sections(sections)
+        return await self.update_all_custom_sections(sections, current_user=current_user)

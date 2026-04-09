@@ -1,11 +1,11 @@
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from app.models import User
+from app.models import Organization, User
 from app.schemas.users_schema import CreateUser, UpdateUser
 from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
@@ -54,9 +54,12 @@ class UsersService:
             return {"found": False}
 
     @logger()
-    async def get_users(self):
-        """Получение списка всех пользователей"""
-        users = (await self.session.execute(select(User))).scalars().all()
+    async def get_users(self, current_user=None):
+        """Получение списка пользователей (scoped to organization)"""
+        query = select(User)
+        if current_user and not current_user.is_platform_admin:
+            query = query.where(User.organization_id == current_user.organization_id)
+        users = (await self.session.execute(query)).scalars().all()
         return [
             {
                 "id": user.id,
@@ -78,8 +81,9 @@ class UsersService:
     async def create_user(
         self,
         user_data: CreateUser,
+        current_user=None,
     ):
-        """Создание нового пользователя"""
+        """Создание нового пользователя (scoped to organization)"""
         existing_user = (
             (
                 await self.session.execute(
@@ -95,12 +99,29 @@ class UsersService:
                 detail="Пользователь с таким email уже существует",
             )
 
+        # Plan limits enforcement: check user count for FREE plan
+        if current_user:
+            org = await self._get_organization(current_user.organization_id)
+            if org and org.plan == "free":
+                user_count = await self.session.scalar(
+                    select(func.count(User.id)).where(
+                        User.organization_id == current_user.organization_id
+                    )
+                )
+                max_users = (org.plan_limits or {}).get("max_users", 3)
+                if user_count >= max_users:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Лимит пользователей для бесплатного плана ({max_users}) исчерпан. Обновите план.",
+                    )
+
         user = User(
             email=user_data.email,
             role=user_data.role,
             first_name=user_data.first_name,
             last_name=user_data.last_name,
             regions=user_data.regions,
+            organization_id=current_user.organization_id if current_user else None,
         )
         user.set_password(user_data.password)
 
@@ -123,9 +144,9 @@ class UsersService:
         }
 
     @logger()
-    async def update_user(self, user_id: int, user_data: UpdateUser) -> dict:
+    async def update_user(self, user_id: int, user_data: UpdateUser, current_user=None) -> dict:
         """
-        Обновление информации о пользователе.
+        Обновление информации о пользователе (scoped to organization).
         """
         user = await self._get_user_by_id(user_id)
         if not user:
@@ -133,6 +154,13 @@ class UsersService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Пользователь не найден",
             )
+        # Ensure user belongs to same org (unless platform_admin)
+        if current_user and not current_user.is_platform_admin:
+            if user.organization_id != current_user.organization_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Нельзя редактировать пользователя другой организации",
+                )
 
         await self._validate_unique_fields(user_id, user_data)
 
@@ -222,16 +250,32 @@ class UsersService:
         }
 
     @logger()
+    async def _get_organization(self, org_id: int) -> Optional[Organization]:
+        """Получает организацию по ID."""
+        result = await self.session.execute(
+            select(Organization).where(Organization.id == org_id)
+        )
+        return result.scalars().first()
+
+    @logger()
     async def delete_user(
         self,
         user_id: int,
+        current_user=None,
     ):
-        """Удаление пользователя"""
+        """Удаление пользователя (scoped to organization)"""
         user = await self._get_user_by_id(user_id)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
             )
+        # Ensure user belongs to same org (unless platform_admin)
+        if current_user and not current_user.is_platform_admin:
+            if user.organization_id != current_user.organization_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Нельзя удалить пользователя другой организации",
+                )
 
         await self.session.delete(user)
         await self.session.commit()

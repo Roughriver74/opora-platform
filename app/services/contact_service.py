@@ -23,8 +23,11 @@ class ContactService:
         return require_bitrix24(self.bitrix24)
 
     @logger()
-    async def get_contacts(self) -> Sequence[Contact]:
-        return (await self.session.execute(select(Contact))).scalars().all()
+    async def get_contacts(self, current_user=None) -> Sequence[Contact]:
+        query = select(Contact)
+        if current_user and not current_user.is_platform_admin:
+            query = query.where(Contact.organization_id == current_user.organization_id)
+        return (await self.session.execute(query)).scalars().all()
 
     @logger()
     async def get_company_contacts(
@@ -114,11 +117,11 @@ class ContactService:
         return contact
 
     @logger()
-    async def get_contact(self, contact_id: int, sync_with_bitrix: bool) -> Contact:
+    async def get_contact(self, contact_id: int, sync_with_bitrix: bool, current_user=None) -> Contact:
         """
         Получает контакт по ID и при необходимости синхронизирует его с Bitrix.
         """
-        contact = await self._fetch_contact(contact_id)
+        contact = await self._fetch_contact(contact_id, current_user=current_user)
         if not contact:
             raise HTTPException(status_code=404, detail="Contact not found")
 
@@ -128,13 +131,14 @@ class ContactService:
         return contact
 
     @logger()
-    async def _fetch_contact(self, contact_id: int) -> Optional[Contact]:
+    async def _fetch_contact(self, contact_id: int, current_user=None) -> Optional[Contact]:
         """
         Получает контакт из базы данных.
         """
-        result = await self.session.execute(
-            select(Contact).where(Contact.id == contact_id)
-        )
+        query = select(Contact).where(Contact.id == contact_id)
+        if current_user and not current_user.is_platform_admin:
+            query = query.where(Contact.organization_id == current_user.organization_id)
+        result = await self.session.execute(query)
         return result.scalars().first()
 
     @logger()
@@ -180,13 +184,14 @@ class ContactService:
         contact.dynamic_fields = dynamic_fields
 
     @logger()
-    async def create_contact(self, contact):
+    async def create_contact(self, contact, current_user=None):
         db_contact = Contact(
             name=contact.name,
             contact_type=contact.contact_type,
             dynamic_fields=contact.dynamic_fields or {},
             bitrix_id=contact.bitrix_id,
             sync_status=SyncStatus.PENDING.value,
+            organization_id=current_user.organization_id if current_user else None,
         )
 
         self.session.add(db_contact)
@@ -321,7 +326,7 @@ class ContactService:
         return {"success": result}
 
     @logger()
-    async def sync_contacts_from_bitrix(self):
+    async def sync_contacts_from_bitrix(self, current_user=None):
         self._require_bitrix()
         bitrix_contacts = await self.bitrix24.get_contacts()
         updated_contacts = []
@@ -367,6 +372,7 @@ class ContactService:
                         dynamic_fields=dynamic_fields,
                         sync_status=SyncStatus.SYNCED.value,
                         last_synced=datetime.now(),
+                        organization_id=current_user.organization_id if current_user else None,
                     )
                     self.session.add(db_contact)
 

@@ -16,7 +16,7 @@ from app.config import (
 )
 from app.emuns.clinic_enum import SyncStatus
 from app.emuns.visit_enum import EntityType, VisitStatus
-from app.models import Company, Doctor, FieldMapping, GlobalSettings, User, Visit
+from app.models import Company, Doctor, FieldMapping, GlobalSettings, Organization, User, Visit
 from app.schemas.visit_schema import VisitCreate, VisitDeleteSchema
 from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
@@ -31,26 +31,65 @@ class VisitService:
         return require_bitrix24(self.bitrix24)
 
     @logger()
+    async def _check_visit_plan_limits(self, current_user: User):
+        """Check if org is on FREE plan and has exceeded monthly visit limit."""
+        from sqlalchemy import extract, func
+
+        org = (
+            (
+                await self.session.execute(
+                    select(Organization).where(Organization.id == current_user.organization_id)
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if not org or org.plan != "free":
+            return
+
+        max_visits = (org.plan_limits or {}).get("max_visits_per_month", 100)
+        now = datetime.now()
+        month_visit_count = await self.session.scalar(
+            select(func.count(Visit.id)).where(
+                Visit.organization_id == current_user.organization_id,
+                extract("year", Visit.date) == now.year,
+                extract("month", Visit.date) == now.month,
+            )
+        )
+        if month_visit_count >= max_visits:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Лимит визитов для бесплатного плана ({max_visits}/мес) исчерпан. Обновите план.",
+            )
+
+    @logger()
     async def get_visits(self, current_user):
-        result = await self.session.execute(
+        query = (
             select(Visit)
             .options(
                 joinedload(Visit.company).joinedload(
                     Company.contacts
                 )  # Загружаем компанию и её контакты
             )
-            .where(Visit.user_id == current_user.id)
+            .where(Visit.organization_id == current_user.organization_id)
         )
+        # Regular users see only their own visits; org_admin/platform_admin see all org visits
+        if not current_user.is_org_admin:
+            query = query.where(Visit.user_id == current_user.id)
+
+        result = await self.session.execute(query)
         return result.unique().scalars().all()
 
     @logger()
-    async def get_visits_by_company(self, company_id):
-        result = await self.session.execute(
+    async def get_visits_by_company(self, company_id, current_user):
+        query = (
             select(Visit)
             .options(joinedload(Visit.company).joinedload(Company.contacts))
             .where(Visit.company_id == company_id)
+            .where(Visit.organization_id == current_user.organization_id)
             .order_by(Visit.date.desc())
         )
+        result = await self.session.execute(query)
         return result.unique().scalars().all()
 
     @logger()
@@ -83,7 +122,8 @@ class VisitService:
                     (
                         await self.session.execute(
                             select(FieldMapping).where(
-                                FieldMapping.entity_type == EntityType.VISIT.value
+                                FieldMapping.entity_type == EntityType.VISIT.value,
+                                FieldMapping.organization_id == current_user.organization_id,
                             )
                         )
                     )
@@ -232,7 +272,13 @@ class VisitService:
             query = query.options(
                 joinedload(Visit.company).joinedload(Company.contacts)
             )
-        query = query.where(Visit.id == visit_id, Visit.user_id == current_user.id)
+        query = query.where(
+            Visit.id == visit_id,
+            Visit.organization_id == current_user.organization_id,
+        )
+        # Regular users can only access their own visits
+        if not current_user.is_org_admin:
+            query = query.where(Visit.user_id == current_user.id)
 
         visit = (await self.session.execute(query)).scalars().first()
 
@@ -247,11 +293,14 @@ class VisitService:
         Создает новый визит, проверяет дату, обрабатывает связанные данные и синхронизирует с Bitrix24.
         """
         try:
+            # 0. Plan limits enforcement: check monthly visit count for FREE plan
+            await self._check_visit_plan_limits(current_user)
+
             # 1. Проверка ограничения на прошлые даты
             await self._validate_visit_date(visit)
 
             # 2. Получение или создание компании
-            db_company = await self._get_or_create_company(visit)
+            db_company = await self._get_or_create_company(visit, current_user)
 
             # 3. Подготовка данных визита
             visit_data = await self._prepare_visit_data(visit, db_company, current_user)
@@ -339,7 +388,7 @@ class VisitService:
                 )
 
     @logger()
-    async def _get_or_create_company(self, visit: VisitCreate) -> Company:
+    async def _get_or_create_company(self, visit: VisitCreate, current_user: User) -> Company:
         """
         Получает или создает компанию для визита.
         """
@@ -395,6 +444,8 @@ class VisitService:
             db_company = Company(
                 bitrix_id=int(bitrix_company_id),
                 name=company_name,
+                region="",
+                organization_id=current_user.organization_id,
                 sync_status=SyncStatus.SYNCED.value,
                 last_synced=datetime.now(),
             )
@@ -435,6 +486,7 @@ class VisitService:
             visit_data["status"] = visit_data["status"].lower()
 
         visit_data["user_id"] = current_user.id
+        visit_data["organization_id"] = current_user.organization_id
         visit_data["sync_status"] = SyncStatus.PENDING.value
 
         return visit_data
@@ -518,7 +570,8 @@ class VisitService:
             (
                 await self.session.execute(
                     select(FieldMapping).where(
-                        FieldMapping.entity_type == EntityType.VISIT.value
+                        FieldMapping.entity_type == EntityType.VISIT.value,
+                        FieldMapping.organization_id == current_user.organization_id,
                     )
                 )
             )
@@ -777,7 +830,10 @@ class VisitService:
         field_mappings = (
             (
                 await self.session.execute(
-                    select(FieldMapping).where(FieldMapping.entity_type == "visit")
+                    select(FieldMapping).where(
+                        FieldMapping.entity_type == "visit",
+                        FieldMapping.organization_id == current_user.organization_id,
+                    )
                 )
             )
             .scalars()
@@ -910,19 +966,30 @@ class VisitService:
         }
 
     @logger()
-    async def delete_visit(self, data: VisitDeleteSchema):
+    async def delete_visit(self, data: VisitDeleteSchema, current_user: User):
         """Удаляет визит по visit_id или visit_bitrix_id."""
         bitrix_update_fields = {"stageId": "DT1054_21:FAIL"}
+        org_id = current_user.organization_id
 
         if data.visit_id:
-            visit: Visit = await self.get_visit_admin(visit_id=data.visit_id)
+            visit: Visit = await self.get_visit_admin(
+                visit_id=data.visit_id, current_user=current_user
+            )
             visit_bitrix_id = visit.bitrix_id
-            await self.session.execute(delete(Visit).where(Visit.id == data.visit_id))
+            await self.session.execute(
+                delete(Visit).where(
+                    Visit.id == data.visit_id,
+                    Visit.organization_id == org_id,
+                )
+            )
 
         elif data.visit_bitrix_id:
             visit_bitrix_id = data.visit_bitrix_id
             await self.session.execute(
-                delete(Visit).where(Visit.bitrix_id == data.visit_bitrix_id)
+                delete(Visit).where(
+                    Visit.bitrix_id == data.visit_bitrix_id,
+                    Visit.organization_id == org_id,
+                )
             )
 
         else:
@@ -939,12 +1006,19 @@ class VisitService:
         return
 
     @logger()
-    async def get_visit_admin(self, visit_id):
+    async def get_visit_admin(self, visit_id, current_user: User):
         """
-        Находит визит по ID
+        Находит визит по ID в рамках организации
         """
         visit = (
-            (await self.session.execute(select(Visit).where(Visit.id == visit_id)))
+            (
+                await self.session.execute(
+                    select(Visit).where(
+                        Visit.id == visit_id,
+                        Visit.organization_id == current_user.organization_id,
+                    )
+                )
+            )
             .scalars()
             .first()
         )

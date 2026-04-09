@@ -23,31 +23,30 @@ class AdminQuery:
         return require_bitrix24(self.bitrix24)
 
     @logger()
-    async def get_field_mappings(self, entity_type):
-        result = await self.session.execute(
-            select(FieldMapping).where(FieldMapping.entity_type == entity_type)
-        )
+    async def get_field_mappings(self, entity_type, current_user=None):
+        query = select(FieldMapping).where(FieldMapping.entity_type == entity_type)
+        if current_user and not current_user.is_platform_admin:
+            query = query.where(FieldMapping.organization_id == current_user.organization_id)
+        result = await self.session.execute(query)
         return result.scalars().all()
 
     @logger()
-    async def create_field_mapping(self, mapping):
-        db_mapping = FieldMapping(**mapping.model_dump())
+    async def create_field_mapping(self, mapping, current_user=None):
+        mapping_data = mapping.model_dump()
+        if current_user:
+            mapping_data["organization_id"] = current_user.organization_id
+        db_mapping = FieldMapping(**mapping_data)
         self.session.add(db_mapping)
         await self.session.commit()
         await self.session.refresh(db_mapping)
         return db_mapping
 
     @logger()
-    async def update_field_mapping(self, mapping_id, mapping):
-        db_mapping = (
-            (
-                await self.session.execute(
-                    select(FieldMapping).where(FieldMapping.id == mapping_id)
-                )
-            )
-            .scalars()
-            .first()
-        )
+    async def update_field_mapping(self, mapping_id, mapping, current_user=None):
+        query = select(FieldMapping).where(FieldMapping.id == mapping_id)
+        if current_user and not current_user.is_platform_admin:
+            query = query.where(FieldMapping.organization_id == current_user.organization_id)
+        db_mapping = (await self.session.execute(query)).scalars().first()
         if not db_mapping:
             raise HTTPException(status_code=404, detail="Mapping not found")
 
@@ -59,10 +58,11 @@ class AdminQuery:
         return db_mapping
 
     @logger()
-    async def delete_field_mapping(self, mapping_id):
-        await self.session.execute(
-            delete(FieldMapping).where(FieldMapping.id == mapping_id)
-        )
+    async def delete_field_mapping(self, mapping_id, current_user=None):
+        query = delete(FieldMapping).where(FieldMapping.id == mapping_id)
+        if current_user and not current_user.is_platform_admin:
+            query = query.where(FieldMapping.organization_id == current_user.organization_id)
+        await self.session.execute(query)
         await self.session.commit()
         return
 
@@ -169,11 +169,13 @@ class AdminQuery:
         return []
 
     @logger()
-    async def fetch_list_fields(self, field_mappings_model):
+    async def fetch_list_fields(self, field_mappings_model, current_user=None):
         """Выборка полей с типом 'list'."""
         query = select(field_mappings_model).where(
             field_mappings_model.field_type == "list"
         )
+        if current_user and not current_user.is_platform_admin:
+            query = query.where(field_mappings_model.organization_id == current_user.organization_id)
         result = await self.session.execute(query)
         return result.scalars().all()
 
@@ -197,10 +199,10 @@ class AdminQuery:
 
     @logger()
     async def update_field_mappings_with_list_values(
-        self, field_mappings_model
+        self, field_mappings_model, current_user=None
     ) -> dict:
         """Обновление маппингов полей со списочными значениями из Bitrix24."""
-        list_fields = await self.fetch_list_fields(field_mappings_model)
+        list_fields = await self.fetch_list_fields(field_mappings_model, current_user=current_user)
 
         updated_fields = []
         for field in list_fields:
