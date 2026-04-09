@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -11,7 +13,24 @@ class UserCreate(BaseModel):
     password: str
 
 
+class OrgRegister(BaseModel):
+    first_name: str
+    last_name: str
+    email: EmailStr
+    password: str
+    company_name: str
+
+
+class AcceptInvite(BaseModel):
+    token: str
+    password: str
+    first_name: str
+    last_name: str
+
+
 class UserResponse(BaseModel):
     email: EmailStr
-    bitrix_user_id: int
+    bitrix_user_id: Optional[int] = None
+    role: str = "user"
+    organization_id: Optional[int] = None
     regions: list[str] = []

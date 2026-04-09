@@ -1,22 +1,22 @@
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, EmailStr
 
 
-class UserCreate(BaseModel):
+class CreateUser(BaseModel):
     email: EmailStr
     password: str
-    bitrix_user_id: int
-    is_active: bool = True
-    is_admin: bool = False
-    regions: Optional[List[str]] = []
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    role: str = "user"
+    regions: list[str] = []
 
 
-# Определяем Pydantic-модель для обновления пользователя
-class UserUpdate(BaseModel):
+class UpdateUser(BaseModel):
     email: Optional[EmailStr] = None
     password: Optional[str] = None
-    bitrix_user_id: Optional[int] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    role: Optional[str] = None
     is_active: Optional[bool] = None
-    is_admin: Optional[bool] = None
-    regions: Optional[List[str]] = None
+    regions: Optional[list[str]] = None
