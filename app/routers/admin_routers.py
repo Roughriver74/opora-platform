@@ -25,7 +25,7 @@ async def get_field_mappings(
     current_user: User = Depends(get_current_user),
 ):
     """Получение списка маппингов полей, с возможностью фильтрации по типу сущности"""
-    return await uow.admin.get_field_mappings(entity_type)
+    return await uow.admin.get_field_mappings(entity_type, current_user=current_user)
 
 
 @router.get("/public/field-mappings", response_model=List[FieldMappingResponse])
@@ -35,7 +35,7 @@ async def get_public_field_mappings(
     current_user: User = Depends(get_current_user),
 ):
     """Публичное получение списка маппингов полей, с возможностью фильтрации по типу сущности"""
-    return await uow.admin.get_field_mappings(entity_type)
+    return await uow.admin.get_field_mappings(entity_type, current_user=current_user)
 
 
 @router.post(
@@ -49,7 +49,7 @@ async def create_field_mapping(
     current_user: User = Depends(get_current_admin_user),
 ):
     """Создание нового маппинга поля"""
-    return await uow.admin.create_field_mapping(mapping)
+    return await uow.admin.create_field_mapping(mapping, current_user=current_user)
 
 
 @router.put("/field-mappings/{mapping_id}", response_model=FieldMappingResponse)
@@ -60,17 +60,17 @@ async def update_field_mapping(
     current_user: User = Depends(get_current_admin_user),
 ):
     """Обновление существующего маппинга поля"""
-    return await uow.admin.update_field_mapping(mapping_id, mapping)
+    return await uow.admin.update_field_mapping(mapping_id, mapping, current_user=current_user)
 
 
 @router.delete("/field-mappings/{mapping_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_field_mapping(
     mapping_id: int,
     uow: UnitOfWork = Depends(get_uow),
-    # current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """Удаление маппинга поля"""
-    return await uow.admin.delete_field_mapping(mapping_id)
+    return await uow.admin.delete_field_mapping(mapping_id, current_user=current_user)
 
 
 @router.post("/field-mappings/update-list-values", status_code=status.HTTP_200_OK)
@@ -79,7 +79,7 @@ async def update_field_list_values(
     current_user: User = Depends(get_current_admin_user),
 ):
     """Обновление списочных значений для полей типа 'list' из Bitrix24"""
-    return await uow.admin.update_field_mappings_with_list_values(FieldMapping)
+    return await uow.admin.update_field_mappings_with_list_values(FieldMapping, current_user=current_user)
 
 
 @router.get("/bitrix/fields/visit")

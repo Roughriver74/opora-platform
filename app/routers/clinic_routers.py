@@ -153,7 +153,7 @@ async def get_clinic(
 ):
     """Get a specific clinic with optional Bitrix24 synchronization."""
     return await uow.clinic.get_clinic_local_db(
-        clinic_id=clinic_id, sync_with_bitrix=sync_with_bitrix
+        clinic_id=clinic_id, sync_with_bitrix=sync_with_bitrix, current_user=current_user
     )
 
 
@@ -164,7 +164,7 @@ async def create_clinic(
     uow: UnitOfWork = Depends(get_uow),
 ):
     """Create a new clinic and sync with Bitrix24."""
-    return await uow.clinic.create_clinic(clinic=clinic)
+    return await uow.clinic.create_clinic(clinic=clinic, current_user=current_user)
 
 
 @router.put("/{clinic_id}", response_model=ClinicResponseBase)
@@ -175,7 +175,7 @@ async def update_clinic(
     current_user=Depends(get_current_user),
 ):
     """Update a clinic and sync changes with Bitrix24."""
-    return await uow.clinic.update_clinic(clinic_id=clinic_id, clinic=clinic)
+    return await uow.clinic.update_clinic(clinic_id=clinic_id, clinic=clinic, current_user=current_user)
 
 
 @router.post("/bitrix/update")

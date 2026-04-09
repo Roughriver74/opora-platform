@@ -14,7 +14,7 @@ async def get_contacts(
     uow: UnitOfWork = Depends(get_uow), current_user=Depends(get_current_user)
 ):
     """Get all contacts (LPRs)."""
-    return await uow.contact.get_contacts()
+    return await uow.contact.get_contacts(current_user=current_user)
 
 
 @router.get("/company/{company_id}", response_model=List[Dict[str, Any]])
@@ -58,7 +58,7 @@ async def get_contact(
 ):
     """Get a specific contact with optional Bitrix24 synchronization."""
     return await uow.contact.get_contact(
-        contact_id=contact_id, sync_with_bitrix=sync_with_bitrix
+        contact_id=contact_id, sync_with_bitrix=sync_with_bitrix, current_user=current_user
     )
 
 
@@ -69,7 +69,7 @@ async def create_contact(
     current_user=Depends(get_current_user),
 ):
     """Create a new contact and sync with Bitrix24."""
-    return await uow.contact.create_contact(contact=contact)
+    return await uow.contact.create_contact(contact=contact, current_user=current_user)
 
 
 @router.put("/{contact_id}", response_model=ContactResponseBase)
@@ -101,4 +101,4 @@ async def sync_contacts_from_bitrix(
     uow: UnitOfWork = Depends(get_uow), current_user=Depends(get_current_user)
 ):
     """Sync contacts from Bitrix24 to local database."""
-    return await uow.contact.sync_contacts_from_bitrix()
+    return await uow.contact.sync_contacts_from_bitrix(current_user=current_user)

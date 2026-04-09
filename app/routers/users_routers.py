@@ -35,7 +35,7 @@ async def get_users(
     current_user: User = Depends(get_current_active_admin_user),
 ):
     """Получение списка всех пользователей"""
-    return await uow.users.get_users()
+    return await uow.users.get_users(current_user=current_user)
 
 
 @router.post("", response_model=dict)
@@ -45,7 +45,7 @@ async def create_user(
     current_user: User = Depends(get_current_active_admin_user),
 ):
     """Создание нового пользователя"""
-    return await uow.users.create_user(user_data=user_data)
+    return await uow.users.create_user(user_data=user_data, current_user=current_user)
 
 
 @router.put("/{user_id}", response_model=dict)
@@ -56,7 +56,7 @@ async def update_user(
     current_user: User = Depends(get_current_active_admin_user),
 ):
     """Обновление информации о пользователе"""
-    return await uow.users.update_user(user_id=user_id, user_data=user_data)
+    return await uow.users.update_user(user_id=user_id, user_data=user_data, current_user=current_user)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -66,4 +66,4 @@ async def delete_user(
     current_user: User = Depends(get_current_active_admin_user),
 ):
     """Удаление пользователя"""
-    return await uow.users.delete_user(user_id=user_id)
+    return await uow.users.delete_user(user_id=user_id, current_user=current_user)

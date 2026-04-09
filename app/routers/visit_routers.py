@@ -31,7 +31,7 @@ async def get_visits_by_company(
     current_user=Depends(get_current_user),
 ):
     """Get all visits for a specific company regardless of which user created them."""
-    return await uow.visit.get_visits_by_company(company_id=company_id)
+    return await uow.visit.get_visits_by_company(company_id=company_id, current_user=current_user)
 
 
 @router.put("/{visit_id}/status", response_model=VisitResponseBase)
@@ -87,4 +87,4 @@ async def delete_visit(
     uow: UnitOfWork = Depends(get_uow),
     current_user=Depends(get_current_admin_user),
 ):
-    await uow.visit.delete_visit(data=data)
+    await uow.visit.delete_visit(data=data, current_user=current_user)

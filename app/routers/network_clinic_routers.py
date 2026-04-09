@@ -24,7 +24,7 @@ router = APIRouter()
 async def get_network_clinics(
     uow: UnitOfWork = Depends(get_uow), current_user=Depends(get_current_user)
 ):
-    return await uow.network_clinic.get_network_clinics()
+    return await uow.network_clinic.get_network_clinics(current_user=current_user)
 
 
 @router.post(
