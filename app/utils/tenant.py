@@ -1,9 +1,27 @@
 """
-Multi-tenancy utilities for future use.
-Currently not enforced — organization_id columns are nullable.
+Multi-tenancy utilities.
+TenantContext holds the current request's organization scope.
+scope_to_org applies organization_id filtering to SQLAlchemy queries.
 """
 
+from dataclasses import dataclass
+
 from sqlalchemy import Select
+
+
+@dataclass
+class TenantContext:
+    organization_id: int
+    user_id: int
+    role: str  # "platform_admin", "org_admin", "user"
+
+    @property
+    def is_platform_admin(self) -> bool:
+        return self.role == "platform_admin"
+
+    @property
+    def is_org_admin(self) -> bool:
+        return self.role in ("org_admin", "platform_admin")
 
 
 def scope_to_org(query: Select, model, org_id: int | None = None) -> Select:
