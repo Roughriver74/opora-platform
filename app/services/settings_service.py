@@ -5,7 +5,6 @@ from starlette import status
 
 from app.models import GlobalSettings, User
 from app.schemas.settings_schema import GlobalSettingCreate, GlobalSettingUpdate
-from app.services.bitrix24 import Bitrix24Client
 from app.utils.logger import logger
 
 
@@ -16,26 +15,36 @@ class SettingsService:
     @logger()
     async def initialize_settings(self):
         """Инициализирует настройки по умолчанию, если они не существуют"""
+        default_settings = [
+            {
+                "key": "restrict_past_dates",
+                "value": "true",
+                "description": "Запрещает создание и редактирование визитов с датами ранее текущего дня",
+            },
+            {
+                "key": "bitrix24_webhook_url",
+                "value": "",
+                "description": "Webhook URL для интеграции с Bitrix24. Формат: https://your-domain.bitrix24.ru/rest/user_id/webhook_key/",
+            },
+        ]
+
         try:
-            restrict_past_dates = (
-                (
-                    await self.session.execute(
-                        select(GlobalSettings).where(
-                            GlobalSettings.key == "restrict_past_dates"
+            for setting_data in default_settings:
+                existing = (
+                    (
+                        await self.session.execute(
+                            select(GlobalSettings).where(
+                                GlobalSettings.key == setting_data["key"]
+                            )
                         )
                     )
+                    .scalars()
+                    .first()
                 )
-                .scalars()
-                .first()
-            )
-            if not restrict_past_dates:
-                new_setting = GlobalSettings(
-                    key="restrict_past_dates",
-                    value="true",  # По умолчанию включаем ограничение
-                    description="Запрещает создание и редактирование визитов с датами ранее текущего дня",
-                )
-                self.session.add(new_setting)
-                await self.session.commit()
+                if not existing:
+                    new_setting = GlobalSettings(**setting_data)
+                    self.session.add(new_setting)
+            await self.session.commit()
         except Exception:
             await self.session.rollback()
 

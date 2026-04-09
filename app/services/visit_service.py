@@ -18,7 +18,7 @@ from app.emuns.clinic_enum import SyncStatus
 from app.emuns.visit_enum import EntityType, VisitStatus
 from app.models import Company, Doctor, FieldMapping, GlobalSettings, User, Visit
 from app.schemas.visit_schema import VisitCreate, VisitDeleteSchema
-from app.services.bitrix24 import Bitrix24Client
+from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
 
@@ -26,6 +26,9 @@ class VisitService:
     def __init__(self, session: AsyncSession, bitrix24: Bitrix24Client):
         self.session = session
         self.bitrix24 = bitrix24
+
+    def _require_bitrix(self) -> Bitrix24Client:
+        return require_bitrix24(self.bitrix24)
 
     @logger()
     async def get_visits(self, current_user):
@@ -74,7 +77,7 @@ class VisitService:
         await self.session.commit()
         await self.session.refresh(db_visit)
 
-        if db_visit.bitrix_id:
+        if db_visit.bitrix_id and self.bitrix24 is not None:
             try:
                 field_mappings = (
                     (
@@ -375,6 +378,11 @@ class VisitService:
         )
 
         if not db_company:
+            if self.bitrix24 is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Компания не найдена в локальной базе, а Bitrix24 не настроен для её получения.",
+                )
             company_data = await self.bitrix24.get_company(int(bitrix_company_id))
             if not company_data:
                 raise HTTPException(
@@ -472,7 +480,13 @@ class VisitService:
     ):
         """
         Синхронизирует данные визита с Bitrix24.
+        Если Bitrix24 не настроен, сохраняет визит только локально.
         """
+        if self.bitrix24 is None:
+            db_visit.sync_status = SyncStatus.PENDING.value
+            await self.session.commit()
+            await self.session.refresh(db_visit)
+            return db_visit
         formatted_date = None
         if hasattr(visit, "date"):
             formatted_date = (
@@ -753,7 +767,13 @@ class VisitService:
     async def _sync_with_bitrix24_update(self, db_visit, current_user: User):
         """
         Синхронизирует данные визита с Bitrix24.
+        Если Bitrix24 не настроен, пропускает синхронизацию.
         """
+        if self.bitrix24 is None:
+            db_visit.sync_status = SyncStatus.PENDING.value
+            await self.session.commit()
+            await self.session.refresh(db_visit)
+            return db_visit
         field_mappings = (
             (
                 await self.session.execute(
@@ -910,11 +930,12 @@ class VisitService:
                 "Не передан ни один идентификатор визита: visit_id или visit_bitrix_id"
             )
         await self.session.commit()
-        await self.bitrix24.update_smart_process_item(
-            process_id=VISIT_ENTITY_TYPE_ID,
-            item_id=visit_bitrix_id,
-            fields=bitrix_update_fields,
-        )
+        if self.bitrix24 is not None and visit_bitrix_id:
+            await self.bitrix24.update_smart_process_item(
+                process_id=VISIT_ENTITY_TYPE_ID,
+                item_id=visit_bitrix_id,
+                fields=bitrix_update_fields,
+            )
         return
 
     @logger()

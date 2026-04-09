@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings as settings
 from app.models import User
-from app.services.bitrix24 import Bitrix24Client
+from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -37,7 +37,8 @@ class AuthService:
 
     @logger()
     async def register_user(self, email: str, password: str) -> User:
-        bitrix_user = await self.bitrix24.get_user_by_email(email)
+        bitrix = require_bitrix24(self.bitrix24)
+        bitrix_user = await bitrix.get_user_by_email(email)
         if not bitrix_user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

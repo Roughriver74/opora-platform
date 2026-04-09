@@ -9,7 +9,7 @@ from starlette import status
 from app.models import FieldMapping, GlobalSettings
 from app.schemas.admin_schema import GlobalSettingResponse
 from app.schemas.settings_schema import GlobalSettingBase
-from app.services.bitrix24 import Bitrix24Client
+from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
 
@@ -17,6 +17,10 @@ class AdminQuery:
     def __init__(self, session: AsyncSession, bitrix24: Bitrix24Client):
         self.session = session
         self.bitrix24 = bitrix24
+
+    def _require_bitrix(self) -> Bitrix24Client:
+        """Guard: ensure Bitrix24 is configured before any Bitrix operation."""
+        return require_bitrix24(self.bitrix24)
 
     @logger()
     async def get_field_mappings(self, entity_type):
@@ -150,6 +154,7 @@ class AdminQuery:
         else:
             return []
 
+        self._require_bitrix()
         result = await self.bitrix24.make_request_async(method, params)
 
         if "error" in result:
@@ -227,6 +232,7 @@ class AdminQuery:
         Returns:
             Список полей смарт-процесса
         """
+        self._require_bitrix()
         params = {"entityTypeId": entity_type_id}
         result = await self.bitrix24.make_request_async("crm.item.fields", params)
         return result.get("result", {}) if result else {}
@@ -248,6 +254,7 @@ class AdminQuery:
         Returns:
             Список полей компаний
         """
+        self._require_bitrix()
         result = await self.bitrix24.make_request_async("crm.company.fields")
         return result.get("result", {}) if result else {}
 
@@ -259,12 +266,14 @@ class AdminQuery:
         Returns:
             Список полей контактов
         """
+        self._require_bitrix()
         result = await self.bitrix24.make_request_async("crm.contact.fields")
         return result.get("result", {}) if result else {}
 
     @logger()
     async def get_product_fields(self) -> Dict:
         """Получение списка полей для продуктов из Bitrix24"""
+        self._require_bitrix()
         result = await self.bitrix24.make_request_async("crm.product.fields")
         return result.get("result", {}) if result else {}
 

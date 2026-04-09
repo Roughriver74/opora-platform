@@ -35,7 +35,7 @@ from app.schemas.clinic_schema import (
     GetAddressSchema,
     PaginatedResponse,
 )
-from app.services.bitrix24 import Bitrix24Client
+from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
 
@@ -43,6 +43,9 @@ class ClinicService:
     def __init__(self, session: AsyncSession, bitrix24: Bitrix24Client):
         self.session = session
         self.bitrix24 = bitrix24
+
+    def _require_bitrix(self) -> Bitrix24Client:
+        return require_bitrix24(self.bitrix24)
 
     @logger()
     async def get_clinic(
@@ -405,6 +408,8 @@ class ClinicService:
     @logger()
     async def _sync_clinic_with_bitrix_for_get(self, clinic):
         """Синхронизирует данные клиники с Bitrix24."""
+        if self.bitrix24 is None:
+            return
         try:
             bitrix_company = await self.bitrix24.get_company(clinic.bitrix_id)
             if not bitrix_company:
@@ -490,6 +495,11 @@ class ClinicService:
     @logger()
     async def sync_clinic_with_bitrix_for_create(self, db_clinic, clinic: ClinicCreate):
         """Синхронизирует клинику с Bitrix24."""
+        if self.bitrix24 is None:
+            db_clinic.sync_status = SyncStatus.PENDING.value
+            await self.session.commit()
+            await self.session.refresh(db_clinic)
+            return
 
         fields = await self._prepare_bitrix_fields(clinic)
         result = await self.bitrix24.create_company(fields)
@@ -554,7 +564,7 @@ class ClinicService:
         await self.session.commit()
         await self.session.refresh(db_clinic)
 
-        if db_clinic.bitrix_id:
+        if db_clinic.bitrix_id and self.bitrix24 is not None:
             try:
                 await self._sync_with_bitrix(db_clinic)
             except Exception as e:
@@ -683,6 +693,7 @@ class ClinicService:
     @logger()
     async def update_clinic_in_bitrix(self, data: dict):
         """Обновляет клинику в Bitrix24."""
+        self._require_bitrix()
         prepared_data = await self._prepare_data_for_update(data)
 
         standard_fields, dynamic_fields = await self._map_fields(prepared_data)
@@ -784,6 +795,7 @@ class ClinicService:
     @logger()
     async def sync_clinics_from_bitrix(self):
         """Синхронизирует клиники из Bitrix24 в локальную базу данных."""
+        self._require_bitrix()
         companies = await self.bitrix24.get_companies()
 
         for company in companies:
@@ -873,6 +885,7 @@ class ClinicService:
         """
         Создает клинику в Bitrix24 и обновляет её данные в локальной базе данных.
         """
+        self._require_bitrix()
         clinic = await self._fetch_clinic_from_db(clinic_id)
 
         if clinic.bitrix_id:
@@ -925,6 +938,7 @@ class ClinicService:
         """
         Ищет или создает клинику в Bitrix24 и обновляет её данные в локальной базе данных.
         """
+        self._require_bitrix()
         clinic = await self._fetch_clinic_from_db(clinic_id)
 
         if clinic.bitrix_id:
@@ -1088,6 +1102,7 @@ class ClinicService:
     @logger()
     async def search_companies_by_inn(self, inn: str) -> List[Dict]:
         """Search companies by INN."""
+        self._require_bitrix()
         payload = {
             "select": BITRIX24_SELECT_PAYLOAD_FIELDS,
             "filter": {"UF_CRM_1741267701427": inn},
@@ -1114,6 +1129,7 @@ class ClinicService:
     @logger()
     async def search_companies_by_name(self, search_term: str) -> List[Dict]:
         """Search companies by name or other criteria."""
+        self._require_bitrix()
         payload = {
             "select": BITRIX24_SELECT_PAYLOAD_FIELDS,
             "filter": {"%TITLE": search_term},
@@ -1125,6 +1141,7 @@ class ClinicService:
 
     @logger()
     async def get_company(self, company_id):
+        self._require_bitrix()
         company = await self.bitrix24.get_company(company_id)
         if not company:
             raise HTTPException(
@@ -1223,16 +1240,17 @@ class ClinicService:
                     )
                     row_session.add(new_address_db)
 
-                    await self.bitrix24.simple_update_obj(
-                        obj_id=company_id,
-                        target_method=CRM_COMPANY_UPDATE,
-                        bitrix_fields={
-                            "REG_ADDRESS": f"{result.get('street_with_type', None)} {result.get('house', None)} {result.get('block_type', None)} {result.get('block', None)}",
-                            "REG_ADDRESS_CITY": result.get("region_with_type", None),
-                            "REG_ADDRESS_POSTAL_CODE": result.get("postal_code", None),
-                            "REG_ADDRESS_COUNTRY": result.get("country", None),
-                        },
-                    )
+                    if self.bitrix24 is not None:
+                        await self.bitrix24.simple_update_obj(
+                            obj_id=company_id,
+                            target_method=CRM_COMPANY_UPDATE,
+                            bitrix_fields={
+                                "REG_ADDRESS": f"{result.get('street_with_type', None)} {result.get('house', None)} {result.get('block_type', None)} {result.get('block', None)}",
+                                "REG_ADDRESS_CITY": result.get("region_with_type", None),
+                                "REG_ADDRESS_POSTAL_CODE": result.get("postal_code", None),
+                                "REG_ADDRESS_COUNTRY": result.get("country", None),
+                            },
+                        )
             await row_session.commit()
 
     @logger()

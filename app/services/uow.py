@@ -1,4 +1,4 @@
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -23,7 +23,7 @@ class UnitOfWork:
     def __init__(
         self,
         session_factory: async_sessionmaker,
-        bitrix24: Bitrix24Client,
+        bitrix24: Optional[Bitrix24Client],
     ):
         self.session_factory = session_factory
         self.session: AsyncSession | None = None
@@ -70,7 +70,7 @@ class UnitOfWork:
 
 
 async def get_uow(
-    bitrix24: Bitrix24Client = Depends(get_bitrix_client),
+    bitrix24: Optional[Bitrix24Client] = Depends(get_bitrix_client),
 ) -> AsyncGenerator[UnitOfWork, None]:
     async with UnitOfWork(SessionLocal, bitrix24=bitrix24) as uow:
         yield uow

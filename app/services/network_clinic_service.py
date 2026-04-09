@@ -15,7 +15,7 @@ from app.schemas.network_clinic_schema import (
     CreateNetworkClinicSchema,
     ResponseNetworkClinicSchema,
 )
-from app.services.bitrix24 import Bitrix24Client
+from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
 
@@ -23,6 +23,9 @@ class NetWorkClinicService:
     def __init__(self, session: AsyncSession, bitrix24: Bitrix24Client):
         self.session = session
         self.bitrix24 = bitrix24
+
+    def _require_bitrix(self) -> Bitrix24Client:
+        return require_bitrix24(self.bitrix24)
 
     @logger()
     async def get_network_clinics(self):
@@ -86,7 +89,7 @@ class NetWorkClinicService:
         self, data: CreateNetworkClinicSchema, current_user=None
     ):
         clinic_data = data.model_dump(exclude_none=True)
-        if current_user:
+        if current_user and self.bitrix24 is not None:
             fields = await self.prepare_data_for_bitrix_update(
                 network_clinic=data, bitrix_user_id=current_user.bitrix_user_id
             )
@@ -133,7 +136,7 @@ class NetWorkClinicService:
             .values(**update_data)
         )
         await self.session.commit()
-        if bitrix_user_id:
+        if bitrix_user_id and self.bitrix24 is not None:
             fields = await self.prepare_data_for_bitrix_update(
                 network_clinic=data, bitrix_user_id=bitrix_user_id
             )
@@ -222,6 +225,7 @@ class NetWorkClinicService:
     async def to_bitrix_sync_network_clinics(
         self, current_user: User
     ):  # TODO Я вот пока не понимаю как это работает, после обновления клник из битрикса надо посмотреть
+        self._require_bitrix()
         clinics = await self.get_network_clinics()
         for clinic in clinics:
             fields = {
@@ -254,6 +258,7 @@ class NetWorkClinicService:
 
     @logger()
     async def from_bitrix_sync_network_clinics(self):
+        self._require_bitrix()
         network_clinics = await self.bitrix24.get_smart_process_items(
             process_id=NETWORK_CLINIC_PROCESS_ID
         )
@@ -281,6 +286,7 @@ class NetWorkClinicService:
 
     @logger()
     async def get_doctor(self, company_id: int):
+        self._require_bitrix()
         doctor_bitrix_ids = (
             await self.session.execute(
                 select(NetworkClinic.doctor_bitrix_id).where(

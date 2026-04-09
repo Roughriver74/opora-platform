@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 import aiohttp
+from sqlalchemy import select
 
 from app.config import (
     CRM_COMPANY_UPDATE,
@@ -11,6 +12,7 @@ from app.config import (
     GET_COMPANIES_PAYLOAD,
 )
 from app.config import Settings as settings  # noqa
+from app.database_session import SessionLocal
 from app.utils.logger import logger
 
 
@@ -368,5 +370,113 @@ class Bitrix24Client:
         return companies
 
 
-async def get_bitrix_client() -> Bitrix24Client:
-    return Bitrix24Client(settings.BITRIX24_WEBHOOK_URL)
+def require_bitrix24(client: Optional["Bitrix24Client"]) -> "Bitrix24Client":
+    """
+    Guard: raises HTTPException 503 if Bitrix24 client is not configured.
+    Use at the start of any operation that requires Bitrix24.
+    """
+    from fastapi import HTTPException
+
+    if client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Bitrix24 не настроен. Укажите webhook URL в настройках системы (Настройки -> bitrix24_webhook_url).",
+        )
+    return client
+
+
+async def get_bitrix_client() -> Optional[Bitrix24Client]:
+    """
+    Get Bitrix24 client with webhook URL resolved from:
+    1. global_settings table (key='bitrix24_webhook_url') -- highest priority
+    2. Environment variable BITRIX_API_ENDPOINT (via Settings) -- fallback
+    3. Returns None if neither is configured
+    """
+    # Avoid circular import: import model here
+    from app.models import GlobalSettings
+
+    webhook_url: Optional[str] = None
+
+    # 1. Try database setting first
+    try:
+        async with SessionLocal() as session:
+            result = await session.execute(
+                select(GlobalSettings.value).where(
+                    GlobalSettings.key == "bitrix24_webhook_url"
+                )
+            )
+            db_value = result.scalar_one_or_none()
+            if db_value and db_value.strip():
+                webhook_url = db_value.strip()
+    except Exception:
+        # DB may not be available yet (e.g. during startup migrations).
+        # Silently fall through to env fallback.
+        pass
+
+    # 2. Fallback to env variable
+    if not webhook_url and settings.BITRIX24_WEBHOOK_URL:
+        webhook_url = settings.BITRIX24_WEBHOOK_URL
+
+    # 3. If nothing is configured, return None
+    if not webhook_url:
+        return None
+
+    # Ensure trailing slash for correct URL joining
+    if not webhook_url.endswith("/"):
+        webhook_url += "/"
+
+    return Bitrix24Client(webhook_url)
+
+
+async def test_bitrix_webhook(webhook_url: str) -> Dict[str, Any]:
+    """
+    Test a Bitrix24 webhook URL by making a user.get call.
+    Returns a dict with 'success', 'message', and optionally 'data'.
+    """
+    if not webhook_url or not webhook_url.strip():
+        return {"success": False, "message": "Webhook URL не указан"}
+
+    webhook_url = webhook_url.strip()
+    if not webhook_url.endswith("/"):
+        webhook_url += "/"
+
+    try:
+        client = Bitrix24Client(webhook_url)
+        response = await client.make_request_async(
+            "user.get", {"filter": {"ACTIVE": True}, "select": ["ID", "NAME", "LAST_NAME"]}
+        )
+
+        users = response.get("result", [])
+        if users:
+            return {
+                "success": True,
+                "message": f"Подключение успешно. Найдено пользователей: {len(users)}",
+                "data": {
+                    "users_count": len(users),
+                    "first_user": {
+                        "id": users[0].get("ID"),
+                        "name": f"{users[0].get('NAME', '')} {users[0].get('LAST_NAME', '')}".strip(),
+                    },
+                    "host": client.host,
+                },
+            }
+
+        # Bitrix returned empty result -- may be auth error or empty portal
+        error = response.get("error", "")
+        error_desc = response.get("error_description", "")
+        if error:
+            return {
+                "success": False,
+                "message": f"Ошибка Bitrix24: {error} - {error_desc}",
+            }
+
+        return {
+            "success": True,
+            "message": "Подключение установлено, но пользователей не найдено",
+            "data": {"users_count": 0, "host": client.host},
+        }
+
+    except aiohttp.ClientError as e:
+        return {"success": False, "message": f"Ошибка сети: {str(e)}"}
+    except Exception as e:
+        return {"success": False, "message": f"Неожиданная ошибка: {str(e)}"}

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import DEAL_BITRIX_ADD, TASK_BITRIX_ADD, TEMP_FOLDER_ID
 from app.models import User
 from app.schemas.tasks_schema import DealSchema, TaskSchema
-from app.services.bitrix24 import Bitrix24Client
+from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
 
@@ -17,6 +17,10 @@ class TasksService:
         self.bitrix24 = bitrix24
         self.session = session
 
+    def _require_bitrix(self) -> Bitrix24Client:
+        """Guard: ensure Bitrix24 is configured before any Bitrix operation."""
+        return require_bitrix24(self.bitrix24)
+
     @logger()
     async def create_sales_task(
         self,
@@ -24,6 +28,7 @@ class TasksService:
         data: TaskSchema,
         files: Optional[List[UploadFile]] = None,
     ):
+        self._require_bitrix()
         crm_links = [
             f"CO_{data.company_bitrix_id}",
             f"T41E_{data.visit_id}",
@@ -128,6 +133,7 @@ class TasksService:
 
     @logger()
     async def create_equipment_deal(self, current_user: User, data: DealSchema):
+        self._require_bitrix()
         observer_ids = [231, 287]
         if data.observer_ids:
             observer_ids.append(data.observer_ids)
@@ -152,7 +158,7 @@ class TasksService:
 
     @logger()
     async def get_bitrix_manager(self, search=None):
-
+        self._require_bitrix()
         if search is not None:
             if not isinstance(search, str):
                 raise TypeError("Параметр search должен быть строкой или None")

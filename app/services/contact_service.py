@@ -10,7 +10,7 @@ from app.config import BITRIX_FIELDS_MAP
 from app.emuns.clinic_enum import SyncStatus
 from app.models import Company, Contact, company_contacts
 from app.schemas.contact_schema import ContactUpdate
-from app.services.bitrix24 import Bitrix24Client
+from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
 
@@ -18,6 +18,9 @@ class ContactService:
     def __init__(self, session: AsyncSession, bitrix24: Bitrix24Client):
         self.session = session
         self.bitrix24 = bitrix24
+
+    def _require_bitrix(self) -> Bitrix24Client:
+        return require_bitrix24(self.bitrix24)
 
     @logger()
     async def get_contacts(self) -> Sequence[Contact]:
@@ -90,6 +93,7 @@ class ContactService:
     @logger()
     async def search_contacts(self, term: str) -> dict[str, list[dict]]:
         try:
+            self._require_bitrix()
             contacts = await self.bitrix24.search_contacts_by_name(term)
             return {"contacts": contacts}
         except Exception as e:
@@ -100,6 +104,7 @@ class ContactService:
 
     @logger()
     async def get_contact_by_bitrix_id(self, contact_id: int):
+        self._require_bitrix()
         contact = await self.bitrix24.get_contact(contact_id)
         if not contact:
             raise HTTPException(
@@ -137,6 +142,8 @@ class ContactService:
         """
         Синхронизирует контакт с данными из Bitrix.
         """
+        if self.bitrix24 is None:
+            return
         try:
             bitrix_contact = await self.bitrix24.get_contact(contact.bitrix_id)
             if bitrix_contact:
@@ -186,7 +193,7 @@ class ContactService:
         await self.session.commit()
         await self.session.refresh(db_contact)
 
-        if not contact.bitrix_id:
+        if not contact.bitrix_id and self.bitrix24 is not None:
             try:
                 bitrix_fields = {
                     "NAME": (
@@ -253,7 +260,7 @@ class ContactService:
         await self.session.commit()
         await self.session.refresh(db_contact)
 
-        if db_contact.bitrix_id:
+        if db_contact.bitrix_id and self.bitrix24 is not None:
             try:
                 bitrix_fields = {}
                 if contact.name is not None:
@@ -296,6 +303,7 @@ class ContactService:
 
     @logger()
     async def update_contact_in_bitrix(self, data: dict):
+        self._require_bitrix()
         if "id" not in data or "fields" not in data:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -314,7 +322,7 @@ class ContactService:
 
     @logger()
     async def sync_contacts_from_bitrix(self):
-
+        self._require_bitrix()
         bitrix_contacts = await self.bitrix24.get_contacts()
         updated_contacts = []
 
@@ -375,6 +383,8 @@ class ContactService:
         """
         Получение контактов, связанных с компанией в Bitrix24
         """
+        if self.bitrix24 is None:
+            return []
         try:
             params = {
                 "filter": {"COMPANY_ID": company_id},

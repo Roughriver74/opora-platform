@@ -7,7 +7,7 @@ from starlette import status
 
 from app.models import User
 from app.schemas.users_schema import UserCreate, UserUpdate
-from app.services.bitrix24 import Bitrix24Client
+from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
 
@@ -34,8 +34,8 @@ class UsersService:
     @logger()
     async def search_bitrix_user(self, email):
         """Поиск пользователя в Bitrix24 по email"""
-
-        user = await self.bitrix24.get_user_by_email(email)
+        bitrix = require_bitrix24(self.bitrix24)
+        user = await bitrix.get_user_by_email(email)
 
         if user:
             return {
