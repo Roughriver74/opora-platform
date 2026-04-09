@@ -1,8 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { theme } from './theme';
+import { OporaThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/Layout';
 import { VisitsPage } from './pages/VisitsPage';
 import { VisitDetailsPage } from './pages/VisitDetailsPage';
@@ -40,8 +39,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
+      <OporaThemeProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
@@ -78,7 +76,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
-      </ThemeProvider>
+      </OporaThemeProvider>
     </QueryClientProvider>
   );
 }
