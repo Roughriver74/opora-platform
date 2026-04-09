@@ -23,6 +23,22 @@ Base = declarative_base()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+class Organization(Base):
+    """Multi-tenancy support: organization model for future scoping"""
+
+    __tablename__ = "organizations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    slug = Column(String, unique=True, index=True)
+    bitrix24_webhook_url = Column(String, nullable=True)
+    bitrix24_smart_process_visit_id = Column(Integer, nullable=True)
+    settings = Column(JSONB, default={})
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
 class GlobalSettings(Base):
     """Модель для хранения глобальных настроек приложения"""
 
@@ -69,6 +85,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     regions = Column(ARRAY(String), default=[])
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -101,6 +118,7 @@ class Company(Base):
     last_synced = Column(DateTime(timezone=True))
     sync_status = Column(String, default="pending")
     is_network = Column(Boolean, default=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
     visits = relationship("Visit", back_populates="company")
     contacts = relationship(
@@ -116,6 +134,7 @@ class Visit(Base):
     company_id = Column(Integer, ForeignKey("companies.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
     date = Column(DateTime)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     dynamic_fields = Column(JSONB, default={})
     status = Column(String, default="planned")
     visit_type = Column(String)
