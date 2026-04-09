@@ -1,148 +1,127 @@
-# 🚀 Руководство по разработке West Visit
+# Руководство по разработке OPORA
 
 ## Быстрый запуск
 
-### Для macOS/Linux:
+### Через Docker (рекомендуется)
+
+```bash
+docker-compose up --build
+```
+
+Сервисы:
+
+- Frontend: <http://localhost:4200>
+- Backend API: <http://localhost:4201>
+- Swagger Docs: <http://localhost:4201/docs>
+- PostgreSQL: localhost:4202
+
+### Локальная разработка (без Docker)
 
 ```bash
 ./start_dev.sh
 ```
 
+Это запустит backend на порту 4201 и frontend на порту 4200.
 
-
-
-### pkill 
+### Только Backend
 
 ```bash
-pkill -f "react-scripts start" && pkill -f "node.*frontend" 2>/dev/null; echo "React dev-сервер остановлен. Теперь запустите ./start_dev.sh заново"
+pip install -r app/requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 4201 --reload
 ```
 
-## Что делает скрипт
+### Только Frontend
 
-1. **Проверяет зависимости** - автоматически устанавливает недостающие пакеты
-2. **Запускает бэкенд** на порту 8001 с автоперезагрузкой
-3. **Запускает фронтенд** на порту 3001
-4. **Показывает статус** всех сервисов
-
-## Доступные сервисы
-
-После запуска будут доступны:
-
-- 📱 **Фронтенд**: http://localhost:3001
-- 🔧 **Бэкенд API**: http://localhost:8001
-- 📚 **API Документация**: http://localhost:8001/docs
-- 🔍 **Health Check**: http://localhost:8001/api/health
-
-## Остановка
-
-- **macOS/Linux**: Нажмите `Ctrl+C` в терминале
-- **Windows**: Закройте окна терминалов
+```bash
+cd frontend
+npm install
+PORT=4200 REACT_APP_API_URL=http://localhost:4201/api npm start
+```
 
 ## Переменные окружения
 
-Скрипт автоматически устанавливает следующие переменные:
+Скопируйте `.env.example` в `.env`:
 
 ```bash
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-ALGORITHM=HS256
-BITRIX24_SMART_PROCESS_VISIT_ID=1054
-BITRIX24_WEBHOOK_URL="https://crmwest.ru/rest/156/fnonb6nklg81kzy1/"
-BITRIX_API_ENDPOINT="https://crmwest.ru/rest/156/fnonb6nklg81kzy1/"
-CORS_ORIGINS="http://localhost:3001,http://localhost:8001"
-DATABASE_URL="postgresql://west_visit:WestVisit_Dev_Pass_2025@31.128.37.26:5433/west_visit_dev"
-POSTGRES_DB=west_visit_dev
-POSTGRES_HOST=31.128.37.26
-POSTGRES_PASSWORD=WestVisit_Dev_Pass_2025
-POSTGRES_PORT=5433
-POSTGRES_USER=west_visit
-SECRET_KEY="your-secret-key-for-development"
+cp .env.example .env
 ```
 
-## Ручной запуск
+Основные переменные:
 
-Если нужно запустить сервисы отдельно:
+```env
+DATABASE_URL=postgresql://opora_user:opora_dev_pass@localhost:4202/opora_dev
+POSTGRES_HOST=localhost
+POSTGRES_PORT=4202
+POSTGRES_USER=opora_user
+POSTGRES_PASSWORD=opora_dev_pass
+POSTGRES_DB=opora_dev
+JWT_SECRET=opora-dev-jwt-secret
+BITRIX_API_ENDPOINT=
+TOKEN_DADATA=
+SECRET_DADATA=
+CORS_ORIGINS=http://localhost:4200
+ENVIRONMENT=development
+DEV_MODE=True
+```
 
-### Бэкенд:
+## База данных
+
+### Миграции (Alembic)
 
 ```bash
-cd /path/to/project
-export ACCESS_TOKEN_EXPIRE_MINUTES=60
-export ALGORITHM=HS256
-# ... другие переменные
-uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+# Применить миграции
+cd app && alembic upgrade head
+
+# Создать новую миграцию
+cd app && alembic revision --autogenerate -m "описание изменений"
+
+# Откатить последнюю миграцию
+cd app && alembic downgrade -1
 ```
 
-### Фронтенд:
+### Подключение к БД
 
 ```bash
-cd frontend
-export PORT=3001
-npm start
+# Через Docker
+docker exec -it opora_postgres psql -U opora_user -d opora_dev
+
+# Локально
+psql -h localhost -p 4202 -U opora_user -d opora_dev
 ```
 
-## Устранение неполадок
+## Деплой
 
-### Порт уже занят
+### Production
 
 ```bash
-# Найти процесс на порту
-lsof -ti:8001
-# Остановить процесс
-kill <PID>
+cd deploy
+./deploy.sh prod
 ```
 
-### Зависимости не установлены
+Или вручную:
 
 ```bash
-# Бэкенд
-pip install -r app/requirements.txt
-
-# Фронтенд
-cd frontend
-npm install
+docker-compose -f deploy/docker-compose.prod.yml up --build -d
 ```
 
-### Проблемы с базой данных
-
-Проверьте подключение к PostgreSQL:
+### Development (удалённый сервер)
 
 ```bash
-psql -h 31.128.37.26 -p 5433 -U west_visit -d west_visit_dev
+cd deploy
+./deploy.sh dev
 ```
 
-## Структура проекта
+## Архитектура
 
-```
-visits/
-├── app/                    # Backend (FastAPI)
-│   ├── main.py            # Точка входа
-│   ├── routers/           # API маршруты
-│   ├── services/          # Бизнес-логика
-│   ├── models.py          # Модели данных
-│   └── requirements.txt   # Python зависимости
-├── frontend/              # Frontend (React)
-│   ├── src/              # Исходный код
-│   ├── public/           # Статические файлы
-│   └── package.json      # Node.js зависимости
-├── start_dev.sh          # Скрипт запуска (macOS/Linux)
-├── start_dev.bat         # Скрипт запуска (Windows)
-└── DEVELOPMENT.md        # Этот файл
-```
+- **Backend**: Python 3.11 + FastAPI + SQLAlchemy (async) + Alembic
+- **Frontend**: React 18 + TypeScript + MUI v5 + React Query
+- **БД**: PostgreSQL 14
+- **Деплой**: Docker Compose + Nginx
 
-## Полезные команды
+## Порты
 
-```bash
-# Проверить статус процессов
-ps aux | grep uvicorn
-ps aux | grep node
-
-# Проверить порты
-lsof -i :8001
-lsof -i :3001
-
-# Логи бэкенда
-tail -f app/logs/app.log
-
-# Логи фронтенда
-cd frontend && npm run build
-```
+| Сервис | Порт |
+| --- | --- |
+| Frontend (nginx) | 4200 |
+| Backend (uvicorn) | 4201 |
+| PostgreSQL | 4202 |
