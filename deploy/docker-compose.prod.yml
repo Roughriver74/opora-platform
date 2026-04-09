@@ -1,0 +1,81 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:14
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=WestVisit_Prod_Pass_2025
+      - POSTGRES_USER=west_visit
+      - POSTGRES_DB=west_visit_prod
+    restart: always
+    ports:
+      - '5434:5432' # Используем порт 5434 для продакшена, чтобы избежать конфликтов
+    networks:
+      - west_visit_prod
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://west_visit:WestVisit_Prod_Pass_2025@db:5432/west_visit_prod
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=west_visit_prod
+      - POSTGRES_USER=west_visit
+      - POSTGRES_PASSWORD=WestVisit_Prod_Pass_2025
+      - JWT_SECRET=west_visit_prod_jwt_secret_2025_secure
+      - BITRIX_API_ENDPOINT=https://crmwest.ru/rest/156/fnonb6nklg81kzy1/
+      - ENVIRONMENT=production
+      - DOCKER_ENV=true
+      - DEV_MODE=False
+      - CORS_ORIGINS=https://visit.west-it.ru,http://visit.west-it.ru
+      # Явно указываем путь к Excel файлам
+      - EXCEL_UPLOAD_PATH=/src/upload
+      # FTP configuration - replace with your actual FTP credentials
+      - FTP_HOST=${FTP_HOST:-ftp.example.com}
+      - FTP_USER=${FTP_USER:-username}
+      - FTP_PASSWORD=${FTP_PASSWORD:-password}
+      - FTP_DIRECTORY=${FTP_DIRECTORY:-/clinics}
+      - FTP_FILENAME=${FTP_FILENAME:-clinics.json}
+    volumes:
+      # Прямое монтирование без переменных окружения
+      - /home/ftpvisit/ftp/upload:/src/upload
+      - /var/www/west-visit/prod/logs:/src/logs
+    ports:
+      - '8000:8000'
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - west_visit_prod
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=https://visit.west-it.ru/api
+        - REACT_APP_ENV=production
+    depends_on:
+      - backend
+    ports:
+      - '3000:80'
+    restart: always
+    networks:
+      - west_visit_prod
+
+networks:
+  west_visit_prod:
+
+volumes:
+  postgres_data_prod:
+  excel_upload_prod:

@@ -42,7 +42,8 @@ services:
       - FTP_FILENAME=${FTP_FILENAME:-clinics.json}
     volumes:
       # Прямое монтирование без переменных окружения
-      - .:/src/upload
+      - /home/ftpvisit/ftp/upload:/src/upload
+      - /var/www/west-visit/dev/logs:/src/logs
     ports:
       - '8001:8000'
     restart: always

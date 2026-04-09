@@ -1,30 +1,19 @@
-FROM node:18-alpine
+FROM python:3.11-slim
 
-WORKDIR /app
+WORKDIR /src
 
-# Установка зависимостей для компиляции
-RUN apk add --no-cache python3 make g++
+# Install necessary packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    netcat-openbsd \
+    postgresql-client \
+    cron \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Копирование package.json для кеширования зависимостей
-COPY server/package*.json ./
+COPY /app /src/app
 
-# Установка зависимостей
-RUN npm ci
+RUN pip install --no-cache-dir -r app/requirements.txt
 
-# Копирование исходного кода
-COPY server/ ./
+EXPOSE 8000
 
-# Создание пользователя для безопасности
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# Создание директории для логов
-RUN mkdir -p /app/logs && chown -R nodejs:nodejs /app
-
-USER nodejs
-
-# Порт сервера
-EXPOSE 5001
-
-# Команда запуска (будет переопределена в docker-compose)
-CMD ["npm", "run", "dev"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
