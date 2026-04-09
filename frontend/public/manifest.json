@@ -1,6 +1,6 @@
 {
-  "short_name": "West Visit",
-  "name": "West Visit - Управление визитами торговых представителей",
+  "short_name": "ОПОРА",
+  "name": "ОПОРА — Платформа управления визитами и активностями",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,6 +20,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#007bff",
-  "background_color": "#303030"
+  "theme_color": "#1A56DB",
+  "background_color": "#F9FAFB"
 }

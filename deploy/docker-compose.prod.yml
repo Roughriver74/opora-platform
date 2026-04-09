@@ -3,51 +3,56 @@ version: '3'
 services:
   db:
     image: postgres:14
+    container_name: opora_postgres_prod
     volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
+      - opora_postgres_data_prod:/var/lib/postgresql/data
     environment:
-      - POSTGRES_PASSWORD=WestVisit_Prod_Pass_2025
-      - POSTGRES_USER=west_visit
-      - POSTGRES_DB=west_visit_prod
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-opora_prod_pass}
+      - POSTGRES_USER=${POSTGRES_USER:-opora_user}
+      - POSTGRES_DB=${POSTGRES_DB:-opora_prod}
     restart: always
-    ports:
-      - '5434:5432' # Используем порт 5434 для продакшена, чтобы избежать конфликтов
     networks:
-      - west_visit_prod
+      - opora_network_prod
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U opora_user -d opora_prod']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    container_name: opora_backend_prod
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://west_visit:WestVisit_Prod_Pass_2025@db:5432/west_visit_prod
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opora_user}:${POSTGRES_PASSWORD:-opora_prod_pass}@db:5432/${POSTGRES_DB:-opora_prod}
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
-      - POSTGRES_DB=west_visit_prod
-      - POSTGRES_USER=west_visit
-      - POSTGRES_PASSWORD=WestVisit_Prod_Pass_2025
-      - JWT_SECRET=west_visit_prod_jwt_secret_2025_secure
-      - BITRIX_API_ENDPOINT=https://crmwest.ru/rest/156/fnonb6nklg81kzy1/
+      - POSTGRES_DB=${POSTGRES_DB:-opora_prod}
+      - POSTGRES_USER=${POSTGRES_USER:-opora_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-opora_prod_pass}
+      - JWT_SECRET=${JWT_SECRET}
+      - BITRIX_API_ENDPOINT=${BITRIX_API_ENDPOINT:-}
       - ENVIRONMENT=production
       - DOCKER_ENV=true
       - DEV_MODE=False
-      - CORS_ORIGINS=https://visit.west-it.ru,http://visit.west-it.ru
-      # Явно указываем путь к Excel файлам
-      - EXCEL_UPLOAD_PATH=/src/upload
-      # FTP configuration - replace with your actual FTP credentials
-      - FTP_HOST=${FTP_HOST:-ftp.example.com}
-      - FTP_USER=${FTP_USER:-username}
-      - FTP_PASSWORD=${FTP_PASSWORD:-password}
-      - FTP_DIRECTORY=${FTP_DIRECTORY:-/clinics}
-      - FTP_FILENAME=${FTP_FILENAME:-clinics.json}
+      - CORS_ORIGINS=https://opora.b-ci.ru,http://opora.b-ci.ru
+      - EXCEL_UPLOAD_PATH=/app/upload
+      - TOKEN_DADATA=${TOKEN_DADATA:-}
+      - SECRET_DADATA=${SECRET_DADATA:-}
+      - FTP_HOST=${FTP_HOST:-}
+      - FTP_USER=${FTP_USER:-}
+      - FTP_PASSWORD=${FTP_PASSWORD:-}
+      - FTP_DIRECTORY=${FTP_DIRECTORY:-}
+      - FTP_FILENAME=${FTP_FILENAME:-}
     volumes:
-      # Прямое монтирование без переменных окружения
-      - /home/ftpvisit/ftp/upload:/src/upload
-      - /var/www/west-visit/prod/logs:/src/logs
+      - ./upload:/app/upload
+      - /var/www/opora/prod/logs:/app/logs
     ports:
-      - '8000:8000'
+      - '4201:8000'
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
@@ -56,26 +61,26 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - west_visit_prod
+      - opora_network_prod
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=https://visit.west-it.ru/api
+        - REACT_APP_API_URL=https://opora.b-ci.ru/api
         - REACT_APP_ENV=production
+    container_name: opora_frontend_prod
     depends_on:
       - backend
     ports:
-      - '3000:80'
+      - '4200:80'
     restart: always
     networks:
-      - west_visit_prod
+      - opora_network_prod
 
 networks:
-  west_visit_prod:
+  opora_network_prod:
 
 volumes:
-  postgres_data_prod:
-  excel_upload_prod:
+  opora_postgres_data_prod:

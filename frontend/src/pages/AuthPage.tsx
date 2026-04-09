@@ -149,7 +149,7 @@ export const AuthPage: React.FC = () => {
       <Box sx={{ mt: 8 }}>
         <Paper elevation={3} sx={{ p: 4 }}>
           <Typography variant="h4" align="center" gutterBottom>
-            Система учёта визитов
+            ОПОРА
           </Typography>
 
           {error && (
@@ -160,7 +160,7 @@ export const AuthPage: React.FC = () => {
 
           {isServerAvailable === false && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              Сервер API недоступен. Убедитесь, что бэкенд запущен на порту 8000.
+              Сервер API недоступен. Проверьте подключение к серверу.
             </Alert>
           )}
 

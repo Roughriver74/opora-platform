@@ -111,7 +111,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 						<MenuIcon />
 					</IconButton>
 					<Typography variant='h6' noWrap component='div' sx={{ flexGrow: 1 }}>
-						Система учёта визитов
+						ОПОРА
 					</Typography>
 
 					{/* Кнопка календаря визитов */}

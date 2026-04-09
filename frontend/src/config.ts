@@ -5,7 +5,7 @@ export const getBaseUrl = () => {
     return '/api';
   }
   // В режиме разработки используем localhost
-  return 'http://localhost:8000/api';
+  return process.env.REACT_APP_API_URL || 'http://localhost:4201/api';
 };
 
 // API URL для использования в сервисах

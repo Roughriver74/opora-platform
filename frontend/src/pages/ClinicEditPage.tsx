@@ -1678,7 +1678,7 @@ const ClinicEditPage: React.FC = () => {
 				},
 			}
 			const response = await fetch(
-				`https://crmwest.ru/rest/156/fnonb6nklg81kzy1/crm.contact.${isEditMode && editContactId ? 'update' : 'add'
+				`${process.env.REACT_APP_BITRIX_URL || '/api/bitrix/'}crm.contact.${isEditMode && editContactId ? 'update' : 'add'
 				}`,
 				{
 					method: 'POST',
@@ -2390,7 +2390,7 @@ const ClinicEditPage: React.FC = () => {
 
 		try {
 			const response = await fetch(
-				`https://crmwest.ru/rest/156/fnonb6nklg81kzy1/crm.contact.delete`,
+				`${process.env.REACT_APP_BITRIX_URL || '/api/bitrix/'}crm.contact.delete`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },

@@ -15,17 +15,17 @@ class Settings:
     # Настройки базы данных
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
-        "postgresql://west_visit:WestVisit_Dev_Pass_2025@31.128.37.26:5433/west_visit_dev",
+        "postgresql://opora_user:opora_dev_pass@localhost:4202/opora_dev",
     )
-    POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "31.128.37.26")
-    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "west_visit")
-    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "WestVisit_Dev_Pass_2025")
-    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "west_visit_dev")
-    POSTGRES_PORT: int = os.getenv("POSTGRES_PORT", 5433)
+    POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "localhost")
+    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "opora_user")
+    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "opora_dev_pass")
+    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "opora_dev")
+    POSTGRES_PORT: int = os.getenv("POSTGRES_PORT", 4202)
 
     # Настройки Bitrix24
     BITRIX24_WEBHOOK_URL: str = os.getenv(
-        "BITRIX_API_ENDPOINT", "https://crmwest.ru/rest/156/fnonb6nklg81kzy1/"
+        "BITRIX_API_ENDPOINT", ""
     )
     BITRIX24_SMART_PROCESS_VISIT_ID: int = int(
         os.getenv("BITRIX24_SMART_PROCESS_VISIT_ID", "1054")
@@ -41,15 +41,13 @@ class Settings:
     )
 
     # Настройки CORS
-    cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+    cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:4200")
     CORS_ORIGINS: List[str] = ["*"] if DEV_MODE else cors_origins_str.split(",")
 
     # Настройки для файлов
     EXCEL_UPLOAD_PATH: str = os.getenv("EXCEL_UPLOAD_PATH", "./upload")
-    TOKEN_DADATA = os.getenv("TOKEN_DADATA", "65cdeacdb9dd2d9f9d41634917be41aced8be39c")
-    SECRET_DADATA = os.getenv(
-        "SECRET_DADATA", "e1280e2e73a35ad98e3e22109f0247249e27b48b"
-    )
+    TOKEN_DADATA = os.getenv("TOKEN_DADATA", "")
+    SECRET_DADATA = os.getenv("SECRET_DADATA", "")
 
 
 MOSCOW_TZ = ZoneInfo("Europe/Moscow")
@@ -80,8 +78,8 @@ TEST_EXCEL_DATA: dict = {
 }
 
 TEST_DIRECTORIES: list = [
-    "/home/ftpvisit/ftp/upload",  # Предпочтительная директория из монтирования
-    "/app/upload",  # Запасная директория
+    "/app/upload",
+    "./upload",
 ]
 
 DATE_FORMATS: list = [
@@ -100,9 +98,8 @@ DATE_FORMATS_UPDATE_VISIT: list = [
 
 POSSIBLE_PATHS: list = [
     "/app/upload",
-    "/home/ftpvisit/ftp/upload",
-    "/var/www/west-visit/dev/upload",
-    "/var/www/west-visit/prod/upload",
+    "./upload",
+    "/var/www/opora/prod/upload",
 ]
 
 REQUIRED_COLUMNS: set = {"Код", "Партнер", "ИНН"}
@@ -167,7 +164,7 @@ EXCLUDED_CLINIC_CREATE_SCHEMA_FIELDS: set = {
 }
 
 
-UPLOAD_DIR: str = "/home/ftpvisit/ftp/upload"
+UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "/app/upload")
 
 DATE_FIELDS_KEY: list = ["1732026275473", "1732026990932"]
 

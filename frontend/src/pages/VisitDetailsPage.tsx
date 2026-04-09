@@ -352,7 +352,7 @@ export const VisitDetailsPage: React.FC = () => {
 
         // Загружаем контакты из Bitrix24
         const response = await fetch(
-          "https://crmwest.ru/rest/156/fnonb6nklg81kzy1/crm.contact.list",
+          "${process.env.REACT_APP_BITRIX_URL || '/api/bitrix/'}crm.contact.list",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

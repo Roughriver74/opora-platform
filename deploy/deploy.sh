@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Скрипт для деплоя West Visit на сервер
+# Скрипт для деплоя OPORA Platform на сервер
 # Использование: ./deploy.sh [prod|dev]
 
 # Проверка аргументов
@@ -10,12 +10,12 @@ if [ "$1" != "prod" ] && [ "$1" != "dev" ]; then
 fi
 
 ENV=$1
-SERVER="root@31.128.37.26"
-DEPLOY_PATH="/var/www/west-visit/$ENV"
+SERVER="root@31.128.39.123"
+DEPLOY_PATH="/var/www/opora/$ENV"
 DOCKER_COMPOSE_FILE="docker-compose.$ENV.yml"
 NGINX_CONF="nginx-$ENV.conf"
 
-echo "Начинаем деплой в окружение: $ENV"
+echo "Начинаем деплой ОПОРА в окружение: $ENV"
 
 # Создание директорий на сервере
 echo "Создание директорий..."
@@ -31,17 +31,17 @@ rsync -avz --exclude='.git/' --exclude='node_modules/' --exclude='deploy/' ./ $S
 
 # Копирование nginx конфигурации
 echo "Копирование nginx конфигурации..."
-scp deploy/$NGINX_CONF $SERVER:/etc/nginx/sites-available/$(if [ "$ENV" == "prod" ]; then echo "visit.west-it.ru"; else echo "dev.visit.west-it.ru"; fi)
+DOMAIN=$(if [ "$ENV" == "prod" ]; then echo "opora.b-ci.ru"; else echo "dev.opora.b-ci.ru"; fi)
+scp deploy/$NGINX_CONF $SERVER:/etc/nginx/sites-available/$DOMAIN
 
 # Создание символической ссылки для nginx
 echo "Активация nginx конфигурации..."
-DOMAIN=$(if [ "$ENV" == "prod" ]; then echo "visit.west-it.ru"; else echo "dev.visit.west-it.ru"; fi)
 ssh $SERVER "ln -sf /etc/nginx/sites-available/$DOMAIN /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx"
 
 echo "Проверка SSL сертификатов..."
-ssh $SERVER "if [ ! -d /etc/letsencrypt/live/$DOMAIN ]; then certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email admin@west-it.ru; fi"
+ssh $SERVER "if [ ! -d /etc/letsencrypt/live/$DOMAIN ]; then certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email admin@opora.b-ci.ru; fi"
 
 echo "Запуск контейнеров..."
 ssh $SERVER "cd $DEPLOY_PATH && docker-compose down && docker-compose build && docker-compose up -d"
 
-echo "Деплой в окружение $ENV завершен успешно!"
+echo "Деплой ОПОРА в окружение $ENV завершен успешно!"

@@ -26,7 +26,7 @@ from app.schedulers.import_companies_from_excel import scheduler
 load_dotenv()
 
 app = FastAPI(
-    title="Visits Tracking System",
+    title="OPORA Platform API",
     redirect_slashes=False,
     on_startup=[
         scheduler.start,
