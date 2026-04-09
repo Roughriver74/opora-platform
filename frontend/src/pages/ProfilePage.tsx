@@ -254,376 +254,331 @@ export const ProfilePage: React.FC = () => {
 	}
 
 	return (
-		<Container maxWidth='lg'>
-			<Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-				<Typography variant='h4' gutterBottom>
+		<Box sx={{ pb: 10, minHeight: '100%', bgcolor: 'background.default' }}>
+			{/* Mobile Header */}
+			<Box
+				sx={{
+					px: 2,
+					pt: 1.5,
+					pb: 1.5,
+					position: 'sticky',
+					top: 0,
+					zIndex: 100,
+					bgcolor: 'background.paper',
+					boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+					mb: 2,
+				}}
+			>
+				<Typography variant='h6' sx={{ fontWeight: 600 }}>
 					Личный кабинет
 				</Typography>
+			</Box>
 
-				<Grid container spacing={3}>
-					{/* Профиль пользователя */}
-					<Grid item xs={12} md={4}>
-						<Paper sx={{ p: { xs: 2, md: 3 }, mb: 3 }}>
-							<Box
+			<Box sx={{ px: { xs: 2, md: 3 }, maxWidth: 800, mx: 'auto' }}>
+				{/* Profile Card */}
+				<Card variant='outlined' sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3 }}>
+					<CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+						<Box
+							sx={{
+								display: 'flex',
+								flexDirection: 'column',
+								alignItems: 'center',
+								mb: 2,
+							}}
+						>
+							<Avatar
 								sx={{
-									display: 'flex',
-									flexDirection: 'column',
-									alignItems: 'center',
-									mb: 2,
+									width: 80,
+									height: 80,
+									mb: 1.5,
+									bgcolor: 'primary.main',
+									fontSize: '2rem',
 								}}
 							>
-								<Avatar
-									sx={{
-										width: 100,
-										height: 100,
-										mb: 2,
-										bgcolor: 'primary.main',
-									}}
-								>
-									{userProfile?.email?.charAt(0).toUpperCase() || (
-										<PersonIcon />
-									)}
-								</Avatar>
-								<Typography variant='h6'>
-									{userProfile?.name || userProfile?.email}
-								</Typography>
-								<Typography variant='body2' color='text.secondary'>
-									{userProfile?.email}
-								</Typography>
-								<Typography variant='body2' color='text.secondary'>
-									ID в Bitrix24: {userProfile?.bitrix_user_id}
-								</Typography>
-								{userProfile?.is_admin && (
-									<Typography
-										variant='body2'
-										sx={{ mt: 1, color: 'primary.main' }}
-									>
-										Администратор
-									</Typography>
+								{userProfile?.email?.charAt(0).toUpperCase() || (
+									<PersonIcon fontSize='large' />
 								)}
-							</Box>
+							</Avatar>
+							<Typography variant='h6' sx={{ fontWeight: 600 }}>
+								{userProfile?.name || userProfile?.email}
+							</Typography>
+							<Typography variant='body2' color='text.secondary'>
+								{userProfile?.email}
+							</Typography>
+							<Typography variant='caption' color='text.secondary' sx={{ mt: 0.5 }}>
+								Bitrix ID: {userProfile?.bitrix_user_id}
+							</Typography>
+							{userProfile?.is_admin && (
+								<Typography
+									variant='caption'
+									sx={{ mt: 0.5, color: 'primary.main', fontWeight: 600 }}
+								>
+									Администратор
+								</Typography>
+							)}
+						</Box>
 
-							<Divider sx={{ my: 2 }} />
+						<Divider sx={{ my: 2 }} />
 
-							<Stack spacing={2}>
+						<Stack spacing={1.5}>
+							<Button
+								variant='outlined'
+								fullWidth
+								onClick={handleVisitsClick}
+								startIcon={<CalendarToday />}
+								sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 500 }}
+							>
+								Мои визиты
+							</Button>
+
+							{userProfile?.is_admin && (
 								<Button
 									variant='outlined'
 									fullWidth
-									onClick={handleVisitsClick}
-									startIcon={<CalendarToday />}
+									onClick={handleAdminPanelClick}
+									startIcon={<AdminPanelSettings />}
+									sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 500 }}
 								>
-									Мои визиты
+									Админ панель
 								</Button>
+							)}
 
-								<Button
-									variant='contained'
-									color='primary'
-									fullWidth
-									onClick={handleLogout}
-								>
-									Выйти из системы
-								</Button>
-							</Stack>
-						</Paper>
-					</Grid>
+							<Button
+								variant='contained'
+								color='error'
+								fullWidth
+								onClick={handleLogout}
+								sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 500 }}
+							>
+								Выйти из системы
+							</Button>
+						</Stack>
+					</CardContent>
+				</Card>
 
-					{/* Статистика и графики */}
-					<Grid item xs={12} md={8}>
-						{/* Карточки со статистикой */}
-						<Card sx={{ mb: 3 }}>
-							<CardContent>
-								<Typography variant='h6' gutterBottom>
-									Статистика визитов
-								</Typography>
+				{/* Statistics Section */}
+				<Card variant='outlined' sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3 }}>
+					<CardContent>
+						<Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 2 }}>
+							Статистика визитов
+						</Typography>
 
-								{isVisitsLoading ? (
-									<Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-										<CircularProgress size={24} />
-										<Typography sx={{ ml: 2 }}>
-											Загрузка статистики...
+						{isVisitsLoading ? (
+							<Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+								<CircularProgress size={24} />
+							</Box>
+						) : (
+							<Grid container spacing={1.5}>
+								<Grid item xs={6}>
+									<Box sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 1.5, textAlign: 'center' }}>
+										<PendingActions sx={{ color: COLORS.planned, fontSize: 28 }} />
+										<Typography variant='h5' sx={{ fontWeight: 700, mt: 0.5 }}>
+											{visitStats.planned}
+										</Typography>
+										<Typography variant='caption' color='text.secondary'>
+											Запланировано
 										</Typography>
 									</Box>
-								) : (
-									<Grid container spacing={2} sx={{ mt: 1 }}>
-										<Grid item xs={6} sm={4}>
-											<Card
-												variant='outlined'
-												sx={{ bgcolor: 'background.paper' }}
-											>
-												<CardContent>
-													<Stack
-														direction='row'
-														spacing={1}
-														alignItems='center'
-													>
-														<PendingActions sx={{ color: COLORS.planned }} />
-														<Typography variant='subtitle1'>
-															Запланировано
-														</Typography>
-													</Stack>
-													<Typography
-														variant='h3'
-														align='center'
-														sx={{ mt: 2 }}
-													>
-														{visitStats.planned}
-													</Typography>
-												</CardContent>
-											</Card>
-										</Grid>
-
-										<Grid item xs={6} sm={4}>
-											<Card
-												variant='outlined'
-												sx={{ bgcolor: 'background.paper' }}
-											>
-												<CardContent>
-													<Stack
-														direction='row'
-														spacing={1}
-														alignItems='center'
-													>
-														<CheckCircle sx={{ color: COLORS.completed }} />
-														<Typography variant='subtitle1'>
-															Выполнено
-														</Typography>
-													</Stack>
-													<Typography
-														variant='h3'
-														align='center'
-														sx={{ mt: 2 }}
-													>
-														{visitStats.completed}
-													</Typography>
-												</CardContent>
-											</Card>
-										</Grid>
-
-										<Grid item xs={6} sm={4}>
-											<Card
-												variant='outlined'
-												sx={{ bgcolor: 'background.paper' }}
-											>
-												<CardContent>
-													<Stack
-														direction='row'
-														spacing={1}
-														alignItems='center'
-													>
-														<ErrorIcon sx={{ color: COLORS.failed }} />
-														<Typography variant='subtitle1'>
-															Провалено
-														</Typography>
-													</Stack>
-													<Typography
-														variant='h3'
-														align='center'
-														sx={{ mt: 2 }}
-													>
-														{visitStats.failed}
-													</Typography>
-												</CardContent>
-											</Card>
-										</Grid>
-
-										<Grid item xs={6} sm={12}>
-											<Card
-												variant='outlined'
-												sx={{ bgcolor: 'background.paper' }}
-											>
-												<CardContent>
-													<Stack
-														direction='row'
-														spacing={1}
-														alignItems='center'
-													>
-														<CalendarToday color='primary' />
-														<Typography variant='subtitle1'>Всего</Typography>
-													</Stack>
-													<Typography
-														variant='h3'
-														align='center'
-														sx={{ mt: 2 }}
-													>
-														{visitStats.total}
-													</Typography>
-												</CardContent>
-											</Card>
-										</Grid>
-									</Grid>
-								)}
-							</CardContent>
-						</Card>
-
-						{/* График: распределение по статусам */}
-						<Card sx={{ mb: 3 }}>
-							<CardContent>
-								<Typography variant='h6' gutterBottom>
-									Распределение визитов по статусам
-								</Typography>
-
-								{isVisitsLoading ? (
-									<Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-										<CircularProgress size={24} />
+								</Grid>
+								<Grid item xs={6}>
+									<Box sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 1.5, textAlign: 'center' }}>
+										<CheckCircle sx={{ color: COLORS.completed, fontSize: 28 }} />
+										<Typography variant='h5' sx={{ fontWeight: 700, mt: 0.5 }}>
+											{visitStats.completed}
+										</Typography>
+										<Typography variant='caption' color='text.secondary'>
+											Выполнено
+										</Typography>
 									</Box>
-								) : (
-									<Box sx={{ height: 300, width: '100%' }}>
-										<ResponsiveContainer width='100%' height='100%'>
-											<PieChart>
-												<Pie
-													data={pieChartData}
-													cx='50%'
-													cy='50%'
-													labelLine={true}
-													label={({ name, percent }) =>
-														`${name}: ${(percent * 100).toFixed(0)}%`
-													}
-													outerRadius={80}
-													fill='#8884d8'
-													dataKey='value'
-												>
-													{pieChartData.map((entry, index) => (
-														<Cell key={`cell-${index}`} fill={entry.color} />
-													))}
-												</Pie>
-												<Tooltip
-													formatter={value => [
-														`${value} визитов`,
-														'Количество',
-													]}
-												/>
-												<Legend />
-											</PieChart>
-										</ResponsiveContainer>
+								</Grid>
+								<Grid item xs={6}>
+									<Box sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 1.5, textAlign: 'center' }}>
+										<ErrorIcon sx={{ color: COLORS.failed, fontSize: 28 }} />
+										<Typography variant='h5' sx={{ fontWeight: 700, mt: 0.5 }}>
+											{visitStats.failed}
+										</Typography>
+										<Typography variant='caption' color='text.secondary'>
+											Провалено
+										</Typography>
 									</Box>
-								)}
-							</CardContent>
-						</Card>
+								</Grid>
+								<Grid item xs={6}>
+									<Box sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 1.5, textAlign: 'center' }}>
+										<CalendarToday color='primary' sx={{ fontSize: 28 }} />
+										<Typography variant='h5' sx={{ fontWeight: 700, mt: 0.5 }}>
+											{visitStats.total}
+										</Typography>
+										<Typography variant='caption' color='text.secondary'>
+											Всего
+										</Typography>
+									</Box>
+								</Grid>
+							</Grid>
+						)}
+					</CardContent>
+				</Card>
 
-						{/* График: визиты по месяцам */}
-						<Card sx={{ mb: 3 }}>
-							<CardContent>
-								<Typography variant='h6' gutterBottom>
-									Динамика визитов по месяцам
-								</Typography>
+				{/* Pie Chart */}
+				<Card variant='outlined' sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3 }}>
+					<CardContent>
+						<Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 1 }}>
+							Распределение по статусам
+						</Typography>
 
-								{isVisitsLoading || monthlyStats.length === 0 ? (
-									<Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-										<CircularProgress size={24} />
-									</Box>
-								) : (
-									<Box sx={{ height: 300, width: '100%' }}>
-										<ResponsiveContainer width='100%' height='100%'>
-											<BarChart
-												data={monthlyStats}
-												margin={{
-													top: 20,
-													right: 30,
-													left: 20,
-													bottom: 5,
-												}}
-											>
-												<CartesianGrid strokeDasharray='3 3' />
-												<XAxis dataKey='month' />
-												<YAxis />
-												<Tooltip
-													formatter={value => [
-														`${value} визитов`,
-														'Количество',
-													]}
-												/>
-												<Legend />
-												<Bar
-													dataKey='visits'
-													name='Визиты'
-													fill={theme.palette.primary.main}
-												/>
-											</BarChart>
-										</ResponsiveContainer>
-									</Box>
-								)}
-							</CardContent>
-						</Card>
-
-						{/* Недавняя активность */}
-						<Card>
-							<CardContent>
-								<Typography variant='h6' gutterBottom>
-									Недавняя активность
-								</Typography>
-								{isVisitsLoading ? (
-									<Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-										<CircularProgress size={24} />
-									</Box>
-								) : visitsData && visitsData.length > 0 ? (
-									<Stack spacing={2}>
-										{visitsData.slice(0, 5).map(visit => (
-											<Paper
-												key={visit.id}
-												elevation={0}
-												variant='outlined'
-												sx={{ p: 2 }}
-											>
-												<Grid container spacing={2}>
-													<Grid item xs={2} sm={1}>
-														<Avatar
-															sx={{
-																bgcolor:
-																	visit.status === VisitStatus.completed
-																		? COLORS.completed
-																		: visit.status === VisitStatus.planned
-																		? COLORS.planned
-																		: COLORS.failed,
-															}}
-														>
-															{visit.status === VisitStatus.completed ? (
-																<CheckCircle />
-															) : visit.status === VisitStatus.planned ? (
-																<PendingActions />
-															) : (
-																<ErrorIcon />
-															)}
-														</Avatar>
-													</Grid>
-													<Grid item xs={10} sm={11}>
-														<Typography variant='subtitle1'>
-															{visit.visit_type || 'Визит'}{' '}
-															{new Date(visit.date).toLocaleDateString('ru-RU')}
-														</Typography>
-														<Typography variant='body2'>
-															{visit.company?.name || 'Компания не указана'}
-														</Typography>
-														{visit.company?.address && (
-															<Typography
-																variant='body2'
-																color='text.secondary'
-															>
-																{visit.company.address}
-															</Typography>
-														)}
-													</Grid>
-												</Grid>
-											</Paper>
-										))}
-										<Button
-											variant='text'
-											onClick={handleVisitsClick}
-											sx={{ alignSelf: 'center' }}
+						{isVisitsLoading ? (
+							<Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+								<CircularProgress size={24} />
+							</Box>
+						) : (
+							<Box sx={{ height: 260, width: '100%' }}>
+								<ResponsiveContainer width='100%' height='100%'>
+									<PieChart>
+										<Pie
+											data={pieChartData}
+											cx='50%'
+											cy='50%'
+											labelLine={true}
+											label={({ name, percent }) =>
+												`${name}: ${(percent * 100).toFixed(0)}%`
+											}
+											outerRadius={80}
+											fill='#8884d8'
+											dataKey='value'
 										>
-											Смотреть все визиты
-										</Button>
-									</Stack>
-								) : (
-									<Typography variant='body2'>
-										У вас еще нет визитов. Создайте новый визит, чтобы он
-										появился здесь.
-									</Typography>
-								)}
-							</CardContent>
-						</Card>
-					</Grid>
-				</Grid>
+											{pieChartData.map((entry, index) => (
+												<Cell key={`cell-${index}`} fill={entry.color} />
+											))}
+										</Pie>
+										<Tooltip
+											formatter={value => [
+												`${value} визитов`,
+												'Количество',
+											]}
+										/>
+										<Legend />
+									</PieChart>
+								</ResponsiveContainer>
+							</Box>
+						)}
+					</CardContent>
+				</Card>
+
+				{/* Bar Chart */}
+				<Card variant='outlined' sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3 }}>
+					<CardContent>
+						<Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 1 }}>
+							Динамика по месяцам
+						</Typography>
+
+						{isVisitsLoading || monthlyStats.length === 0 ? (
+							<Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+								<CircularProgress size={24} />
+							</Box>
+						) : (
+							<Box sx={{ height: 260, width: '100%' }}>
+								<ResponsiveContainer width='100%' height='100%'>
+									<BarChart
+										data={monthlyStats}
+										margin={{
+											top: 20,
+											right: 10,
+											left: 0,
+											bottom: 5,
+										}}
+									>
+										<CartesianGrid strokeDasharray='3 3' />
+										<XAxis dataKey='month' tick={{ fontSize: 11 }} />
+										<YAxis tick={{ fontSize: 11 }} />
+										<Tooltip
+											formatter={value => [
+												`${value} визитов`,
+												'Количество',
+											]}
+										/>
+										<Bar
+											dataKey='visits'
+											name='Визиты'
+											fill={theme.palette.primary.main}
+											radius={[4, 4, 0, 0]}
+										/>
+									</BarChart>
+								</ResponsiveContainer>
+							</Box>
+						)}
+					</CardContent>
+				</Card>
+
+				{/* Recent Activity */}
+				<Card variant='outlined' sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3 }}>
+					<CardContent>
+						<Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 2 }}>
+							Недавняя активность
+						</Typography>
+						{isVisitsLoading ? (
+							<Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+								<CircularProgress size={24} />
+							</Box>
+						) : visitsData && visitsData.length > 0 ? (
+							<Stack spacing={1.5}>
+								{visitsData.slice(0, 5).map(visit => (
+									<Box
+										key={visit.id}
+										sx={{
+											display: 'flex',
+											alignItems: 'center',
+											gap: 1.5,
+											p: 1.5,
+											bgcolor: 'action.hover',
+											borderRadius: 2,
+										}}
+									>
+										<Avatar
+											sx={{
+												width: 36,
+												height: 36,
+												bgcolor:
+													visit.status === VisitStatus.completed
+														? COLORS.completed
+														: visit.status === VisitStatus.planned
+														? COLORS.planned
+														: COLORS.failed,
+											}}
+										>
+											{visit.status === VisitStatus.completed ? (
+												<CheckCircle fontSize='small' />
+											) : visit.status === VisitStatus.planned ? (
+												<PendingActions fontSize='small' />
+											) : (
+												<ErrorIcon fontSize='small' />
+											)}
+										</Avatar>
+										<Box sx={{ flex: 1, minWidth: 0 }}>
+											<Typography variant='body2' sx={{ fontWeight: 600, lineHeight: 1.3 }} noWrap>
+												{visit.company?.name || 'Компания не указана'}
+											</Typography>
+											<Typography variant='caption' color='text.secondary'>
+												{new Date(visit.date).toLocaleDateString('ru-RU')}
+											</Typography>
+										</Box>
+									</Box>
+								))}
+								<Button
+									variant='text'
+									onClick={handleVisitsClick}
+									sx={{ alignSelf: 'center', textTransform: 'none' }}
+								>
+									Смотреть все визиты
+								</Button>
+							</Stack>
+						) : (
+							<Typography variant='body2' color='text.secondary'>
+								У вас еще нет визитов. Создайте новый визит, чтобы он
+								появился здесь.
+							</Typography>
+						)}
+					</CardContent>
+				</Card>
 			</Box>
-		</Container>
+		</Box>
 	)
 }
