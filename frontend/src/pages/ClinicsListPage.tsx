@@ -1,0 +1,931 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+	Box,
+	Card,
+	CardContent,
+	CircularProgress,
+	Typography,
+	Table,
+	TableBody,
+	TableCell,
+	TableContainer,
+	TableHead,
+	TableRow,
+	TablePagination,
+	IconButton,
+	Button,
+	Chip,
+	Alert,
+	TextField,
+	FormControl,
+	InputLabel,
+	Select,
+	MenuItem,
+	Grid,
+	SelectChangeEvent,
+	Snackbar,
+	useTheme,
+	useMediaQuery,
+	TableSortLabel,
+	Dialog,
+	DialogTitle,
+	DialogContent,
+	DialogActions,
+	DialogContentText,
+	Stack
+} from '@mui/material'
+import EditIcon from '@mui/icons-material/Edit'
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
+import TimelineIcon from '@mui/icons-material/Timeline'
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
+import { clinicService, Clinic, ClinicFilters, ClinicInput } from '../services/clinicService'
+import { useAuth } from '../context/AuthContext'
+import { cleanAddressString } from '../utils/addressUtils'
+import OLMapModal from '../components/OLMapModal'
+import { MapOutlined } from '@mui/icons-material'
+import FilterForm from '../components/FilterForm'
+import { generateColumns } from '../utils/filterColumns'
+
+const ClinicsListPage: React.FC = () => {
+	const navigate = useNavigate()
+	const queryClient = useQueryClient()
+	const { user } = useAuth()
+	const theme = useTheme()
+	const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+
+	// State for filters, pagination and sorting
+	const [filters, setFilters] = useState<ClinicFilters>({
+		page: 1,
+		page_size: 10,
+		region: user?.regions?.length === 1 ? user.regions[0] : undefined,
+		sort_by: 'name',
+		sort_direction: 'asc',
+	})
+
+	const [isMapOpen, setIsMapOpen] = useState(false);
+
+
+	const [loading, setLoading] = useState<number | null>(null)
+	const [snackbar, setSnackbar] = useState<{
+		open: boolean;
+		message: string;
+		severity: 'success' | 'error' | 'info' | 'warning';
+	}>({
+		open: false,
+		message: '',
+		severity: 'info',
+	})
+
+	// Состояния для модального окна создания компании
+	const [createModalOpen, setCreateModalOpen] = useState(false)
+	const [newCompany, setNewCompany] = useState<{
+		name: string;
+		inn: string;
+		address: string;
+		region: string;
+	}>({
+		name: '',
+		inn: '',
+		address: '',
+		region: '',
+	})
+
+	// Состояния для обработки результатов проверки и создания
+	const [isInnChecking, setIsInnChecking] = useState(false)
+	const [existingClinic, setExistingClinic] = useState<null | { id: number, name: string }>(null)
+	const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
+	const [advancedFilters, setAdvancedFilters] = useState<any[]>([]);
+
+
+
+	// Update URL when filters change
+	useEffect(() => {
+		const urlParams = new URLSearchParams()
+
+		if (filters.page && filters.page > 1)
+			urlParams.set('page', filters.page.toString())
+		if (filters.page_size && filters.page_size !== 10)
+			urlParams.set('page_size', filters.page_size.toString())
+		if (filters.region) urlParams.set('region', filters.region)
+		if (filters.name) urlParams.set('name', filters.name)
+		if (filters.inn) urlParams.set('inn', filters.inn)
+		if (filters.sort_by) urlParams.set('sort_by', filters.sort_by)
+		if (filters.sort_direction) urlParams.set('sort_direction', filters.sort_direction)
+
+		const queryString = urlParams.toString()
+		const newUrl = queryString ? `?${queryString}` : window.location.pathname
+
+		window.history.replaceState({}, '', newUrl)
+	}, [filters])
+
+	// Fetch clinics with filters
+	const { data, isLoading, isError } = useQuery(
+		['clinics', JSON.stringify(filters), JSON.stringify(advancedFilters)],
+		() => {
+			console.log('🚀 Выполняем запрос к API');
+			return clinicService.getClinics(filters, advancedFilters);
+		},
+		{
+			keepPreviousData: true,
+		}
+	);
+
+	// Мутация для создания новой компании
+	const createClinicMutation = useMutation(
+		async (clinicData: ClinicInput) => {
+			return clinicService.createClinic(clinicData)
+		},
+		{
+			onSuccess: (data) => {
+				// Обновляем кэш запросов
+				queryClient.invalidateQueries(['clinics'])
+
+				// Показываем уведомление об успехе
+				setSnackbar({
+					open: true,
+					message: 'Компания успешно создана',
+					severity: 'success'
+				})
+
+				// Закрываем модальное окно
+				handleCloseCreateModal()
+
+				// Получаем полные данные клиники и используем handleEditClick для перехода
+				clinicService.getClinic(data.id)
+					.then((clinic: Clinic) => {
+						handleEditClick(clinic);
+					})
+					.catch((error: any) => {
+						console.error('Ошибка при получении данных новой клиники:', error);
+						// Если не удалось получить данные, используем прямой переход
+						navigate(`/companies/${data.id}/edit`, {
+							state: {
+								directOpen: true
+							}
+						});
+					});
+			},
+			onError: (error: any) => {
+				console.error('Ошибка при создании компании:', error)
+				setSnackbar({
+					open: true,
+					message: `Ошибка при создании компании: ${error?.response?.data?.detail || error.message || 'Неизвестная ошибка'}`,
+					severity: 'error'
+				})
+			}
+		}
+	)
+
+	const handlePageChange = (event: unknown, newPage: number) => {
+		setFilters({ ...filters, page: newPage + 1 })
+	}
+
+	// Функция для закрытия уведомлений
+	const handleCloseSnackbar = () => {
+		setSnackbar(prev => ({ ...prev, open: false }));
+	}
+
+
+
+	const columns = useMemo(() => generateColumns(data?.items || []), [data?.items]);
+
+	const handleRowsPerPageChange = (
+		event: React.ChangeEvent<HTMLInputElement>
+	) => {
+		setFilters({
+			...filters,
+			page: 1,
+			page_size: parseInt(event.target.value, 10),
+		})
+	}
+
+
+
+
+
+	const handleSortRequest = (column: string) => {
+		const isAsc = filters.sort_by === column && filters.sort_direction === 'asc'
+		setFilters({
+			...filters,
+			sort_by: column,
+			sort_direction: isAsc ? 'desc' : 'asc',
+		})
+	}
+
+	const getSyncStatusColor = (status: string) => {
+		switch (status) {
+			case 'synced':
+				return 'success'
+			case 'pending':
+				return 'warning'
+			case 'error':
+				return 'error'
+			default:
+				return 'default'
+		}
+	}
+
+	// Функция форматирования даты из ISO в "дата месяц год"
+	const formatDate = (isoDate: string | undefined): string => {
+		if (!isoDate) return '-'
+
+		try {
+			const date = new Date(isoDate)
+			return date.toLocaleDateString('ru-RU', {
+				day: 'numeric',
+				month: 'long',
+				year: 'numeric'
+			})
+		} catch (error) {
+			console.error('Error formatting date:', error)
+			return isoDate
+		}
+	}
+
+	const handleEditClick = (clinic: Clinic) => {
+		// Начинаем индикатор загрузки
+		setLoading(clinic.id);
+
+
+		// БЕЗУСЛОВНЫЙ ПЕРЕХОД к карточке клиники в первую очередь
+		// Исправляем маршрут в соответствии с конфигурацией в App.tsx
+		console.log('Выполняем навигацию к /companies/' + clinic.id + '/edit');
+		navigate(`/companies/${clinic.id}/edit`, {
+			state: {
+				directOpen: true
+			}
+		});
+
+		console.log('Навигация выполнена, проверяем необходимость синхронизации');
+
+
+		if (!clinic.bitrix_id && clinic.inn) {
+			console.log('Клиника требует синхронизации с Битрикс (нет bitrix_id, но есть inn)');
+			setSnackbar({
+				open: true,
+				message: 'Поиск/создание компании в Битрикс...',
+				severity: 'info'
+			});
+
+			// Запуск синхронизации
+			clinicService.findOrCreateInBitrix(clinic.id)
+				.then(result => {
+					console.log('Результат синхронизации:', result);
+					if (result.success) {
+						// Успешная синхронизация
+						console.log('Синхронизация успешна, обновляем UI');
+						setSnackbar({
+							open: true,
+							message: result.message,
+							severity: 'success'
+						});
+
+						// Принудительное обновление кэшей
+						console.log('Инвалидируем кэши для списка клиник и текущей клиники');
+						queryClient.invalidateQueries(['clinics']);
+						queryClient.invalidateQueries(['clinic', clinic.id.toString()]);
+					} else {
+						// Ошибка при синхронизации
+						setSnackbar({
+							open: true,
+							message: result.message || 'Ошибка синхронизации с Битрикс',
+							severity: 'error'
+						});
+					}
+				})
+				.catch(error => {
+					console.error('Ошибка при работе с Битрикс:', error);
+					setSnackbar({
+						open: true,
+						message: 'Произошла ошибка при работе с Битрикс',
+						severity: 'error'
+					});
+				})
+				.finally(() => {
+					// Обязательно сбрасываем индикатор загрузки
+					setLoading(null);
+				});
+		} else {
+			// Если нет необходимости в синхронизации, сразу сбрасываем индикатор загрузки
+		}
+	}
+
+	// Функция для создания компании
+	const handleCreateCompany = () => {
+		// Проверяем обязательные поля
+		if (!newCompany.name || !newCompany.inn || !newCompany.region) {
+			setSnackbar({
+				open: true,
+				message: 'Пожалуйста, заполните обязательные поля: Название, ИНН и Регион',
+				severity: 'warning'
+			});
+			return;
+		}
+
+		// Создаем новый базовый объект для создания компании, только с полями, которые поддерживаются в бэкенде
+		const baseData = {
+			name: newCompany.name,
+			company_type: 'CUSTOMER',
+			address: cleanAddressString(newCompany.address),
+			city: '',
+			country: 'Россия',
+			inn: newCompany.inn,
+			region: newCompany.region, // Добавляем поле region в базовые данные (только для локальной БД)
+			dynamic_fields: {
+				uf_crm_1741267701427: newCompany.inn,
+				uf_crm_6679726eb1750: cleanAddressString(newCompany.address),
+			}
+		};
+
+		const createCompanyData = {
+			name: baseData.name,
+			company_type: baseData.company_type,
+			address: baseData.address,
+			city: baseData.city,
+			country: baseData.country,
+			inn: baseData.inn,
+			region: baseData.region, // Добавляем поле region (только для локальной БД)
+			dynamic_fields: baseData.dynamic_fields
+		};
+
+		// Выводим данные для отправки для отладки
+		console.log('Отправка данных для создания компании:', createCompanyData);
+
+		// Создаем прямо объект с правильными полями, без использования интерфейса ClinicInput
+		createClinicMutation.mutate(createCompanyData as any);
+	};;
+
+	// Обработчик перехода к редактированию для существующей компании
+	const handleGoToExistingCompany = () => {
+		if (existingClinic) {
+			// Используем функцию handleEditClick для перехода к редактированию
+			// чтобы сохранить всю логику синхронизации и обработки маршрута
+			handleCloseCreateModal();
+
+			// Получаем информацию о клинике для передачи в handleEditClick
+			clinicService.getClinic(existingClinic.id)
+				.then((clinic: Clinic) => {
+					handleEditClick(clinic);
+				})
+				.catch((error: any) => {
+					console.error('Ошибка при получении данных клиники:', error);
+					// Если не удалось получить данные клиники, используем прямой переход
+					navigate(`/companies/${existingClinic.id}/edit`, {
+						state: {
+							directOpen: true
+						}
+					});
+				});
+		}
+	};
+
+	// Функция для открытия модального окна создания компании
+	const handleOpenCreateModal = () => {
+		setNewCompany({
+			name: '',
+			inn: '',
+			address: '',
+			region: '' // Добавляем поле region в начальные данные
+		});
+		setExistingClinic(null);
+		setCreateModalOpen(true);
+	};
+
+	// Функция для закрытия модального окна
+	const handleCloseCreateModal = () => {
+		setCreateModalOpen(false);
+		setExistingClinic(null);
+		setConfirmDialogOpen(false);
+	};
+
+	// Обработка изменений в полях формы
+	const handleNewCompanyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const { name, value } = e.target;
+		setNewCompany({ ...newCompany, [name]: value });
+	};
+
+	// Обработчик изменения региона в выпадающем списке
+	const handleRegionSelectChange = (e: SelectChangeEvent<string>) => {
+		setNewCompany({ ...newCompany, region: e.target.value });
+	};
+
+
+
+	const handleApplyFilters = useCallback((filters: any[]) => {
+		setAdvancedFilters(filters);
+	}, []);
+
+	// Функция для проверки наличия компании по ИНН
+	const checkInnExists = async () => {
+		try {
+			setIsInnChecking(true);
+
+			// Проверяем, что ИНН введен
+			if (!newCompany.inn) {
+				setSnackbar({
+					open: true,
+					message: 'Пожалуйста, введите ИНН компании',
+					severity: 'warning'
+				});
+				setIsInnChecking(false);
+				return;
+			}
+
+			// Проверяем существование компании локально
+			const localResults = await clinicService.getClinics({ inn: newCompany.inn });
+
+			if (localResults.items && localResults.items.length > 0) {
+				// Компания найдена локально
+				setExistingClinic({
+					id: localResults.items[0].id,
+					name: localResults.items[0].name
+				});
+				setConfirmDialogOpen(true);
+				setIsInnChecking(false);
+				return;
+			}
+
+			// Если компания не найдена локально, ищем в Bitrix24
+			const bitrixResults = await clinicService.searchClinicsByInn(newCompany.inn);
+
+			if (bitrixResults && bitrixResults.length > 0) {
+				// Компания найдена в Bitrix24
+				setSnackbar({
+					open: true,
+					message: `Компания с ИНН ${newCompany.inn} найдена в Bitrix24, но не синхронизирована с локальной базой. Создаем новую запись.`,
+					severity: 'info'
+				});
+			}
+
+			// Если компания не найдена ни локально, ни в Bitrix24, продолжаем создание
+			handleCreateCompany();
+
+		} catch (error: any) {
+			console.error('Ошибка при проверке ИНН:', error);
+			setSnackbar({
+				open: true,
+				message: `Ошибка при проверке ИНН: ${error?.response?.data?.detail || error.message || 'Неизвестная ошибка'}`,
+				severity: 'error'
+			});
+		} finally {
+			setIsInnChecking(false);
+		}
+	};
+
+	if (isLoading) {
+		return (
+			<Box
+				display='flex'
+				justifyContent='center'
+				alignItems='center'
+				minHeight='80vh'
+			>
+				<CircularProgress />
+			</Box>
+		)
+	}
+
+	if (isError) {
+		return (
+			<Box p={3}>
+				<Alert severity='error'>
+					Error loading clinics. Please try again later.
+				</Alert>
+			</Box>
+		)
+	}
+
+	// Мобильное представление компании в виде карточки
+	const renderMobileClinicCard = (clinic: Clinic) => (
+		<Card sx={{ mb: 2, position: 'relative' }} key={clinic.id}>
+			<CardContent>
+				<Typography variant="h6" gutterBottom>
+					{clinic.name}
+				</Typography>
+
+				<Grid container spacing={1}>
+					<Grid item xs={6}>
+						<Typography variant="body2" color="text.secondary">
+							ИНН:
+						</Typography>
+						<Typography variant="body1">
+							{clinic.inn || '-'}
+						</Typography>
+					</Grid>
+
+					<Grid item xs={6}>
+						<Typography variant="body2" color="text.secondary">
+							Менеджер:
+						</Typography>
+						<Typography variant="body1">
+							{clinic.main_manager || '-'}
+						</Typography>
+					</Grid>
+
+					<Grid item xs={6}>
+						<Typography variant="body2" color="text.secondary">
+							<CalendarTodayIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
+							Последний визит:
+						</Typography>
+						<Typography variant="body1">
+							{formatDate(clinic.last_visit_date)}
+						</Typography>
+					</Grid>
+
+					<Grid item xs={6}>
+						<Typography variant="body2" color="text.secondary">
+							<TimelineIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
+							Количество визитов:
+						</Typography>
+						<Typography variant="body1">
+							{clinic.visits_count || '0'}
+						</Typography>
+					</Grid>
+
+					<Grid item xs={6}>
+						<Typography variant="body2" color="text.secondary">
+							Последняя продажа:
+						</Typography>
+						<Typography variant="body1">
+							{formatDate(clinic.last_sale_date)}
+						</Typography>
+					</Grid>
+
+					<Grid item xs={6}>
+						<Typography variant="body2" color="text.secondary">
+							Сумма продажи:
+						</Typography>
+						<Typography variant="body1">
+							{clinic.document_amount ? `${clinic.document_amount} ₽` : '-'}
+						</Typography>
+					</Grid>
+
+					<Grid item xs={12} sx={{ mt: 1 }}>
+						<Box display="flex" justifyContent="space-between" alignItems="center">
+							<Chip
+								size='small'
+								label={clinic.sync_status}
+								color={getSyncStatusColor(clinic.sync_status)}
+							/>
+
+							<Button
+								variant="outlined"
+								size="small"
+								startIcon={loading === clinic.id ? <CircularProgress size={16} /> : <EditIcon />}
+								onClick={() => handleEditClick(clinic)}
+								disabled={loading === clinic.id}
+							>
+								Редактировать
+							</Button>
+						</Box>
+					</Grid>
+				</Grid>
+			</CardContent>
+		</Card>
+	);
+
+	return (
+
+
+		<Box sx={{ p: 3 }}>
+			<FilterForm columns={columns} onApply={handleApplyFilters} />
+			<Card>
+				<CardContent>
+
+					<Grid container spacing={2} alignItems="flex-end">
+						<Grid item xs={12} container spacing={2} alignItems="flex-start">
+							{/* Кнопка "Создать компанию" */}
+							<Grid item xs={6} md={3}>
+								<Button
+									variant="contained"
+									color="primary"
+									startIcon={<AddCircleOutlineIcon />}
+									onClick={handleOpenCreateModal}
+									fullWidth
+								>
+									Создать компанию
+								</Button>
+							</Grid>
+
+
+
+							<OLMapModal open={isMapOpen} onClose={() => setIsMapOpen(false)} clinics={data.items} />
+
+							<Grid item xs={6} md={3}>
+								<Button
+									variant="contained"
+									startIcon={<MapOutlined />}
+									onClick={() => setIsMapOpen(true)}
+									fullWidth
+								>
+									Показать на карте
+								</Button>
+							</Grid>
+
+						</Grid>
+
+						<Grid item xs={12}>
+							<OLMapModal open={isMapOpen} onClose={() => setIsMapOpen(false)} clinics={data.items} />
+						</Grid>
+
+
+
+
+					</Grid>
+
+					{/* <Box display='flex' justifyContent='flex-end' mt={3} flexWrap="wrap">
+						<Button
+							variant='outlined'
+							startIcon={<ClearIcon />}
+							onClick={handleClearFilters}
+							sx={{ mr: 1, mb: isMobile ? 1 : 0 }}
+							fullWidth={isMobile}
+						>
+							Очистить
+						</Button>
+						<Button
+							variant='contained'
+							startIcon={<SearchIcon />}
+							onClick={handleSearch}
+							fullWidth={isMobile}
+						>
+							Поиск
+						</Button>
+						
+					</Box> */}
+				</CardContent>
+			</Card>
+
+			<Card>
+				<CardContent>
+					{data?.items?.length === 0 ? (
+						<Alert severity='info'>
+							Не найдено компаний с указанными параметрами фильтрации
+						</Alert>
+					) : (
+						<>
+							{isMobile ? (
+								// Мобильное представление
+								<Box>
+									{/* Компонент сортировки для мобильной версии */}
+									<Box sx={{ mb: 2 }}>
+										<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+											Найдено: {data?.total} клиник
+										</Typography>
+										<FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
+											<InputLabel id="mobile-sort-label">Сортировка</InputLabel>
+											<Select
+												labelId="mobile-sort-label"
+												value={`${filters.sort_by}|${filters.sort_direction}`}
+												label="Сортировка"
+												MenuProps={{
+													PaperProps: {
+														style: { maxHeight: 300 }
+													},
+													anchorOrigin: {
+														vertical: 'bottom',
+														horizontal: 'center',
+													},
+													transformOrigin: {
+														vertical: 'top',
+														horizontal: 'center',
+													}
+												}}
+												onChange={(e) => {
+													const [sortBy, sortDirection] = e.target.value.split('|');
+													setFilters({
+														...filters,
+														sort_by: sortBy,
+														sort_direction: sortDirection as 'asc' | 'desc'
+													});
+												}}
+											>
+												<MenuItem value="name|asc">Название (А-Я)</MenuItem>
+												<MenuItem value="name|desc">Название (Я-А)</MenuItem>
+												<MenuItem value="inn|asc">ИНН (по возрастанию)</MenuItem>
+												<MenuItem value="inn|desc">ИНН (по убыванию)</MenuItem>
+												<MenuItem value="last_visit_date|desc">Последний визит (сначала новые)</MenuItem>
+												<MenuItem value="last_visit_date|asc">Последний визит (сначала старые)</MenuItem>
+												<MenuItem value="visits_count|desc">Количество визитов (по убыванию)</MenuItem>
+												<MenuItem value="visits_count|asc">Количество визитов (по возрастанию)</MenuItem>
+												<MenuItem value="last_sale_date|desc">Последняя продажа (сначала новые)</MenuItem>
+												<MenuItem value="last_sale_date|asc">Последняя продажа (сначала старые)</MenuItem>
+											</Select>
+										</FormControl>
+									</Box>
+
+									{data?.items?.map((clinic: Clinic) => renderMobileClinicCard(clinic))}
+								</Box>
+							) : (
+								// Десктопное представление
+								<TableContainer>
+									<Table>
+										<TableHead>
+											<TableRow>
+												<TableCell>
+													<TableSortLabel
+														active={filters.sort_by === 'name'}
+														direction={filters.sort_by === 'name' ? filters.sort_direction : 'asc'}
+														onClick={() => handleSortRequest('name')}
+													>
+														Название
+													</TableSortLabel>
+												</TableCell>
+												<TableCell>
+													<TableSortLabel
+														active={filters.sort_by === 'inn'}
+														direction={filters.sort_by === 'inn' ? filters.sort_direction : 'asc'}
+														onClick={() => handleSortRequest('inn')}
+													>
+														ИНН
+													</TableSortLabel>
+												</TableCell>
+												<TableCell>Основной менеджер</TableCell>
+												<TableCell>
+													<TableSortLabel
+														active={filters.sort_by === 'last_visit_date'}
+														direction={filters.sort_by === 'last_visit_date' ? filters.sort_direction : 'asc'}
+														onClick={() => handleSortRequest('last_visit_date')}
+													>
+														Дата последнего визита
+													</TableSortLabel>
+												</TableCell>
+												<TableCell>
+													<TableSortLabel
+														active={filters.sort_by === 'visits_count'}
+														direction={filters.sort_by === 'visits_count' ? filters.sort_direction : 'asc'}
+														onClick={() => handleSortRequest('visits_count')}
+													>
+														Количество визитов
+													</TableSortLabel>
+												</TableCell>
+												<TableCell>
+													<TableSortLabel
+														active={filters.sort_by === 'last_sale_date'}
+														direction={filters.sort_by === 'last_sale_date' ? filters.sort_direction : 'asc'}
+														onClick={() => handleSortRequest('last_sale_date')}
+													>
+														Дата последней продажи
+													</TableSortLabel>
+												</TableCell>
+												<TableCell>Сумма продажи</TableCell>
+												<TableCell>Статус синхронизации</TableCell>
+												<TableCell>Действия</TableCell>
+											</TableRow>
+										</TableHead>
+										<TableBody>
+											{data?.items?.map((clinic: Clinic) => (
+												<TableRow key={clinic.id}>
+													<TableCell>{clinic.name}</TableCell>
+													<TableCell>{clinic.inn || '-'}</TableCell>
+													<TableCell>{clinic.main_manager || '-'}</TableCell>
+													<TableCell>{formatDate(clinic.last_visit_date)}</TableCell>
+													<TableCell>{clinic.visits_count || '0'}</TableCell>
+													<TableCell>{formatDate(clinic.last_sale_date)}</TableCell>
+													<TableCell>{clinic.document_amount ? `${clinic.document_amount} ₽` : '-'}</TableCell>
+													<TableCell>
+														<Chip
+															size='small'
+															label={clinic.sync_status}
+															color={getSyncStatusColor(clinic.sync_status)}
+														/>
+													</TableCell>
+													<TableCell>
+														<IconButton
+															size='small'
+															onClick={() => handleEditClick(clinic)}
+															disabled={loading === clinic.id}
+														>
+															{loading === clinic.id ? <CircularProgress size={20} /> : <EditIcon />}
+														</IconButton>
+													</TableCell>
+												</TableRow>
+											))}
+										</TableBody>
+									</Table>
+
+								</TableContainer>
+							)}
+
+							<TablePagination
+								component='div'
+								count={data?.total || 0}
+								page={(filters.page || 1) - 1}
+								rowsPerPage={filters.page_size || 10}
+								onPageChange={handlePageChange}
+								onRowsPerPageChange={handleRowsPerPageChange}
+								rowsPerPageOptions={[5, 10, 25, 50, 100]}
+								labelRowsPerPage={isMobile ? 'Строк:' : 'Строк на странице:'}
+								labelDisplayedRows={({ from, to, count }) =>
+									`${from}-${to} из ${count}`
+								}
+							/>
+						</>
+					)}
+				</CardContent>
+			</Card>
+
+			{/* Snackbar для уведомлений */}
+			<Snackbar
+				open={snackbar.open}
+				autoHideDuration={6000}
+				onClose={handleCloseSnackbar}
+				message={snackbar.message}
+				anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+			/>
+
+			{/* Модальное окно создания компании */}
+			<Dialog open={createModalOpen} onClose={handleCloseCreateModal} maxWidth="sm" fullWidth>
+				<DialogTitle>Создание новой компании</DialogTitle>
+				<DialogContent>
+					<Stack spacing={2} sx={{ mt: 1 }}>
+						<TextField
+							label="Название компании"
+							name="name"
+							value={newCompany.name}
+							onChange={handleNewCompanyChange}
+							fullWidth
+							required
+						/>
+						<TextField
+							label="ИНН"
+							name="inn"
+							value={newCompany.inn}
+							onChange={handleNewCompanyChange}
+							fullWidth
+							required
+						/>
+						<TextField
+							label="Адрес"
+							name="address"
+							value={newCompany.address}
+							onChange={handleNewCompanyChange}
+							fullWidth
+							multiline
+							rows={3}
+						/>
+						<FormControl fullWidth required>
+							<InputLabel id="region-select-label">Регион</InputLabel>
+							<Select
+								labelId="region-select-label"
+								id="region-select"
+								value={newCompany.region}
+								label="Регион"
+								onChange={handleRegionSelectChange}
+								required
+							>
+								<MenuItem value=""><em>Не выбрано</em></MenuItem>
+								<MenuItem value="ДНР">ДНР</MenuItem>
+								<MenuItem value="ДФО">ДФО</MenuItem>
+								<MenuItem value="ЛНР">ЛНР</MenuItem>
+								<MenuItem value="ПФО">ПФО</MenuItem>
+								<MenuItem value="СЗФО">СЗФО</MenuItem>
+								<MenuItem value="СКФО">СКФО</MenuItem>
+								<MenuItem value="СФО">СФО</MenuItem>
+								<MenuItem value="УФО">УФО</MenuItem>
+								<MenuItem value="ЦФО">ЦФО</MenuItem>
+								<MenuItem value="ЮФО">ЮФО</MenuItem>
+							</Select>
+						</FormControl>
+					</Stack>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={handleCloseCreateModal} color="inherit">
+						Отмена
+					</Button>
+					<Button
+						onClick={checkInnExists}
+						color="primary"
+						variant="contained"
+						disabled={isInnChecking || !newCompany.name || !newCompany.inn || !newCompany.region}
+					>
+						{isInnChecking ? <CircularProgress size={24} /> : 'Создать'}
+					</Button>
+				</DialogActions>
+			</Dialog>
+
+			{/* Диалог подтверждения, если компания с таким ИНН уже существует */}
+			<Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)}>
+				<DialogTitle>Компания уже существует</DialogTitle>
+				<DialogContent>
+					<DialogContentText>
+						Компания с ИНН {newCompany.inn} уже существует в базе данных под названием "{existingClinic?.name}".
+						Хотите перейти к редактированию существующей компании?
+					</DialogContentText>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={handleCloseCreateModal} color="inherit">
+						Отмена
+					</Button>
+					<Button onClick={handleGoToExistingCompany} color="primary" variant="contained">
+						Перейти к редактированию
+					</Button>
+				</DialogActions>
+			</Dialog>
+		</Box>
+	)
+}
+
+export default ClinicsListPage

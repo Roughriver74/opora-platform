@@ -1,196 +1,81 @@
+version: '3'
+
 services:
-  postgres:
-    image: postgres:16-alpine
+  db:
+    image: postgres:14
     container_name: opora_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: opora
-      POSTGRES_USER: opora_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-opora_password}
-      PGDATA: /var/lib/postgresql/data/pgdata
-    ports:
-      # Доступ только через localhost (туннель)
-      - '127.0.0.1:${DB_PORT:-4202}:5432'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      # - ./server/src/database/scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - opora_postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-opora_dev_pass}
+      - POSTGRES_USER=${POSTGRES_USER:-opora_user}
+      - POSTGRES_DB=${POSTGRES_DB:-opora_dev}
+    restart: always
+    ports:
+      - '${DB_PORT:-4202}:5432'
+    networks:
+      - opora_network
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U opora_user -d opora']
+      test: ['CMD-SHELL', 'pg_isready -U opora_user -d opora_dev']
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - opora_network
-
-  redis:
-    image: redis:7-alpine
-    container_name: opora_redis
-    restart: unless-stopped
-    # Убираем внешний доступ - Redis доступен только внутри Docker сети
-    # ports:
-    #   - '${REDIS_PORT:-6396}:6379'
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - opora_network
-
-  elasticsearch:
-    image: elasticsearch:8.11.0
-    container_name: opora_elasticsearch
-    restart: unless-stopped
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
-      - bootstrap.memory_lock=true
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    ports:
-      - '${ELASTICSEARCH_PORT:-4204}:9200'
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    healthcheck:
-      test:
-        ['CMD-SHELL', 'curl -f http://localhost:9200/_cluster/health || exit 1']
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    networks:
-      - opora_network
 
   backend:
     build:
-      context: ./server
-      dockerfile: Dockerfile.production
+      context: .
+      dockerfile: Dockerfile.backend
     container_name: opora_backend
-    restart: unless-stopped
-    ports:
-      - '${PORT:-4201}:4201'
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${PORT:-4201}
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USERNAME: opora_user
-      DB_PASSWORD: ${DB_PASSWORD:-opora_password}
-      DB_NAME: opora
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      ELASTICSEARCH_HOST: elasticsearch
-      ELASTICSEARCH_PORT: 9200
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN:-30d}
-      BITRIX_WEBHOOK: ${BITRIX_WEBHOOK}
-      # Разрешаем домен и IP через запятую
-      CORS_ORIGIN: ${CORS_ORIGIN:-https://beton.shknv.ru,http://beton.shknv.ru,https://beton.shknv.ru:4200,http://beton.shknv.ru:4200,http://31.128.39.123:4200,https://31.128.39.123:4200}
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-    # volumes:
-    #   - ./server:/app
-    #   - /app/node_modules
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opora_user}:${POSTGRES_PASSWORD:-opora_dev_pass}@db:5432/${POSTGRES_DB:-opora_dev}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-opora_dev}
+      - POSTGRES_USER=${POSTGRES_USER:-opora_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-opora_dev_pass}
+      - JWT_SECRET=${JWT_SECRET:-opora-dev-jwt-secret}
+      - BITRIX_API_ENDPOINT=${BITRIX_API_ENDPOINT:-}
+      - ENVIRONMENT=development
+      - DOCKER_ENV=true
+      - DEV_MODE=True
+      - CORS_ORIGINS=http://localhost:4200
+      - TOKEN_DADATA=${TOKEN_DADATA:-}
+      - SECRET_DADATA=${SECRET_DADATA:-}
+      - EXCEL_UPLOAD_PATH=/app/upload
+      - FTP_HOST=${FTP_HOST:-}
+      - FTP_USER=${FTP_USER:-}
+      - FTP_PASSWORD=${FTP_PASSWORD:-}
+      - FTP_DIRECTORY=${FTP_DIRECTORY:-}
+      - FTP_FILENAME=${FTP_FILENAME:-}
+    volumes:
+      - ./upload:/app/upload
+    ports:
+      - '${BACKEND_PORT:-4201}:8000'
+    restart: always
     networks:
       - opora_network
 
   frontend:
     build:
-      context: ./client
-      dockerfile: Dockerfile.production
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://localhost:4201/api
+        - REACT_APP_ENV=development
     container_name: opora_frontend
-    restart: unless-stopped
-    ports:
-      - '${CLIENT_PORT:-4200}:4200'
-    environment:
-      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:4201}
-      NODE_ENV: ${NODE_ENV:-production}
     depends_on:
       - backend
-    # volumes:
-    #   - ./client:/app
-    #   - /app/node_modules
-    networks:
-      - opora_network
-
-  # === МОНИТОРИНГ ===
-
-  # Promtail - сбор и отправка логов в Loki
-  promtail:
-    image: grafana/promtail:2.9.2
-    container_name: opora_promtail
-    restart: unless-stopped
-    volumes:
-      - /var/log:/var/log:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./promtail-config.yaml:/etc/promtail/config.yml:ro
-      - promtail_positions:/tmp
-    command: -config.file=/etc/promtail/config.yml
-    networks:
-      - opora_network
-    depends_on:
-      - backend
-      - frontend
-
-  # Node Exporter - метрики системы (CPU, RAM, Disk, Network)
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: opora_node_exporter
-    restart: unless-stopped
     ports:
-      - '4205:9100'
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '${FRONTEND_PORT:-4200}:80'
+    restart: always
     networks:
       - opora_network
-
-  # cAdvisor - метрики Docker контейнеров
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: opora_cadvisor
-    restart: unless-stopped
-    ports:
-      - '4206:8080'
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    privileged: true
-    devices:
-      - /dev/kmsg
-    networks:
-      - opora_network
-
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  elasticsearch_data:
-    driver: local
-  promtail_positions:
-    driver: local
 
 networks:
   opora_network:
-    driver: bridge
+
+volumes:
+  opora_postgres_data:

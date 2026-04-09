@@ -1,0 +1,86 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:14
+    container_name: opora_postgres_prod
+    volumes:
+      - opora_postgres_data_prod:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-opora_prod_pass}
+      - POSTGRES_USER=${POSTGRES_USER:-opora_user}
+      - POSTGRES_DB=${POSTGRES_DB:-opora_prod}
+    restart: always
+    networks:
+      - opora_network_prod
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U opora_user -d opora_prod']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: opora_backend_prod
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opora_user}:${POSTGRES_PASSWORD:-opora_prod_pass}@db:5432/${POSTGRES_DB:-opora_prod}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-opora_prod}
+      - POSTGRES_USER=${POSTGRES_USER:-opora_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-opora_prod_pass}
+      - JWT_SECRET=${JWT_SECRET}
+      - BITRIX_API_ENDPOINT=${BITRIX_API_ENDPOINT:-}
+      - ENVIRONMENT=production
+      - DOCKER_ENV=true
+      - DEV_MODE=False
+      - CORS_ORIGINS=https://opora.b-ci.ru,http://opora.b-ci.ru
+      - EXCEL_UPLOAD_PATH=/app/upload
+      - TOKEN_DADATA=${TOKEN_DADATA:-}
+      - SECRET_DADATA=${SECRET_DADATA:-}
+      - FTP_HOST=${FTP_HOST:-}
+      - FTP_USER=${FTP_USER:-}
+      - FTP_PASSWORD=${FTP_PASSWORD:-}
+      - FTP_DIRECTORY=${FTP_DIRECTORY:-}
+      - FTP_FILENAME=${FTP_FILENAME:-}
+    volumes:
+      - ./upload:/app/upload
+      - /var/www/opora/prod/logs:/app/logs
+    ports:
+      - '4201:8000'
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - opora_network_prod
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=https://opora.b-ci.ru/api
+        - REACT_APP_ENV=production
+    container_name: opora_frontend_prod
+    depends_on:
+      - backend
+    ports:
+      - '4200:80'
+    restart: always
+    networks:
+      - opora_network_prod
+
+networks:
+  opora_network_prod:
+
+volumes:
+  opora_postgres_data_prod:

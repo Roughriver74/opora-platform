@@ -1,8 +1,0 @@
-# https://www.robotstxt.org/robotstxt.html
-User-agent: *
-Allow: /
-
-# БетонЭкспресс CRM
-# Система управления заказами бетона и строительных материалов
-
-Sitemap: /sitemap.xml
