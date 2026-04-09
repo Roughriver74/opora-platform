@@ -13,7 +13,9 @@ from app.routers import (
     custom_sections_routers,
     dadata_router,
     doctors_routers,
+    invitation_routers,
     network_clinic_routers,
+    platform_routers,
     profile_service,
     regions_routers,
     settings_routers,
@@ -82,6 +84,16 @@ app.include_router(
 )
 
 app.include_router(tasks_routers.router, prefix=f"{api_prefix}/tasks", tags=["Задачи"])
+app.include_router(
+    platform_routers.router,
+    prefix=f"{api_prefix}/platform",
+    tags=["Платформа (admin)"],
+)
+app.include_router(
+    invitation_routers.router,
+    prefix=f"{api_prefix}/invitations",
+    tags=["Приглашения"],
+)
 
 
 @app.get(f"{api_prefix}/health")
