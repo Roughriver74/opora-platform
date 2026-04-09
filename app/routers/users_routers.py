@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 from pydantic import EmailStr
 
 from app.models import User
-from app.schemas.users_schema import UserCreate, UserUpdate
+from app.schemas.users_schema import CreateUser, UpdateUser
 from app.services.uow import UnitOfWork, get_uow
 from app.utils.utils import get_current_active_admin_user, get_current_user
 
@@ -40,7 +40,7 @@ async def get_users(
 
 @router.post("", response_model=dict)
 async def create_user(
-    user_data: UserCreate,
+    user_data: CreateUser,
     uow: UnitOfWork = Depends(get_uow),
     current_user: User = Depends(get_current_active_admin_user),
 ):
@@ -51,7 +51,7 @@ async def create_user(
 @router.put("/{user_id}", response_model=dict)
 async def update_user(
     user_id: int,
-    user_data: UserUpdate,
+    user_data: UpdateUser,
     uow: UnitOfWork = Depends(get_uow),
     current_user: User = Depends(get_current_active_admin_user),
 ):

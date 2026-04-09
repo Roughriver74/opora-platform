@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.models import User
-from app.schemas.users_schema import UserCreate, UserUpdate
+from app.schemas.users_schema import CreateUser, UpdateUser
 from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
@@ -24,7 +24,10 @@ class UsersService:
             "id": current_user.id,
             "email": current_user.email,
             "is_active": current_user.is_active,
-            "is_admin": current_user.is_admin,
+            "role": current_user.role,
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
+            "organization_id": current_user.organization_id,
             "created_at": current_user.created_at,
             "updated_at": current_user.updated_at,
             "bitrix_user_id": current_user.bitrix_user_id,
@@ -59,7 +62,10 @@ class UsersService:
                 "id": user.id,
                 "email": user.email,
                 "is_active": user.is_active,
-                "is_admin": user.is_admin,
+                "role": user.role,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "organization_id": user.organization_id,
                 "created_at": user.created_at,
                 "updated_at": user.updated_at,
                 "bitrix_user_id": user.bitrix_user_id,
@@ -71,18 +77,13 @@ class UsersService:
     @logger()
     async def create_user(
         self,
-        user_data: UserCreate,
+        user_data: CreateUser,
     ):
         """Создание нового пользователя"""
         existing_user = (
             (
                 await self.session.execute(
-                    select(User).where(
-                        or_(
-                            User.email == user_data.email,
-                            User.bitrix_user_id == user_data.bitrix_user_id,
-                        )
-                    )
+                    select(User).where(User.email == user_data.email)
                 )
             )
             .scalars()
@@ -91,14 +92,14 @@ class UsersService:
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Пользователь с таким Bitrix ID уже существует",
+                detail="Пользователь с таким email уже существует",
             )
 
         user = User(
             email=user_data.email,
-            is_active=user_data.is_active,
-            is_admin=user_data.is_admin,
-            bitrix_user_id=user_data.bitrix_user_id,
+            role=user_data.role,
+            first_name=user_data.first_name,
+            last_name=user_data.last_name,
             regions=user_data.regions,
         )
         user.set_password(user_data.password)
@@ -111,7 +112,10 @@ class UsersService:
             "id": user.id,
             "email": user.email,
             "is_active": user.is_active,
-            "is_admin": user.is_admin,
+            "role": user.role,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "organization_id": user.organization_id,
             "created_at": user.created_at,
             "updated_at": user.updated_at,
             "bitrix_user_id": user.bitrix_user_id,
@@ -119,7 +123,7 @@ class UsersService:
         }
 
     @logger()
-    async def update_user(self, user_id: int, user_data: UserUpdate) -> dict:
+    async def update_user(self, user_id: int, user_data: UpdateUser) -> dict:
         """
         Обновление информации о пользователе.
         """
@@ -148,9 +152,9 @@ class UsersService:
         return result.scalars().first()
 
     @logger()
-    async def _validate_unique_fields(self, user_id: int, user_data: UserUpdate):
+    async def _validate_unique_fields(self, user_id: int, user_data: UpdateUser):
         """
-        Проверяет уникальность email и Bitrix ID.
+        Проверяет уникальность email.
         """
         if user_data.email:
             existing_user = (
@@ -170,36 +174,14 @@ class UsersService:
                     detail="Пользователь с таким email уже существует",
                 )
 
-        if user_data.bitrix_user_id:
-            existing_user = (
-                (
-                    await self.session.execute(
-                        select(User).where(
-                            User.bitrix_user_id == user_data.bitrix_user_id,
-                            User.id != user_id,
-                        )
-                    )
-                )
-                .scalars()
-                .first()
-            )
-            if existing_user:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Пользователь с таким Bitrix ID уже существует",
-                )
-
     @staticmethod
     @logger()
-    async def _update_user_fields(user: User, user_data: UserUpdate):
+    async def _update_user_fields(user: User, user_data: UpdateUser):
         """
         Обновляет поля пользователя на основе предоставленных данных.
         """
         if user_data.email:
             user.email = user_data.email
-
-        if user_data.bitrix_user_id:
-            user.bitrix_user_id = user_data.bitrix_user_id
 
         if user_data.password:
             user.set_password(user_data.password)
@@ -207,8 +189,14 @@ class UsersService:
         if user_data.is_active is not None:
             user.is_active = user_data.is_active
 
-        if user_data.is_admin is not None:
-            user.is_admin = user_data.is_admin
+        if user_data.role is not None:
+            user.role = user_data.role
+
+        if user_data.first_name is not None:
+            user.first_name = user_data.first_name
+
+        if user_data.last_name is not None:
+            user.last_name = user_data.last_name
 
         if user_data.regions is not None:
             user.regions = user_data.regions
@@ -223,7 +211,10 @@ class UsersService:
             "id": user.id,
             "email": user.email,
             "is_active": user.is_active,
-            "is_admin": user.is_admin,
+            "role": user.role,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "organization_id": user.organization_id,
             "created_at": user.created_at,
             "updated_at": user.updated_at,
             "bitrix_user_id": user.bitrix_user_id,
