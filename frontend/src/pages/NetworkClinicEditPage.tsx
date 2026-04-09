@@ -2466,42 +2466,27 @@ const NetworkClinicEditPage: React.FC = () => {
 
 
 
-                                {/* Кнопка для добавления новой секции */}
-                                {userProfile?.is_admin && (
-                                    <Grid item xs={12}>
-                                        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                                            <Button
-                                                variant='contained'
-                                                color='primary'
-                                                startIcon={<AddIcon />}
-                                                onClick={handleAddSection}
-                                                fullWidth
-                                            >
-                                                Добавить новую секцию
-                                            </Button>
-                                        </Box>
-                                    </Grid>
-                                )}
-
-                                {/* Остальные поля, не добавленные в секции */}
+                                {/* Остальные поля */}
                                 {(() => {
 
                                     const unusedFields = fieldMappings.filter(
                                         m =>
                                             m.app_field_name !== 'email' &&
                                             m.app_field_name !== 'phone' &&
-                                            !customSections
-                                                .flatMap(s => s.fields)
-                                                .includes(m.id.toString()) &&
-                                            !m.section
+                                            m.app_field_name !== 'name' &&
+                                            m.app_field_name !== 'company_type' &&
+                                            m.app_field_name !== 'address' &&
+                                            m.app_field_name !== 'inn' &&
+                                            m.app_field_name !== 'city' &&
+                                            m.app_field_name !== 'country'
                                     )
 
                                     return (
                                         <>
-                                            {/* Выводим неиспользуемые поля без секции */}
+                                            {/* Выводим неиспользуемые поля */}
                                             {unusedFields.length > 0 && (
                                                 <Grid item xs={12}>
-                                                    <Box sx={{ mb: 3 }}>
+                                                    <Box sx={{ mb: 3, mt: 2 }}>
                                                         <Typography
                                                             variant='subtitle1'
                                                             sx={{
@@ -2515,7 +2500,7 @@ const NetworkClinicEditPage: React.FC = () => {
                                                             }}
                                                         >
                                                             <SubjectIcon sx={{ mr: 1 }} />
-                                                            Другие поля
+                                                            Дополнительные поля
                                                         </Typography>
 
 
@@ -2625,123 +2610,6 @@ const NetworkClinicEditPage: React.FC = () => {
             )}
 
 
-            <Dialog
-                open={sectionDialogOpen}
-                onClose={() => {
-                    setSectionDialogOpen(false)
-                    setCurrentSection(null)
-                }}
-                fullWidth
-                maxWidth='sm'
-            >
-                <DialogTitle>
-                    {currentSection && currentSection.id
-                        ? 'Редактировать секцию'
-                        : 'Создать новую секцию'}
-                </DialogTitle>
-                <DialogContent>
-                    <TextField
-                        autoFocus
-                        margin='dense'
-                        label='Название секции'
-                        fullWidth
-                        value={currentSection?.name || ''}
-                        onChange={e =>
-                            setCurrentSection(prev =>
-                                prev ? { ...prev, name: e.target.value } : null
-                            )
-                        }
-                        sx={{ mb: 3 }}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button
-                        onClick={() => {
-                            setSectionDialogOpen(false)
-                            setCurrentSection(null)
-                        }}
-                    >
-                        Отмена
-                    </Button>
-                    <Button
-                        onClick={() => currentSection && handleSaveSection(currentSection)}
-                        variant='contained'
-                        color='primary'
-                        disabled={!currentSection?.name}
-                    >
-                        Сохранить
-                    </Button>
-                </DialogActions>
-            </Dialog>
-            <Dialog
-                open={fieldSelectionDialogOpen}
-                onClose={() => setFieldSelectionDialogOpen(false)}
-                fullWidth
-                maxWidth='md'
-            >
-                <DialogTitle>Выберите поля для добавления в секцию</DialogTitle>
-                <DialogContent>
-                    {availableFields.length === 0 ? (
-                        <Typography variant='body1' sx={{ py: 2 }}>
-                            Все доступные поля уже добавлены в секции
-                        </Typography>
-                    ) : (
-                        <>
-                            <Typography variant='body2' color='textSecondary' sx={{ mb: 2 }}>
-                                Выберите поля, которые хотите добавить в секцию
-                            </Typography>
-                            <Grid container spacing={2}>
-                                {availableFields.map(field => (
-                                    <Grid item xs={12} sm={6} md={4} key={field.id}>
-                                        <FormControlLabel
-                                            control={
-                                                <Checkbox
-                                                    checked={selectedFields.includes(field.id.toString())}
-                                                    onChange={() =>
-                                                        handleFieldSelectionChange(field.id.toString())
-                                                    }
-                                                />
-                                            }
-                                            label={
-                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                    {field.field_type === 'address' ? (
-                                                        <LocationOnIcon fontSize='small' sx={{ mr: 1 }} />
-                                                    ) : field.field_type === 'date' ? (
-                                                        <EventIcon fontSize='small' sx={{ mr: 1 }} />
-                                                    ) : field.field_type === 'list' ||
-                                                        field.field_type === 'enum' ? (
-                                                        <ListIcon fontSize='small' sx={{ mr: 1 }} />
-                                                    ) : field.field_type === 'boolean' ? (
-                                                        <CheckBoxIcon fontSize='small' sx={{ mr: 1 }} />
-                                                    ) : (
-                                                        <SubjectIcon fontSize='small' sx={{ mr: 1 }} />
-                                                    )}
-                                                    <Typography variant='body2'>
-                                                        {field.display_name}
-                                                    </Typography>
-                                                </Box>
-                                            }
-                                        />
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        </>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setFieldSelectionDialogOpen(false)}>
-                        Отмена
-                    </Button>
-                    <Button
-                        onClick={handleFieldSelection}
-                        variant='contained'
-                        color='primary'
-                        disabled={selectedFields.length === 0}
-                    >
-                        Добавить выбранные поля
-                    </Button>
-                </DialogActions>
-            </Dialog>
             <Snackbar
                 open={snackbarOpen}
                 autoHideDuration={6000}

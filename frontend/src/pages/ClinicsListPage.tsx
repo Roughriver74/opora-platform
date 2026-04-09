@@ -34,7 +34,8 @@ import {
 	DialogContent,
 	DialogActions,
 	DialogContentText,
-	Stack
+	Stack,
+	Fab
 } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
@@ -596,24 +597,10 @@ const ClinicsListPage: React.FC = () => {
 
 					<Grid container spacing={2} alignItems="flex-end">
 						<Grid item xs={12} container spacing={2} alignItems="flex-start">
-							{/* Кнопка "Создать компанию" */}
-							<Grid item xs={6} md={3}>
-								<Button
-									variant="contained"
-									color="primary"
-									startIcon={<AddCircleOutlineIcon />}
-									onClick={handleOpenCreateModal}
-									fullWidth
-								>
-									Создать компанию
-								</Button>
-							</Grid>
-
-
-
+							{/* Кнопка создания вынесена в FAB */}
 							<OLMapModal open={isMapOpen} onClose={() => setIsMapOpen(false)} clinics={data.items} />
 
-							<Grid item xs={6} md={3}>
+							<Grid item xs={12} md={12}>
 								<Button
 									variant="contained"
 									startIcon={<MapOutlined />}
@@ -666,148 +653,55 @@ const ClinicsListPage: React.FC = () => {
 						</Alert>
 					) : (
 						<>
-							{isMobile ? (
-								// Мобильное представление
-								<Box>
-									{/* Компонент сортировки для мобильной версии */}
-									<Box sx={{ mb: 2 }}>
-										<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-											Найдено: {data?.total} клиник
-										</Typography>
-										<FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
-											<InputLabel id="mobile-sort-label">Сортировка</InputLabel>
-											<Select
-												labelId="mobile-sort-label"
-												value={`${filters.sort_by}|${filters.sort_direction}`}
-												label="Сортировка"
-												MenuProps={{
-													PaperProps: {
-														style: { maxHeight: 300 }
-													},
-													anchorOrigin: {
-														vertical: 'bottom',
-														horizontal: 'center',
-													},
-													transformOrigin: {
-														vertical: 'top',
-														horizontal: 'center',
-													}
-												}}
-												onChange={(e) => {
-													const [sortBy, sortDirection] = e.target.value.split('|');
-													setFilters({
-														...filters,
-														sort_by: sortBy,
-														sort_direction: sortDirection as 'asc' | 'desc'
-													});
-												}}
-											>
-												<MenuItem value="name|asc">Название (А-Я)</MenuItem>
-												<MenuItem value="name|desc">Название (Я-А)</MenuItem>
-												<MenuItem value="inn|asc">ИНН (по возрастанию)</MenuItem>
-												<MenuItem value="inn|desc">ИНН (по убыванию)</MenuItem>
-												<MenuItem value="last_visit_date|desc">Последний визит (сначала новые)</MenuItem>
-												<MenuItem value="last_visit_date|asc">Последний визит (сначала старые)</MenuItem>
-												<MenuItem value="visits_count|desc">Количество визитов (по убыванию)</MenuItem>
-												<MenuItem value="visits_count|asc">Количество визитов (по возрастанию)</MenuItem>
-												<MenuItem value="last_sale_date|desc">Последняя продажа (сначала новые)</MenuItem>
-												<MenuItem value="last_sale_date|asc">Последняя продажа (сначала старые)</MenuItem>
-											</Select>
-										</FormControl>
-									</Box>
-
-									{data?.items?.map((clinic: Clinic) => renderMobileClinicCard(clinic))}
+							<Box>
+								{/* Компонент сортировки для мобильной версии */}
+								<Box sx={{ mb: 2 }}>
+									<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+										Найдено: {data?.total} клиник
+									</Typography>
+									<FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
+										<InputLabel id="mobile-sort-label">Сортировка</InputLabel>
+										<Select
+											labelId="mobile-sort-label"
+											value={`${filters.sort_by}|${filters.sort_direction}`}
+											label="Сортировка"
+											MenuProps={{
+												PaperProps: {
+													style: { maxHeight: 300 }
+												},
+												anchorOrigin: {
+													vertical: 'bottom',
+													horizontal: 'center',
+												},
+												transformOrigin: {
+													vertical: 'top',
+													horizontal: 'center',
+												}
+											}}
+											onChange={(e) => {
+												const [sortBy, sortDirection] = e.target.value.split('|');
+												setFilters({
+													...filters,
+													sort_by: sortBy,
+													sort_direction: sortDirection as 'asc' | 'desc'
+												});
+											}}
+										>
+											<MenuItem value="name|asc">Название (А-Я)</MenuItem>
+											<MenuItem value="name|desc">Название (Я-А)</MenuItem>
+											<MenuItem value="inn|asc">ИНН (по возрастанию)</MenuItem>
+											<MenuItem value="inn|desc">ИНН (по убыванию)</MenuItem>
+											<MenuItem value="last_visit_date|desc">Последний визит (сначала новые)</MenuItem>
+											<MenuItem value="last_visit_date|asc">Последний визит (сначала старые)</MenuItem>
+											<MenuItem value="visits_count|desc">Количество визитов (по убыванию)</MenuItem>
+											<MenuItem value="visits_count|asc">Количество визитов (по возрастанию)</MenuItem>
+											<MenuItem value="last_sale_date|desc">Последняя продажа (сначала новые)</MenuItem>
+											<MenuItem value="last_sale_date|asc">Последняя продажа (сначала старые)</MenuItem>
+										</Select>
+									</FormControl>
 								</Box>
-							) : (
-								// Десктопное представление
-								<TableContainer>
-									<Table>
-										<TableHead>
-											<TableRow>
-												<TableCell>
-													<TableSortLabel
-														active={filters.sort_by === 'name'}
-														direction={filters.sort_by === 'name' ? filters.sort_direction : 'asc'}
-														onClick={() => handleSortRequest('name')}
-													>
-														Название
-													</TableSortLabel>
-												</TableCell>
-												<TableCell>
-													<TableSortLabel
-														active={filters.sort_by === 'inn'}
-														direction={filters.sort_by === 'inn' ? filters.sort_direction : 'asc'}
-														onClick={() => handleSortRequest('inn')}
-													>
-														ИНН
-													</TableSortLabel>
-												</TableCell>
-												<TableCell>Основной менеджер</TableCell>
-												<TableCell>
-													<TableSortLabel
-														active={filters.sort_by === 'last_visit_date'}
-														direction={filters.sort_by === 'last_visit_date' ? filters.sort_direction : 'asc'}
-														onClick={() => handleSortRequest('last_visit_date')}
-													>
-														Дата последнего визита
-													</TableSortLabel>
-												</TableCell>
-												<TableCell>
-													<TableSortLabel
-														active={filters.sort_by === 'visits_count'}
-														direction={filters.sort_by === 'visits_count' ? filters.sort_direction : 'asc'}
-														onClick={() => handleSortRequest('visits_count')}
-													>
-														Количество визитов
-													</TableSortLabel>
-												</TableCell>
-												<TableCell>
-													<TableSortLabel
-														active={filters.sort_by === 'last_sale_date'}
-														direction={filters.sort_by === 'last_sale_date' ? filters.sort_direction : 'asc'}
-														onClick={() => handleSortRequest('last_sale_date')}
-													>
-														Дата последней продажи
-													</TableSortLabel>
-												</TableCell>
-												<TableCell>Сумма продажи</TableCell>
-												<TableCell>Статус синхронизации</TableCell>
-												<TableCell>Действия</TableCell>
-											</TableRow>
-										</TableHead>
-										<TableBody>
-											{data?.items?.map((clinic: Clinic) => (
-												<TableRow key={clinic.id}>
-													<TableCell>{clinic.name}</TableCell>
-													<TableCell>{clinic.inn || '-'}</TableCell>
-													<TableCell>{clinic.main_manager || '-'}</TableCell>
-													<TableCell>{formatDate(clinic.last_visit_date)}</TableCell>
-													<TableCell>{clinic.visits_count || '0'}</TableCell>
-													<TableCell>{formatDate(clinic.last_sale_date)}</TableCell>
-													<TableCell>{clinic.document_amount ? `${clinic.document_amount} ₽` : '-'}</TableCell>
-													<TableCell>
-														<Chip
-															size='small'
-															label={clinic.sync_status}
-															color={getSyncStatusColor(clinic.sync_status)}
-														/>
-													</TableCell>
-													<TableCell>
-														<IconButton
-															size='small'
-															onClick={() => handleEditClick(clinic)}
-															disabled={loading === clinic.id}
-														>
-															{loading === clinic.id ? <CircularProgress size={20} /> : <EditIcon />}
-														</IconButton>
-													</TableCell>
-												</TableRow>
-											))}
-										</TableBody>
-									</Table>
-
-								</TableContainer>
-							)}
+								{data?.items?.map((clinic: Clinic) => renderMobileClinicCard(clinic))}
+							</Box>
 
 							<TablePagination
 								component='div'
@@ -924,6 +818,21 @@ const ClinicsListPage: React.FC = () => {
 					</Button>
 				</DialogActions>
 			</Dialog>
+
+			<Fab
+				color="primary"
+				onClick={handleOpenCreateModal}
+				sx={{
+					position: 'fixed',
+					bottom: 84, // Above bottom nav
+					right: 'calc(50% - 280px)', // Centered wrapper logic
+					'@media (max-width: 600px)': {
+						right: 20,
+					}
+				}}
+			>
+				<AddCircleOutlineIcon fontSize="large" />
+			</Fab>
 		</Box>
 	)
 }

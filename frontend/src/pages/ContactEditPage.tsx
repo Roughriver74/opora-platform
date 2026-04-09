@@ -29,13 +29,16 @@ import {
   Switch,
   FormControlLabel,
   FormHelperText,
+  Fab,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material'
 import { LoadingButton } from '@mui/lab'
 import { useForm, Controller } from 'react-hook-form'
 import { contactService } from '../services/contactService'
 import { Contact, ContactUpdate } from '../types/contact'
 import { adminApi, FieldMapping } from '../services/adminApi'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import SyncIcon from '@mui/icons-material/Sync'
 import SaveIcon from '@mui/icons-material/Save'
 import PersonIcon from '@mui/icons-material/Person'
@@ -59,6 +62,8 @@ const ContactEditPage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   // Получаем данные из state при навигации
   const locationState = location.state as {
@@ -537,104 +542,109 @@ const ContactEditPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between' }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(-1)}
-          variant="outlined"
-        >
-          Назад
-        </Button>
-        <Box>
-          <LoadingButton
-            startIcon={<SyncIcon />}
-            variant="outlined"
-            color="primary"
+    <Box sx={{ pb: 10, minHeight: '100%', bgcolor: 'background.default' }}>
+      {/* Mobile Top Header Area */}
+      <Box
+        sx={{
+          px: 1,
+          pt: 1,
+          pb: 1,
+          display: 'flex',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          bgcolor: 'background.paper',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          mb: 2,
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}
+      >
+        <IconButton onClick={() => navigate(-1)} sx={{ color: 'primary.main' }}>
+          <ChevronLeftIcon fontSize="large" />
+        </IconButton>
+        <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1 }}>
+          Редактирование контакта
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton 
+            color="primary" 
             onClick={() => syncMutation.mutate()}
-            loading={isBitrixLoading}
             disabled={isBitrixLoading || !contact?.bitrix_id}
-            sx={{ mr: 1 }}
+            sx={{ bgcolor: 'action.hover' }}
           >
-            Синхронизировать с Bitrix24
-          </LoadingButton>
-          <LoadingButton
-            startIcon={<SaveIcon />}
-            variant="contained"
-            color="primary"
-            onClick={handleSubmit}
-            loading={updateMutation.isLoading || updateBitrixMutation.isLoading}
-            disabled={updateMutation.isLoading || updateBitrixMutation.isLoading}
-          >
-            Сохранить
-          </LoadingButton>
+            {isBitrixLoading ? <CircularProgress size={20} /> : <SyncIcon />}
+          </IconButton>
         </Box>
       </Box>
 
-      {bitrixTimeout && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Запрос к Bitrix24 выполняется дольше обычного. Пожалуйста, подождите...
-        </Alert>
-      )}
+      <Box sx={{ px: { xs: 2, md: 3 }, maxWidth: 800, mx: 'auto' }}>
+        {bitrixTimeout && (
+          <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+            Запрос к Bitrix24 выполняется дольше обычного. Пожалуйста, подождите...
+          </Alert>
+        )}
 
-      {contact?.bitrix_id ? (
-        <Chip
-          icon={<PersonIcon />}
-          label={`ID в Bitrix24: ${contact.bitrix_id}`}
-          variant="outlined"
-          sx={{ mb: 2 }}
-        />
-      ) : (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          Этот контакт еще не синхронизирован с Bitrix24
-        </Alert>
-      )}
+        {contact?.bitrix_id ? (
+          <Chip
+            icon={<PersonIcon />}
+            label={`ID: ${contact.bitrix_id}`}
+            variant="filled"
+            color="primary"
+            sx={{ mb: 2, bgcolor: theme.palette.mode === 'light' ? 'primary.light' : undefined, color: 'primary.dark', fontWeight: 500 }}
+          />
+        ) : (
+          <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+            Этот контакт еще не синхронизирован с Bitrix24
+          </Alert>
+        )}
 
-      {renderSyncStatus()}
+        {renderSyncStatus()}
 
-      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Основная информация
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Имя контакта"
-              value={formValues.name || ''}
-              onChange={e => handleFieldChange('name', e.target.value)}
-              error={!!formErrors.name}
-              helperText={formErrors.name}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Тип контакта</InputLabel>
-              <Select
-                value={formValues.contact_type || 'LPR'}
-                onChange={e => handleFieldChange('contact_type', e.target.value)}
-                label="Тип контакта"
-              >
-                <MenuItem value="LPR">ЛПР</MenuItem>
-                <MenuItem value="OTHER">Другой</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Контактная информация
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Typography variant="subtitle1" gutterBottom>
-              Email
+        <Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+              Основная информация
             </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Имя контакта"
+                  value={formValues.name || ''}
+                  onChange={e => handleFieldChange('name', e.target.value)}
+                  error={!!formErrors.name}
+                  helperText={formErrors.name}
+                  required
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Тип контакта</InputLabel>
+                  <Select
+                    value={formValues.contact_type || 'LPR'}
+                    onChange={e => handleFieldChange('contact_type', e.target.value)}
+                    label="Тип контакта"
+                  >
+                    <MenuItem value="LPR">ЛПР</MenuItem>
+                    <MenuItem value="OTHER">Другой</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        <Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+              Контактная информация
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Email
+                </Typography>
             <MultiFieldDisplay
               fieldName="email"
               displayName="Email"
@@ -656,13 +666,14 @@ const ContactEditPage: React.FC = () => {
             />
           </Grid>
         </Grid>
-      </Paper>
+      </CardContent>
+    </Card>
 
-      <Paper elevation={2} sx={{ p: 3 }}>
-        <Typography variant="h5" gutterBottom>
+    <Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3 }}>
+      <CardContent>
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
           Дополнительная информация
         </Typography>
-        <Divider sx={{ mb: 2 }} />
         <Grid container spacing={3}>
           {fieldMappings
             .filter(mapping => mapping.entity_type === 'contact')
@@ -686,8 +697,29 @@ const ContactEditPage: React.FC = () => {
                 </Grid>
               )
             })}
-        </Grid>
-      </Paper>
+          </Grid>
+        </CardContent>
+      </Card>
+      </Box>
+
+      {/* Floating Save Button */}
+      <Fab
+        color='primary'
+        sx={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          zIndex: 1000,
+        }}
+        onClick={handleSubmit}
+        disabled={updateMutation.isLoading || updateBitrixMutation.isLoading}
+      >
+        {updateMutation.isLoading || updateBitrixMutation.isLoading ? (
+          <CircularProgress size={24} color='inherit' />
+        ) : (
+          <SaveIcon />
+        )}
+      </Fab>
     </Box>
   )
 }

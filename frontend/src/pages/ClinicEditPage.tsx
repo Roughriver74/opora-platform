@@ -3268,239 +3268,29 @@ const ClinicEditPage: React.FC = () => {
 										</Box>
 									</Grid>
 
-									{/* Пользовательские секции */}
-									{customSections.map(section => (
-										<Grid item xs={12} key={section.id}>
-											<Box
-												sx={{
-													mb: 3,
-													border: '1px solid',
-													borderColor: 'divider',
-													borderRadius: 1,
-													p: 2,
-													position: 'relative',
-												}}
-												onDragOver={e => e.preventDefault()}
-												onDrop={() => handleDrop(section.id)}
-											>
-												<Box
-													sx={{
-														display: 'flex',
-														alignItems: 'center',
-														justifyContent: 'space-between',
-														mb: 2,
-													}}
-												>
-													<Typography
-														variant='subtitle1'
-														sx={{
-															fontWeight: 'medium',
-															display: 'flex',
-															alignItems: 'center',
-															pb: 1,
-														}}
-													>
-														<LabelIcon sx={{ mr: 1 }} />
-														{section.name}
-													</Typography>
-													<Box>
-														{userProfile?.is_admin && (
-															<>
-																<IconButton
-																	size='small'
-																	onClick={() => handleEditSection(section)}
-																	sx={{ mr: 1 }}
-																>
-																	<EditIcon fontSize='small' />
-																</IconButton>
-																<IconButton
-																	size='small'
-																	onClick={() => handleDeleteSection(section.id)}
-																	sx={{ mr: 1 }}
-																>
-																	<DeleteIcon fontSize='small' />
-																</IconButton>
-																<IconButton
-																	size='small'
-																	onClick={() =>
-																		handleOpenFieldSelectionDialog(section.id)
-																	}
-																>
-																	<AddIcon fontSize='small' />
-																</IconButton>
-															</>
-														)}
-													</Box>
-												</Box>
-												<Divider sx={{ mb: 2 }} />
-
-												<Grid container spacing={2}>
-													{section.fields.map(fieldId => {
-														const mapping = fieldMappings.find(
-															m => String(m.id) === fieldId
-														)
-														if (!mapping) return null
-
-														const fieldName = mapping.app_field_name
-														const fieldValue = formValues[fieldName] || ''
-														const fieldError = formErrors[fieldName]
-														const displayValue =
-															fieldValue === null ? '' : fieldValue
-
-														// Определяем иконку на основе типа поля
-														let fieldIcon
-														if (
-															fieldName.includes('address') ||
-															mapping.field_type === 'address'
-														) {
-															fieldIcon = (
-																<LocationOnIcon color='action' sx={{ mr: 1 }} />
-															)
-														} else if (
-															fieldName.includes('date') ||
-															mapping.field_type === 'date'
-														) {
-															fieldIcon = (
-																<EventIcon color='action' sx={{ mr: 1 }} />
-															)
-														} else if (
-															mapping.field_type === 'list' ||
-															mapping.field_type === 'enum'
-														) {
-															fieldIcon = (
-																<ListIcon color='action' sx={{ mr: 1 }} />
-															)
-														} else if (mapping.field_type === 'boolean') {
-															fieldIcon = (
-																<CheckBoxIcon color='action' sx={{ mr: 1 }} />
-															)
-														} else if (
-															fieldName.includes('money') ||
-															fieldName.includes('price')
-														) {
-															fieldIcon = (
-																<MonetizationOnIcon
-																	color='action'
-																	sx={{ mr: 1 }}
-																/>
-															)
-														} else {
-															fieldIcon = (
-																<SubjectIcon color='action' sx={{ mr: 1 }} />
-															)
-														}
-
-														return (
-															<Grid
-																item
-																xs={12}
-																md={6}
-																key={mapping.id}
-																draggable
-																onDragStart={() => handleDragStart(fieldId)}
-															>
-																<Box sx={{ position: 'relative' }}>
-																	<Box
-																		sx={{
-																			position: 'absolute',
-																			right: 0,
-																			top: -15,
-																			zIndex: 1,
-																			display: 'flex',
-																		}}
-																	>
-																		<IconButton
-																			size='small'
-																			onClick={() =>
-																				handleRemoveFieldFromSection(
-																					section.id,
-																					fieldId
-																				)
-																			}
-																		>
-																			<DeleteIcon fontSize='small' />
-																		</IconButton>
-																		<DragIndicatorIcon
-																			fontSize='small'
-																			sx={{
-																				cursor: 'move',
-																				color: 'action.active',
-																			}}
-																		/>
-																	</Box>
-
-																	{renderFieldByType(
-																		mapping,
-																		fieldName,
-																		displayValue,
-																		fieldError,
-																		fieldIcon
-																	)}
-																</Box>
-
-
-															</Grid>
-														)
-													})}
-
-													{/* Кнопка для добавления поля в секцию */}
-												</Grid>
-											</Box>
-										</Grid>
-									))}
-
-									{/* Кнопка для добавления новой секции */}
-									{userProfile?.is_admin && (
-										<Grid item xs={12}>
-											<Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-												<Button
-													variant='contained'
-													color='primary'
-													startIcon={<AddIcon />}
-													onClick={handleAddSection}
-													fullWidth
-												>
-													Добавить новую секцию
-												</Button>
-											</Box>
-										</Grid>
-									)}
+									{/* Пользовательские секции удалены, все поля отправляются в Дополнительные поля */}
 
 
 
-									{/* Остальные поля, не добавленные в секции */}
+									{/* Остальные поля */}
 									{(() => {
-										const sections = Array.from(
-											new Set(
-												fieldMappings
-													.filter(
-														m =>
-															m.app_field_name !== 'email' &&
-															m.app_field_name !== 'phone' &&
-															!customSections
-																.flatMap(s => s.fields)
-																.includes(m.id.toString()) &&
-															!m.section
-													)
-													.map(m => m.section || '')
-											)
-										).filter(section => section !== '')
-
 										const unusedFields = fieldMappings.filter(
 											m =>
 												m.app_field_name !== 'email' &&
 												m.app_field_name !== 'phone' &&
-												!customSections
-													.flatMap(s => s.fields)
-													.includes(m.id.toString()) &&
-												!m.section
+												m.app_field_name !== 'name' &&
+												m.app_field_name !== 'company_type' &&
+												m.app_field_name !== 'address' &&
+												m.app_field_name !== 'inn' &&
+												m.app_field_name !== 'city' &&
+												m.app_field_name !== 'country'
 										)
 
 										return (
 											<>
 												{unusedFields.length > 0 && (
 													<Grid item xs={12}>
-														<Box sx={{ mb: 3 }}>
+														<Box sx={{ mb: 3, mt: 2 }}>
 															<Typography
 																variant='subtitle1'
 																sx={{
@@ -3514,7 +3304,7 @@ const ClinicEditPage: React.FC = () => {
 																}}
 															>
 																<SubjectIcon sx={{ mr: 1 }} />
-																Другие поля
+																Дополнительные поля
 															</Typography>
 
 															<Grid container spacing={2}>
@@ -3915,123 +3705,6 @@ const ClinicEditPage: React.FC = () => {
 					>
 						{isEditMode ? 'Сохранить' : 'Создать'}
 					</LoadingButton>
-				</DialogActions>
-			</Dialog>
-			<Dialog
-				open={sectionDialogOpen}
-				onClose={() => {
-					setSectionDialogOpen(false)
-					setCurrentSection(null)
-				}}
-				fullWidth
-				maxWidth='sm'
-			>
-				<DialogTitle>
-					{currentSection && currentSection.id
-						? 'Редактировать секцию'
-						: 'Создать новую секцию'}
-				</DialogTitle>
-				<DialogContent>
-					<TextField
-						autoFocus
-						margin='dense'
-						label='Название секции'
-						fullWidth
-						value={currentSection?.name || ''}
-						onChange={e =>
-							setCurrentSection(prev =>
-								prev ? { ...prev, name: e.target.value } : null
-							)
-						}
-						sx={{ mb: 3 }}
-					/>
-				</DialogContent>
-				<DialogActions>
-					<Button
-						onClick={() => {
-							setSectionDialogOpen(false)
-							setCurrentSection(null)
-						}}
-					>
-						Отмена
-					</Button>
-					<Button
-						onClick={() => currentSection && handleSaveSection(currentSection)}
-						variant='contained'
-						color='primary'
-						disabled={!currentSection?.name}
-					>
-						Сохранить
-					</Button>
-				</DialogActions>
-			</Dialog>
-			<Dialog
-				open={fieldSelectionDialogOpen}
-				onClose={() => setFieldSelectionDialogOpen(false)}
-				fullWidth
-				maxWidth='md'
-			>
-				<DialogTitle>Выберите поля для добавления в секцию</DialogTitle>
-				<DialogContent>
-					{availableFields.length === 0 ? (
-						<Typography variant='body1' sx={{ py: 2 }}>
-							Все доступные поля уже добавлены в секции
-						</Typography>
-					) : (
-						<>
-							<Typography variant='body2' color='textSecondary' sx={{ mb: 2 }}>
-								Выберите поля, которые хотите добавить в секцию
-							</Typography>
-							<Grid container spacing={2}>
-								{availableFields.map(field => (
-									<Grid item xs={12} sm={6} md={4} key={field.id}>
-										<FormControlLabel
-											control={
-												<Checkbox
-													checked={selectedFields.includes(field.id.toString())}
-													onChange={() =>
-														handleFieldSelectionChange(field.id.toString())
-													}
-												/>
-											}
-											label={
-												<Box sx={{ display: 'flex', alignItems: 'center' }}>
-													{field.field_type === 'address' ? (
-														<LocationOnIcon fontSize='small' sx={{ mr: 1 }} />
-													) : field.field_type === 'date' ? (
-														<EventIcon fontSize='small' sx={{ mr: 1 }} />
-													) : field.field_type === 'list' ||
-														field.field_type === 'enum' ? (
-														<ListIcon fontSize='small' sx={{ mr: 1 }} />
-													) : field.field_type === 'boolean' ? (
-														<CheckBoxIcon fontSize='small' sx={{ mr: 1 }} />
-													) : (
-														<SubjectIcon fontSize='small' sx={{ mr: 1 }} />
-													)}
-													<Typography variant='body2'>
-														{field.display_name}
-													</Typography>
-												</Box>
-											}
-										/>
-									</Grid>
-								))}
-							</Grid>
-						</>
-					)}
-				</DialogContent>
-				<DialogActions>
-					<Button onClick={() => setFieldSelectionDialogOpen(false)}>
-						Отмена
-					</Button>
-					<Button
-						onClick={handleFieldSelection}
-						variant='contained'
-						color='primary'
-						disabled={selectedFields.length === 0}
-					>
-						Добавить выбранные поля
-					</Button>
 				</DialogActions>
 			</Dialog>
 			<Snackbar

@@ -2,15 +2,23 @@ import React, { useState, useEffect } from 'react'
 import {
 	Box,
 	Typography,
-	Paper,
+	Card,
+	CardContent,
 	Button,
 	Grid,
 	CircularProgress,
 	Alert,
-	Breadcrumbs,
-	Link as MuiLink,
+	IconButton,
+	Fab,
+	useTheme,
+	useMediaQuery
 } from '@mui/material'
-import { useNavigate, useParams, Link, useLocation } from 'react-router-dom'
+import {
+	ChevronLeft as ChevronLeftIcon,
+	Save as SaveIcon,
+	Business as BusinessIcon
+} from '@mui/icons-material'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { clinicService } from '../services/clinicService'
@@ -47,6 +55,9 @@ export const VisitCreatePage: React.FC = () => {
 	const companyIdFromState = location.state?.companyId
 	const companyId =
 		companyIdFromPath || companyIdFromUrl || companyIdFromState || ''
+
+	const theme = useTheme()
+	const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
 	const [formError, setFormError] = useState<string | null>(null)
 	const [isLoadingCompany, setIsLoadingCompany] = useState(false)
@@ -312,39 +323,58 @@ export const VisitCreatePage: React.FC = () => {
 	}
 
 	return (
-		<Box sx={{ p: 3 }}>
-			{/* Хлебные крошки */}
-			<Breadcrumbs aria-label='breadcrumb' sx={{ mb: 3 }}>
-				<MuiLink component={Link} to='/visits' color='inherit'>
-					Визиты
-				</MuiLink>
-				<Typography color='text.primary'>Создать</Typography>
-			</Breadcrumbs>
+		<Box sx={{ pb: 10, minHeight: '100%', bgcolor: 'background.default' }}>
+			{/* Mobile Header */}
+			<Box 
+				sx={{ 
+					px: 1, 
+					pt: 1, 
+					pb: 1, 
+					display: 'flex', 
+					justifyContent: 'space-between', 
+					alignItems: 'center',
+					position: 'sticky',
+					top: 0,
+					zIndex: 100,
+					bgcolor: 'background.paper',
+					boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+					mb: 2
+				}}
+			>
+				<IconButton onClick={() => navigate(-1)} sx={{ color: 'primary.main' }}>
+					<ChevronLeftIcon fontSize="large" />
+				</IconButton>
+				<Typography variant='h6' sx={{ fontWeight: 600 }}>
+					Новый визит
+				</Typography>
+				<Box sx={{ width: 48 }} /> {/* Placeholder to balance flex */}
+			</Box>
 
-			<Typography variant='h4' gutterBottom>
-				Создание нового визита
-			</Typography>
+			<Box sx={{ px: { xs: 2, md: 3 }, maxWidth: 800, mx: 'auto' }}>
+				{formError && (
+					<Alert severity='error' sx={{ mb: 2, borderRadius: 2 }}>
+						{formError}
+					</Alert>
+				)}
 
-			{formError && (
-				<Alert severity='error' sx={{ mb: 2 }}>
-					{formError}
-				</Alert>
-			)}
-
-			<Paper sx={{ p: 3 }}>
 				<form onSubmit={handleSubmit}>
 					<Grid container spacing={3}>
-						<Grid item xs={12} md={6}>
+						<Grid item xs={12}>
 							{companyId ? (
-								<Box sx={{ mb: 2 }}>
-									<Typography variant='subtitle1'>Клиника:</Typography>
-									<Typography variant='body1'>{visit.company_name}</Typography>
-									<Typography variant='body2' color='text.secondary'>
-										ID: {visit.company_id}
-									</Typography>
-								</Box>
+								<Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+									<CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+										<Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+											<BusinessIcon color="action" fontSize="small" sx={{ mr: 1 }} />
+											<Typography variant='subtitle2' color="text.secondary">Клиника</Typography>
+										</Box>
+										<Typography variant='body1' sx={{ fontWeight: 500, ml: 3.5 }}>{visit.company_name}</Typography>
+										<Typography variant='caption' color='text.secondary' sx={{ ml: 3.5, display: 'block' }}>
+											ID: {visit.company_id}
+										</Typography>
+									</CardContent>
+								</Card>
 							) : (
-								<Alert severity='warning' sx={{ mb: 2 }}>
+								<Alert severity='warning' sx={{ mb: 2, borderRadius: 2 }}>
 									Клиника не выбрана. Пожалуйста, вернитесь на страницу визитов
 									и выберите клинику.
 								</Alert>
@@ -353,38 +383,64 @@ export const VisitCreatePage: React.FC = () => {
 
 						{/* Динамические поля из админ-панели */}
 						<Grid item xs={12}>
-							<Typography variant='h6' sx={{ mb: 2 }}>
-								Данные визита
-							</Typography>
-							<DynamicFields
-								entityType='visit'
-								formData={visit}
-								onChange={handleDynamicFieldChange}
-								gridSize={{ xs: 12, md: 6 }}
-							/>
+							<Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+								<CardContent>
+									<Typography variant='subtitle1' sx={{ mb: 2, fontWeight: 600 }}>
+										Данные визита
+									</Typography>
+									<DynamicFields
+										entityType='visit'
+										formData={visit}
+										onChange={handleDynamicFieldChange}
+										gridSize={{ xs: 12, md: 6 }}
+									/>
+								</CardContent>
+							</Card>
 						</Grid>
-						<Grid item xs={12}>
-							<Box
-								sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}
-							>
-								<Button variant='outlined' onClick={() => navigate('/visits')}>
-									Отмена
-								</Button>
-								<Button
-									type='submit'
-									variant='contained'
-									color='primary'
-									disabled={createVisitMutation.isLoading || !visit.company_id}
-								>
-									{createVisitMutation.isLoading
-										? 'Создание...'
-										: 'Создать визит'}
-								</Button>
-							</Box>
-						</Grid>
+
+						{/* Desktop Save Button (Hidden on Mobile) */}
+						{!isMobile && (
+							<Grid item xs={12}>
+								<Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+									<Button variant='outlined' onClick={() => navigate(-1)} sx={{ borderRadius: 2 }}>
+										Отмена
+									</Button>
+									<Button
+										type='submit'
+										variant='contained'
+										color='primary'
+										sx={{ borderRadius: 2 }}
+										disabled={createVisitMutation.isLoading || !visit.company_id}
+									>
+										{createVisitMutation.isLoading ? <CircularProgress size={24} color="inherit" /> : 'Создать визит'}
+									</Button>
+								</Box>
+							</Grid>
+						)}
 					</Grid>
 				</form>
-			</Paper>
+			</Box>
+
+			{/* Mobile Floating Action Button */}
+			{isMobile && (
+				<Fab
+					color='primary'
+					sx={{
+						position: 'fixed',
+						bottom: 24,
+						right: 24,
+						zIndex: 1000,
+					}}
+					onClick={handleSubmit}
+					disabled={createVisitMutation.isLoading || !visit.company_id}
+				>
+					{createVisitMutation.isLoading ? (
+						<CircularProgress size={24} color='inherit' />
+					) : (
+						<SaveIcon />
+					)}
+				</Fab>
+			)}
 		</Box>
 	)
 }

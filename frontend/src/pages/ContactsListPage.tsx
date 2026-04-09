@@ -13,15 +13,16 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  IconButton,
-  Button,
-  Chip,
-  Alert
+  CardActionArea,
+  Avatar,
+  Divider,
+  Fab
 } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import EditIcon from '@mui/icons-material/Edit';
+import PersonIcon from '@mui/icons-material/Person';
 import SyncIcon from '@mui/icons-material/Sync';
+import AddIcon from '@mui/icons-material/Add';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { contactService, Contact } from '../services/contactService';
 
 const ContactsListPage: React.FC = () => {
@@ -74,95 +75,89 @@ const ContactsListPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
+    <Box p={3} pb={12}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5">
-          Contacts (LPR)
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          Контакты (ЛПР)
         </Typography>
-        <Box>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            sx={{ mr: 2 }}
-            onClick={() => navigate('/contacts/new')}
-          >
-            Add New Contact
-          </Button>
-          <LoadingButton
-            variant="outlined"
-            startIcon={<SyncIcon />}
-            loading={syncMutation.isLoading}
-            onClick={() => syncMutation.mutate()}
-          >
-            Sync with Bitrix24
-          </LoadingButton>
-        </Box>
+        <LoadingButton
+          variant="outlined"
+          size="small"
+          startIcon={<SyncIcon />}
+          loading={syncMutation.isLoading}
+          onClick={() => syncMutation.mutate()}
+          sx={{ borderRadius: '20px' }}
+        >
+          Синхронизация
+        </LoadingButton>
       </Box>
 
-      <Card>
-        <CardContent>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Phone</TableCell>
-                  <TableCell>Sync Status</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {contacts?.map((contact: Contact) => (
-                  <TableRow key={contact.id}>
-                    <TableCell>{contact.name}</TableCell>
-                    <TableCell>{contact.contact_type || 'LPR'}</TableCell>
-                    <TableCell>
-                      {contact.dynamic_fields?.email ? 
-                        Array.isArray(contact.dynamic_fields.email) ? 
-                          contact.dynamic_fields.email.map((item: any) => item.VALUE).join(', ') : 
-                          contact.dynamic_fields.email 
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {contact.dynamic_fields?.phone ? 
-                        Array.isArray(contact.dynamic_fields.phone) ? 
-                          contact.dynamic_fields.phone.map((item: any) => item.VALUE).join(', ') : 
-                          contact.dynamic_fields.phone 
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
+      {contacts?.length === 0 ? (
+        <Alert severity="info">
+          Контакты не найдены. Создайте новый контакт или синхронизируйтесь с Bitrix24.
+        </Alert>
+      ) : (
+        <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
+          {contacts?.map((contact: Contact, index: number) => {
+            const email = contact.dynamic_fields?.email
+              ? Array.isArray(contact.dynamic_fields.email)
+                ? contact.dynamic_fields.email.map((item: any) => item.VALUE).join(', ')
+                : contact.dynamic_fields.email
+              : '';
+            
+            const phone = contact.dynamic_fields?.phone
+              ? Array.isArray(contact.dynamic_fields.phone)
+                ? contact.dynamic_fields.phone.map((item: any) => item.VALUE).join(', ')
+                : contact.dynamic_fields.phone
+              : '';
+
+            return (
+              <React.Fragment key={contact.id}>
+                <CardActionArea onClick={() => navigate(`/contacts/${contact.id}`)}>
+                  <Box display="flex" alignItems="center" p={2}>
+                    <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
+                      <PersonIcon />
+                    </Avatar>
+                    <Box flexGrow={1}>
+                      <Typography variant="subtitle1" fontWeight="bold">
+                        {contact.name}
+                      </Typography>
+                      {phone && (
+                        <Typography variant="body2" color="text.secondary">
+                          {phone}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Box display="flex" flexDirection="column" alignItems="flex-end">
                       <Chip
                         size="small"
                         label={contact.sync_status || 'unknown'}
                         color={getSyncStatusColor(contact.sync_status || 'unknown')}
+                        sx={{ mb: 1, height: 20, fontSize: '0.7rem' }}
                       />
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        size="small"
-                        onClick={() => navigate(`/contacts/${contact.id}`)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {contacts?.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center">
-                      <Typography variant="body2" color="textSecondary" py={2}>
-                        No contacts found. Add a new contact or sync with Bitrix24.
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </CardContent>
-      </Card>
+                      <ArrowForwardIosIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                    </Box>
+                  </Box>
+                </CardActionArea>
+                {index < contacts.length - 1 && <Divider />}
+              </React.Fragment>
+            );
+          })}
+        </Card>
+      )}
+
+      <Fab
+        color="primary"
+        onClick={() => navigate('/contacts/new')}
+        sx={{
+          position: 'fixed',
+          bottom: 84,
+          right: 'calc(50% - 280px)',
+          '@media (max-width: 600px)': { right: 20 }
+        }}
+      >
+        <AddIcon fontSize="large" />
+      </Fab>
     </Box>
   );
 };

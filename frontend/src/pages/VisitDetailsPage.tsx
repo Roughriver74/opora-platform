@@ -41,6 +41,7 @@ import {
   ThumbDown as ThumbDownIcon,
   CalendarMonth as CalendarIcon,
   MapOutlined,
+  ChevronLeft as ChevronLeftIcon,
 } from "@mui/icons-material";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -690,11 +691,9 @@ export const VisitDetailsPage: React.FC = () => {
       sx={{
         maxWidth: "100%",
         overflow: "hidden",
-        pb: 4,
-        bgcolor:
-          theme.palette.mode === "dark"
-            ? "rgba(0, 0, 0, 0.1)"
-            : "rgba(0, 0, 0, 0.01)",
+        pb: 10,
+        bgcolor: "background.default",
+        minHeight: "100%",
       }}
     >
       {errorMessage && (
@@ -840,80 +839,52 @@ export const VisitDetailsPage: React.FC = () => {
         onClose={() => setTaskDialogOpen(false)}
         onSave={handleSaveTask}
       />
-      <Paper
+      <Box
         sx={{
-          p: isMobile ? 2 : 2,
-          mb: 2,
-          mx: isMobile ? 1 : 2,
-          borderRadius: isMobile ? 1 : 2,
+          px: 1,
+          pt: 1,
+          pb: 1,
           display: "flex",
           position: "sticky",
           top: 0,
-          zIndex: 10,
-          borderBottom: `1px solid ${theme.palette.divider}`,
-          boxShadow: 3,
-          right: 0,
-          left: 0,
-          mr: 0,
-          ml: 0,
+          zIndex: 100,
+          bgcolor: "background.paper",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+          mb: 2,
+          alignItems: "center",
         }}
-        elevation={2}
       >
-        <Box display="flex" alignItems="center" gap={1}>
-          <IconButton
-            onClick={() => navigate("/visits")}
-            size={isMobile ? "small" : "medium"}
-            edge="start"
-            sx={{
-              color: theme.palette.primary.main,
-              "&:hover": {
-                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-              },
-            }}
-          >
-            <ArrowBackIcon fontSize={isMobile ? "small" : "medium"} />
-          </IconButton>
-          <Typography
-            variant={isMobile ? "h6" : "h5"}
-            component="h1"
-            noWrap
-            sx={{
-              fontWeight: 500,
-              flexGrow: 2,
-              color: theme.palette.text.primary,
-            }}
-          >
-            Редактирование визита
-          </Typography>
+        <IconButton
+          onClick={() => navigate("/visits")}
+          sx={{ color: "primary.main" }}
+        >
+          <ChevronLeftIcon fontSize="large" />
+        </IconButton>
+        <Typography
+          variant="h6"
+          component="h1"
+          noWrap
+          sx={{
+            fontWeight: 600,
+            flexGrow: 1,
+          }}
+        >
+          Редактирование визита
+        </Typography>
+        <Box sx={{ width: 48 }} /> {/* Placeholder to balance flex */}
+      </Box>
 
-          {/* Hidden auto-update button
-					<Button
-						ref={autoUpdateButtonRef}
-						onClick={handleAutoUpdate}
-						sx={{ display: 'none' }}
-					>
-						Auto Update
-					</Button> */}
-        </Box>
-      </Paper>
-
-      <Grid container spacing={isMobile ? 0 : 2} sx={{ px: 0 }}>
+      <Grid container spacing={isMobile ? 0 : 2} sx={{ px: isMobile ? 2 : 3, maxWidth: 1000, mx: "auto" }}>
         <Grid item xs={12} md={8}>
-          <Paper
+          <Card
+            variant="outlined"
             sx={{
               p: 2,
-              mx: "auto", // Центрируем сам Paper
-              maxWidth: "1200px", // Ограничьте ширину для больших экранов
-              mb: isMobile ? 2 : 3,
-              borderRadius: isMobile ? "1px" : 2,
-              transition: "all 0.2s ease",
-              "&:hover": {
-                boxShadow: 4,
-              },
-              ml: 0,
-              mr: 0,
+              mb: 3,
+              borderRadius: 3,
+              border: "none",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
             }}
-            elevation={isMobile ? 1 : 2}
           >
             <Box
               display="flex"
@@ -1314,19 +1285,17 @@ export const VisitDetailsPage: React.FC = () => {
                 </Grid>
               )}
             </Grid>
-          </Paper>
+          </Card>
 
-          <Paper
+          <Card
+            variant="outlined"
             sx={{
-              p: isMobile ? 2 : 2,
-              mb: isMobile ? 2 : 3,
-              borderRadius: isMobile ? 1 : 2,
-              transition: "all 0.2s ease",
-              "&:hover": {
-                boxShadow: 4,
-              },
+              p: 2,
+              mb: 3,
+              borderRadius: 3,
+              border: "none",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
             }}
-            elevation={2}
           >
             <Box
               display="flex"
@@ -1476,11 +1445,12 @@ export const VisitDetailsPage: React.FC = () => {
                 </Card>
               </Grid>
             </Grid>
-          </Paper>
+          </Card>
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Paper
+          <Card
+            variant="outlined"
             sx={{
               p: isMobile ? 2 : 3,
               mb: isMobile ? 2 : 3,
@@ -1492,7 +1462,6 @@ export const VisitDetailsPage: React.FC = () => {
                 boxShadow: 4,
               },
             }}
-            elevation={2}
           >
             <Typography
               variant={isMobile ? "subtitle1" : "h6"}
@@ -1689,7 +1658,7 @@ export const VisitDetailsPage: React.FC = () => {
                 </Typography>
               </Box>
             )}
-          </Paper>
+          </Card>
 
           {/* Add a button at the bottom for better mobile usage */}
           {isMobile && (

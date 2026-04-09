@@ -3,81 +3,81 @@ import { PaletteOptions } from '@mui/material/styles';
 export const lightPalette: PaletteOptions = {
   mode: 'light',
   primary: {
-    main: '#1A56DB',
-    light: '#3B82F6',
-    dark: '#1E40AF',
+    main: '#007AFF', // iOS System Blue
+    light: '#4DA1FF',
+    dark: '#005CE6',
     contrastText: '#FFFFFF',
   },
   secondary: {
-    main: '#7C3AED',
-    light: '#A78BFA',
-    dark: '#5B21B6',
+    main: '#5856D6', // iOS Purple
+    light: '#7A78E0',
+    dark: '#4543B3',
     contrastText: '#FFFFFF',
   },
   background: {
-    default: '#F8FAFC',
+    default: '#F2F2F7', // iOS Grouped Background Light
     paper: '#FFFFFF',
   },
   text: {
-    primary: '#0F172A',
-    secondary: '#475569',
+    primary: '#000000',
+    secondary: '#8E8E93', // iOS System Gray
   },
-  divider: '#E2E8F0',
+  divider: 'rgba(60, 60, 67, 0.15)', // iOS Separator
   error: {
-    main: '#DC2626',
-    light: '#FEE2E2',
+    main: '#FF3B30',
+    light: '#FF6961',
   },
   warning: {
-    main: '#D97706',
-    light: '#FEF3C7',
+    main: '#FF9500',
+    light: '#FFB340',
   },
   success: {
-    main: '#059669',
-    light: '#D1FAE5',
+    main: '#34C759',
+    light: '#65D480',
   },
   info: {
-    main: '#0284C7',
-    light: '#E0F2FE',
+    main: '#5AC8FA',
+    light: '#7ED6FB',
   },
 };
 
 export const darkPalette: PaletteOptions = {
   mode: 'dark',
   primary: {
-    main: '#60A5FA',
-    light: '#93C5FD',
-    dark: '#2563EB',
-    contrastText: '#0F172A',
+    main: '#0A84FF', // iOS Dark System Blue
+    light: '#42A1FF',
+    dark: '#0066D6',
+    contrastText: '#FFFFFF',
   },
   secondary: {
-    main: '#A78BFA',
-    light: '#C4B5FD',
-    dark: '#7C3AED',
-    contrastText: '#0F172A',
+    main: '#5E5CE6',
+    light: '#7D7BEB',
+    dark: '#4745C4',
+    contrastText: '#FFFFFF',
   },
   background: {
-    default: '#0F172A',
-    paper: '#1E293B',
+    default: '#000000', // iOS Pitch Black background
+    paper: '#1C1C1E', // iOS Secondary System Background Dark
   },
   text: {
-    primary: '#F1F5F9',
-    secondary: '#94A3B8',
+    primary: '#FFFFFF',
+    secondary: '#8E8E93',
   },
-  divider: '#334155',
+  divider: 'rgba(84, 84, 88, 0.65)',
   error: {
-    main: '#F87171',
-    light: '#7F1D1D',
+    main: '#FF453A',
+    light: '#FF675E',
   },
   warning: {
-    main: '#FBBF24',
-    light: '#78350F',
+    main: '#FF9F0A',
+    light: '#FFB43B',
   },
   success: {
-    main: '#34D399',
-    light: '#064E3B',
+    main: '#30D158',
+    light: '#5AD87A',
   },
   info: {
-    main: '#38BDF8',
-    light: '#0C4A6E',
+    main: '#64D2FF',
+    light: '#83DEFF',
   },
 };

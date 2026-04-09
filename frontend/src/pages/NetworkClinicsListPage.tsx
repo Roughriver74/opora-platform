@@ -32,7 +32,8 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    Stack
+    Stack,
+    Fab
 } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
@@ -426,35 +427,25 @@ const NetworkClinicsListPage: React.FC = () => {
     return (
         <Box sx={{ p: 3 }}>
 
-            <Card style={{ marginBottom: '24px' }}>
-                <CardContent>
-                    <Grid container spacing={2} alignItems="center" wrap="nowrap">
-                        {/* Кнопка "Назад" и текст */}
-                        <Grid item xs="auto" container alignItems="center" wrap="nowrap">
-                            <IconButton
-                                onClick={() => navigate(-1)}
-                                aria-label="Назад"
-                                size="small"
-                            >
-                                <ArrowBackIcon />
-                            </IconButton>
-                        </Grid>
-
-                        {/* Кнопка "Добавить филиал" */}
-                        <Grid item xs={12} md={2}>
-                            <Button
-                                variant="contained"
-                                color="primary"
-                                startIcon={<AddCircleOutlineIcon />}
-                                fullWidth
-                                onClick={handleOpenCreateModal}
-                            >
-                                Добавить филиал
-                            </Button>
-                        </Grid>
-                    </Grid>
-                </CardContent>
-            </Card>
+			<Card style={{ marginBottom: '24px' }}>
+				<CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+					<Grid container spacing={2} alignItems="center" wrap="nowrap">
+						<Grid item xs="auto" container alignItems="center" wrap="nowrap">
+							<IconButton
+								onClick={() => navigate(-1)}
+								aria-label="Назад"
+								size="small"
+								color="primary"
+							>
+								<ArrowBackIcon />
+							</IconButton>
+							<Typography variant="h6" sx={{ ml: 1, fontWeight: 700 }}>
+							  Сетевые клиники
+							</Typography>
+						</Grid>
+					</Grid>
+				</CardContent>
+			</Card>
 
 
 
@@ -467,100 +458,40 @@ const NetworkClinicsListPage: React.FC = () => {
                         </Alert>
                     ) : (
                         <>
-                            {isMobile ? (
-                                // Мобильное представление
-                                <Box>
-                                    <Box sx={{ mb: 2 }}>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                            Найдено: {data?.length} филиалов
-                                        </Typography>
-                                        {/* Сортировка */}
-                                        <FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
-                                            <InputLabel id="mobile-sort-label">Сортировка</InputLabel>
-                                            <Select
-                                                labelId="mobile-sort-label"
-                                                value={`${filters.sort_by}|${filters.sort_direction}`}
-                                                label="Сортировка"
-                                                MenuProps={{
-                                                    PaperProps: { style: { maxHeight: 300 } },
-                                                    anchorOrigin: { vertical: 'bottom', horizontal: 'center' },
-                                                    transformOrigin: { vertical: 'top', horizontal: 'center' },
-                                                }}
-                                                onChange={(e) => {
-                                                    const [sortBy, sortDirection] = e.target.value.split('|')
-                                                    setFilters({
-                                                        ...filters,
-                                                        sort_by: sortBy,
-                                                        sort_direction: sortDirection as 'asc' | 'desc',
-                                                    })
-                                                }}
-                                            >
-                                                <MenuItem value="name|asc">Название (А-Я)</MenuItem>
-                                                <MenuItem value="name|desc">Название (Я-А)</MenuItem>
-                                            </Select>
-                                        </FormControl>
-                                    </Box>
+							<Box>
+								<Box sx={{ mb: 2 }}>
+									<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+										Найдено: {data?.length} филиалов
+									</Typography>
+									{/* Сортировка */}
+									<FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
+										<InputLabel id="mobile-sort-label">Сортировка</InputLabel>
+										<Select
+											labelId="mobile-sort-label"
+											value={`${filters.sort_by}|${filters.sort_direction}`}
+											label="Сортировка"
+											MenuProps={{
+												PaperProps: { style: { maxHeight: 300 } },
+												anchorOrigin: { vertical: 'bottom', horizontal: 'center' },
+												transformOrigin: { vertical: 'top', horizontal: 'center' },
+											}}
+											onChange={(e) => {
+												const [sortBy, sortDirection] = e.target.value.split('|')
+												setFilters({
+													...filters,
+													sort_by: sortBy,
+													sort_direction: sortDirection as 'asc' | 'desc',
+												})
+											}}
+										>
+											<MenuItem value="name|asc">Название (А-Я)</MenuItem>
+											<MenuItem value="name|desc">Название (Я-А)</MenuItem>
+										</Select>
+									</FormControl>
+								</Box>
 
-                                    {data.data?.map((clinic: any) => renderMobileClinicCard(clinic))}
-                                </Box>
-                            ) : (
-                                <TableContainer>
-                                    <Table>
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell>
-                                                    <TableSortLabel
-                                                        active={filters.sort_by === 'name'}
-                                                        direction={filters.sort_by === 'name' ? filters.sort_direction : 'asc'}
-                                                        onClick={() => handleSortRequest('name')}
-                                                    >
-                                                        Филиал
-                                                    </TableSortLabel>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <TableSortLabel
-                                                        active={filters.sort_by === 'bitrix_id'}
-                                                        direction={filters.sort_by === 'bitrix_id' ? filters.sort_direction : 'asc'}
-                                                        onClick={() => handleSortRequest('bitrix_id')}
-                                                    >
-                                                        Bitrix ID
-                                                    </TableSortLabel>
-                                                </TableCell>
-                                                <TableCell>Статус синхронизации</TableCell>
-                                                <TableCell>ЛПР</TableCell>
-                                                <TableCell>Действия</TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            {data.data?.map((clinic: any) => (
-                                                <TableRow key={clinic.id}>
-                                                    <TableCell>{clinic.name || '-'}</TableCell>
-                                                    <TableCell>{clinic.bitrix_id || '-'}</TableCell>
-                                                    <TableCell>
-                                                        <Chip
-                                                            size="small"
-                                                            label={clinic.sync_status || 'неизвестен'}
-                                                            color={getSyncStatusColor(clinic.sync_status)}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <LprCell bitrixId={clinic.bitrix_id} />
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => handleEditClick(clinic)}
-                                                            disabled={loading === clinic.bitrix_id}
-                                                        >
-                                                            {loading === clinic.bitrix_id ? <CircularProgress size={20} /> : <EditIcon />}
-                                                        </IconButton>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
-                            )}
+								{data.data?.map((clinic: any) => renderMobileClinicCard(clinic))}
+							</Box>
 
                             <TablePagination
                                 component='div'
@@ -621,7 +552,20 @@ const NetworkClinicsListPage: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-
+			<Fab
+				color="primary"
+				onClick={handleOpenCreateModal}
+				sx={{
+					position: 'fixed',
+					bottom: 84, // Above bottom nav
+					right: 'calc(50% - 280px)', // Centered wrapper logic
+					'@media (max-width: 600px)': {
+						right: 20,
+					}
+				}}
+			>
+				<AddCircleOutlineIcon fontSize="large" />
+			</Fab>
         </Box>
     )
 }
