@@ -12,18 +12,27 @@ async def get_current_user(
     uow: UnitOfWork = Depends(get_uow), token: str = Depends(oauth2_scheme)
 ) -> User:
     return await uow.auth.get_current_user(token)
-    # return await uow.auth.get_single_user_by_email("shikunov.e@w-stom.ru")
 
 
 @logger()
 async def get_current_admin_user(
     current_user: User = Depends(get_current_user),
 ):
-    is_admin = current_user.id == 1 or ("admin" in current_user.email)
-
-    if not is_admin:
+    if not current_user.is_org_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Недостаточно прав доступа"
+        )
+    return current_user
+
+
+@logger()
+async def require_platform_admin(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if not current_user.is_platform_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Требуются права администратора платформы",
         )
     return current_user
 

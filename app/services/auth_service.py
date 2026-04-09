@@ -101,7 +101,7 @@ class AuthService:
         self, token: str = Depends(oauth2_scheme)
     ) -> User:
         user = await self.get_current_user(token)
-        if not user.is_admin:
+        if not user.is_org_admin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough permissions",

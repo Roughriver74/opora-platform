@@ -39,9 +39,13 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    # Добавляем информацию о правах администратора в JWT токен
     access_token = await uow.auth.create_access_token(
-        data={"sub": user.email, "is_admin": user.is_admin, "user_id": user.id},
+        data={
+            "sub": user.email,
+            "user_id": user.id,
+            "role": user.role,
+            "organization_id": user.organization_id,
+        },
         expires_delta=access_token_expires,
     )
     # Если это запрос на /login, возвращаем также информацию о пользователе
@@ -52,7 +56,10 @@ async def login_for_access_token(
             "user": {
                 "id": user.id,
                 "email": user.email,
-                "is_admin": user.is_admin,
+                "role": user.role,
+                "organization_id": user.organization_id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
                 "regions": user.regions or [],
             },
         }
