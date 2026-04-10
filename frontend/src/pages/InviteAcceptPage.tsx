@@ -57,7 +57,7 @@ export const InviteAcceptPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await api.post('/auth/accept-invite', {
+      const response = await api.post('/accept-invite', {
         token,
         password,
         first_name: firstName,

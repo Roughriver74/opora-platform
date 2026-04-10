@@ -9,7 +9,7 @@ import { VisitCreatePage } from './pages/VisitCreatePage';
 import ClinicEditPage from './pages/ClinicEditPage';
 import { AuthPage } from './pages/AuthPage';
 import { RegisterPage } from './pages/RegisterPage';
-import InviteAcceptPage from './pages/InviteAcceptPage';
+import { InviteAcceptPage } from './pages/InviteAcceptPage';
 import { ProfilePage } from './pages/ProfilePage';
 import FieldMappingPage from './pages/admin/FieldMappingPage';
 import ContactsListPage from './pages/ContactsListPage';

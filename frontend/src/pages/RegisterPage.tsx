@@ -53,7 +53,7 @@ export const RegisterPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await api.post('/auth/register-org', {
+      const response = await api.post('/register-org', {
         first_name: firstName,
         last_name: lastName,
         email,
