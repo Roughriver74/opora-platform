@@ -14,6 +14,7 @@ from app.routers import (
     custom_sections_routers,
     dadata_router,
     doctors_routers,
+    form_template_routers,
     help_routers,
     invitation_routers,
     network_clinic_routers,
@@ -111,6 +112,11 @@ app.include_router(
     visit_form_routers.router,
     prefix=f"{api_prefix}/visit-form",
     tags=["Шаблон формы визита"],
+)
+app.include_router(
+    form_template_routers.router,
+    prefix=api_prefix,
+    tags=["Шаблоны форм"],
 )
 
 
