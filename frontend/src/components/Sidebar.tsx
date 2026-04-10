@@ -40,7 +40,7 @@ const mainItems: NavItem[] = [
 ];
 
 const adminItems: NavItem[] = [
-  { label: 'Настройки', icon: <Settings />, path: '/admin' },
+  { label: 'Настройки', icon: <Settings />, path: '/admin/settings' },
   { label: 'Пользователи', icon: <Person />, path: '/admin/user-management' },
   { label: 'Удаление визитов', icon: <DeleteForever />, path: '/admin/delete-visits' },
 ];
@@ -63,10 +63,6 @@ function getInitials(firstName?: string, lastName?: string, email?: string): str
 }
 
 function isActive(pathname: string, itemPath: string): boolean {
-  // Special case for /admin: exact match to avoid /admin/user-management matching /admin
-  if (itemPath === '/admin') {
-    return pathname === '/admin';
-  }
   return pathname.startsWith(itemPath);
 }
 

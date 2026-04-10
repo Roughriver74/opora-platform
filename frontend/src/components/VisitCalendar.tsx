@@ -430,10 +430,12 @@ export const VisitCalendar: React.FC<VisitCalendarProps> = ({ onClose, openInMod
   // Если календарь открывается в модальном окне, оборачиваем контент
   if (openInModal && onClose) {
     return (
-      <Box sx={{ 
+      <Box sx={{
         position: 'relative',
         maxWidth: 800,
         width: '100%',
+        maxHeight: '90vh',
+        overflowY: 'auto',
         bgcolor: 'background.paper',
         boxShadow: 24,
         p: 3,
