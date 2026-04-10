@@ -2,15 +2,16 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm.attributes import flag_modified
 
-from app.models import VisitFormTemplate
+from app.models import FormTemplate
 from app.services.uow import UnitOfWork, get_uow
 from app.utils.utils import get_current_admin_user, get_current_user
-from sqlalchemy import select
 
 router = APIRouter()
 
-# --------------- Schemas ---------------
+# --------------- Schemas (kept for backward compatibility) ---------------
 
 
 class FieldDefinition(BaseModel):
@@ -59,7 +60,7 @@ DEFAULT_FIELDS: List[dict] = [
 ]
 
 
-# --------------- Endpoints ---------------
+# --------------- Endpoints (backward-compatible aliases for /form-templates/visit) ---------------
 
 
 @router.get("/", response_model=VisitFormTemplateResponse)
@@ -67,14 +68,15 @@ async def get_visit_form_template(
     uow: UnitOfWork = Depends(get_uow),
     current_user=Depends(get_current_user),
 ):
-    """Get the visit form template for the current user's organization.
-    Returns default template if none has been configured yet."""
-    result = await uow.session.execute(
-        select(VisitFormTemplate).where(
-            VisitFormTemplate.organization_id == current_user.organization_id
+    """Backward-compatible alias for GET /form-templates/visit."""
+    template = (
+        await uow.session.execute(
+            select(FormTemplate).where(
+                FormTemplate.organization_id == current_user.organization_id,
+                FormTemplate.entity_type == "visit",
+            )
         )
-    )
-    template = result.scalars().first()
+    ).scalars().first()
 
     if template is None:
         return VisitFormTemplateResponse(
@@ -84,7 +86,7 @@ async def get_visit_form_template(
     return VisitFormTemplateResponse(
         id=template.id,
         organization_id=template.organization_id,
-        fields=[FieldDefinition(**f) for f in (template.fields or [])],
+        fields=[FieldDefinition(**{k: v for k, v in f.items() if k in FieldDefinition.model_fields}) for f in (template.fields or [])],
     )
 
 
@@ -94,29 +96,29 @@ async def update_visit_form_template(
     uow: UnitOfWork = Depends(get_uow),
     current_user=Depends(get_current_admin_user),
 ):
-    """Create or update the visit form template for the current org.
-    Only org admins can modify it."""
+    """Backward-compatible alias for PUT /form-templates/visit."""
     org_id = current_user.organization_id
 
-    result = await uow.session.execute(
-        select(VisitFormTemplate).where(
-            VisitFormTemplate.organization_id == org_id
+    template = (
+        await uow.session.execute(
+            select(FormTemplate).where(
+                FormTemplate.organization_id == org_id,
+                FormTemplate.entity_type == "visit",
+            )
         )
-    )
-    template = result.scalars().first()
+    ).scalars().first()
 
-    fields_data = [f.dict() for f in payload.fields]
+    fields_data = [f.model_dump() for f in payload.fields]
 
     if template is None:
-        template = VisitFormTemplate(
+        template = FormTemplate(
             organization_id=org_id,
+            entity_type="visit",
             fields=fields_data,
         )
         uow.session.add(template)
     else:
         template.fields = fields_data
-        # SQLAlchemy needs a hint that the JSONB column changed
-        from sqlalchemy.orm.attributes import flag_modified
         flag_modified(template, "fields")
 
     await uow.session.commit()
@@ -125,5 +127,5 @@ async def update_visit_form_template(
     return VisitFormTemplateResponse(
         id=template.id,
         organization_id=template.organization_id,
-        fields=[FieldDefinition(**f) for f in (template.fields or [])],
+        fields=[FieldDefinition(**{k: v for k, v in f.items() if k in FieldDefinition.model_fields}) for f in (template.fields or [])],
     )
