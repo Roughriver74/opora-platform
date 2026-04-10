@@ -62,13 +62,13 @@ interface VisitFormTemplate {
   fields: FieldDefinition[];
 }
 
-// Status color dot mapping (iOS palette)
+// Status color dot mapping (landing palette)
 const statusDotColors: Record<string, string> = {
-  planned: '#007AFF',     // blue
-  in_progress: '#FF9500', // orange
-  completed: '#34C759',   // green
-  cancelled: '#8E8E93',   // gray
-  failed: '#FF3B30',      // red
+  planned: '#2563EB',     // Blue-600
+  in_progress: '#F59E0B', // Amber-500
+  completed: '#059669',   // Emerald-600
+  cancelled: '#78716C',   // Stone-500
+  failed: '#EF4444',      // Red-500
 };
 
 // --------------- Component ---------------

@@ -32,13 +32,13 @@ import {
   visitStatusDisplayNames,
 } from '../services/visitService';
 
-// iOS-style status dot colors
+// Status dot colors matching landing palette
 const statusDotColors: Record<string, string> = {
-  planned: '#007AFF',     // iOS blue
-  in_progress: '#FF9500', // iOS orange
-  completed: '#34C759',   // iOS green
-  failed: '#FF3B30',      // iOS red
-  cancelled: '#8E8E93',   // iOS gray
+  planned: '#2563EB',     // Blue-600
+  in_progress: '#F59E0B', // Amber-500
+  completed: '#059669',   // Emerald-600
+  failed: '#EF4444',      // Red-500
+  cancelled: '#78716C',   // Stone-500
 };
 
 export const VisitsPage: React.FC = () => {

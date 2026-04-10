@@ -1,40 +1,50 @@
 import { Components, Theme } from '@mui/material/styles';
 
+// OPORA Component Overrides — matches landing page design
+// borderRadius: 8 (small), 12 (cards), 16 (buttons/pills)
+// Shadows: subtle, warm-toned
+
 export const getComponentOverrides = (mode: 'light' | 'dark'): Components<Theme> => ({
   MuiCssBaseline: {
     styleOverrides: {
       body: {
-        WebkitFontSmoothing: 'antialiased',
-        overscrollBehaviorY: 'none', // Prevent bounce effect breaking standard feel
-        scrollbarWidth: 'none', // Hide standard scrollbar for native feel
-        '&::-webkit-scrollbar': {
-          display: 'none'
-        }
+        scrollbarWidth: 'thin',
+        scrollbarColor: mode === 'light' ? '#D6D3D1 transparent' : '#44403C transparent',
+      },
+      '::-webkit-scrollbar': {
+        width: '6px',
+        height: '6px',
+      },
+      '::-webkit-scrollbar-thumb': {
+        borderRadius: '3px',
+        background: mode === 'light' ? '#D6D3D1' : '#44403C',
       },
     },
   },
   MuiButton: {
     defaultProps: {
       disableElevation: true,
-      variant: 'contained',
-      fullWidth: true,
     },
     styleOverrides: {
       root: {
-        borderRadius: 16, // Very round buttons
-        padding: '14px 20px', // Thicker mobile size
+        borderRadius: 8,
+        padding: '10px 20px',
         fontWeight: 600,
-        fontSize: '1rem',
         textTransform: 'none',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.2s ease',
       },
       contained: {
+        '&:hover': {
+          transform: 'translateY(-1px)',
+          boxShadow: mode === 'light'
+            ? '0 4px 12px rgba(5, 150, 105, 0.3)'
+            : '0 4px 12px rgba(52, 211, 153, 0.2)',
+        },
         '&:active': {
-          transform: 'scale(0.96)',
+          transform: 'scale(0.98)',
         },
       },
       outlined: {
-        padding: '12.5px 20px',
         borderWidth: '1.5px',
         '&:hover': {
           borderWidth: '1.5px',
@@ -45,18 +55,24 @@ export const getComponentOverrides = (mode: 'light' | 'dark'): Components<Theme>
   MuiCard: {
     styleOverrides: {
       root: {
-        borderRadius: 20, // Mobile style large radius
-        border: 'none', // Native cards usually just have subtle shadows or flat background
+        borderRadius: 12,
+        border: mode === 'light' ? '1px solid #E7E5E4' : '1px solid #292524',
         boxShadow: mode === 'light'
-          ? '0 2px 10px rgba(0, 0, 0, 0.04)'
-          : '0 2px 10px rgba(0, 0, 0, 0.3)',
+          ? '0 1px 2px rgba(0, 0, 0, 0.05)'
+          : '0 1px 3px rgba(0, 0, 0, 0.3)',
+        transition: 'box-shadow 0.2s ease',
+        '&:hover': {
+          boxShadow: mode === 'light'
+            ? '0 4px 12px rgba(0, 0, 0, 0.08)'
+            : '0 4px 12px rgba(0, 0, 0, 0.4)',
+        },
       },
     },
   },
   MuiPaper: {
     styleOverrides: {
       root: {
-        borderRadius: 20,
+        borderRadius: 12,
         backgroundImage: 'none',
       },
     },
@@ -64,28 +80,36 @@ export const getComponentOverrides = (mode: 'light' | 'dark'): Components<Theme>
   MuiAppBar: {
     styleOverrides: {
       root: {
-        backgroundColor: mode === 'light' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(28, 28, 30, 0.85)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)', // Safari support
-        color: mode === 'light' ? '#000000' : '#FFFFFF',
+        backgroundImage: 'none',
+        backgroundColor: mode === 'light'
+          ? 'rgba(250, 250, 249, 0.9)'
+          : 'rgba(12, 10, 9, 0.9)',
+        backdropFilter: 'blur(8px)',
+        color: mode === 'light' ? '#1C1917' : '#FAFAF9',
         boxShadow: 'none',
-        borderBottom: `0.5px solid ${mode === 'light' ? 'rgba(60, 60, 67, 0.3)' : 'rgba(84, 84, 88, 0.65)'}`,
+        borderBottom: mode === 'light'
+          ? '1px solid #E7E5E4'
+          : '1px solid #292524',
+      },
+    },
+  },
+  MuiDrawer: {
+    styleOverrides: {
+      paper: {
+        backgroundColor: mode === 'light' ? '#FFFFFF' : '#1C1917',
+        borderRight: mode === 'light' ? '1px solid #E7E5E4' : '1px solid #292524',
       },
     },
   },
   MuiTextField: {
     defaultProps: {
       variant: 'outlined',
-      size: 'medium', // Full height for touch targets
+      size: 'small',
     },
     styleOverrides: {
       root: {
         '& .MuiOutlinedInput-root': {
-          borderRadius: 16,
-          backgroundColor: mode === 'light' ? '#FFFFFF' : '#1C1C1E', // Fill color
-        },
-        '& .MuiOutlinedInput-notchedOutline': {
-          borderColor: mode === 'light' ? '#E5E5EA' : '#3A3A3C',
+          borderRadius: 8,
         },
       },
     },
@@ -93,37 +117,109 @@ export const getComponentOverrides = (mode: 'light' | 'dark'): Components<Theme>
   MuiChip: {
     styleOverrides: {
       root: {
-        borderRadius: 12,
-        fontWeight: 600,
+        borderRadius: 6,
+        fontWeight: 500,
         fontSize: '0.75rem',
       },
     },
   },
-  MuiList: {
+  MuiTableCell: {
     styleOverrides: {
       root: {
-        padding: '8px',
-      }
-    }
+        borderBottom: mode === 'light' ? '1px solid #F5F5F4' : '1px solid #292524',
+      },
+      head: {
+        fontWeight: 600,
+        backgroundColor: mode === 'light' ? '#FAFAF9' : '#0C0A09',
+      },
+    },
   },
-  MuiListItem: {
+  MuiTableRow: {
     styleOverrides: {
       root: {
+        '&:hover': {
+          backgroundColor: mode === 'light'
+            ? 'rgba(5, 150, 105, 0.04)'
+            : 'rgba(52, 211, 153, 0.06)',
+        },
+      },
+    },
+  },
+  MuiDialog: {
+    styleOverrides: {
+      paper: {
         borderRadius: 16,
-        marginBottom: '8px',
-        backgroundColor: mode === 'light' ? '#FFFFFF' : '#1C1C1E', // List items as cards
-      }
-    }
+        boxShadow: mode === 'light'
+          ? '0 20px 40px rgba(0, 0, 0, 0.12)'
+          : '0 20px 40px rgba(0, 0, 0, 0.5)',
+      },
+    },
+  },
+  MuiAlert: {
+    styleOverrides: {
+      root: {
+        borderRadius: 8,
+      },
+    },
+  },
+  MuiTooltip: {
+    styleOverrides: {
+      tooltip: {
+        borderRadius: 6,
+        fontSize: '0.75rem',
+      },
+    },
+  },
+  MuiTab: {
+    styleOverrides: {
+      root: {
+        textTransform: 'none',
+        fontWeight: 500,
+        minHeight: 44,
+      },
+    },
+  },
+  MuiListItemButton: {
+    styleOverrides: {
+      root: {
+        borderRadius: 8,
+        margin: '2px 8px',
+        '&.Mui-selected': {
+          backgroundColor: mode === 'light'
+            ? 'rgba(5, 150, 105, 0.08)'
+            : 'rgba(52, 211, 153, 0.12)',
+          '&:hover': {
+            backgroundColor: mode === 'light'
+              ? 'rgba(5, 150, 105, 0.12)'
+              : 'rgba(52, 211, 153, 0.16)',
+          },
+        },
+      },
+    },
   },
   MuiFab: {
     styleOverrides: {
       root: {
-        borderRadius: 24, // Round but large
-        height: 64,
-        width: 64,
+        borderRadius: 12,
         boxShadow: mode === 'light'
-          ? '0 8px 24px rgba(0, 122, 255, 0.4)'
-          : '0 8px 24px rgba(10, 132, 255, 0.3)',
+          ? '0 4px 14px rgba(5, 150, 105, 0.3)'
+          : '0 4px 14px rgba(52, 211, 153, 0.2)',
+      },
+    },
+  },
+  MuiBottomNavigation: {
+    styleOverrides: {
+      root: {
+        backgroundColor: 'transparent',
+      },
+    },
+  },
+  MuiBottomNavigationAction: {
+    styleOverrides: {
+      root: {
+        '&.Mui-selected': {
+          color: mode === 'light' ? '#059669' : '#34D399',
+        },
       },
     },
   },
