@@ -7,16 +7,9 @@ import {
 	CardContent,
 	CircularProgress,
 	Typography,
-	Table,
-	TableBody,
-	TableCell,
-	TableContainer,
-	TableHead,
-	TableRow,
 	TablePagination,
 	IconButton,
 	Button,
-	Chip,
 	Alert,
 	TextField,
 	FormControl,
@@ -28,7 +21,6 @@ import {
 	Snackbar,
 	useTheme,
 	useMediaQuery,
-	TableSortLabel,
 	Dialog,
 	DialogTitle,
 	DialogContent,
@@ -349,18 +341,6 @@ const ClinicsListPage: React.FC = () => {
 		})
 	}
 
-	const getSyncStatusColor = (status: string) => {
-		switch (status) {
-			case 'synced':
-				return 'success'
-			case 'pending':
-				return 'warning'
-			case 'error':
-				return 'error'
-			default:
-				return 'default'
-		}
-	}
 
 	// Функция форматирования даты из ISO в "дата месяц год"
 	const formatDate = (isoDate: string | undefined): string => {
@@ -624,90 +604,98 @@ const ClinicsListPage: React.FC = () => {
 		)
 	}
 
-	// Мобильное представление компании в виде карточки
-	const renderMobileClinicCard = (clinic: Clinic) => (
-		<Card sx={{ position: 'relative', height: '100%' }}>
-			<CardContent>
-				<Typography variant="h6" gutterBottom>
-					{clinic.name}
-				</Typography>
+	// Представление компании в виде iOS-style карточки
+	const renderClinicCard = (clinic: Clinic) => (
+		<Card
+			sx={{
+				position: 'relative',
+				height: '100%',
+				cursor: 'pointer',
+				transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s',
+				'&:active': {
+					transform: 'scale(0.98)',
+				},
+				'&:hover': {
+					boxShadow: (theme) => theme.palette.mode === 'light'
+						? '0 4px 20px rgba(0, 0, 0, 0.08)'
+						: '0 4px 20px rgba(0, 0, 0, 0.4)',
+				},
+			}}
+			onClick={() => handleEditClick(clinic)}
+		>
+			<CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+				<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+					<Typography
+						variant="subtitle1"
+						sx={{ fontWeight: 600, lineHeight: 1.3, pr: 1 }}
+					>
+						{clinic.name}
+					</Typography>
+					{loading === clinic.id ? (
+						<CircularProgress size={20} />
+					) : (
+						<IconButton
+							size="small"
+							onClick={(e) => { e.stopPropagation(); handleEditClick(clinic); }}
+							sx={{ color: 'primary.main', ml: 0.5, flexShrink: 0 }}
+						>
+							<EditIcon fontSize="small" />
+						</IconButton>
+					)}
+				</Box>
 
-				<Grid container spacing={1}>
-					<Grid item xs={6}>
-						<Typography variant="body2" color="text.secondary">
-							ИНН:
-						</Typography>
-						<Typography variant="body1">
-							{clinic.inn || '-'}
-						</Typography>
-					</Grid>
+				{clinic.inn && (
+					<Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+						ИНН: {clinic.inn}
+					</Typography>
+				)}
 
+				<Grid container spacing={1} sx={{ mb: 1 }}>
 					<Grid item xs={6}>
-						<Typography variant="body2" color="text.secondary">
-							Менеджер:
-						</Typography>
-						<Typography variant="body1">
-							{clinic.main_manager || '-'}
-						</Typography>
-					</Grid>
-
-					<Grid item xs={6}>
-						<Typography variant="body2" color="text.secondary">
-							<CalendarTodayIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
-							Последний визит:
-						</Typography>
-						<Typography variant="body1">
+						<Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+							<CalendarTodayIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
+							<Typography variant="caption" color="text.secondary">
+								Последний визит
+							</Typography>
+						</Box>
+						<Typography variant="body2" sx={{ fontWeight: 500 }}>
 							{formatDate(clinic.last_visit_date)}
 						</Typography>
 					</Grid>
 
 					<Grid item xs={6}>
-						<Typography variant="body2" color="text.secondary">
-							<TimelineIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
-							Количество визитов:
-						</Typography>
-						<Typography variant="body1">
+						<Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+							<TimelineIcon sx={{ fontSize: 14, mr: 0.5, color: 'text.secondary' }} />
+							<Typography variant="caption" color="text.secondary">
+								Визиты
+							</Typography>
+						</Box>
+						<Typography variant="body2" sx={{ fontWeight: 500 }}>
 							{clinic.visits_count || '0'}
 						</Typography>
 					</Grid>
 
-					<Grid item xs={6}>
-						<Typography variant="body2" color="text.secondary">
-							Последняя продажа:
-						</Typography>
-						<Typography variant="body1">
-							{formatDate(clinic.last_sale_date)}
-						</Typography>
-					</Grid>
+					{clinic.main_manager && (
+						<Grid item xs={6}>
+							<Typography variant="caption" color="text.secondary">
+								Менеджер
+							</Typography>
+							<Typography variant="body2" sx={{ fontWeight: 500 }}>
+								{clinic.main_manager}
+							</Typography>
+						</Grid>
+					)}
 
-					<Grid item xs={6}>
-						<Typography variant="body2" color="text.secondary">
-							Сумма продажи:
-						</Typography>
-						<Typography variant="body1">
-							{clinic.document_amount ? `${clinic.document_amount} ₽` : '-'}
-						</Typography>
-					</Grid>
-
-					<Grid item xs={12} sx={{ mt: 1 }}>
-						<Box display="flex" justifyContent="space-between" alignItems="center">
-							<Chip
-								size='small'
-								label={clinic.sync_status}
-								color={getSyncStatusColor(clinic.sync_status)}
-							/>
-
-							<Button
-								variant="outlined"
-								size="small"
-								startIcon={loading === clinic.id ? <CircularProgress size={16} /> : <EditIcon />}
-								onClick={() => handleEditClick(clinic)}
-								disabled={loading === clinic.id}
-							>
-								Редактировать
-							</Button>
-						</Box>
-					</Grid>
+					{(clinic.last_sale_date || clinic.document_amount) && (
+						<Grid item xs={6}>
+							<Typography variant="caption" color="text.secondary">
+								Продажа
+							</Typography>
+							<Typography variant="body2" sx={{ fontWeight: 500 }}>
+								{clinic.document_amount ? `${clinic.document_amount} \u20BD` : formatDate(clinic.last_sale_date)}
+							</Typography>
+						</Grid>
+					)}
 				</Grid>
 			</CardContent>
 		</Card>
@@ -718,99 +706,62 @@ const ClinicsListPage: React.FC = () => {
 
 		<Box sx={{ p: { xs: 1.5, md: 3 } }}>
 			<FilterForm columns={columns} onApply={handleApplyFilters} />
-			<Card>
-				<CardContent sx={{ p: { xs: 1.5, md: 3 } }}>
+			<OLMapModal open={isMapOpen} onClose={() => setIsMapOpen(false)} clinics={data.items} />
 
-					<Grid container spacing={2} alignItems="flex-end">
-						<Grid item xs={12} container spacing={2} alignItems="flex-start">
-							{/* Кнопка создания вынесена в FAB */}
-							<OLMapModal open={isMapOpen} onClose={() => setIsMapOpen(false)} clinics={data.items} />
-
-							<Grid item xs={12}>
+			<Card sx={{ mb: 2 }}>
+				<CardContent sx={{ p: { xs: 2, md: 3 } }}>
+					<Stack
+						direction={{ xs: 'column', sm: 'row' }}
+						spacing={1.5}
+						alignItems={{ sm: 'center' }}
+					>
+						{!isMobile && (
+							<Button
+								variant="contained"
+								color="primary"
+								startIcon={<AddCircleOutlineIcon />}
+								onClick={handleOpenCreateModal}
+								data-testid="add-company-button"
+								fullWidth={false}
+							>
+								Добавить компанию
+							</Button>
+						)}
+						<Button
+							variant="outlined"
+							startIcon={<MapOutlined />}
+							onClick={() => setIsMapOpen(true)}
+							fullWidth={isMobile}
+						>
+							Показать на карте
+						</Button>
+						{(user?.role === 'org_admin' || user?.role === 'platform_admin') && (
+							<>
 								<Button
-									variant="contained"
-									startIcon={<MapOutlined />}
-									onClick={() => setIsMapOpen(true)}
-									fullWidth
+									variant="outlined"
+									startIcon={isExporting ? <CircularProgress size={18} /> : <FileDownloadIcon />}
+									onClick={handleExport}
+									disabled={isExporting}
+									fullWidth={isMobile}
 								>
-									Показать на карте
+									Экспорт
 								</Button>
-							</Grid>
-
-							<Grid item xs={12}>
-								<Stack
-									direction={{ xs: 'column', sm: 'row' }}
-									spacing={1}
-									flexWrap="wrap"
-									sx={{ mb: 2 }}
+								<Button
+									variant="outlined"
+									startIcon={<FileUploadIcon />}
+									onClick={() => setImportDialogOpen(true)}
+									fullWidth={isMobile}
 								>
-									{!isMobile && (
-										<Button variant="contained" startIcon={<AddCircleOutlineIcon />} onClick={handleOpenCreateModal} data-testid="add-company-button" fullWidth={isMobile}>
-											Добавить компанию
-										</Button>
-									)}
-									{user?.role === 'org_admin' || user?.role === 'platform_admin' ? (
-										<>
-											<Button
-												variant="outlined"
-												startIcon={isExporting ? <CircularProgress size={18} /> : <FileDownloadIcon />}
-												onClick={handleExport}
-												disabled={isExporting}
-												fullWidth={isMobile}
-												size={isMobile ? 'small' : 'medium'}
-											>
-												Экспорт
-											</Button>
-											<Button
-												variant="outlined"
-												startIcon={<FileUploadIcon />}
-												onClick={() => setImportDialogOpen(true)}
-												fullWidth={isMobile}
-												size={isMobile ? 'small' : 'medium'}
-											>
-												Импорт
-											</Button>
-										</>
-									) : null}
-								</Stack>
-							</Grid>
-
-						</Grid>
-
-						<Grid item xs={12}>
-							<OLMapModal open={isMapOpen} onClose={() => setIsMapOpen(false)} clinics={data.items} />
-						</Grid>
-
-
-
-
-					</Grid>
-
-					{/* <Box display='flex' justifyContent='flex-end' mt={3} flexWrap="wrap">
-						<Button
-							variant='outlined'
-							startIcon={<ClearIcon />}
-							onClick={handleClearFilters}
-							sx={{ mr: 1, mb: isMobile ? 1 : 0 }}
-							fullWidth={isMobile}
-						>
-							Очистить
-						</Button>
-						<Button
-							variant='contained'
-							startIcon={<SearchIcon />}
-							onClick={handleSearch}
-							fullWidth={isMobile}
-						>
-							Поиск
-						</Button>
-						
-					</Box> */}
+									Импорт
+								</Button>
+							</>
+						)}
+					</Stack>
 				</CardContent>
 			</Card>
 
 			<Card>
-				<CardContent sx={{ p: { xs: 1.5, md: 3 } }}>
+				<CardContent sx={{ p: { xs: 2, md: 3 } }}>
 					{data?.items?.length === 0 ? (
 						<Alert severity='info'>
 							Не найдено компаний с указанными параметрами фильтрации
@@ -867,7 +818,7 @@ const ClinicsListPage: React.FC = () => {
 								<Grid container spacing={2}>
 									{data?.items?.map((clinic: Clinic) => (
 										<Grid item xs={12} md={6} lg={4} key={clinic.id}>
-											{renderMobileClinicCard(clinic)}
+											{renderClinicCard(clinic)}
 										</Grid>
 									))}
 								</Grid>

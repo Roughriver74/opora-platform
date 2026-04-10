@@ -4,8 +4,6 @@ import {
 	MultiFieldDisplay,
 	prepareDataForBitrix,
 } from '../components/MultiFieldDisplay'
-import { MapOutlined } from '@mui/icons-material'
-import { CreateTaskDialog } from '../components/CreateTaskDialog'
 
 import PastVisitsDialog from '../components/PastVisitsDialog'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -58,7 +56,6 @@ import {
 	Sync as SyncIcon,
 	Save as SaveIcon,
 	Business as BusinessIcon,
-	AssignmentInd as AssignmentIcon,
 	History as HistoryIcon,
 	Person as PersonIcon,
 	Phone as PhoneIcon,
@@ -80,7 +77,6 @@ import { getBitrixApiUrl } from '../constants/api'
 import { QuantityLoader } from './QuantityLoader'
 import { AddressAutocomplete, AddressData } from '../components/AddressAutocomplete'
 import { validateAddress } from '../services/dadataService'
-import { Task, taskService } from '../services/taskService'
 
 interface BitrixClinicData {
 	bitrix_id: any
@@ -190,7 +186,6 @@ const ClinicEditPage: React.FC = () => {
 	const initialLoadRef = useRef(false)
 	const [modalMessage, setModalMessage] = useState('');
 	const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
-	const [taskDialogOpen, setTaskDialogOpen] = useState(false)
 
 	const syncDoneRef = useRef(false)
 	const isNetworkRef = useRef<boolean>(false);
@@ -262,39 +257,7 @@ const ClinicEditPage: React.FC = () => {
 		setSnackbarOpen(true);
 	};
 
-	const handleSaveTask = async (taskData: Task) => {
-		try {
-			await taskService.createTask(taskData)
-			setTaskDialogOpen(false) // Закрываем диалог после успешного создания
-			setSnackbar({
-				open: true,
-				message: 'Задача успешно заведена',
-				severity: 'success',
-			})
-		} catch (error) {
-			setSnackbar({
-				open: true,
-				message: 'Ошибка при создании задачи',
-				severity: 'error',
-			})
-		}
-	}
 
-	const buildRoute = () => {
-		if (!clinic?.clinic_coordinates?.latitude || !clinic.clinic_coordinates?.longitude) {
-			showSnackbar('Координаты компании недоступны.');
-			return;
-		}
-
-		const { latitude, longitude } = clinic.clinic_coordinates;
-		const url = `https://yandex.ru/maps/?mode=routes&rtext=~${longitude},${latitude}&rtt=auto`;
-
-		const a = document.createElement('a');
-		a.href = url;
-		a.target = '_blank';
-		a.rel = 'noopener noreferrer';
-		a.click(); // или document.body.appendChild(a); a.click(); document.body.removeChild(a);
-	};
 
 	useEffect(() => {
 		isNetworkRef.current = !!formValues.is_network;
@@ -2876,83 +2839,6 @@ const ClinicEditPage: React.FC = () => {
 									{isMobile ? <AddIcon /> : 'Создать визит'}
 								</Button>
 							</Tooltip>
-							<Tooltip title="Построить маршрут" arrow>
-								<Button
-									variant='contained'
-									color='info'
-									startIcon={!isMobile && <MapOutlined />}
-									onClick={buildRoute}
-									sx={{
-										whiteSpace: 'nowrap',
-										minWidth: isMobile ? '40px' : '120px',
-										width: isMobile ? '40px' : 'auto',
-										height: isMobile ? '40px' : 'auto',
-										padding: isMobile ? '8px' : '8px 16px',
-										display: 'flex',
-										justifyContent: 'center',
-										alignItems: 'center',
-										...(isMobile ? {
-											'& .MuiButton-startIcon': { margin: 0 },
-											'& .MuiSvgIcon-root': { margin: 0 },
-										} : {}),
-										bgcolor: 'success.main',
-										'&:hover': {
-											bgcolor: 'success.dark',
-										},
-									}}
-								>
-									{isMobile ? <MapOutlined /> : 'Построить маршрут'}
-								</Button>
-
-								{/* <Snackbar
-									open={snackbarOpen}
-									autoHideDuration={4000}
-									onClose={() => setSnackbarOpen(false)}
-									anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-								>
-									<Alert onClose={() => setSnackbarOpen(false)} severity="error">
-										{snackbarMessage}
-									</Alert>
-								</Snackbar> */}
-
-							</Tooltip>
-							<Tooltip title="Создать задачу" arrow>
-								<Button
-									variant='contained'
-									color='info'
-									startIcon={!isMobile && <AssignmentIcon />}
-									onClick={() => setTaskDialogOpen(true)}
-									sx={{
-										whiteSpace: 'nowrap',
-										minWidth: isMobile ? '40px' : '120px',
-										width: isMobile ? '40px' : 'auto',
-										height: isMobile ? '40px' : 'auto',
-										padding: isMobile ? '8px' : '8px 16px',
-										display: 'flex',
-										justifyContent: 'center',
-										alignItems: 'center',
-										...(isMobile ? {
-											'& .MuiButton-startIcon': { margin: 0 },
-											'& .MuiSvgIcon-root': { margin: 0 },
-										} : {}),
-										bgcolor: '-moz-initial',
-										'&:hover': {
-											bgcolor: 'success.dark',
-										},
-									}}
-								>
-									{isMobile ? <AssignmentIcon /> : 'Создать задачу'}
-								</Button>
-
-							</Tooltip>
-							<CreateTaskDialog
-								open={taskDialogOpen}
-								visitId={null}
-								bitrixId={Number(formValues.bitrix_id)}
-								managers={[]}
-								onClose={() => setTaskDialogOpen(false)}
-								onSave={handleSaveTask}
-							/>
 						</>
 					)}
 					<Tooltip title="Сохранить" arrow>
@@ -3006,7 +2892,7 @@ const ClinicEditPage: React.FC = () => {
 
 			{
 				isLoading ? (
-					<Card sx={{ borderRadius: { xs: 1, sm: 2 } }}>
+					<Card>
 						<CardContent sx={{ p: { xs: 2, sm: 3 } }}>
 							<Skeleton variant='rectangular' height={40} sx={{ mb: 2 }} />
 							<Divider sx={{ mb: 3 }} />
@@ -3022,8 +2908,6 @@ const ClinicEditPage: React.FC = () => {
 				) : (
 					<Card
 						sx={{
-							borderRadius: { xs: 1, sm: 2 },
-							boxShadow: { xs: 1, sm: 3 },
 							overflow: 'visible',
 						}}
 					>
