@@ -19,6 +19,7 @@ import CompaniesListPage from './pages/CompaniesListPage';
 import NetworkClinicsListPage from './pages/NetworkClinicsListPage';
 import GlobalSettingsPage from './pages/admin/GlobalSettingsPage';
 import AuthProvider from './context/AuthContext';
+import { SidebarProvider } from './context/SidebarContext';
 import AdminRoute from './components/AdminRoute';
 import NetworkClinicEditPage from './pages/NetworkClinicEditPage';
 import DeleteVisits from './pages/admin/DeleteVisits';
@@ -53,7 +54,9 @@ function App() {
             <Route path="/" element={
               <ProtectedRoute>
                 <AuthProvider>
-                  <Layout />
+                  <SidebarProvider>
+                    <Layout />
+                  </SidebarProvider>
                 </AuthProvider>
               </ProtectedRoute>
             }>
