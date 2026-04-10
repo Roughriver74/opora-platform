@@ -84,9 +84,7 @@ export const VisitCalendar: React.FC<VisitCalendarProps> = ({ onClose, openInMod
 
   // Генерация данных календаря при изменении текущего месяца или данных визитов
   useEffect(() => {
-    if (visits.length) {
-      generateCalendarDays();
-    }
+    generateCalendarDays();
   }, [currentDate, visits]);
 
   // Группировка визитов для выбранного дня
