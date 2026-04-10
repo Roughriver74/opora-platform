@@ -118,26 +118,26 @@ class VisitService:
 
         if db_visit.bitrix_id and self.bitrix24 is not None:
             try:
-                field_mappings = (
-                    (
-                        await self.session.execute(
-                            select(FieldMapping).where(
-                                FieldMapping.entity_type == EntityType.VISIT.value,
-                                FieldMapping.organization_id == current_user.organization_id,
-                            )
+                form_template = (
+                    await self.session.execute(
+                        select(FormTemplate).where(
+                            FormTemplate.entity_type == "visit",
+                            FormTemplate.organization_id == current_user.organization_id,
                         )
                     )
-                    .scalars()
-                    .all()
-                )
-                field_mapping_dict = {}
-                list_field_mappings = {}
+                ).scalars().first()
 
-                for mapping in field_mappings:
-                    field_mapping_dict[mapping.app_field_name] = mapping.bitrix_field_id
-                    if mapping.field_type == "list" and mapping.value_options:
-                        value_options = json.loads(mapping.value_options)
-                        list_field_mappings[mapping.app_field_name] = value_options
+                template_fields = form_template.fields if form_template else []
+                field_mapping_dict = {
+                    f["key"]: f["bitrix_field_id"]
+                    for f in template_fields
+                    if f.get("bitrix_field_id")
+                }
+                list_field_mappings = {
+                    f["key"]: f["bitrix_value_mapping"]
+                    for f in template_fields
+                    if f.get("bitrix_field_type") == "list" and f.get("bitrix_value_mapping")
+                }
                 bitrix_data = {"stageId": status_update.stageId}
                 if db_visit.date:
                     formatted_date = (
@@ -165,9 +165,9 @@ class VisitService:
 
                         field_type = next(
                             (
-                                mapping.field_type
-                                for mapping in field_mappings
-                                if mapping.app_field_name == field
+                                f.get("bitrix_field_type")
+                                for f in template_fields
+                                if f.get("key") == field
                             ),
                             None,
                         )
