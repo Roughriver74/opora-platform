@@ -190,9 +190,9 @@ export const VisitCreatePage: React.FC = () => {
 	// --------------- Load form template ---------------
 
 	const { data: formTemplate, isLoading: isLoadingTemplate } = useQuery<VisitFormTemplate>(
-		['visitFormTemplate'],
+		['formTemplate', 'visit'],
 		async () => {
-			const res = await api.get('/visit-form/')
+			const res = await api.get('/form-templates/visit')
 			return res.data
 		},
 		{
