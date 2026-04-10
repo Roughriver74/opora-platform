@@ -60,7 +60,6 @@ const FieldList: React.FC<Props> = ({
             <FieldCard
               key={field.key}
               field={field}
-              index={index}
               selected={selectedIndex === index}
               onSelect={() => onSelect(index)}
               onDelete={() => onDelete(index)}
