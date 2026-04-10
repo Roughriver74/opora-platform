@@ -22,7 +22,7 @@ const FieldOptionsEditor: React.FC<Props> = ({
 
   const addOption = () => {
     const trimmed = newOption.trim();
-    if (!trimmed || options.includes(trimmed)) return;
+    if (!trimmed || options.some(o => o.toLowerCase() === trimmed.toLowerCase())) return;
     const updatedOptions = [...options, trimmed];
     const updatedMapping = [...bitrixValueMapping, { app_value: trimmed, bitrix_value: '' }];
     onChange(updatedOptions, updatedMapping);
@@ -44,6 +44,7 @@ const FieldOptionsEditor: React.FC<Props> = ({
   };
 
   const showMapping = bitrixField?.type === 'list' && (bitrixField.items?.length ?? 0) > 0;
+  const mappableItems = showMapping ? (bitrixField!.items ?? []) : [];
 
   return (
     <Box>
@@ -65,7 +66,7 @@ const FieldOptionsEditor: React.FC<Props> = ({
                 sx={{ flex: 1 }}
               >
                 <MenuItem value=""><em>Не выбрано</em></MenuItem>
-                {bitrixField!.items!.map(item => (
+                {mappableItems.map(item => (
                   <MenuItem key={item.id} value={item.id}>{item.value}</MenuItem>
                 ))}
               </Select>

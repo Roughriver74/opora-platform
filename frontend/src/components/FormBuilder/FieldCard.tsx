@@ -9,13 +9,12 @@ import { FIELD_TYPES, FieldDefinition } from './types';
 
 interface Props {
   field: FieldDefinition;
-  index: number;
   selected: boolean;
   onSelect: () => void;
   onDelete: () => void;
 }
 
-const FieldCard: React.FC<Props> = ({ field, index, selected, onSelect, onDelete }) => {
+const FieldCard: React.FC<Props> = ({ field, selected, onSelect, onDelete }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: field.key });
 
