@@ -406,7 +406,7 @@ export const RegisterPage: React.FC = () => {
       </IconButton>
 
       {/* Left branded panel (desktop) */}
-      <BrandedPanel />
+      {BrandedPanel()}
 
       {/* Right side / form panel */}
       <Box
@@ -421,7 +421,7 @@ export const RegisterPage: React.FC = () => {
           bgcolor: { md: theme.palette.background.paper },
         }}
       >
-        <RegisterForm />
+        {RegisterForm()}
       </Box>
     </Box>
   );

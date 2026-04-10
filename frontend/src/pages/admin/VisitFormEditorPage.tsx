@@ -36,6 +36,7 @@ import {
   Save as SaveIcon,
   Visibility as PreviewIcon,
   DragIndicator as DragIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
@@ -101,6 +102,16 @@ export const VisitFormEditorPage: React.FC = () => {
   });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editField, setEditField] = useState<FieldDefinition>({
+    key: '',
+    label: '',
+    type: 'text',
+    required: false,
+    options: [],
+  });
+  const [editOption, setEditOption] = useState('');
 
   // New field state
   const [newField, setNewField] = useState<FieldDefinition>({
@@ -217,6 +228,42 @@ export const VisitFormEditorPage: React.FC = () => {
     }));
   };
 
+  const openEditDialog = (index: number) => {
+    const field = fields[index];
+    setEditingIndex(index);
+    setEditField({ ...field, options: field.options ? [...field.options] : [] });
+    setEditOption('');
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingIndex === null || !editField.label.trim()) return;
+    updateField(editingIndex, {
+      label: editField.label.trim(),
+      type: editField.type,
+      required: editField.required,
+      options: editField.type === 'select' ? (editField.options || []) : undefined,
+    });
+    setEditDialogOpen(false);
+    setEditingIndex(null);
+  };
+
+  const addEditOption = () => {
+    if (!editOption.trim()) return;
+    setEditField(prev => ({
+      ...prev,
+      options: [...(prev.options || []), editOption.trim()],
+    }));
+    setEditOption('');
+  };
+
+  const removeEditOption = (idx: number) => {
+    setEditField(prev => ({
+      ...prev,
+      options: (prev.options || []).filter((_, i) => i !== idx),
+    }));
+  };
+
   // --------------- Render ---------------
 
   if (isLoading) {
@@ -324,7 +371,7 @@ export const VisitFormEditorPage: React.FC = () => {
                     )}
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', flexShrink: 0 }}>
+                <Box sx={{ display: 'flex', flexShrink: 0, alignItems: 'center' }}>
                   <IconButton
                     size="small"
                     disabled={index === 0}
@@ -350,6 +397,13 @@ export const VisitFormEditorPage: React.FC = () => {
                     label=""
                     sx={{ ml: 0.5, mr: 0 }}
                   />
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={() => openEditDialog(index)}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
                   <IconButton
                     size="small"
                     color="error"
@@ -505,6 +559,121 @@ export const VisitFormEditorPage: React.FC = () => {
             disabled={!newField.label.trim() || (newField.type === 'select' && (!newField.options || newField.options.length === 0))}
           >
             Добавить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit field dialog */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Редактировать поле</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Название поля"
+                value={editField.label}
+                onChange={(e) => setEditField(prev => ({ ...prev, label: e.target.value }))}
+                placeholder="Например: Результат визита"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Ключ (key)"
+                value={editField.key}
+                disabled
+                helperText="Ключ нельзя изменить после создания"
+                size="small"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Тип поля</InputLabel>
+                <Select
+                  value={editField.type}
+                  label="Тип поля"
+                  onChange={(e: SelectChangeEvent) =>
+                    setEditField(prev => ({ ...prev, type: e.target.value }))
+                  }
+                >
+                  {FIELD_TYPES.map(t => (
+                    <MenuItem key={t.value} value={t.value}>
+                      {t.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={editField.required}
+                    onChange={(e) => setEditField(prev => ({ ...prev, required: e.target.checked }))}
+                  />
+                }
+                label="Обязательное поле"
+                sx={{ mt: 1 }}
+              />
+            </Grid>
+
+            {editField.type === 'select' && (
+              <Grid item xs={12}>
+                <Divider sx={{ mb: 2 }} />
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Варианты для выбора
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    placeholder="Новый вариант"
+                    value={editOption}
+                    onChange={(e) => setEditOption(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addEditOption();
+                      }
+                    }}
+                  />
+                  <Button variant="outlined" size="small" onClick={addEditOption}>
+                    +
+                  </Button>
+                </Box>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {(editField.options || []).map((opt, i) => (
+                    <Chip
+                      key={i}
+                      label={opt}
+                      onDelete={() => removeEditOption(i)}
+                      size="small"
+                    />
+                  ))}
+                </Box>
+                {(editField.options || []).length === 0 && (
+                  <Typography variant="caption" color="text.secondary">
+                    Добавьте хотя бы один вариант
+                  </Typography>
+                )}
+              </Grid>
+            )}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Отмена</Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveEdit}
+            disabled={!editField.label.trim() || (editField.type === 'select' && (!editField.options || editField.options.length === 0))}
+          >
+            Сохранить
           </Button>
         </DialogActions>
       </Dialog>
