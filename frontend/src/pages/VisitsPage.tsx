@@ -5,7 +5,6 @@ import {
   Box,
   Typography,
   IconButton,
-  Chip,
   CircularProgress,
   Alert,
   Tabs,
@@ -18,6 +17,7 @@ import {
   useMediaQuery,
   Grid,
   Button,
+  alpha,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -30,8 +30,16 @@ import {
   Visit,
   VisitStatus,
   visitStatusDisplayNames,
-  visitStatusColors,
 } from '../services/visitService';
+
+// iOS-style status dot colors
+const statusDotColors: Record<string, string> = {
+  planned: '#007AFF',     // iOS blue
+  in_progress: '#FF9500', // iOS orange
+  completed: '#34C759',   // iOS green
+  failed: '#FF3B30',      // iOS red
+  cancelled: '#8E8E93',   // iOS gray
+};
 
 export const VisitsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -73,15 +81,14 @@ export const VisitsPage: React.FC = () => {
     setFilteredVisits(filtered);
   }, [visits, visitFilter]);
 
-  const getStatusColor = (status?: VisitStatus) => {
-    if (!status) return 'default';
-    const c = visitStatusColors[status] || 'default';
-    return c;
-  };
-
   const getStatusDisplayName = (status?: VisitStatus) => {
     if (!status) return '';
     return visitStatusDisplayNames[status] || status;
+  };
+
+  const getStatusDotColor = (status?: VisitStatus) => {
+    if (!status) return '#8E8E93';
+    return statusDotColors[status] || '#8E8E93';
   };
 
   return (
@@ -126,9 +133,11 @@ export const VisitsPage: React.FC = () => {
               display: 'none',
             },
             '& .Mui-selected': {
-              bgcolor: theme.palette.mode === 'light' ? '#FFFFFF' : '#3A3A3C',
+              bgcolor: theme.palette.background.paper,
               color: 'text.primary',
-              boxShadow: theme.palette.mode === 'light' ? '0 2px 4px rgba(0,0,0,0.1)' : '0 2px 4px rgba(0,0,0,0.4)',
+              boxShadow: theme.palette.mode === 'light'
+                ? '0 2px 8px rgba(0,0,0,0.08)'
+                : '0 2px 8px rgba(0,0,0,0.4)',
             }
           }}
         >
@@ -153,20 +162,42 @@ export const VisitsPage: React.FC = () => {
               const status = getVisitStatus(visit);
               return (
                 <Grid item xs={12} md={6} lg={4} key={visit.id}>
-                  <Card sx={{ mb: { xs: 0, md: 0 } }}>
+                  <Card
+                    sx={{
+                      borderRadius: '20px',
+                      boxShadow: theme.palette.mode === 'light'
+                        ? '0 2px 10px rgba(0,0,0,0.04)'
+                        : '0 2px 10px rgba(0,0,0,0.3)',
+                    }}
+                  >
                     <CardActionArea
                       onClick={() => navigate(`/visits/${visit.id}`)}
-                      sx={{ p: 2, display: 'flex', alignItems: 'flex-start' }}
+                      sx={{ p: 2, display: 'flex', alignItems: 'flex-start', borderRadius: '20px' }}
                     >
-                      <Avatar sx={{ bgcolor: 'primary.light', mr: 2, mt: 0.5 }}>
+                      <Avatar
+                        sx={{
+                          bgcolor: alpha(theme.palette.primary.main, 0.12),
+                          color: 'primary.main',
+                          mr: 2,
+                          mt: 0.5,
+                        }}
+                      >
                         <EventIcon />
                       </Avatar>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography
                           variant="subtitle1"
-                          sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                          sx={{
+                            fontWeight: 700,
+                            mb: 0.5,
+                            lineHeight: 1.2,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}
                         >
-                          {visit.company?.name || `Компания №${visit.company_id}` || 'Неизвестная компания'}
+                          {visit.company?.name || `Компания #${visit.company_id}` || 'Неизвестная компания'}
                         </Typography>
 
                         <Typography variant="body2" color="primary" sx={{ mb: 0.5, fontWeight: 500 }}>
@@ -175,16 +206,43 @@ export const VisitsPage: React.FC = () => {
 
                         <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
                           {new Date(visit.date).toLocaleString('ru-RU', {
-                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
                           })}
                         </Typography>
 
-                        <Chip
-                          label={getStatusDisplayName(status)}
-                          color={getStatusColor(status) as any}
-                          size="small"
-                          sx={{ height: 22, fontSize: '0.7rem', fontWeight: 600 }}
-                        />
+                        {/* iOS-style status pill with color dot */}
+                        <Box
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.75,
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: '12px',
+                            bgcolor: alpha(getStatusDotColor(status), 0.1),
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              bgcolor: getStatusDotColor(status),
+                              flexShrink: 0,
+                            }}
+                          />
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontWeight: 600,
+                              fontSize: '0.7rem',
+                              color: getStatusDotColor(status),
+                              lineHeight: 1,
+                            }}
+                          >
+                            {getStatusDisplayName(status)}
+                          </Typography>
+                        </Box>
                       </Box>
                       <Box sx={{ alignSelf: 'center', ml: 1, color: 'text.secondary' }}>
                         <ChevronRight />
