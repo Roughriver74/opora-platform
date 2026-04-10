@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, relationship
@@ -360,6 +361,26 @@ class VisitFormTemplate(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     organization = relationship("Organization")
+
+
+class FormTemplate(Base):
+    """Universal per-organization, per-entity-type form template.
+    Replaces VisitFormTemplate + FieldMapping. Fields store Bitrix24 mapping inline."""
+
+    __tablename__ = "form_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
+    entity_type = Column(String, nullable=False)  # visit, clinic, doctor, contact, network_clinic
+    fields = Column(JSONB, default=[])
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    organization = relationship("Organization")
+
+    __table_args__ = (
+        UniqueConstraint("organization_id", "entity_type", name="uq_form_template_org_entity"),
+    )
 
 
 class Payment(Base):
