@@ -25,6 +25,7 @@ import NetworkClinicEditPage from './pages/NetworkClinicEditPage';
 import DeleteVisits from './pages/admin/DeleteVisits';
 import VisitFormEditorPage from './pages/admin/VisitFormEditorPage';
 import BillingPage from './pages/admin/BillingPage';
+import FormBuilderPage from './components/FormBuilder/FormBuilderPage';
 import HelpPage from './pages/HelpPage';
 import PlatformOrganizationsPage from './pages/platform/PlatformOrganizationsPage';
 
@@ -84,6 +85,7 @@ function App() {
               <Route path="admin/settings" element={<AdminRoute><GlobalSettingsPage /></AdminRoute>} />
               <Route path="admin/billing" element={<AdminRoute><BillingPage /></AdminRoute>} />
               <Route path="admin/visit-form" element={<AdminRoute><VisitFormEditorPage /></AdminRoute>} />
+              <Route path="admin/form-builder" element={<AdminRoute><FormBuilderPage /></AdminRoute>} />
               <Route path="help" element={<HelpPage />} />
               {/* Platform admin */}
               <Route path="platform/organizations" element={<PlatformOrganizationsPage />} />

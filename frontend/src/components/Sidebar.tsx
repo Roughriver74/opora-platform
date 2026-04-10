@@ -44,7 +44,7 @@ const mainItems: NavItem[] = [
 
 const adminItems: NavItem[] = [
   { label: 'Настройки', icon: <Settings />, path: '/admin/settings' },
-  { label: 'Форма визита', icon: <EditNote />, path: '/admin/visit-form' },
+  { label: 'Редактор форм', icon: <EditNote />, path: '/admin/form-builder' },
   { label: 'Пользователи', icon: <Person />, path: '/admin/user-management' },
   { label: 'Тарифы', icon: <Payment />, path: '/admin/billing' },
   { label: 'Удаление визитов', icon: <DeleteForever />, path: '/admin/delete-visits' },
