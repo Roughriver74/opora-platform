@@ -85,8 +85,8 @@ services:
     restart: always
     depends_on:
       - backend
-    ports:
-      - "${PORT:-3000}:80"
+    expose:
+      - "80"
     networks:
       - internal
 
