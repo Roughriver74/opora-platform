@@ -16,7 +16,7 @@ from app.config import (
 )
 from app.emuns.clinic_enum import SyncStatus
 from app.emuns.visit_enum import EntityType, VisitStatus
-from app.models import Company, Doctor, FieldMapping, FormTemplate, GlobalSettings, Organization, User, Visit
+from app.models import Company, Doctor, FormTemplate, GlobalSettings, Organization, User, Visit
 from app.schemas.visit_schema import VisitCreate, VisitDeleteSchema
 from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
@@ -929,6 +929,8 @@ class VisitService:
         """
         Преобразует значение списка в соответствии с маппингом.
         """
+        if not options:
+            return value
         if isinstance(value, list):
             return [
                 next((o["bitrix_value"] for o in options if o["app_value"] == v), v)

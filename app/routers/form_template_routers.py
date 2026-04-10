@@ -96,6 +96,10 @@ async def update_form_template(
     if entity_type not in ENTITY_TYPES:
         raise HTTPException(status_code=400, detail=f"Unknown entity_type: {entity_type}")
 
+    keys = [f.key for f in payload.fields]
+    if len(keys) != len(set(keys)):
+        raise HTTPException(status_code=422, detail="Duplicate field keys are not allowed")
+
     template = (
         await uow.session.execute(
             select(FormTemplate).where(

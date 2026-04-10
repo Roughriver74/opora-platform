@@ -71,8 +71,14 @@ const FormBuilder: React.FC<Props> = ({ entityType }) => {
 
   const addField = () => {
     const newKey = generateKey(`Поле ${fields.length + 1}`);
+    let uniqueKey = newKey;
+    let suffix = 1;
+    while (fields.some(f => f.key === uniqueKey)) {
+      uniqueKey = `${newKey}_${suffix}`;
+      suffix++;
+    }
     const newField: FieldDefinition = {
-      key: `${newKey}_${Date.now()}`,
+      key: uniqueKey,
       label: '',
       type: 'text',
       required: false,

@@ -32,7 +32,7 @@ function renderField(field: { label: string; type: string; options?: string[] },
       return (
         <FormControl fullWidth size="small" disabled={disabled}>
           <InputLabel>{field.label}</InputLabel>
-          <Select label={field.label} value="">
+          <Select label={field.label} value="" onChange={() => {}}>
             {(field.options ?? []).map(o => <MenuItem key={o} value={o}>{o}</MenuItem>)}
           </Select>
         </FormControl>
