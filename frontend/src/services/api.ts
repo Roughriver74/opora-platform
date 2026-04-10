@@ -6,8 +6,8 @@ const getBaseUrl = () => {
 	if (process.env.NODE_ENV === 'production') {
 		return '/api'
 	}
-	// В режиме разработки используем localhost
-	return 'http://localhost:8000/api'
+	// В режиме разработки используем переменную окружения или localhost
+	return process.env.REACT_APP_API_URL || 'http://localhost:8000/api'
 }
 
 // Конфигурация API в зависимости от окружения

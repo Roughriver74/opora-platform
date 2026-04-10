@@ -1,6 +1,5 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-// Используем контекст аутентификации
 import { useAuth } from '../context/AuthContext';
 
 interface AdminRouteProps {
@@ -8,33 +7,44 @@ interface AdminRouteProps {
 }
 
 /**
- * Компонент для защиты административных маршрутов
- * Проверяет, является ли пользователь администратором
- * Если нет, перенаправляет на главную страницу
+ * Компонент для защиты административных маршрутов.
+ * Допускает org_admin и platform_admin.
  */
 const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
-  // Используем контекст аутентификации
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isOrgAdmin } = useAuth();
   const location = useLocation();
 
-  // Отладочная информация
-  console.log('AdminRoute - User:', user);
-  console.log('AdminRoute - Is admin:', user?.is_admin);
-  console.log('AdminRoute - Is loading:', isLoading);
-
-  // Пока проверяем права, показываем загрузку
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
-  // Если пользователь не авторизован или не администратор, перенаправляем на главную
-  if (!user || !user.is_admin) {
-    console.log('Access denied: User is not an admin');
+  // org_admin and platform_admin both have admin access
+  if (!user || !isOrgAdmin) {
+    console.log('AdminRoute: Access denied for role', user?.role);
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // Если пользователь администратор, показываем защищенный контент
   return <>{children}</>;
 };
 
 export default AdminRoute;
+
+/**
+ * Компонент для защиты маршрутов платформенного администратора.
+ * Допускает только platform_admin.
+ */
+export const PlatformAdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
+  const { user, isLoading, isPlatformAdmin } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user || !isPlatformAdmin) {
+    console.log('PlatformAdminRoute: Access denied for role', user?.role);
+    return <Navigate to="/" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
+};
