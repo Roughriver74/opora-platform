@@ -108,7 +108,7 @@ class UsersService:
                         User.organization_id == current_user.organization_id
                     )
                 )
-                max_users = (org.plan_limits or {}).get("max_users", 3)
+                max_users = (org.plan_limits or {}).get("max_users", 1)
                 if user_count >= max_users:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,

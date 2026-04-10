@@ -125,7 +125,7 @@ async def register_org(data: OrgRegister, uow: UnitOfWork = Depends(get_uow)) ->
         name=data.company_name,
         slug=slug,
         plan="free",
-        plan_limits={"max_users": 3, "max_visits_per_month": 100},
+        plan_limits={"max_users": 1, "max_visits_per_month": 100},
         is_active=True,
     )
     session.add(org)
@@ -248,7 +248,7 @@ async def accept_invite(data: AcceptInvite, uow: UnitOfWork = Depends(get_uow)) 
                 User.organization_id == invitation.organization_id
             )
         )
-        max_users = (org.plan_limits or {}).get("max_users", 3)
+        max_users = (org.plan_limits or {}).get("max_users", 1)
         if user_count >= max_users:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

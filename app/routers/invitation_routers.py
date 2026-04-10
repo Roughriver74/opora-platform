@@ -51,7 +51,7 @@ async def create_invitation(
                 Invitation.expires_at > datetime.utcnow(),
             )
         )
-        max_users = (org.plan_limits or {}).get("max_users", 3)
+        max_users = (org.plan_limits or {}).get("max_users", 1)
         if (user_count + pending_invite_count) >= max_users:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

@@ -34,7 +34,7 @@ class Organization(Base):
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     plan = Column(String, default="free")
     plan_limits = Column(
-        JSONB, default={"max_users": 3, "max_visits_per_month": 100}
+        JSONB, default={"max_users": 1, "max_visits_per_month": 100}
     )
     bitrix24_webhook_url = Column(String, nullable=True)
     bitrix24_smart_process_visit_id = Column(Integer, nullable=True)
