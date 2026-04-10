@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.config import NETWORK_CLINIC_PROCESS_ID, VISIT_ENTITY_TYPE_ID
 from app.models import FieldMapping, User
@@ -184,6 +184,22 @@ async def get_network_clinic_fields(
 ):
     """Получение списка всех полей для продуктов из Bitrix24"""
     return await uow.admin.get_bitrix_fields_network_clinic(NETWORK_CLINIC_PROCESS_ID)
+
+
+@router.get("/bitrix-fields/{entity_type}")
+async def get_entity_bitrix_fields(
+    entity_type: str,
+    uow: UnitOfWork = Depends(get_uow),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Unified endpoint to get Bitrix24 fields for any entity type (used by FormBuilder UI)."""
+    if entity_type == "visit":
+        return await uow.admin.get_smart_process_fields(VISIT_ENTITY_TYPE_ID)
+    elif entity_type in ("clinic", "company"):
+        return await uow.admin.get_company_fields()
+    elif entity_type in ("doctor", "contact", "network_clinic"):
+        return await uow.admin.get_contact_fields()
+    raise HTTPException(status_code=400, detail=f"Unknown entity_type: {entity_type}")
 
 
 @router.get("/bitrix/field-values")
