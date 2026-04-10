@@ -30,6 +30,8 @@ import {
   DarkMode,
   Person,
   ArrowBackIosNew,
+  Payment,
+  HelpOutline,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useThemeMode } from '../context/ThemeContext';
@@ -260,6 +262,14 @@ export const Layout: React.FC = ({ children }: { children?: React.ReactNode }) =
                 <ListItemIcon><Settings fontSize="small" /></ListItemIcon> Настройки
               </MenuItem>
             )}
+            {isAdmin && (
+              <MenuItem onClick={() => { handleCloseMenu(); navigate('/admin/billing'); }} sx={{ py: 1.5 }}>
+                <ListItemIcon><Payment fontSize="small" /></ListItemIcon> Тарифы
+              </MenuItem>
+            )}
+            <MenuItem onClick={() => { handleCloseMenu(); navigate('/help'); }} sx={{ py: 1.5 }}>
+              <ListItemIcon><HelpOutline fontSize="small" /></ListItemIcon> Помощь
+            </MenuItem>
             {isPlatformAdmin && (
               <>
                 <Divider />

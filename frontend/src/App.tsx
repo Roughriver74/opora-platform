@@ -23,6 +23,9 @@ import { SidebarProvider } from './context/SidebarContext';
 import AdminRoute from './components/AdminRoute';
 import NetworkClinicEditPage from './pages/NetworkClinicEditPage';
 import DeleteVisits from './pages/admin/DeleteVisits';
+import VisitFormEditorPage from './pages/admin/VisitFormEditorPage';
+import BillingPage from './pages/admin/BillingPage';
+import HelpPage from './pages/HelpPage';
 import PlatformOrganizationsPage from './pages/platform/PlatformOrganizationsPage';
 
 // Create a client for React Query
@@ -79,6 +82,8 @@ function App() {
               <Route path="/admin/delete-visits" element={<AdminRoute><DeleteVisits /></AdminRoute>} />
               <Route path="admin/user-management" element={<AdminRoute><UserManagementPage /></AdminRoute>} />
               <Route path="admin/settings" element={<AdminRoute><GlobalSettingsPage /></AdminRoute>} />
+              <Route path="admin/billing" element={<AdminRoute><BillingPage /></AdminRoute>} />
+              <Route path="help" element={<HelpPage />} />
               {/* Platform admin */}
               <Route path="platform/organizations" element={<PlatformOrganizationsPage />} />
             </Route>

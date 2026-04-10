@@ -22,6 +22,8 @@ import {
   Person,
   DeleteForever,
   AdminPanelSettings,
+  Payment,
+  HelpOutline,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -42,11 +44,16 @@ const mainItems: NavItem[] = [
 const adminItems: NavItem[] = [
   { label: 'Настройки', icon: <Settings />, path: '/admin/settings' },
   { label: 'Пользователи', icon: <Person />, path: '/admin/user-management' },
+  { label: 'Тарифы', icon: <Payment />, path: '/admin/billing' },
   { label: 'Удаление визитов', icon: <DeleteForever />, path: '/admin/delete-visits' },
 ];
 
 const platformAdminItems: NavItem[] = [
   { label: 'Платформа', icon: <AdminPanelSettings />, path: '/platform/organizations' },
+];
+
+const bottomItems: NavItem[] = [
+  { label: 'Помощь', icon: <HelpOutline />, path: '/help' },
 ];
 
 function getInitials(firstName?: string, lastName?: string, email?: string): string {
@@ -240,6 +247,12 @@ const Sidebar: React.FC = () => {
             </List>
           </>
         )}
+
+        {/* Bottom utility links (all users) */}
+        <Divider sx={{ my: 1, mx: 2 }} />
+        <List disablePadding>
+          {bottomItems.map(renderNavItem)}
+        </List>
       </Box>
 
       {/* Footer */}
