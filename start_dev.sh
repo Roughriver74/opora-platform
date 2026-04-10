@@ -219,11 +219,12 @@ fi
 # 5. Alembic миграции
 # ============================================
 info "Запуск миграций БД..."
-cd app
-if $PYTHON_CMD -m alembic upgrade head 2>&1 | tail -3; then
+cd "$PROJECT_DIR/app"
+if command -v alembic &>/dev/null; then
+    alembic upgrade head 2>&1 | tail -3
     log "Миграции применены"
 else
-    warning "Миграции не удалось применить (возможно, уже актуальны)"
+    warning "Alembic не найден в PATH, пропускаю миграции"
 fi
 cd "$PROJECT_DIR"
 
@@ -243,19 +244,15 @@ fi
 rm -rf frontend/.tsbuildinfo frontend/tsconfig.tsbuildinfo 2>/dev/null
 
 # ============================================
-# 7. Проверка портов Backend и Frontend
+# 7. Освобождение портов (убиваем старые процессы)
 # ============================================
 for CHECK_PORT in "$BACKEND_PORT" "$FRONTEND_PORT"; do
-    if lsof -ti:"$CHECK_PORT" >/dev/null 2>&1; then
-        BLOCKING=$(docker ps --format '{{.Names}}' --filter "publish=$CHECK_PORT" 2>/dev/null | head -1)
-        if [ -n "$BLOCKING" ]; then
-            warning "Порт $CHECK_PORT занят контейнером '$BLOCKING'. Останавливаю..."
-            docker stop "$BLOCKING" >/dev/null 2>&1
-            log "Контейнер '$BLOCKING' остановлен"
-        else
-            error "Порт $CHECK_PORT занят не-Docker процессом. Освободите порт вручную."
-            exit 1
-        fi
+    PIDS=$(lsof -ti:"$CHECK_PORT" 2>/dev/null)
+    if [ -n "$PIDS" ]; then
+        warning "Порт $CHECK_PORT занят. Останавливаю старые процессы..."
+        echo "$PIDS" | xargs kill -9 2>/dev/null
+        sleep 1
+        log "Порт $CHECK_PORT освобождён"
     fi
 done
 
