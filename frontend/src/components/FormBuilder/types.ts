@@ -7,7 +7,7 @@ export const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   clinic: 'Компании',
   doctor: 'Врачи',
   contact: 'Контакты',
-  network_clinic: 'Сетевые клиники',
+  network_clinic: 'Филиалы',
 };
 
 export const FIELD_TYPES = [

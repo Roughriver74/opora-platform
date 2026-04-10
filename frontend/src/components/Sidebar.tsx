@@ -13,18 +13,18 @@ import {
   useTheme,
 } from '@mui/material';
 import {
-  DateRange,
-  Business,
-  ContactPhone,
-  Settings,
+  EventNote,
+  CorporateFare,
+  People,
+  Tune,
   ChevronLeft,
   ChevronRight,
-  Person,
-  DeleteForever,
+  Group,
+  DeleteSweep,
   AdminPanelSettings,
-  Payment,
+  CreditCard,
   HelpOutline,
-  EditNote,
+  Assignment,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -37,17 +37,17 @@ interface NavItem {
 }
 
 const mainItems: NavItem[] = [
-  { label: 'Визиты', icon: <DateRange />, path: '/visits' },
-  { label: 'Компании', icon: <Business />, path: '/companies' },
-  { label: 'Контакты', icon: <ContactPhone />, path: '/contacts' },
+  { label: 'Визиты', icon: <EventNote />, path: '/visits' },
+  { label: 'Компании', icon: <CorporateFare />, path: '/companies' },
+  { label: 'Контакты', icon: <People />, path: '/contacts' },
 ];
 
 const adminItems: NavItem[] = [
-  { label: 'Настройки', icon: <Settings />, path: '/admin/settings' },
-  { label: 'Редактор форм', icon: <EditNote />, path: '/admin/form-builder' },
-  { label: 'Пользователи', icon: <Person />, path: '/admin/user-management' },
-  { label: 'Тарифы', icon: <Payment />, path: '/admin/billing' },
-  { label: 'Удаление визитов', icon: <DeleteForever />, path: '/admin/delete-visits' },
+  { label: 'Настройки', icon: <Tune />, path: '/admin/settings' },
+  { label: 'Редактор форм', icon: <Assignment />, path: '/admin/form-builder' },
+  { label: 'Пользователи', icon: <Group />, path: '/admin/user-management' },
+  { label: 'Тарифы', icon: <CreditCard />, path: '/admin/billing' },
+  { label: 'Удаление визитов', icon: <DeleteSweep />, path: '/admin/delete-visits' },
 ];
 
 const platformAdminItems: NavItem[] = [

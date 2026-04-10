@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import FormBuilder from './FormBuilder';
 import { ENTITY_TYPE_LABELS, EntityType } from './types';
 
-const ENTITY_TABS: EntityType[] = ['visit', 'clinic', 'doctor', 'contact', 'network_clinic'];
+const ENTITY_TABS: EntityType[] = ['visit', 'clinic', 'contact', 'network_clinic'];
 
 const FormBuilderPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<EntityType>('visit');

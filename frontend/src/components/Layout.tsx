@@ -18,19 +18,19 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import {
-  Business,
-  DateRange,
+  CorporateFare,
+  EventNote,
   AccountCircle,
   ExitToApp,
-  ContactPhone,
+  People,
   CalendarMonth,
-  Settings,
-  DeleteForever,
+  Tune,
+  DeleteSweep,
   LightMode,
   DarkMode,
-  Person,
+  Group,
   ArrowBackIosNew,
-  Payment,
+  CreditCard,
   HelpOutline,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
@@ -49,10 +49,10 @@ const BOTTOM_NAV_HEIGHT = 64;
 
 // Bottom nav items
 const bottomNavItems = [
-  { label: 'Визиты', icon: <DateRange />, path: '/visits' },
-  { label: 'Компании', icon: <Business />, path: '/companies' },
-  { label: 'Контакты', icon: <ContactPhone />, path: '/contacts' },
-  { label: 'Настройки', icon: <Settings />, path: '/admin' },
+  { label: 'Визиты', icon: <EventNote />, path: '/visits' },
+  { label: 'Компании', icon: <CorporateFare />, path: '/companies' },
+  { label: 'Контакты', icon: <People />, path: '/contacts' },
+  { label: 'Настройки', icon: <Tune />, path: '/admin' },
 ];
 
 export const Layout: React.FC = ({ children }: { children?: React.ReactNode }) => {
@@ -250,22 +250,22 @@ export const Layout: React.FC = ({ children }: { children?: React.ReactNode }) =
             </MenuItem>
             {isAdmin && (
               <MenuItem onClick={() => { handleCloseMenu(); navigate('/admin/user-management'); }} sx={{ py: 1.5 }}>
-                <ListItemIcon><Person fontSize="small" /></ListItemIcon> Пользователи
+                <ListItemIcon><Group fontSize="small" /></ListItemIcon> Пользователи
               </MenuItem>
             )}
             {isAdmin && (
               <MenuItem onClick={() => { handleCloseMenu(); navigate('/admin/delete-visits'); }} sx={{ py: 1.5 }}>
-                <ListItemIcon><DeleteForever fontSize="small" /></ListItemIcon> Удаление визитов
+                <ListItemIcon><DeleteSweep fontSize="small" /></ListItemIcon> Удаление визитов
               </MenuItem>
             )}
             {isAdmin && (
               <MenuItem onClick={() => { handleCloseMenu(); navigate('/admin/settings'); }} sx={{ py: 1.5 }}>
-                <ListItemIcon><Settings fontSize="small" /></ListItemIcon> Настройки
+                <ListItemIcon><Tune fontSize="small" /></ListItemIcon> Настройки
               </MenuItem>
             )}
             {isAdmin && (
               <MenuItem onClick={() => { handleCloseMenu(); navigate('/admin/billing'); }} sx={{ py: 1.5 }}>
-                <ListItemIcon><Payment fontSize="small" /></ListItemIcon> Тарифы
+                <ListItemIcon><CreditCard fontSize="small" /></ListItemIcon> Тарифы
               </MenuItem>
             )}
             <MenuItem onClick={() => { handleCloseMenu(); navigate('/help'); }} sx={{ py: 1.5 }}>
@@ -275,7 +275,7 @@ export const Layout: React.FC = ({ children }: { children?: React.ReactNode }) =
               <>
                 <Divider />
                 <MenuItem onClick={() => { handleCloseMenu(); navigate('/platform/organizations'); }} sx={{ py: 1.5 }}>
-                  <ListItemIcon><Business fontSize="small" /></ListItemIcon> Платформа
+                  <ListItemIcon><CorporateFare fontSize="small" /></ListItemIcon> Платформа
                 </MenuItem>
               </>
             )}
