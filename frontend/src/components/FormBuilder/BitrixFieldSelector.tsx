@@ -23,7 +23,7 @@ interface Props {
 }
 
 const BitrixFieldSelector: React.FC<Props> = ({ entityType, value, onChange, disabled }) => {
-  const { data: bitrixFields = [], isLoading } = useQuery<BitrixField[]>(
+  const { data: bitrixFields = [], isLoading, isError } = useQuery<BitrixField[]>(
     ['bitrixFields', entityType],
     async () => {
       const res = await api.get(`/admin/bitrix-fields/${entityType}`);
@@ -49,6 +49,8 @@ const BitrixFieldSelector: React.FC<Props> = ({ entityType, value, onChange, dis
           {...params}
           label="Поле Bitrix24"
           size="small"
+          error={isError}
+          helperText={isError ? 'Не удалось загрузить поля Bitrix24' : undefined}
           InputProps={{
             ...params.InputProps,
             endAdornment: (
@@ -68,7 +70,8 @@ const BitrixFieldSelector: React.FC<Props> = ({ entityType, value, onChange, dis
           </Typography>
         </li>
       )}
-      noOptionsText={isLoading ? 'Загрузка...' : 'Поля не найдены'}
+      loadingText="Загрузка..."
+      noOptionsText={isError ? 'Ошибка загрузки' : 'Поля не найдены'}
     />
   );
 };
