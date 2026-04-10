@@ -55,17 +55,17 @@ export interface FieldMappingCreate {
 export const adminApi = {
 	// Global Settings
 	getGlobalSettings: async (): Promise<GlobalSetting[]> => {
-		const response = await api.get('/admin/settings')
+		const response = await api.get('/settings/')
 		return response.data
 	},
 
 	getGlobalSetting: async (key: string): Promise<GlobalSetting> => {
-		const response = await api.get(`/admin/settings/${key}`)
+		const response = await api.get(`/settings/${key}`)
 		return response.data
 	},
 
 	updateGlobalSetting: async (key: string, setting: GlobalSettingUpdate): Promise<GlobalSetting> => {
-		const response = await api.put(`/admin/settings/${key}`, setting)
+		const response = await api.put(`/settings/${key}`, setting)
 		return response.data
 	},
 	// Field Mappings
