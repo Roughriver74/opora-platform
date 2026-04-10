@@ -220,16 +220,16 @@ const NetworkClinicsListPage: React.FC = () => {
         })
     }
 
-    const getSyncStatusColor = (status: string) => {
+    const getSyncStatusSx = (status: string) => {
         switch (status) {
             case 'synced':
-                return 'success'
+                return { bgcolor: 'success.main', color: '#fff' }
             case 'pending':
-                return 'warning'
+                return { bgcolor: 'warning.main', color: '#fff' }
             case 'error':
-                return 'error'
+                return { bgcolor: 'error.main', color: '#fff' }
             default:
-                return 'default'
+                return { bgcolor: 'text.secondary', color: '#fff' }
         }
     }
 
@@ -396,7 +396,7 @@ const NetworkClinicsListPage: React.FC = () => {
                             <Chip
                                 size='small'
                                 label={clinic.sync_status}
-                                color={getSyncStatusColor(clinic.sync_status)}
+                                sx={getSyncStatusSx(clinic.sync_status)}
                             />
 
                             <Button

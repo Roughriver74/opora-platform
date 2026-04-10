@@ -38,16 +38,16 @@ const getRoleLabel = (role: string): string => {
 	}
 }
 
-const getRoleColor = (role: string): 'error' | 'warning' | 'info' | 'default' => {
+const getRoleSx = (role: string) => {
 	switch (role) {
 		case 'platform_admin':
-			return 'error'
+			return { bgcolor: 'error.main', color: '#fff' }
 		case 'org_admin':
-			return 'warning'
+			return { bgcolor: 'primary.main', color: '#fff' }
 		case 'user':
-			return 'info'
+			return { bgcolor: 'success.main', color: '#fff' }
 		default:
-			return 'default'
+			return {}
 	}
 }
 
@@ -105,7 +105,7 @@ export const ProfilePage: React.FC = () => {
 					top: 0,
 					zIndex: 100,
 					bgcolor: 'background.paper',
-					boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+					boxShadow: (theme: any) => theme.palette.mode === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : '0 1px 3px rgba(0,0,0,0.2)',
 					mb: 2,
 				}}
 			>
@@ -121,7 +121,7 @@ export const ProfilePage: React.FC = () => {
 					sx={{
 						borderRadius: 3,
 						border: 'none',
-						boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+						boxShadow: (theme: any) => theme.palette.mode === 'light' ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
 						mb: 3,
 					}}
 				>
@@ -156,12 +156,12 @@ export const ProfilePage: React.FC = () => {
 								<Chip
 									size='small'
 									label={getRoleLabel(user.role)}
-									color={getRoleColor(user.role)}
 									sx={{
 										mt: 0.5,
 										fontWeight: 600,
 										fontSize: '0.7rem',
 										height: 22,
+										...getRoleSx(user.role),
 									}}
 								/>
 							</Box>
@@ -269,7 +269,7 @@ export const ProfilePage: React.FC = () => {
 					sx={{
 						borderRadius: 3,
 						border: 'none',
-						boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+						boxShadow: (theme: any) => theme.palette.mode === 'light' ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
 						mb: 3,
 					}}
 				>

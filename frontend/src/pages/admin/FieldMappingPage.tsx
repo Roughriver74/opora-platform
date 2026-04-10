@@ -494,7 +494,7 @@ const FieldMappingPage: React.FC = () => {
   return (
     <StyledContainer maxWidth="lg">
       <Typography variant="h4" gutterBottom>
-        Управление сопоставлением полей с Bitrix24
+        Маппинг полей
       </Typography>
       <StyledPaper>
         <Typography variant="body1" paragraph>
@@ -606,7 +606,7 @@ const FieldMappingPage: React.FC = () => {
                                 <Button
                                   size="small"
                                   variant="contained"
-                                  color="success"
+                                  sx={{ bgcolor: 'success.main', color: '#fff', '&:hover': { bgcolor: 'success.dark' } }}
                                   onClick={() => {
                                     const fieldName = fieldId.split('_').pop() || fieldId;
                                     const appFieldName = fieldName.toLowerCase().replace(/[^a-z0-9]/g, '_');
@@ -701,8 +701,10 @@ const FieldMappingPage: React.FC = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} align="center">
-                      Нет настроенных сопоставлений для типа "{tab}"
+                    <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Настройте маппинг полей для синхронизации с Bitrix24
+                      </Typography>
                     </TableCell>
                   </TableRow>
                 )}

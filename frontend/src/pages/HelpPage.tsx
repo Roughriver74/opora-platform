@@ -144,7 +144,7 @@ const escapeAndInline = (text: string): string => {
   // Inline code: `code`
   safe = safe.replace(
     /`(.+?)`/g,
-    '<code style="background: rgba(0,0,0,0.06); padding: 2px 6px; border-radius: 4px; font-size: 0.9em;">$1</code>'
+    '<code style="padding: 2px 6px; border-radius: 4px; font-size: 0.9em;">$1</code>'
   );
 
   return safe;

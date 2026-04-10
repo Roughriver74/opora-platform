@@ -487,20 +487,20 @@ const ContactEditPage: React.FC = () => {
       ? new Date(contact.last_synced).toLocaleString()
       : 'никогда'
 
-    let statusColor = 'default'
+    let statusSx: Record<string, string> = {}
     let statusText = 'Неизвестно'
 
     switch (syncStatus) {
       case 'synced':
-        statusColor = 'success'
+        statusSx = { bgcolor: 'success.main', color: '#fff' }
         statusText = 'Синхронизировано'
         break
       case 'pending':
-        statusColor = 'warning'
+        statusSx = { bgcolor: 'warning.main', color: '#fff' }
         statusText = 'Ожидает синхронизации'
         break
       case 'error':
-        statusColor = 'error'
+        statusSx = { bgcolor: 'error.main', color: '#fff' }
         statusText = 'Ошибка синхронизации'
         break
       default:
@@ -511,12 +511,11 @@ const ContactEditPage: React.FC = () => {
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
         <Chip
           label={statusText}
-          color={statusColor as any}
           size="small"
           icon={
             syncStatus === 'error' ? <SyncProblemIcon /> : <SyncIcon />
           }
-          sx={{ mr: 1 }}
+          sx={{ mr: 1, ...statusSx, '& .MuiChip-icon': { color: 'inherit' } }}
         />
         <Typography variant="caption" color="text.secondary">
           Последняя синхронизация: {lastSynced}
@@ -554,7 +553,7 @@ const ContactEditPage: React.FC = () => {
           top: 0,
           zIndex: 100,
           bgcolor: 'background.paper',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          boxShadow: (theme: any) => theme.palette.mode === 'light' ? '0 1px 3px rgba(0,0,0,0.05)' : '0 1px 3px rgba(0,0,0,0.2)',
           mb: 2,
           alignItems: 'center',
           justifyContent: 'space-between'
@@ -567,14 +566,15 @@ const ContactEditPage: React.FC = () => {
           Редактирование контакта
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <IconButton 
-            color="primary" 
-            onClick={() => syncMutation.mutate()}
-            disabled={isBitrixLoading || !contact?.bitrix_id}
-            sx={{ bgcolor: 'action.hover' }}
-          >
-            {isBitrixLoading ? <CircularProgress size={20} /> : <SyncIcon />}
-          </IconButton>
+          {contact?.bitrix_id && (
+            <IconButton
+              sx={{ color: 'primary.main', bgcolor: 'action.hover' }}
+              onClick={() => syncMutation.mutate()}
+              disabled={isBitrixLoading}
+            >
+              {isBitrixLoading ? <CircularProgress size={20} /> : <SyncIcon />}
+            </IconButton>
+          )}
         </Box>
       </Box>
 
@@ -590,8 +590,7 @@ const ContactEditPage: React.FC = () => {
             icon={<PersonIcon />}
             label={`ID: ${contact.bitrix_id}`}
             variant="filled"
-            color="primary"
-            sx={{ mb: 2, bgcolor: theme.palette.mode === 'light' ? 'primary.light' : undefined, color: 'primary.dark', fontWeight: 500 }}
+            sx={{ mb: 2, bgcolor: 'primary.light', color: 'primary.dark', fontWeight: 500, '& .MuiChip-icon': { color: 'primary.dark' } }}
           />
         ) : (
           <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
@@ -601,7 +600,7 @@ const ContactEditPage: React.FC = () => {
 
         {renderSyncStatus()}
 
-        <Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3 }}>
+        <Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: (theme: any) => theme.palette.mode === 'light' ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)', mb: 3 }}>
           <CardContent>
             <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
               Основная информация
@@ -635,7 +634,7 @@ const ContactEditPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3 }}>
+        <Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: (theme: any) => theme.palette.mode === 'light' ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)', mb: 3 }}>
           <CardContent>
             <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
               Контактная информация
@@ -669,7 +668,7 @@ const ContactEditPage: React.FC = () => {
       </CardContent>
     </Card>
 
-    <Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', mb: 3 }}>
+    <Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: (theme: any) => theme.palette.mode === 'light' ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)', mb: 3 }}>
       <CardContent>
         <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
           Дополнительная информация

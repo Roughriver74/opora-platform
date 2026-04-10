@@ -51,16 +51,16 @@ const ContactsListPage: React.FC = () => {
     }
   );
 
-  const getSyncStatusColor = (status: string) => {
+  const getSyncStatusSx = (status: string) => {
     switch (status) {
       case 'synced':
-        return 'success';
+        return { bgcolor: 'success.main', color: '#fff' };
       case 'pending':
-        return 'warning';
+        return { bgcolor: 'warning.main', color: '#fff' };
       case 'error':
-        return 'error';
+        return { bgcolor: 'error.main', color: '#fff' };
       default:
-        return 'default';
+        return { bgcolor: 'text.secondary', color: '#fff' };
     }
   };
 
@@ -76,7 +76,7 @@ const ContactsListPage: React.FC = () => {
     return (
       <Box p={3}>
         <Alert severity="error">
-          Error loading contacts. Please try again later.
+          Ошибка загрузки контактов. Попробуйте обновить страницу.
         </Alert>
       </Box>
     );
@@ -100,12 +100,11 @@ const ContactsListPage: React.FC = () => {
           <LoadingButton
             variant="outlined"
             size="small"
-            startIcon={<SyncIcon />}
             loading={syncMutation.isLoading}
             onClick={() => syncMutation.mutate()}
-            sx={{ borderRadius: '20px' }}
+            sx={{ borderRadius: '20px', minWidth: 'auto', px: 1.5 }}
           >
-            Синхронизация
+            <SyncIcon />
           </LoadingButton>
         </Box>
       </Box>
@@ -150,8 +149,7 @@ const ContactsListPage: React.FC = () => {
                         <Chip
                           size="small"
                           label={contact.sync_status || 'unknown'}
-                          color={getSyncStatusColor(contact.sync_status || 'unknown')}
-                          sx={{ mb: 1, height: 20, fontSize: '0.7rem' }}
+                          sx={{ mb: 1, height: 20, fontSize: '0.7rem', ...getSyncStatusSx(contact.sync_status || 'unknown') }}
                         />
                         <ArrowForwardIosIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                       </Box>

@@ -74,20 +74,18 @@ const getStatusLabel = (status: Payment['status']): string => {
   }
 };
 
-const getStatusColor = (
-  status: Payment['status']
-): 'success' | 'warning' | 'error' | 'default' => {
+const getStatusSx = (status: Payment['status']) => {
   switch (status) {
     case 'paid':
-      return 'success';
+      return { bgcolor: 'success.main', color: '#fff' };
     case 'pending':
-      return 'warning';
+      return { bgcolor: 'warning.main', color: '#fff' };
     case 'failed':
-      return 'error';
+      return { bgcolor: 'error.main', color: '#fff' };
     case 'cancelled':
-      return 'default';
+      return { bgcolor: 'text.secondary', color: '#fff' };
     default:
-      return 'default';
+      return {};
   }
 };
 
@@ -212,7 +210,7 @@ const BillingPage: React.FC = () => {
                   ...(isFree
                     ? {}
                     : {
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        bgcolor: 'primary.main',
                         color: '#fff',
                       }),
                 }}
@@ -329,10 +327,10 @@ const BillingPage: React.FC = () => {
             border: '2px solid',
             borderColor: 'primary.main',
             borderRadius: 3,
-            background: (theme) =>
+            bgcolor: (theme) =>
               theme.palette.mode === 'dark'
-                ? 'linear-gradient(135deg, rgba(102,126,234,0.08) 0%, rgba(118,75,162,0.08) 100%)'
-                : 'linear-gradient(135deg, rgba(102,126,234,0.04) 0%, rgba(118,75,162,0.04) 100%)',
+                ? 'rgba(10, 132, 255, 0.08)'
+                : 'rgba(0, 122, 255, 0.04)',
           }}
         >
           <CardContent sx={{ p: 3 }}>
@@ -423,9 +421,9 @@ const BillingPage: React.FC = () => {
                   textTransform: 'none',
                   fontWeight: 600,
                   px: 3,
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  bgcolor: 'primary.main',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #5a6fd6 0%, #6a4396 100%)',
+                    bgcolor: 'primary.dark',
                   },
                 }}
               >
@@ -560,9 +558,8 @@ const BillingPage: React.FC = () => {
                       <TableCell>
                         <Chip
                           label={getStatusLabel(payment.status)}
-                          color={getStatusColor(payment.status)}
                           size="small"
-                          sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                          sx={{ fontWeight: 600, fontSize: '0.75rem', ...getStatusSx(payment.status) }}
                         />
                       </TableCell>
                       <TableCell>{getMethodLabel(payment.method)}</TableCell>

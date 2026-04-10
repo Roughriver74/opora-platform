@@ -57,13 +57,13 @@ export const VisitCalendar: React.FC<VisitCalendarProps> = ({ onClose, openInMod
   const [selectedDayVisits, setSelectedDayVisits] = useState<Visit[]>([]);
   const [visitGroups, setVisitGroups] = useState<VisitGroup[]>([]);
   
-  // Цвета для статусов визитов
+  // Цвета для статусов визитов (iOS palette)
   const statusColors = {
-    [VisitStatus.planned]: theme.palette.info.main,
+    [VisitStatus.planned]: theme.palette.primary.main,
     [VisitStatus.in_progress]: theme.palette.warning.main,
     [VisitStatus.completed]: theme.palette.success.main,
     [VisitStatus.failed]: theme.palette.error.main,
-    [VisitStatus.cancelled]: theme.palette.grey[500],
+    [VisitStatus.cancelled]: theme.palette.text.secondary,
   };
 
   // Загрузка визитов
@@ -95,7 +95,7 @@ export const VisitCalendar: React.FC<VisitCalendarProps> = ({ onClose, openInMod
         { title: 'Запланированные', visits: [] },
         { title: 'В работе', visits: [] },
         { title: 'Выполненные', visits: [] },
-        { title: 'Проваленные', visits: [] },
+        { title: 'Неудачные', visits: [] },
         { title: 'Отмененные', visits: [] },
       ];
       

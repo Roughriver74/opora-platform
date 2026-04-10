@@ -79,20 +79,27 @@ const getRoleLabel = (user: User): string => {
   return user.is_admin ? 'Администратор' : 'Пользователь';
 };
 
-const getRoleColor = (user: User): 'error' | 'warning' | 'info' | 'default' => {
-  if (user.role) {
-    switch (user.role) {
-      case 'platform_admin':
-        return 'error';
-      case 'org_admin':
-        return 'warning';
-      case 'user':
-        return 'info';
-      default:
-        return 'default';
-    }
+const getRoleSx = (user: User) => {
+  const role = user.role || (user.is_admin ? 'org_admin' : 'user');
+  switch (role) {
+    case 'platform_admin':
+      return {
+        bgcolor: 'error.main',
+        color: '#fff',
+      };
+    case 'org_admin':
+      return {
+        bgcolor: 'primary.main',
+        color: '#fff',
+      };
+    case 'user':
+      return {
+        bgcolor: 'success.main',
+        color: '#fff',
+      };
+    default:
+      return {};
   }
-  return user.is_admin ? 'warning' : 'info';
 };
 
 export const UserManagementPage: React.FC = () => {
@@ -333,7 +340,7 @@ export const UserManagementPage: React.FC = () => {
                       </IconButton>
                       <IconButton
                         onClick={() => handleDeleteUser(user.id)}
-                        color="error"
+                        sx={{ color: 'error.main' }}
                         size="small"
                       >
                         <DeleteIcon fontSize="small" />
@@ -344,15 +351,17 @@ export const UserManagementPage: React.FC = () => {
                     <Chip
                       size="small"
                       label={getRoleLabel(user)}
-                      color={getRoleColor(user)}
-                      sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                      sx={{ fontWeight: 600, fontSize: '0.75rem', ...getRoleSx(user) }}
                     />
                     <Chip
                       size="small"
                       label={user.is_active ? 'Активен' : 'Неактивен'}
-                      color={user.is_active ? 'success' : 'default'}
                       variant="outlined"
-                      sx={{ fontSize: '0.75rem' }}
+                      sx={{
+                        fontSize: '0.75rem',
+                        borderColor: user.is_active ? 'success.main' : 'text.secondary',
+                        color: user.is_active ? 'success.main' : 'text.secondary',
+                      }}
                     />
                   </Box>
                   {user.regions && user.regions.length > 0 && (
@@ -397,8 +406,7 @@ export const UserManagementPage: React.FC = () => {
                       <Chip
                         size="small"
                         label={getRoleLabel(user)}
-                        color={getRoleColor(user)}
-                        sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                        sx={{ fontWeight: 600, fontSize: '0.75rem', ...getRoleSx(user) }}
                       />
                     </TableCell>
                     <TableCell>{user.is_active ? 'Да' : 'Нет'}</TableCell>
@@ -423,7 +431,7 @@ export const UserManagementPage: React.FC = () => {
                       </IconButton>
                       <IconButton
                         onClick={() => handleDeleteUser(user.id)}
-                        color="error"
+                        sx={{ color: 'error.main' }}
                       >
                         <DeleteIcon />
                       </IconButton>
@@ -436,7 +444,9 @@ export const UserManagementPage: React.FC = () => {
         )}
       </Paper>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth fullScreen={isMobile}>
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth fullScreen={isMobile}
+        PaperProps={{ sx: { borderRadius: isMobile ? 0 : '20px' } }}
+      >
         <DialogTitle>
           {editingUser ? 'Редактирование пользователя' : 'Создание пользователя'}
         </DialogTitle>

@@ -17,7 +17,7 @@ import { visitService } from '../../services/visitService';
 
 const DeleteVisits: React.FC = () => {
     const [inputValue, setInputValue] = useState<string>('');
-    const [useBitrixId, setUseBitrixId] = useState<boolean>(false);
+    const [useExternalId, setUseExternalId] = useState<boolean>(false);
     const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -30,14 +30,14 @@ const DeleteVisits: React.FC = () => {
         try {
             const idToDelete = Number(inputValue);
 
-            const deleteParams = useBitrixId
+            const deleteParams = useExternalId
                 ? { visit_bitrix_id: idToDelete }
                 : { visit_id: idToDelete };
 
             await visitService.deleteVisit(deleteParams);
 
             setSuccessMessage(
-                `Визит с ${useBitrixId ? 'bitrixId' : 'id'} ${idToDelete} успешно удален!`
+                `Визит с ${useExternalId ? 'внешним ID' : 'ID'} ${idToDelete} успешно удален!`
             );
         } catch (error) {
             console.error('Ошибка удаления визита:', error);
@@ -66,37 +66,43 @@ const DeleteVisits: React.FC = () => {
             <FormControlLabel
                 control={
                     <Switch
-                        checked={useBitrixId}
-                        onChange={(e) => setUseBitrixId(e.target.checked)}
+                        checked={useExternalId}
+                        onChange={(e) => setUseExternalId(e.target.checked)}
                         disabled={!isValidId}
                         color="primary"
                     />
                 }
-                label={useBitrixId ? 'Удалить по bitrixId' : 'Удалить по id'}
+                label={useExternalId ? 'Удалить по внешнему ID' : 'Удалить по ID'}
             />
 
             <Button
                 variant="contained"
-                color="error"
                 onClick={() => setConfirmOpen(true)}
                 disabled={!isValidId}
                 fullWidth
+                sx={{
+                    bgcolor: 'error.main',
+                    color: '#fff',
+                    '&:hover': { bgcolor: 'error.dark' },
+                }}
             >
                 Удалить визит
             </Button>
 
             {/* Модальное окно подтверждения */}
-            <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+            <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}
+                PaperProps={{ sx: { borderRadius: '20px' } }}
+            >
                 <DialogTitle>Подтверждение</DialogTitle>
                 <DialogContent>
                     <DialogContentText>
                         Вы действительно хотите удалить визит с{' '}
-                        <strong>{useBitrixId ? 'bitrixId' : 'id'}</strong> —{' '}
+                        <strong>{useExternalId ? 'внешним ID' : 'ID'}</strong> —{' '}
                         <strong>{inputValue}</strong>?
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleDelete} color="error" autoFocus>
+                    <Button onClick={handleDelete} sx={{ color: 'error.main' }} autoFocus>
                         Да
                     </Button>
                     <Button onClick={() => setConfirmOpen(false)} color="inherit">

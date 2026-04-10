@@ -129,7 +129,7 @@ export const Layout: React.FC = ({ children }: { children?: React.ReactNode }) =
   const handleBack = () => navigate(-1);
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: mode === 'dark' ? '#000000' : '#F2F2F7' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Desktop Sidebar */}
       {isDesktop && <Sidebar />}
 

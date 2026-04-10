@@ -92,7 +92,7 @@ const FilterForm: React.FC<Props> = ({
       sx={{
         p: 2,
         backgroundColor: "background.paper",
-        borderRadius: 1,
+        borderRadius: '20px',
         mb: 3,
       }}
     >
