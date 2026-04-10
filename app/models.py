@@ -372,7 +372,7 @@ class FormTemplate(Base):
     id = Column(Integer, primary_key=True, index=True)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     entity_type = Column(String, nullable=False)  # visit, clinic, doctor, contact, network_clinic
-    fields = Column(JSONB, default=[])
+    fields = Column(JSONB, default=list)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
