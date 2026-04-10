@@ -42,7 +42,11 @@ class Settings:
 
     # Настройки CORS
     cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:4200")
-    CORS_ORIGINS: List[str] = ["*"] if DEV_MODE else cors_origins_str.split(",")
+    _admin_domain = os.getenv("ADMIN_DOMAIN", "")
+    CORS_ORIGINS: List[str] = (
+        ["*"] if DEV_MODE
+        else cors_origins_str.split(",") + ([f"https://{_admin_domain}"] if _admin_domain else [])
+    )
 
     # Настройки ЮКасса
     YUKASSA_SHOP_ID: str = os.getenv("YUKASSA_SHOP_ID", "")
@@ -63,6 +67,12 @@ class Settings:
     EXCEL_UPLOAD_PATH: str = os.getenv("EXCEL_UPLOAD_PATH", "./upload")
     TOKEN_DADATA = os.getenv("TOKEN_DADATA", "")
     SECRET_DADATA = os.getenv("SECRET_DADATA", "")
+
+    # Платформенный администратор — bootstrap токен
+    PLATFORM_ADMIN_TOKEN: str = os.getenv("PLATFORM_ADMIN_TOKEN", "")
+
+    # Admin subdomain (для CORS)
+    ADMIN_DOMAIN: str = os.getenv("ADMIN_DOMAIN", "")
 
 
 MOSCOW_TZ = ZoneInfo("Europe/Moscow")

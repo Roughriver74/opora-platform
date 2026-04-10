@@ -63,6 +63,50 @@ class SmtpTestResponse(BaseModel):
     message: str
 
 
+# ---- Bootstrap ----
+
+class InitAdminRequest(BaseModel):
+    email: str
+    password: str
+    token: str
+
+
+@router.post("/init-admin", response_model=dict)
+async def init_platform_admin(data: InitAdminRequest, uow: UnitOfWork = Depends(get_uow)):
+    """
+    Bootstrap: создать первого platform_admin.
+    Работает ТОЛЬКО если:
+      1. PLATFORM_ADMIN_TOKEN задан в env
+      2. data.token совпадает с PLATFORM_ADMIN_TOKEN
+      3. В БД ещё нет ни одного platform_admin
+    """
+    if not Settings.PLATFORM_ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="Platform admin creation is disabled")
+    if data.token != Settings.PLATFORM_ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="Invalid token")
+
+    session = uow.session
+    existing = (
+        (await session.execute(select(User).where(User.role == "platform_admin")))
+        .scalars()
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Platform admin already exists")
+
+    user = User(
+        email=data.email,
+        role="platform_admin",
+        is_active=True,
+        organization_id=None,
+    )
+    user.set_password(data.password)
+    session.add(user)
+    await session.commit()
+    logger.info("Platform admin created: %s", data.email)
+    return {"detail": "Platform admin created", "email": data.email}
+
+
 # ---- Endpoints ----
 
 @router.get("/organizations", response_model=List[OrgResponse])
