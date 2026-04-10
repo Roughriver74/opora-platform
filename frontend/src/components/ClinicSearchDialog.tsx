@@ -66,11 +66,11 @@ export const ClinicSearchDialog: React.FC<ClinicSearchDialogProps> = ({
       
       setSearchResults(results);
       if (results.length === 0) {
-        setSearchError('Клиники не найдены. Попробуйте изменить поисковый запрос.');
+        setSearchError('Компании не найдены. Попробуйте изменить поисковый запрос.');
       }
     } catch (error) {
       console.error('Error searching clinics:', error);
-      setSearchError('Ошибка при поиске клиник. Пожалуйста, попробуйте еще раз.');
+      setSearchError('Ошибка при поиске компаний. Пожалуйста, попробуйте еще раз.');
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -98,7 +98,7 @@ export const ClinicSearchDialog: React.FC<ClinicSearchDialogProps> = ({
     >
       <DialogTitle>
         <Box display="flex" justifyContent="space-between" alignItems="center">
-          Поиск клиники
+          Поиск компании
           <IconButton edge="end" color="inherit" onClick={onClose} aria-label="close">
             <CloseIcon />
           </IconButton>
@@ -109,7 +109,7 @@ export const ClinicSearchDialog: React.FC<ClinicSearchDialogProps> = ({
           <TextField
             autoFocus
             margin="dense"
-            label="Введите название клиники или ИНН"
+            label="Введите название компании или ИНН"
             type="text"
             fullWidth
             variant="outlined"

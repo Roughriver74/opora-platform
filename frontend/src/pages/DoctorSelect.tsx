@@ -92,7 +92,7 @@ const DoctorSelect: React.FC<ContactSelectProps> = ({ companyId, value, onChange
     return (
         <FormControl fullWidth>
             <Select
-                label="Лица, принимающие решения (ЛПР)"
+                label="Контакты"
                 multiple
                 displayEmpty
                 value={selectedValue}

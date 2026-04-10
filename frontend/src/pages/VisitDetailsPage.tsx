@@ -125,7 +125,7 @@ export const VisitDetailsPage: React.FC = () => {
         !clinicData?.clinic_coordinates?.latitude ||
         !clinicData.clinic_coordinates?.longitude
       ) {
-        showSnackbar("Координаты клиники недоступны.");
+        showSnackbar("Координаты компании недоступны.");
         return;
       }
 
@@ -331,11 +331,11 @@ export const VisitDetailsPage: React.FC = () => {
       });
     }
   }, [visit]);
-  // Состояние для контактов (ЛПР)
+  // Состояние для контактов
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isContactsLoading, setIsContactsLoading] = useState(false);
 
-  // Функция для загрузки контактов (ЛПР) из Bitrix24
+  // Функция для загрузки контактов компании
   const loadContactsForCompany = useCallback(
     async (companyId: number) => {
       if (!visit?.company_id) return;
@@ -955,7 +955,7 @@ export const VisitDetailsPage: React.FC = () => {
                         )}`,
                       }}
                     >
-                      Bitrix ID: {visit.bitrix_id}
+                      ID: {visit.bitrix_id}
                     </Typography>
                   )}
                 </Box>
@@ -1316,7 +1316,7 @@ export const VisitDetailsPage: React.FC = () => {
                 <BusinessIcon
                   sx={{ mr: 1, color: theme.palette.primary.main }}
                 />
-                Информация о клинике
+                Информация о компании
               </Typography>
               <Button
                 variant="outlined"
@@ -1473,7 +1473,7 @@ export const VisitDetailsPage: React.FC = () => {
               }}
             >
               <PersonIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-              Контакты (ЛПР)
+              Контакты
             </Typography>
 
             <Divider sx={{ mb: 2, opacity: 0.6 }} />
@@ -1654,7 +1654,7 @@ export const VisitDetailsPage: React.FC = () => {
                 }}
               >
                 <Typography color="text.secondary">
-                  ЛПР не найдены для данной клиники
+                  Контакты не найдены для данной компании
                 </Typography>
               </Box>
             )}

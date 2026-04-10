@@ -80,7 +80,7 @@ const ContactsListPage: React.FC = () => {
     <Box p={3} pb={12}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          Контакты (ЛПР)
+          Контакты
         </Typography>
         <LoadingButton
           variant="outlined"
@@ -96,7 +96,7 @@ const ContactsListPage: React.FC = () => {
 
       {contacts?.length === 0 ? (
         <Alert severity="info">
-          Контакты не найдены. Создайте новый контакт или синхронизируйтесь с Bitrix24.
+          Контакты не найдены. Создайте новый контакт.
         </Alert>
       ) : (
         <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>

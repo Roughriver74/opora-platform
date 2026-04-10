@@ -43,7 +43,7 @@ export const generateColumns = (data: any[]): Column[] => {
     const labelMap: Record<string, string> = {
         id: 'ID',
         name: 'Название',
-        bitrix_id: 'Bitrix ID',
+        bitrix_id: 'Внешний ID',
         inn: 'ИНН',
         sync_status: 'Статус синхронизации',
         last_synced: 'Последняя синхронизация',

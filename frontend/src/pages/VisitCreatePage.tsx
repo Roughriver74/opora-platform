@@ -37,7 +37,7 @@ interface Visit {
 	sansus: boolean
 
 	doctors: number[]
-	contacts: number[] // Добавляем контакты (ЛПР)
+	contacts: number[] // Контакты
 	[key: string]: any // Для динамических полей
 }
 
@@ -365,7 +365,7 @@ export const VisitCreatePage: React.FC = () => {
 									<CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
 										<Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
 											<BusinessIcon color="action" fontSize="small" sx={{ mr: 1 }} />
-											<Typography variant='subtitle2' color="text.secondary">Клиника</Typography>
+											<Typography variant='subtitle2' color="text.secondary">Компания</Typography>
 										</Box>
 										<Typography variant='body1' sx={{ fontWeight: 500, ml: 3.5 }}>{visit.company_name}</Typography>
 										<Typography variant='caption' color='text.secondary' sx={{ ml: 3.5, display: 'block' }}>
@@ -375,8 +375,8 @@ export const VisitCreatePage: React.FC = () => {
 								</Card>
 							) : (
 								<Alert severity='warning' sx={{ mb: 2, borderRadius: 2 }}>
-									Клиника не выбрана. Пожалуйста, вернитесь на страницу визитов
-									и выберите клинику.
+									Компания не выбрана. Пожалуйста, вернитесь на страницу визитов
+									и выберите компанию.
 								</Alert>
 							)}
 						</Grid>

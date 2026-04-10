@@ -27,7 +27,6 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import SearchIcon from '@mui/icons-material/Search';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
@@ -40,6 +39,9 @@ interface User {
   email: string;
   is_active: boolean;
   is_admin: boolean;
+  role?: string;
+  first_name?: string;
+  last_name?: string;
   created_at: string;
   updated_at: string;
   bitrix_user_id: number;
@@ -50,34 +52,62 @@ interface UserForm {
   email: string;
   password?: string;
   is_active?: boolean;
-  is_admin?: boolean;
+  role?: string;
+  first_name?: string;
+  last_name?: string;
   bitrix_user_id?: number;
   regions?: string[];
 }
 
-interface BitrixUser {
-  id: number;
-  email: string;
-  name: string;
-  last_name: string;
-}
+const getRoleLabel = (user: User): string => {
+  if (user.role) {
+    switch (user.role) {
+      case 'platform_admin':
+        return 'Админ платформы';
+      case 'org_admin':
+        return 'Администратор';
+      case 'user':
+        return 'Пользователь';
+      default:
+        return user.role;
+    }
+  }
+  return user.is_admin ? 'Администратор' : 'Пользователь';
+};
+
+const getRoleColor = (user: User): 'error' | 'warning' | 'info' | 'default' => {
+  if (user.role) {
+    switch (user.role) {
+      case 'platform_admin':
+        return 'error';
+      case 'org_admin':
+        return 'warning';
+      case 'user':
+        return 'info';
+      default:
+        return 'default';
+    }
+  }
+  return user.is_admin ? 'warning' : 'info';
+};
 
 export const UserManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<UserForm>({
     email: '',
     password: '',
     is_active: true,
-    is_admin: false,
+    role: 'user',
+    first_name: '',
+    last_name: '',
     bitrix_user_id: undefined,
     regions: [],
   });
-  const [searchingBitrix, setSearchingBitrix] = useState(false);
-  const [bitrixUser, setBitrixUser] = useState<BitrixUser | null>(null);
 
   const { data: users, isLoading, refetch } = useQuery<User[]>(
     ['users'],
@@ -96,7 +126,7 @@ export const UserManagementPage: React.FC = () => {
     ['regions'],
     async () => {
       const response = await api.get('/regions');
-      return response.data.regions || []; // Получаем поле regions из ответа API
+      return response.data.regions || [];
     },
     {
       onError: (error: any) => {
@@ -107,7 +137,12 @@ export const UserManagementPage: React.FC = () => {
 
   const createUserMutation = useMutation(
     async (userData: UserForm) => {
-      await api.post('/users', userData);
+      // Convert role to is_admin for backward compatibility
+      const payload = {
+        ...userData,
+        is_admin: userData.role === 'org_admin' || userData.role === 'platform_admin',
+      };
+      await api.post('/users', payload);
     },
     {
       onSuccess: () => {
@@ -124,7 +159,11 @@ export const UserManagementPage: React.FC = () => {
   const updateUserMutation = useMutation(
     async (userData: UserForm & { id: number }) => {
       const { id, ...data } = userData;
-      await api.put(`/users/${id}`, data);
+      const payload = {
+        ...data,
+        is_admin: data.role === 'org_admin' || data.role === 'platform_admin',
+      };
+      await api.put(`/users/${id}`, payload);
     },
     {
       onSuccess: () => {
@@ -153,75 +192,49 @@ export const UserManagementPage: React.FC = () => {
     }
   );
 
-  const searchBitrixUserMutation = useMutation(
-    async (email: string) => {
-      const response = await api.get(`/users/search-bitrix?email=${encodeURIComponent(email)}`);
-      return response.data;
-    },
-    {
-      onSuccess: (data) => {
-        setSearchingBitrix(false);
-        if (data.found) {
-          setBitrixUser(data.user);
-          setFormData({
-            ...formData,
-            bitrix_user_id: data.user.id,
-          });
-          enqueueSnackbar('Пользователь найден в Bitrix24', { variant: 'success' });
-        } else {
-          setBitrixUser(null);
-          enqueueSnackbar('Пользователь не найден в Bitrix24. Введите ID вручную.', { variant: 'warning' });
-        }
-      },
-      onError: (error: any) => {
-        setSearchingBitrix(false);
-        setBitrixUser(null);
-        setError(error.response?.data?.detail || 'Ошибка при поиске пользователя в Bitrix24');
-      },
-    }
-  );
-
   const handleOpenDialog = (user?: User) => {
     if (user) {
       setEditingUser(true);
+      setEditingUserId(user.id);
+      // Determine role from user data
+      let role = 'user';
+      if (user.role) {
+        role = user.role;
+      } else if (user.is_admin) {
+        role = 'org_admin';
+      }
       setFormData({
         email: user.email,
         password: '',
         is_active: user.is_active,
-        is_admin: user.is_admin,
+        role: role,
+        first_name: (user as any).first_name || '',
+        last_name: (user as any).last_name || '',
         bitrix_user_id: user.bitrix_user_id,
         regions: user.regions || [],
       });
     } else {
       setEditingUser(false);
+      setEditingUserId(null);
       setFormData({
         email: '',
         password: '',
         is_active: true,
-        is_admin: false,
+        role: 'user',
+        first_name: '',
+        last_name: '',
         bitrix_user_id: undefined,
         regions: [],
       });
     }
-    setBitrixUser(null);
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingUser(false);
+    setEditingUserId(null);
     setError(null);
-    setBitrixUser(null);
-  };
-
-  const handleSearchBitrixUser = () => {
-    if (!formData.email) {
-      setError('Введите email для поиска пользователя в Bitrix24');
-      return;
-    }
-    
-    setSearchingBitrix(true);
-    searchBitrixUserMutation.mutate(formData.email);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -233,34 +246,24 @@ export const UserManagementPage: React.FC = () => {
       return;
     }
 
-    // Не требуем пароль при редактировании
     if (!editingUser && !formData.password) {
       setError('Пожалуйста, укажите пароль');
       return;
     }
 
-    if (!formData.bitrix_user_id) {
-      setError('Пожалуйста, укажите ID пользователя в Bitrix24');
-      return;
-    }
-
-    if (editingUser) {
-      const user = users?.find((u) => u.email === formData.email);
-      if (user) {
-        // Если пароль пустой, создаем новый объект без него
-        const dataToSend = formData.password 
-          ? { ...formData } 
-          : { 
-              email: formData.email,
-              is_active: formData.is_active,
-              is_admin: formData.is_admin,
-              bitrix_user_id: formData.bitrix_user_id,
-              regions: formData.regions
-            };
-        updateUserMutation.mutate({ ...dataToSend, id: user.id });
-      } else {
-        setError('Пользователь не найден');
-      }
+    if (editingUser && editingUserId) {
+      const dataToSend = formData.password
+        ? { ...formData }
+        : {
+            email: formData.email,
+            is_active: formData.is_active,
+            role: formData.role,
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            bitrix_user_id: formData.bitrix_user_id,
+            regions: formData.regions,
+          };
+      updateUserMutation.mutate({ ...dataToSend, id: editingUserId });
     } else {
       createUserMutation.mutate(formData);
     }
@@ -303,10 +306,10 @@ export const UserManagementPage: React.FC = () => {
             <Table>
               <TableHead>
                 <TableRow>
+                  <TableCell>Имя</TableCell>
                   <TableCell>Email</TableCell>
+                  <TableCell>Роль</TableCell>
                   <TableCell>Активен</TableCell>
-                  <TableCell>Администратор</TableCell>
-                  <TableCell>Bitrix ID</TableCell>
                   <TableCell>Регионы</TableCell>
                   <TableCell>Дата создания</TableCell>
                   <TableCell>Действия</TableCell>
@@ -315,10 +318,19 @@ export const UserManagementPage: React.FC = () => {
               <TableBody>
                 {users?.map((user) => (
                   <TableRow key={user.id}>
+                    <TableCell>
+                      {[user.first_name, user.last_name].filter(Boolean).join(' ') || '-'}
+                    </TableCell>
                     <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={getRoleLabel(user)}
+                        color={getRoleColor(user)}
+                        sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                      />
+                    </TableCell>
                     <TableCell>{user.is_active ? 'Да' : 'Нет'}</TableCell>
-                    <TableCell>{user.is_admin ? 'Да' : 'Нет'}</TableCell>
-                    <TableCell>{user.bitrix_user_id}</TableCell>
                     <TableCell>
                       {user.regions && user.regions.length > 0 ? (
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -359,47 +371,39 @@ export const UserManagementPage: React.FC = () => {
         </DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-              <TextField
-                fullWidth
-                label="Email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                margin="normal"
-                required
-                disabled={editingUser}
-              />
-              {!editingUser && (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSearchBitrixUser}
-                  sx={{ mt: 3, ml: 1 }}
-                  disabled={searchingBitrix || !formData.email}
-                  startIcon={searchingBitrix ? <CircularProgress size={20} /> : <SearchIcon />}
-                >
-                  {searchingBitrix ? 'Поиск...' : 'Найти'}
-                </Button>
-              )}
-            </Box>
-
-            {bitrixUser && (
-              <Alert severity="success" sx={{ mb: 2 }}>
-                Найден пользователь: {bitrixUser.name} {bitrixUser.last_name} (ID: {bitrixUser.id})
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
               </Alert>
             )}
 
             <TextField
               fullWidth
-              label="Bitrix ID"
-              type="number"
-              value={formData.bitrix_user_id || ''}
-              onChange={(e) => setFormData({ ...formData, bitrix_user_id: parseInt(e.target.value) || undefined })}
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               margin="normal"
               required
-              helperText="ID пользователя в Bitrix24"
+              disabled={editingUser}
             />
+
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                fullWidth
+                label="Имя"
+                value={formData.first_name || ''}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                margin="normal"
+              />
+              <TextField
+                fullWidth
+                label="Фамилия"
+                value={formData.last_name || ''}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                margin="normal"
+              />
+            </Box>
 
             <TextField
               fullWidth
@@ -413,21 +417,23 @@ export const UserManagementPage: React.FC = () => {
             />
 
             <FormControl fullWidth margin="normal">
-              <InputLabel>Активен</InputLabel>
+              <InputLabel>Роль</InputLabel>
               <Select
-                value={formData.is_active ? 'true' : 'false'}
-                onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'true' })}
+                value={formData.role || 'user'}
+                label="Роль"
+                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               >
-                <MenuItem value="true">Да</MenuItem>
-                <MenuItem value="false">Нет</MenuItem>
+                <MenuItem value="user">Пользователь</MenuItem>
+                <MenuItem value="org_admin">Администратор</MenuItem>
               </Select>
             </FormControl>
 
             <FormControl fullWidth margin="normal">
-              <InputLabel>Администратор</InputLabel>
+              <InputLabel>Активен</InputLabel>
               <Select
-                value={formData.is_admin ? 'true' : 'false'}
-                onChange={(e) => setFormData({ ...formData, is_admin: e.target.value === 'true' })}
+                value={formData.is_active ? 'true' : 'false'}
+                label="Активен"
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'true' })}
               >
                 <MenuItem value="true">Да</MenuItem>
                 <MenuItem value="false">Нет</MenuItem>

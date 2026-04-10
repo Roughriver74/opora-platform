@@ -255,7 +255,7 @@ const NetworkClinicsListPage: React.FC = () => {
         if (!clinic.bitrix_id && clinic.inn) {
             setSnackbar({
                 open: true,
-                message: 'Поиск/создание компании в Битрикс...',
+                message: 'Поиск/создание компании...',
                 severity: 'info'
             });
 
@@ -279,7 +279,7 @@ const NetworkClinicsListPage: React.FC = () => {
                         // Ошибка при синхронизации
                         setSnackbar({
                             open: true,
-                            message: result.message || 'Ошибка синхронизации с Битрикс',
+                            message: result.message || 'Ошибка синхронизации',
                             severity: 'error'
                         });
                     }
@@ -288,7 +288,7 @@ const NetworkClinicsListPage: React.FC = () => {
                     console.error('Ошибка при работе с Битрикс:', error);
                     setSnackbar({
                         open: true,
-                        message: 'Произошла ошибка при работе с Битрикс',
+                        message: 'Произошла ошибка при синхронизации',
                         severity: 'error'
                     });
                 })
@@ -391,15 +391,6 @@ const NetworkClinicsListPage: React.FC = () => {
                         </Typography>
                     </Grid>
 
-                    <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">
-                            Bitrix ID:
-                        </Typography>
-                        <Typography variant="body1">
-                            {clinic.bitrix_id || '-'}
-                        </Typography>
-                    </Grid>
-
                     <Grid item xs={12} sx={{ mt: 1 }}>
                         <Box display="flex" justifyContent="space-between" alignItems="center">
                             <Chip
@@ -440,7 +431,7 @@ const NetworkClinicsListPage: React.FC = () => {
 								<ArrowBackIcon />
 							</IconButton>
 							<Typography variant="h6" sx={{ ml: 1, fontWeight: 700 }}>
-							  Сетевые клиники
+							  Филиалы
 							</Typography>
 						</Grid>
 					</Grid>

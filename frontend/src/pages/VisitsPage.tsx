@@ -153,7 +153,7 @@ export const VisitsPage: React.FC = () => {
                       variant="subtitle1" 
                       sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
                     >
-                      {visit.company?.name || `Клиника №${visit.company_id}` || 'Неизвестная клиника'}
+                      {visit.company?.name || `Компания №${visit.company_id}` || 'Неизвестная компания'}
                     </Typography>
                     
                     <Typography variant="body2" color="primary" sx={{ mb: 0.5, fontWeight: 500 }}>

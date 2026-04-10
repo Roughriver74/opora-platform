@@ -50,6 +50,13 @@ interface FormData extends Omit<FieldMappingCreate, 'value_options'> {
 }
 
 const entityTypes = ["visit", "clinic", "doctor", "network_clinic"];
+
+const entityTypeLabels: Record<string, string> = {
+  visit: "Визиты",
+  clinic: "Компании",
+  doctor: "Специалисты",
+  network_clinic: "Филиалы",
+};
 const fieldTypes = [
   'string',
   'number',
@@ -498,7 +505,7 @@ const FieldMappingPage: React.FC = () => {
           textColor="primary"
         >
           {entityTypes.map(type => (
-            <Tab key={type} value={type} label={type.charAt(0).toUpperCase() + type.slice(1)} />
+            <Tab key={type} value={type} label={entityTypeLabels[type] || type} />
           ))}
         </StyledTabs>
 

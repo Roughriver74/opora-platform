@@ -378,7 +378,7 @@ const NetworkClinicEditPage: React.FC = () => {
         enabled: !!bitrixId,
         onSuccess: data => {
             if (!data) {
-                setError('Не удалось загрузить данные клиники')
+                setError('Не удалось загрузить данные компании')
                 return
             }
 
@@ -540,7 +540,7 @@ const NetworkClinicEditPage: React.FC = () => {
         async (forceRefresh: boolean = true): Promise<void> => {
             if (!clinic?.bitrix_id) {
                 alert(
-                    'Не найден ID клиники в Bitrix24. Сначала создайте клинику в Bitrix24.'
+                    'Не найден ID компании для синхронизации. Сначала сохраните компанию.'
                 )
                 return
             }
@@ -760,7 +760,7 @@ const NetworkClinicEditPage: React.FC = () => {
             } catch (error) {
                 console.error('Ошибка при синхронизации с Bitrix24:', error)
                 alert(
-                    'Не удалось получить данные из Bitrix24. Пожалуйста, попробуйте позже.'
+                    'Не удалось получить данные. Пожалуйста, попробуйте позже.'
                 )
                 clearTimeout(timeoutId)
                 setIsBitrixLoading(false)
@@ -934,7 +934,7 @@ const NetworkClinicEditPage: React.FC = () => {
             setSyncStatus({
                 type: 'error',
                 message:
-                    'Не найден ID клиники в Bitrix24. Сначала создайте клинику в Bitrix24.',
+                    'Не найден ID компании для синхронизации. Сначала сохраните компанию.',
             })
             return
         }
@@ -1125,14 +1125,14 @@ const NetworkClinicEditPage: React.FC = () => {
 
             setSyncStatus({
                 type: 'success',
-                message: 'Синхронизация с Bitrix24 выполнена успешно',
+                message: 'Синхронизация выполнена успешно',
             })
         } catch (err) {
             console.error('Ошибка при синхронизации с Bitrix24:', err)
             setSyncStatus({
                 type: 'error',
                 message:
-                    'Не удалось синхронизировать данные с Bitrix24. Пожалуйста, попробуйте позже.',
+                    'Не удалось синхронизировать данные. Пожалуйста, попробуйте позже.',
             })
         } finally {
             setIsSyncing(false)
@@ -1708,7 +1708,7 @@ const NetworkClinicEditPage: React.FC = () => {
                 >
                     <CircularProgress />
                     <Typography variant='body2' color='text.secondary' sx={{ ml: 2 }}>
-                        Загрузка данных клиники...
+                        Загрузка данных компании...
                     </Typography>
                 </Box>
             </Container>
@@ -1859,7 +1859,7 @@ const NetworkClinicEditPage: React.FC = () => {
                 >
                     <CircularProgress size={60} sx={{ color: 'white' }} />
                     <Typography variant='h6' color='white' sx={{ mt: 2 }}>
-                        Загрузка данных из Bitrix24...
+                        Загрузка данных...
                     </Typography>
                     <Typography variant='body2' color='white' sx={{ mt: 1 }}>
                         Пожалуйста, подождите, не вносите изменения
@@ -1904,7 +1904,7 @@ const NetworkClinicEditPage: React.FC = () => {
                         {isLoading ? (
                             <Skeleton width={200} />
                         ) : (
-                            formValues.name || 'Новая клиника'
+                            formValues.name || 'Новая компания'
                         )}
                     </Typography>
                 </Box>
@@ -2098,7 +2098,7 @@ const NetworkClinicEditPage: React.FC = () => {
                                         <Grid container spacing={2}>
                                             <Grid item xs={12}>
                                                 <TextField
-                                                    label='Название клиники'
+                                                    label='Название компании'
                                                     value={formValues.name || ''}
                                                     onChange={e =>
                                                         handleFieldChange('name', e.target.value)
@@ -2121,7 +2121,7 @@ const NetworkClinicEditPage: React.FC = () => {
                                     </Box>
                                 </Grid>
 
-                                {/* Раздел ЛПР (Контакты) */}
+                                {/* Раздел Контакты */}
 
                                 <Grid item xs={12}>
                                     <Box
@@ -2150,7 +2150,7 @@ const NetworkClinicEditPage: React.FC = () => {
                                                 }}
                                             >
                                                 <PeopleIcon sx={{ mr: 1 }} />
-                                                Лица, принимающие решения (ЛПР)
+                                                Контакты
                                             </Typography>
                                             <Button
                                                 variant='outlined'
@@ -2169,7 +2169,7 @@ const NetworkClinicEditPage: React.FC = () => {
                                                     setCreateContactDialogOpen(true)
                                                 }}
                                             >
-                                                Добавить ЛПР
+                                                Добавить контакт
                                             </Button>
                                         </Box>
                                         <Divider sx={{ mb: 2 }} />
@@ -2288,7 +2288,7 @@ const NetworkClinicEditPage: React.FC = () => {
                                                     color='textSecondary'
                                                     sx={{ mt: 0.5 }}
                                                 >
-                                                    Нажмите кнопку «Добавить ЛПР» для создания нового
+                                                    Нажмите кнопку «Добавить контакт» для создания нового
                                                     контакта
                                                 </Typography>
                                             </Box>
@@ -2323,7 +2323,7 @@ const NetworkClinicEditPage: React.FC = () => {
                                                 }}
                                             >
                                                 <PeopleIcon sx={{ mr: 1 }} />
-                                                Лица, принимающие решения (ЛПР)
+                                                Контакты
                                             </Typography>
                                             <Button
                                                 variant='outlined'
@@ -2342,7 +2342,7 @@ const NetworkClinicEditPage: React.FC = () => {
                                                     setCreateContactDialogOpen(true)
                                                 }}
                                             >
-                                                Добавить ЛПР
+                                                Добавить контакт
                                             </Button>
                                         </Box>
                                         <Divider sx={{ mb: 2 }} />
@@ -2603,7 +2603,7 @@ const NetworkClinicEditPage: React.FC = () => {
                     open={pastVisitsDialogOpen}
                     onClose={() => setPastVisitsDialogOpen(false)}
                     companyId={Number(bitrixId)}
-                    companyName={clinic?.name || 'Клиника'}
+                    companyName={clinic?.name || 'Компания'}
                     visits={pastVisits}
                     isLoading={isPastVisitsLoading}
                 />
@@ -2689,7 +2689,7 @@ const NetworkClinicEditPage: React.FC = () => {
                 <DialogTitle>
                     <Box display='flex' alignItems='center'>
 
-                        {isEditMode ? 'Редактирование ЛПР' : 'Создание ЛПР'}
+                        {isEditMode ? 'Редактирование контакта' : 'Создание контакта'}
                     </Box>
                 </DialogTitle>
                 {syncStatusContact && (

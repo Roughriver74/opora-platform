@@ -581,7 +581,7 @@ const ContactEditPage: React.FC = () => {
       <Box sx={{ px: { xs: 2, md: 3 }, maxWidth: 800, mx: 'auto' }}>
         {bitrixTimeout && (
           <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
-            Запрос к Bitrix24 выполняется дольше обычного. Пожалуйста, подождите...
+            Запрос выполняется дольше обычного. Пожалуйста, подождите...
           </Alert>
         )}
 
@@ -595,7 +595,7 @@ const ContactEditPage: React.FC = () => {
           />
         ) : (
           <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
-            Этот контакт еще не синхронизирован с Bitrix24
+            Этот контакт еще не синхронизирован
           </Alert>
         )}
 
@@ -626,7 +626,7 @@ const ContactEditPage: React.FC = () => {
                     onChange={e => handleFieldChange('contact_type', e.target.value)}
                     label="Тип контакта"
                   >
-                    <MenuItem value="LPR">ЛПР</MenuItem>
+                    <MenuItem value="LPR">Контактное лицо</MenuItem>
                     <MenuItem value="OTHER">Другой</MenuItem>
                   </Select>
                 </FormControl>

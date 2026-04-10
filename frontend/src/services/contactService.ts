@@ -28,7 +28,7 @@ export interface ContactUpdate {
 }
 
 /**
- * Сервис для работы с контактами (ЛПР)
+ * Сервис для работы с контактами
  */
 export const contactService = {
   /**

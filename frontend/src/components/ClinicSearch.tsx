@@ -41,7 +41,7 @@ export const ClinicSearch: React.FC<ClinicSearchProps> = ({ onSelectCompany }) =
       setCompanies(results);
       
       if (results.length === 0) {
-        setError('Клиники с указанным ИНН не найдены');
+        setError('Компании с указанным ИНН не найдены');
       }
     } catch (err) {
       console.error('Ошибка при поиске клиник:', err);
@@ -63,12 +63,12 @@ export const ClinicSearch: React.FC<ClinicSearchProps> = ({ onSelectCompany }) =
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
       <Typography variant="h6" gutterBottom>
-        Поиск клиники по ИНН
+        Поиск компании по ИНН
       </Typography>
       
       <Box display="flex" alignItems="center" mb={2}>
         <TextField
-          label="ИНН клиники"
+          label="ИНН компании"
           variant="outlined"
           fullWidth
           value={inn}
@@ -101,7 +101,7 @@ export const ClinicSearch: React.FC<ClinicSearchProps> = ({ onSelectCompany }) =
       {companies.length > 0 && (
         <>
           <Typography variant="subtitle1" gutterBottom>
-            Найденные клиники:
+            Найденные компании:
           </Typography>
           <List>
             {companies.map((company, index) => (

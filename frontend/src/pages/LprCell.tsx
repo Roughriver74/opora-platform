@@ -34,7 +34,7 @@ const useGetLprForClinic = (bitrixId: string | number | null | undefined) => {
                     setLprName('Отсутствует');
                 }
             } catch (err) {
-                console.error('Ошибка загрузки ЛПР:', err);
+                console.error('Ошибка загрузки контактов:', err);
                 setError(err as Error);
                 setLprName('Ошибка');
             } finally {

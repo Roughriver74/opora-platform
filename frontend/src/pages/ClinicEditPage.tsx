@@ -282,7 +282,7 @@ const ClinicEditPage: React.FC = () => {
 
 	const buildRoute = () => {
 		if (!clinic?.clinic_coordinates?.latitude || !clinic.clinic_coordinates?.longitude) {
-			showSnackbar('Координаты клиники недоступны.');
+			showSnackbar('Координаты компании недоступны.');
 			return;
 		}
 
@@ -489,7 +489,7 @@ const ClinicEditPage: React.FC = () => {
 		enabled: !!id,
 		onSuccess: data => {
 			if (!data) {
-				setError('Не удалось загрузить данные клиники')
+				setError('Не удалось загрузить данные компании')
 				return
 			}
 
@@ -895,7 +895,7 @@ const ClinicEditPage: React.FC = () => {
 		async (forceRefresh: boolean = true): Promise<void> => {
 			if (!clinic?.bitrix_id) {
 				alert(
-					'Не найден ID клиники в Bitrix24. Сначала создайте клинику в Bitrix24.'
+					'Не найден ID компании для синхронизации. Сначала сохраните компанию.'
 				)
 				return
 			}
@@ -1146,7 +1146,7 @@ const ClinicEditPage: React.FC = () => {
 			} catch (error) {
 				console.error('Ошибка при синхронизации с Bitrix24:', error)
 				alert(
-					'Не удалось получить данные из Bitrix24. Пожалуйста, попробуйте позже.'
+					'Не удалось получить данные. Пожалуйста, попробуйте позже.'
 				)
 				clearTimeout(timeoutId)
 				setIsBitrixLoading(false)
@@ -1376,7 +1376,7 @@ const ClinicEditPage: React.FC = () => {
 			setSyncStatus({
 				type: 'error',
 				message:
-					'Не найден ID клиники в Bitrix24. Сначала создайте клинику в Bitrix24.',
+					'Не найден ID компании для синхронизации. Сначала сохраните компанию.',
 			})
 			return
 		}
@@ -1602,14 +1602,14 @@ const ClinicEditPage: React.FC = () => {
 
 			setSyncStatus({
 				type: 'success',
-				message: 'Синхронизация с Bitrix24 выполнена успешно',
+				message: 'Синхронизация выполнена успешно',
 			})
 		} catch (err) {
 			console.error('Ошибка при синхронизации с Bitrix24:', err)
 			setSyncStatus({
 				type: 'error',
 				message:
-					'Не удалось синхронизировать данные с Bitrix24. Пожалуйста, попробуйте позже.',
+					'Не удалось синхронизировать данные. Пожалуйста, попробуйте позже.',
 			})
 		} finally {
 			setIsSyncing(false)
@@ -2153,7 +2153,7 @@ const ClinicEditPage: React.FC = () => {
 
 			setSyncStatus({
 				type: 'success',
-				message: 'Клиника успешно обновлена',
+				message: 'Компания успешно обновлена',
 			})
 
 			// Force reload the sections after save
@@ -2428,7 +2428,7 @@ const ClinicEditPage: React.FC = () => {
 				>
 					<CircularProgress />
 					<Typography variant='body2' color='text.secondary' sx={{ ml: 2 }}>
-						Загрузка данных клиники...
+						Загрузка данных компании...
 					</Typography>
 				</Box>
 			</Container>
@@ -2735,7 +2735,7 @@ const ClinicEditPage: React.FC = () => {
 				>
 					<CircularProgress size={60} sx={{ color: 'white' }} />
 					<Typography variant='h6' color='white' sx={{ mt: 2 }}>
-						Загрузка данных из Bitrix24...
+						Загрузка данных...
 					</Typography>
 					<Typography variant='body2' color='white' sx={{ mt: 1 }}>
 						Пожалуйста, подождите, не вносите изменения
@@ -2780,7 +2780,7 @@ const ClinicEditPage: React.FC = () => {
 						{isLoading ? (
 							<Skeleton width={200} />
 						) : (
-							formValues.name || 'Новая клиника'
+							formValues.name || 'Новая компания'
 						)}
 					</Typography>
 				</Box>
@@ -3060,7 +3060,7 @@ const ClinicEditPage: React.FC = () => {
 											<Grid container spacing={2}>
 												<Grid item xs={12}>
 													<TextField
-														label='Название клиники'
+														label='Название компании'
 														value={formValues.name || ''}
 														onChange={e =>
 															handleFieldChange('name', e.target.value)
@@ -3100,7 +3100,7 @@ const ClinicEditPage: React.FC = () => {
 										</Box>
 									</Grid>
 
-									{/* Раздел ЛПР (Контакты) */}
+									{/* Раздел Контакты */}
 									<Grid item xs={12}>
 										<Box
 											sx={{
@@ -3128,7 +3128,7 @@ const ClinicEditPage: React.FC = () => {
 													}}
 												>
 													<PeopleIcon sx={{ mr: 1 }} />
-													Лица, принимающие решения (ЛПР)
+													Контакты
 												</Typography>
 												<Button
 													variant='outlined'
@@ -3147,7 +3147,7 @@ const ClinicEditPage: React.FC = () => {
 														setCreateContactDialogOpen(true)
 													}}
 												>
-													Добавить ЛПР
+													Добавить контакт
 												</Button>
 											</Box>
 											<Divider sx={{ mb: 2 }} />
@@ -3260,7 +3260,7 @@ const ClinicEditPage: React.FC = () => {
 														color='textSecondary'
 														sx={{ mt: 0.5 }}
 													>
-														Нажмите кнопку «Добавить ЛПР» для создания нового
+														Нажмите кнопку «Добавить контакт» для создания нового
 														контакта
 													</Typography>
 												</Box>
@@ -3444,7 +3444,7 @@ const ClinicEditPage: React.FC = () => {
 						open={pastVisitsDialogOpen}
 						onClose={() => setPastVisitsDialogOpen(false)}
 						companyId={Number(id)}
-						companyName={clinic?.name || 'Клиника'}
+						companyName={clinic?.name || 'Компания'}
 						visits={pastVisits}
 						isLoading={isPastVisitsLoading}
 					/>
@@ -3508,7 +3508,7 @@ const ClinicEditPage: React.FC = () => {
 				<DialogTitle>
 					<Box display='flex' alignItems='center'>
 						<PersonIcon sx={{ mr: 1 }} />
-						{isEditMode ? 'Редактирование ЛПР' : 'Создание ЛПР'}
+						{isEditMode ? 'Редактирование контакта' : 'Создание контакта'}
 					</Box>
 				</DialogTitle>
 				<DialogContent dividers sx={{ px: { xs: 2, sm: 3 } }}>

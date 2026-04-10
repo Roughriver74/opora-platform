@@ -266,7 +266,7 @@ const ClinicsListPage: React.FC = () => {
 			console.log('Клиника требует синхронизации с Битрикс (нет bitrix_id, но есть inn)');
 			setSnackbar({
 				open: true,
-				message: 'Поиск/создание компании в Битрикс...',
+				message: 'Поиск/создание компании...',
 				severity: 'info'
 			});
 
@@ -291,7 +291,7 @@ const ClinicsListPage: React.FC = () => {
 						// Ошибка при синхронизации
 						setSnackbar({
 							open: true,
-							message: result.message || 'Ошибка синхронизации с Битрикс',
+							message: result.message || 'Ошибка синхронизации',
 							severity: 'error'
 						});
 					}
@@ -300,7 +300,7 @@ const ClinicsListPage: React.FC = () => {
 					console.error('Ошибка при работе с Битрикс:', error);
 					setSnackbar({
 						open: true,
-						message: 'Произошла ошибка при работе с Битрикс',
+						message: 'Произошла ошибка при синхронизации',
 						severity: 'error'
 					});
 				})
@@ -455,7 +455,7 @@ const ClinicsListPage: React.FC = () => {
 				// Компания найдена в Bitrix24
 				setSnackbar({
 					open: true,
-					message: `Компания с ИНН ${newCompany.inn} найдена в Bitrix24, но не синхронизирована с локальной базой. Создаем новую запись.`,
+					message: `Компания с ИНН ${newCompany.inn} найдена, но не синхронизирована с локальной базой. Создаем новую запись.`,
 					severity: 'info'
 				});
 			}
@@ -657,7 +657,7 @@ const ClinicsListPage: React.FC = () => {
 								{/* Компонент сортировки для мобильной версии */}
 								<Box sx={{ mb: 2 }}>
 									<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-										Найдено: {data?.total} клиник
+										Найдено: {data?.total} компаний
 									</Typography>
 									<FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
 										<InputLabel id="mobile-sort-label">Сортировка</InputLabel>
