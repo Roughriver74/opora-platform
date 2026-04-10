@@ -215,7 +215,7 @@ const Sidebar: React.FC = () => {
             ...(isCollapsed && {
               position: 'absolute',
               right: -12,
-              zIndex: 1,
+              zIndex: theme.zIndex.drawer + 1,
               width: 24,
               height: 24,
               boxShadow: theme.shadows[2],
