@@ -213,6 +213,12 @@ export const adminApi = {
 		return result
 	},
 
+	// Тестирование подключения к Bitrix24
+	testBitrix24Connection: async (webhookUrl: string): Promise<{ success: boolean; message: string }> => {
+		const response = await api.post('/settings/bitrix24/test', { webhook_url: webhookUrl })
+		return response.data
+	},
+
 	// Функция для преобразования данных из Bitrix24 в формат приложения
 	mapBitrixToEntity: async <T>(
 		entityType: string,
