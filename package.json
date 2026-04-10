@@ -1,0 +1,15 @@
+{
+  "name": "opora-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OPORA visit and activity management platform",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report tests/e2e/reports"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
+}

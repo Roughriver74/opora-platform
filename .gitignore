@@ -102,3 +102,8 @@ upload/*.xls
 .playwright-mcp/
 playwright-report/
 test-results/
+tests/e2e/reports/
+
+# Root node_modules (Playwright)
+/node_modules/
+/package-lock.json
