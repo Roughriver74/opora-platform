@@ -8,11 +8,13 @@ from app.middleware import catch_exceptions_middleware
 from app.routers import (
     admin_routers,
     auth_routers,
+    billing_routers,
     clinic_routers,
     contacts_routers,
     custom_sections_routers,
     dadata_router,
     doctors_routers,
+    help_routers,
     invitation_routers,
     network_clinic_routers,
     platform_routers,
@@ -93,6 +95,16 @@ app.include_router(
     invitation_routers.router,
     prefix=f"{api_prefix}/invitations",
     tags=["Приглашения"],
+)
+app.include_router(
+    billing_routers.router,
+    prefix=f"{api_prefix}/billing",
+    tags=["Биллинг"],
+)
+app.include_router(
+    help_routers.router,
+    prefix=f"{api_prefix}/help",
+    tags=["Справка"],
 )
 
 

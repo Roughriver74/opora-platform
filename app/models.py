@@ -43,10 +43,14 @@ class Organization(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    billing_email = Column(String, nullable=True)  # email for invoices
+    billing_inn = Column(String, nullable=True)  # company INN for invoices
+
     owner = relationship("User", foreign_keys=[owner_id], post_update=True)
     users = relationship(
         "User", back_populates="organization", foreign_keys="User.organization_id"
     )
+    payments = relationship("Payment", back_populates="organization")
 
 
 class GlobalSettings(Base):
@@ -338,3 +342,31 @@ class Invitation(Base):
 
     organization = relationship("Organization")
     inviter = relationship("User", foreign_keys=[invited_by])
+
+
+class Payment(Base):
+    """Payment records for billing / subscription management"""
+
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id"), nullable=False
+    )
+    amount = Column(Integer, nullable=False)  # in kopecks (100 = 1 rub)
+    currency = Column(String, default="RUB")
+    status = Column(String, default="pending")  # pending, paid, failed, refunded
+    payment_method = Column(
+        String, nullable=True
+    )  # yukassa, invoice, manual
+    payment_id = Column(
+        String, nullable=True
+    )  # external payment ID from YuKassa
+    description = Column(String, nullable=True)
+    period_start = Column(DateTime(timezone=True), nullable=True)
+    period_end = Column(DateTime(timezone=True), nullable=True)
+    users_count = Column(Integer, nullable=True)  # how many users paid for
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    organization = relationship("Organization", back_populates="payments")
