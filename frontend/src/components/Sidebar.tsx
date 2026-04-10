@@ -158,7 +158,7 @@ const Sidebar: React.FC = () => {
         transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         '& .MuiDrawer-paper': {
           width: drawerWidth,
-          overflowX: 'visible',
+          overflowX: 'hidden',
           overflowY: 'auto',
           transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
           boxSizing: 'border-box',
@@ -176,7 +176,7 @@ const Sidebar: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: isCollapsed ? 'center' : 'space-between',
-          px: isCollapsed ? 0 : 2,
+          px: isCollapsed ? 1 : 2,
           flexShrink: 0,
           borderBottom: `1px solid ${theme.palette.divider}`,
         }}
@@ -192,34 +192,18 @@ const Sidebar: React.FC = () => {
             ОПОРА
           </Typography>
         )}
-        {isCollapsed && (
-          <Typography
-            variant="h6"
-            fontWeight={700}
-            color="primary"
-            sx={{ letterSpacing: 1 }}
-          >
-            О
-          </Typography>
-        )}
         <IconButton
           onClick={toggleSidebar}
           size="small"
           sx={{
-            ml: isCollapsed ? 0 : 1,
             border: `1px solid ${theme.palette.divider}`,
             backgroundColor: theme.palette.background.paper,
+            width: 28,
+            height: 28,
+            flexShrink: 0,
             '&:hover': {
               backgroundColor: theme.palette.action.hover,
             },
-            ...(isCollapsed && {
-              position: 'absolute',
-              right: -12,
-              zIndex: theme.zIndex.drawer + 1,
-              width: 24,
-              height: 24,
-              boxShadow: theme.shadows[2],
-            }),
           }}
         >
           {isCollapsed ? <ChevronRight fontSize="small" /> : <ChevronLeft fontSize="small" />}
