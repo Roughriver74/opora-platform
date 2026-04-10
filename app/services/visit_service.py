@@ -16,7 +16,7 @@ from app.config import (
 )
 from app.emuns.clinic_enum import SyncStatus
 from app.emuns.visit_enum import EntityType, VisitStatus
-from app.models import Company, Doctor, FieldMapping, GlobalSettings, Organization, User, Visit
+from app.models import Company, Doctor, FieldMapping, FormTemplate, GlobalSettings, Organization, User, Visit
 from app.schemas.visit_schema import VisitCreate, VisitDeleteSchema
 from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
@@ -571,27 +571,25 @@ class VisitService:
             )
             db_visit.dynamic_fields["date"] = formatted_date
 
-        field_mappings = (
-            (
-                await self.session.execute(
-                    select(FieldMapping).where(
-                        FieldMapping.entity_type == EntityType.VISIT.value,
-                        FieldMapping.organization_id == current_user.organization_id,
-                    )
+        form_template = (
+            await self.session.execute(
+                select(FormTemplate).where(
+                    FormTemplate.entity_type == "visit",
+                    FormTemplate.organization_id == current_user.organization_id,
                 )
             )
-            .scalars()
-            .all()
-        )
+        ).scalars().first()
 
+        template_fields = form_template.fields if form_template else []
         field_mapping_dict = {
-            mapping.app_field_name: mapping.bitrix_field_id
-            for mapping in field_mappings
+            f["key"]: f["bitrix_field_id"]
+            for f in template_fields
+            if f.get("bitrix_field_id")
         }
         list_field_mappings = {
-            mapping.app_field_name: json.loads(mapping.value_options)
-            for mapping in field_mappings
-            if mapping.field_type == "list" and mapping.value_options
+            f["key"]: f["bitrix_value_mapping"]
+            for f in template_fields
+            if f.get("bitrix_field_type") == "list" and f.get("bitrix_value_mapping")
         }
 
         if hasattr(visit, "dynamic_fields") and visit.dynamic_fields:
@@ -599,7 +597,7 @@ class VisitService:
                 bitrix_field_id = field_mapping_dict.get(field, field)
                 processed_value = value
                 field_type = next(
-                    (m.field_type for m in field_mappings if m.app_field_name == field),
+                    (f.get("bitrix_field_type") for f in template_fields if f.get("key") == field),
                     None,
                 )
 
@@ -832,27 +830,25 @@ class VisitService:
             await self.session.commit()
             await self.session.refresh(db_visit)
             return db_visit
-        field_mappings = (
-            (
-                await self.session.execute(
-                    select(FieldMapping).where(
-                        FieldMapping.entity_type == "visit",
-                        FieldMapping.organization_id == current_user.organization_id,
-                    )
+        form_template = (
+            await self.session.execute(
+                select(FormTemplate).where(
+                    FormTemplate.entity_type == "visit",
+                    FormTemplate.organization_id == current_user.organization_id,
                 )
             )
-            .scalars()
-            .all()
-        )
+        ).scalars().first()
 
+        template_fields = form_template.fields if form_template else []
         field_mapping_dict = {
-            mapping.app_field_name: mapping.bitrix_field_id
-            for mapping in field_mappings
+            f["key"]: f["bitrix_field_id"]
+            for f in template_fields
+            if f.get("bitrix_field_id")
         }
         list_field_mappings = {
-            mapping.app_field_name: json.loads(mapping.value_options)
-            for mapping in field_mappings
-            if mapping.field_type == "list" and mapping.value_options
+            f["key"]: f["bitrix_value_mapping"]
+            for f in template_fields
+            if f.get("bitrix_field_type") == "list" and f.get("bitrix_value_mapping")
         }
 
         dynamic_fields_bitrix = {}
@@ -862,9 +858,9 @@ class VisitService:
 
             field_type = next(
                 (
-                    m.field_type
-                    for m in field_mappings
-                    if m.app_field_name == field_name
+                    f.get("bitrix_field_type")
+                    for f in template_fields
+                    if f.get("key") == field_name
                 ),
                 None,
             )
