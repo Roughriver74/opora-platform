@@ -246,15 +246,19 @@ rm -rf frontend/.tsbuildinfo frontend/tsconfig.tsbuildinfo 2>/dev/null
 # ============================================
 # 7. Освобождение портов (убиваем старые процессы)
 # ============================================
+set +e  # Отключаем exit-on-error для kill операций
 for CHECK_PORT in "$BACKEND_PORT" "$FRONTEND_PORT"; do
-    PIDS=$(lsof -ti:"$CHECK_PORT" 2>/dev/null)
+    PIDS=$(lsof -ti:"$CHECK_PORT" 2>/dev/null || true)
     if [ -n "$PIDS" ]; then
         warning "Порт $CHECK_PORT занят. Останавливаю старые процессы..."
-        echo "$PIDS" | xargs kill -9 2>/dev/null
+        for PID in $PIDS; do
+            kill -9 "$PID" 2>/dev/null || true
+        done
         sleep 1
         log "Порт $CHECK_PORT освобождён"
     fi
 done
+set -e  # Включаем обратно
 
 # ============================================
 # 8. Запуск Backend
@@ -304,16 +308,26 @@ done
 # Готово!
 # ============================================
 echo ""
-echo -e "${CYAN}══════════════════════════════════════════${NC}"
+echo -e "${CYAN}══════════════════════════════════════════════${NC}"
 echo -e "${GREEN}  ОПОРА — Dev Mode запущен!${NC}"
-echo -e "${CYAN}══════════════════════════════════════════${NC}"
-echo -e "  Frontend:    ${GREEN}http://localhost:${FRONTEND_PORT}${NC}"
-echo -e "  Backend API: ${GREEN}http://localhost:${BACKEND_PORT}${NC}"
-echo -e "  Swagger:     ${GREEN}http://localhost:${BACKEND_PORT}/docs${NC}"
-echo -e "  PostgreSQL:  ${GREEN}localhost:${DB_PORT}${NC}"
-echo -e "${CYAN}══════════════════════════════════════════${NC}"
+echo -e "${CYAN}══════════════════════════════════════════════${NC}"
+echo ""
+echo -e "  ${GREEN}Приложение:${NC}  http://localhost:${FRONTEND_PORT}"
+echo -e "  ${GREEN}Backend API:${NC} http://localhost:${BACKEND_PORT}"
+echo -e "  ${GREEN}Swagger:${NC}     http://localhost:${BACKEND_PORT}/docs"
+echo -e "  ${GREEN}PostgreSQL:${NC}  localhost:${DB_PORT}"
+echo ""
+echo -e "${CYAN}──────────────────────────────────────────────${NC}"
+echo -e "  ${YELLOW}Тестовый аккаунт:${NC}"
+echo -e "  Email:    ${GREEN}test@myopora.ru${NC}"
+echo -e "  Пароль:   ${GREEN}test123${NC}"
+echo -e "  Роль:     org_admin (администратор организации)"
+echo ""
+echo -e "  ${YELLOW}Регистрация новой организации:${NC}"
+echo -e "  ${GREEN}http://localhost:${FRONTEND_PORT}/register${NC}"
+echo -e "${CYAN}──────────────────────────────────────────────${NC}"
 echo -e "  Ctrl+C для остановки"
-echo -e "${CYAN}══════════════════════════════════════════${NC}"
+echo -e "${CYAN}══════════════════════════════════════════════${NC}"
 echo ""
 
 # Ждём завершения процессов
