@@ -703,7 +703,30 @@ export const clinicService = {
     }
   },
 
+  // --- Import / Export ---
 
+  exportCompanies: async (): Promise<Blob> => {
+    const response = await api.get('/clinics/export', {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  downloadImportTemplate: async (): Promise<Blob> => {
+    const response = await api.get('/clinics/import-template', {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  importCompanies: async (file: File): Promise<{ imported: number; updated: number; errors: string[] }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/clinics/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
 
 };
 

@@ -1006,6 +1006,105 @@ const ClinicsListPage: React.FC = () => {
 				</DialogActions>
 			</Dialog>
 
+			{/* Import dialog */}
+			<Dialog open={importDialogOpen} onClose={handleCloseImportDialog} maxWidth="sm" fullWidth>
+				<DialogTitle>
+					Импорт компаний из Excel
+					<IconButton
+						aria-label="close"
+						onClick={handleCloseImportDialog}
+						sx={{ position: 'absolute', right: 8, top: 8 }}
+					>
+						<CloseIcon />
+					</IconButton>
+				</DialogTitle>
+				<DialogContent>
+					<Stack spacing={2} sx={{ mt: 1 }}>
+						<Button
+							variant="text"
+							startIcon={<DescriptionIcon />}
+							onClick={handleDownloadTemplate}
+							sx={{ alignSelf: 'flex-start' }}
+						>
+							Скачать шаблон
+						</Button>
+
+						<Box
+							onDragOver={handleDragOver}
+							onDragLeave={handleDragLeave}
+							onDrop={handleDrop}
+							sx={{
+								border: '2px dashed',
+								borderColor: isDragOver ? 'primary.main' : 'grey.400',
+								borderRadius: 2,
+								p: 3,
+								textAlign: 'center',
+								bgcolor: isDragOver ? 'action.hover' : 'transparent',
+								cursor: 'pointer',
+								transition: 'all 0.2s',
+							}}
+							onClick={() => document.getElementById('import-file-input')?.click()}
+						>
+							<input
+								id="import-file-input"
+								type="file"
+								accept=".xlsx,.xls"
+								hidden
+								onChange={handleFileChange}
+							/>
+							<CloudUploadIcon sx={{ fontSize: 48, color: 'grey.500', mb: 1 }} />
+							<Typography variant="body1" color="text.secondary">
+								{importFile
+									? importFile.name
+									: 'Перетащите файл сюда или нажмите для выбора'}
+							</Typography>
+							<Typography variant="caption" color="text.secondary">
+								Поддерживаются файлы .xlsx и .xls
+							</Typography>
+						</Box>
+
+						{importResult && (
+							<Box>
+								<Alert severity={importResult.errors.length > 0 ? 'warning' : 'success'} sx={{ mb: 1 }}>
+									Добавлено: {importResult.imported}, Обновлено: {importResult.updated}
+								</Alert>
+								{importResult.errors.length > 0 && (
+									<Alert severity="error">
+										<Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+											Ошибки ({importResult.errors.length}):
+										</Typography>
+										{importResult.errors.slice(0, 10).map((err, i) => (
+											<Typography key={i} variant="body2">
+												{err}
+											</Typography>
+										))}
+										{importResult.errors.length > 10 && (
+											<Typography variant="body2" sx={{ mt: 0.5 }}>
+												...и еще {importResult.errors.length - 10}
+											</Typography>
+										)}
+									</Alert>
+								)}
+							</Box>
+						)}
+					</Stack>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={handleCloseImportDialog} color="inherit">
+						Закрыть
+					</Button>
+					<Button
+						onClick={handleImportSubmit}
+						color="primary"
+						variant="contained"
+						disabled={!importFile || isImporting}
+						startIcon={isImporting ? <CircularProgress size={18} /> : <FileUploadIcon />}
+					>
+						{isImporting ? 'Загрузка...' : 'Загрузить'}
+					</Button>
+				</DialogActions>
+			</Dialog>
+
 			{isMobile && (
 				<Fab color="primary" onClick={handleOpenCreateModal} sx={{ position: 'fixed', bottom: 84, right: 20 }}>
 					<AddCircleOutlineIcon fontSize="large" />

@@ -43,6 +43,8 @@ class Organization(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    api_key = Column(String, nullable=True, unique=True, index=True)
+
     billing_email = Column(String, nullable=True)  # email for invoices
     billing_inn = Column(String, nullable=True)  # company INN for invoices
 

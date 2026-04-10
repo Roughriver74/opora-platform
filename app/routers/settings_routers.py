@@ -1,8 +1,11 @@
+import uuid
 from typing import List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy import select
 
+from app.models import Organization
 from app.schemas.settings_schema import (
     GlobalSetting,
     GlobalSettingCreate,
@@ -51,6 +54,28 @@ async def get_setting_value(key: str, uow: UnitOfWork = Depends(get_uow)):
     """Получить значение настройки по ключу (доступно без аутентификации)"""
     result = await uow.settings.get_setting(key=key)
     return result.value
+
+
+@router.post("/generate-api-key")
+async def generate_api_key(
+    current_user=Depends(get_current_admin_user),
+    uow: UnitOfWork = Depends(get_uow),
+):
+    """Generate or regenerate an API key for the current organization."""
+    org_id = current_user.organization_id
+    result = await uow.session.execute(
+        select(Organization).where(Organization.id == org_id)
+    )
+    org = result.scalars().first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    new_key = str(uuid.uuid4())
+    org.api_key = new_key
+    await uow.session.commit()
+    await uow.session.refresh(org)
+
+    return {"api_key": new_key}
 
 
 @router.post("/bitrix24/test", response_model=Bitrix24TestResponse)
