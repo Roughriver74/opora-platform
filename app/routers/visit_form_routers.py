@@ -108,9 +108,8 @@ async def update_visit_form_template(
         )
     ).scalars().first()
 
-    fields_data = [f.model_dump() for f in payload.fields]
-
     if template is None:
+        fields_data = [f.model_dump() for f in payload.fields]
         template = FormTemplate(
             organization_id=org_id,
             entity_type="visit",
@@ -118,7 +117,17 @@ async def update_visit_form_template(
         )
         uow.session.add(template)
     else:
-        template.fields = fields_data
+        existing_by_key = {f['key']: f for f in (template.fields or [])}
+        new_fields = []
+        for incoming in payload.fields:
+            field_dict = incoming.model_dump()
+            # Preserve extra keys (like Bitrix mappings) from existing field if key matches
+            if incoming.key in existing_by_key:
+                merged = {**existing_by_key[incoming.key], **field_dict}
+            else:
+                merged = field_dict
+            new_fields.append(merged)
+        template.fields = new_fields
         flag_modified(template, "fields")
 
     await uow.session.commit()
