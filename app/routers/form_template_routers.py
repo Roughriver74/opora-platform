@@ -10,7 +10,7 @@ from app.models import FormTemplate
 from app.services.uow import UnitOfWork, get_uow
 from app.utils.utils import get_current_admin_user, get_current_user
 
-router = APIRouter(prefix="/form-templates", tags=["form-templates"])
+router = APIRouter(prefix="/form-templates")
 
 
 ENTITY_TYPES = {"visit", "clinic", "doctor", "contact", "network_clinic"}
@@ -42,7 +42,7 @@ class FieldDefinition(BaseModel):
     options: Optional[List[str]] = None
     bitrix_field_id: Optional[str] = None
     bitrix_field_type: Optional[str] = None
-    bitrix_value_mapping: Optional[List[Dict[str, Any]]] = None
+    bitrix_value_mapping: Optional[List[BitrixValueMapping]] = None
 
 
 class FormTemplateResponse(BaseModel):
@@ -105,7 +105,7 @@ async def update_form_template(
         )
     ).scalars().first()
 
-    fields_data = [f.dict(exclude_none=False) for f in payload.fields]
+    fields_data = [f.model_dump() for f in payload.fields]
 
     if template is None:
         template = FormTemplate(
