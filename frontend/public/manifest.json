@@ -1,6 +1,7 @@
 {
   "short_name": "ОПОРА",
-  "name": "ОПОРА — Платформа управления визитами и активностями",
+  "name": "ОПОРА — Платформа управления визитами",
+  "description": "SaaS платформа для управления визитами полевых команд",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,16 +11,21 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
-  "theme_color": "#1A56DB",
-  "background_color": "#F9FAFB"
+  "orientation": "portrait-primary",
+  "theme_color": "#007AFF",
+  "background_color": "#F2F2F7",
+  "scope": "/",
+  "categories": ["business", "productivity"]
 }

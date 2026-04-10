@@ -41,6 +41,7 @@ import { BitrixCompany } from '../services/clinicService';
 import VisitCalendar from './VisitCalendar';
 import Sidebar from './Sidebar';
 import { useSidebar } from '../context/SidebarContext';
+import OfflineIndicator from './OfflineIndicator';
 
 // --- Constants ---
 const APPBAR_HEIGHT = 60;
@@ -298,6 +299,7 @@ export const Layout: React.FC = ({ children }: { children?: React.ReactNode }) =
             flexDirection: 'column',
           }}
         >
+          <OfflineIndicator />
           {children ? children : <Outlet />}
         </Box>
 
