@@ -104,8 +104,8 @@ async def get_plan_info(
         )
     ) or 0
 
-    # Count visits this month
-    now = datetime.now(timezone.utc)
+    # Count visits this month (Visit.date is naive datetime)
+    now = datetime.utcnow()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     visits_this_month = (
         await session.scalar(

@@ -139,8 +139,8 @@ export const Layout: React.FC = ({ children }: { children?: React.ReactNode }) =
           flexDirection: 'column',
           ...(isDesktop
             ? {
-                ml: `${sidebarWidth}px`,
-                transition: 'margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                // No margin-left needed: MUI permanent Drawer already occupies space in the flex flow
+                minWidth: 0, // prevent flex child from overflowing
               }
             : {
                 maxWidth: 600,

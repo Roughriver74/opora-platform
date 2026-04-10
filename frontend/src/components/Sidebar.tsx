@@ -150,9 +150,11 @@ const Sidebar: React.FC = () => {
       sx={{
         width: drawerWidth,
         flexShrink: 0,
+        transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         '& .MuiDrawer-paper': {
           width: drawerWidth,
-          overflowX: 'hidden',
+          overflowX: 'visible',
+          overflowY: 'auto',
           transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
           boxSizing: 'border-box',
           borderRight: `1px solid ${theme.palette.divider}`,
