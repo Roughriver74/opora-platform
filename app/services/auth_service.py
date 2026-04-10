@@ -37,20 +37,20 @@ class AuthService:
 
     @logger()
     async def register_user(self, email: str, password: str) -> User:
-        bitrix = require_bitrix24(self.bitrix24)
-        bitrix_user = await bitrix.get_user_by_email(email)
-        if not bitrix_user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Email not found in Bitrix24 system",
-            )
         existing_user = await self.get_single_user_by_email(email)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Email already registered",
             )
-        user = User(email=email, bitrix_user_id=bitrix_user["ID"])
+
+        bitrix_user_id = None
+        if self.bitrix24 is not None:
+            bitrix_user = await self.bitrix24.get_user_by_email(email)
+            if bitrix_user:
+                bitrix_user_id = bitrix_user["ID"]
+
+        user = User(email=email, bitrix_user_id=bitrix_user_id)
         user.set_password(password)
 
         self.session.add(user)

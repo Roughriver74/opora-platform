@@ -53,11 +53,11 @@ api_prefix = "/api"
 # Include routers
 app.include_router(auth_routers.router, prefix=api_prefix, tags=["Авторизация"])
 app.include_router(
-    clinic_routers.router, prefix=f"{api_prefix}/clinics", tags=["Клиники"]
+    clinic_routers.router, prefix=f"{api_prefix}/clinics", tags=["Компании"]
 )
 app.include_router(visit_routers.router, prefix=f"{api_prefix}/visits", tags=["Визиты"])
 app.include_router(
-    doctors_routers.router, prefix=f"{api_prefix}/doctors", tags=["Доктора"]
+    doctors_routers.router, prefix=f"{api_prefix}/doctors", tags=["Специалисты"]
 )
 app.include_router(
     contacts_routers.router, prefix=f"{api_prefix}/contacts", tags=["Контакты"]
@@ -75,7 +75,7 @@ app.include_router(
 app.include_router(
     network_clinic_routers.router,
     prefix=f"{api_prefix}/network-clinics",
-    tags=["Сетевые клиники"],
+    tags=["Филиалы"],
 )
 app.include_router(
     dadata_router.router,

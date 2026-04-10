@@ -91,8 +91,8 @@ async def search_clinics_by_inn(
     current_user=Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
 ):
-    """Search clinics by INN in Bitrix24."""
-    companies = await uow.clinic.search_companies_by_inn(inn)
+    """Search clinics by INN (Bitrix24 or local DB)."""
+    companies = await uow.clinic.search_companies_by_inn(inn, current_user=current_user)
     return {"companies": companies}
 
 
@@ -102,8 +102,8 @@ async def search_clinics(
     uow: UnitOfWork = Depends(get_uow),
     current_user=Depends(get_current_user),
 ):
-    """Search clinics by name or other criteria in Bitrix24."""
-    companies = await uow.clinic.search_companies_by_name(term)
+    """Search clinics by name or other criteria (Bitrix24 or local DB)."""
+    companies = await uow.clinic.search_companies_by_name(term, current_user=current_user)
     return {"companies": companies}
 
 

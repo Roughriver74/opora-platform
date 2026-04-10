@@ -22,6 +22,7 @@ class GlobalSettingUpdate(BaseModel):
 class GlobalSetting(GlobalSettingBase):
     id: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
+    organization_id: Optional[int] = None
 
     model_config = {"from_attributes": True}

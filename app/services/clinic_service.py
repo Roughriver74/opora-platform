@@ -467,19 +467,17 @@ class ClinicService:
     @logger()
     async def create_clinic(self, clinic: ClinicCreate, current_user=None):
         """
-        Создает клинику в локальной базе данных и синхронизирует её с Bitrix24.
+        Создает клинику в локальной базе данных и опционально синхронизирует с Bitrix24.
+        Компания создается локально даже если Bitrix24 не настроен или синхронизация не удалась.
         """
         db_clinic = await self._create_clinic_in_db(clinic, current_user)
 
         try:
             await self.sync_clinic_with_bitrix_for_create(db_clinic, clinic)
-        except Exception as e:
+        except Exception:
             db_clinic.sync_status = SyncStatus.ERROR.value
             await self.session.commit()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error synchronizing clinic with Bitrix24: {str(e)}",
-            )
+            # Do NOT re-raise: company is created locally, Bitrix sync failure is non-fatal
 
         return db_clinic
 
@@ -1114,9 +1112,21 @@ class ClinicService:
         return {"regions": regions}
 
     @logger()
-    async def search_companies_by_inn(self, inn: str) -> List[Dict]:
-        """Search companies by INN."""
-        self._require_bitrix()
+    async def search_companies_by_inn(self, inn: str, current_user=None) -> List[Dict]:
+        """Search companies by INN (Bitrix24 if available, otherwise local DB)."""
+        if self.bitrix24 is None:
+            # Local DB fallback
+            query = select(Company).where(Company.inn.ilike(f"%{inn}%"))
+            if current_user and not current_user.is_platform_admin:
+                query = query.where(
+                    Company.organization_id == current_user.organization_id
+                )
+            companies = (await self.session.execute(query)).scalars().all()
+            return [
+                {"ID": c.id, "TITLE": c.name, "INN": c.inn}
+                for c in companies
+            ]
+
         payload = {
             "select": BITRIX24_SELECT_PAYLOAD_FIELDS,
             "filter": {"UF_CRM_1741267701427": inn},
@@ -1141,9 +1151,21 @@ class ClinicService:
         return result
 
     @logger()
-    async def search_companies_by_name(self, search_term: str) -> List[Dict]:
-        """Search companies by name or other criteria."""
-        self._require_bitrix()
+    async def search_companies_by_name(self, search_term: str, current_user=None) -> List[Dict]:
+        """Search companies by name or other criteria (Bitrix24 if available, otherwise local DB)."""
+        if self.bitrix24 is None:
+            # Local DB fallback
+            query = select(Company).where(Company.name.ilike(f"%{search_term}%"))
+            if current_user and not current_user.is_platform_admin:
+                query = query.where(
+                    Company.organization_id == current_user.organization_id
+                )
+            companies = (await self.session.execute(query)).scalars().all()
+            return [
+                {"ID": c.id, "TITLE": c.name, "INN": c.inn}
+                for c in companies
+            ]
+
         payload = {
             "select": BITRIX24_SELECT_PAYLOAD_FIELDS,
             "filter": {"%TITLE": search_term},

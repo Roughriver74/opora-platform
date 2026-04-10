@@ -48,55 +48,69 @@ class ContactService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Company with ID {company_id} not found",
             )
-        if company.bitrix_id:
+        if company.bitrix_id and self.bitrix24 is not None:
             bitrix_contacts = await self.get_company_contacts_from_bitrix(
                 company.bitrix_id
             )
-            return bitrix_contacts
-        else:
-            local_contacts = (
-                (
-                    await self.session.execute(
-                        select(Company)
-                        .join(company_contacts)
-                        .where(company_contacts.c.company_id == company_id)
-                    )
+            if bitrix_contacts:
+                return bitrix_contacts
+        # Fallback to local contacts (also used when Bitrix24 is not configured)
+        local_contacts = (
+            (
+                await self.session.execute(
+                    select(Contact)
+                    .join(company_contacts)
+                    .where(company_contacts.c.company_id == company_id)
                 )
-                .scalars()
-                .all()
             )
+            .scalars()
+            .all()
+        )
 
-            formatted_contacts = [
-                {
-                    "id": contact.id,
-                    "bitrix_id": contact.bitrix_id,
-                    "name": contact.name,
-                    "position": (
-                        contact.dynamic_fields.get("position", "")
-                        if contact.dynamic_fields
-                        else ""
-                    ),
-                    "email": (
-                        contact.dynamic_fields.get("email", "")
-                        if contact.dynamic_fields
-                        else ""
-                    ),
-                    "phone": (
-                        contact.dynamic_fields.get("phone", "")
-                        if contact.dynamic_fields
-                        else ""
-                    ),
-                    "company_id": company_id,
-                }
-                for contact in local_contacts
-            ]
+        formatted_contacts = [
+            {
+                "id": contact.id,
+                "bitrix_id": contact.bitrix_id,
+                "name": contact.name,
+                "position": (
+                    contact.dynamic_fields.get("position", "")
+                    if contact.dynamic_fields
+                    else ""
+                ),
+                "email": (
+                    contact.dynamic_fields.get("email", "")
+                    if contact.dynamic_fields
+                    else ""
+                ),
+                "phone": (
+                    contact.dynamic_fields.get("phone", "")
+                    if contact.dynamic_fields
+                    else ""
+                ),
+                "company_id": company_id,
+            }
+            for contact in local_contacts
+        ]
 
-            return formatted_contacts
+        return formatted_contacts
 
     @logger()
     async def search_contacts(self, term: str) -> dict[str, list[dict]]:
+        if self.bitrix24 is None:
+            # Bitrix24 not configured -- search locally
+            query = select(Contact).where(Contact.name.ilike(f"%{term}%"))
+            results = (await self.session.execute(query)).scalars().all()
+            return {
+                "contacts": [
+                    {
+                        "id": c.id,
+                        "name": c.name,
+                        "contact_type": c.contact_type,
+                    }
+                    for c in results
+                ]
+            }
         try:
-            self._require_bitrix()
             contacts = await self.bitrix24.search_contacts_by_name(term)
             return {"contacts": contacts}
         except Exception as e:
