@@ -198,7 +198,9 @@ async def export_companies(
     content = _workbook_to_bytes(wb)
 
     today = datetime.now().strftime("%Y-%m-%d")
-    filename = f"companies_{org_slug}_{today}.xlsx"
+    # Use ASCII-safe filename for Content-Disposition header
+    safe_slug = org_slug.encode("ascii", "ignore").decode() or "org"
+    filename = f"companies_{safe_slug}_{today}.xlsx"
 
     return StreamingResponse(
         io.BytesIO(content),
