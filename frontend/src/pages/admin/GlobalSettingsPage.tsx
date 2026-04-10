@@ -207,12 +207,12 @@ export const GlobalSettingsPage: React.FC = () => {
 
   return (
     <>
-      <Box sx={{ width: '100%', maxWidth: 900, mx: 'auto' }}>
+      <Box sx={{ width: '100%', maxWidth: 900, mx: 'auto' }} data-testid="global-settings-page">
         <Typography variant="h5" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
           <SettingsIcon sx={{ mr: 1 }} />
           Глобальные настройки
         </Typography>
-        
+
         <Divider sx={{ my: 2 }} />
         
         {isLoading ? (
@@ -250,12 +250,12 @@ export const GlobalSettingsPage: React.FC = () => {
               </Card>
             </Grid>
             {/* Секция интеграции с Bitrix24 */}
-            <Grid item xs={12}>
+            <Grid item xs={12} data-testid="bitrix24-settings-section">
               <Card elevation={3}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <LinkIcon sx={{ mr: 1, color: 'primary.main' }} />
-                    <Typography variant="h6">
+                    <Typography variant="h6" data-testid="bitrix24-section-title">
                       Интеграция с Bitrix24
                     </Typography>
                   </Box>
@@ -268,6 +268,7 @@ export const GlobalSettingsPage: React.FC = () => {
                           checked={bitrix24Enabled}
                           onChange={(e) => setBitrix24Enabled(e.target.checked)}
                           color="primary"
+                          data-testid="bitrix24-enabled-switch"
                         />
                       }
                       label="Включить интеграцию с Bitrix24"

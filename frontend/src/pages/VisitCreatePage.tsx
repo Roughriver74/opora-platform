@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
 	Box,
 	Typography,
@@ -20,16 +20,18 @@ import {
 	FormControlLabel,
 	Switch,
 	SelectChangeEvent,
+	Autocomplete,
 } from '@mui/material'
 import {
 	ChevronLeft as ChevronLeftIcon,
 	Save as SaveIcon,
-	Business as BusinessIcon
+	Business as BusinessIcon,
+	Search as SearchIcon,
 } from '@mui/icons-material'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
-import { clinicService } from '../services/clinicService'
+import { clinicService, Clinic } from '../services/clinicService'
 import { DynamicFields } from '../components/DynamicFields'
 
 // --------------- Types ---------------
@@ -82,6 +84,76 @@ export const VisitCreatePage: React.FC = () => {
 
 	const [formError, setFormError] = useState<string | null>(null)
 	const [isLoadingCompany, setIsLoadingCompany] = useState(false)
+
+	// Company search state (used when no companyId provided)
+	const [companySearchTerm, setCompanySearchTerm] = useState('')
+	const [selectedCompany, setSelectedCompany] = useState<Clinic | null>(null)
+	const [companyOptions, setCompanyOptions] = useState<Clinic[]>([])
+	const [isSearchingCompanies, setIsSearchingCompanies] = useState(false)
+
+	// Debounced company search
+	const searchCompanies = useCallback(
+		async (term: string) => {
+			if (!term || term.length < 2) {
+				setCompanyOptions([])
+				return
+			}
+			setIsSearchingCompanies(true)
+			try {
+				const result = await clinicService.getClinics({ name: term, page: 1, page_size: 20 })
+				setCompanyOptions(result.items || [])
+			} catch (error) {
+				console.error('Error searching companies:', error)
+				setCompanyOptions([])
+			} finally {
+				setIsSearchingCompanies(false)
+			}
+		},
+		[]
+	)
+
+	// Debounce timer for company search
+	useEffect(() => {
+		if (!companyId && companySearchTerm.length >= 2) {
+			const timer = setTimeout(() => {
+				searchCompanies(companySearchTerm)
+			}, 300)
+			return () => clearTimeout(timer)
+		}
+	}, [companySearchTerm, companyId, searchCompanies])
+
+	// Load initial list of companies if no companyId
+	useEffect(() => {
+		if (!companyId && companyOptions.length === 0 && !selectedCompany) {
+			clinicService.getClinics({ page: 1, page_size: 50, sort_by: 'name', sort_direction: 'asc' })
+				.then(result => {
+					setCompanyOptions(result.items || [])
+				})
+				.catch(error => {
+					console.error('Error loading initial companies:', error)
+				})
+		}
+	}, [companyId])
+
+	// Handle company selection from autocomplete
+	const handleCompanySelect = (company: Clinic | null) => {
+		setSelectedCompany(company)
+		if (company) {
+			setVisit(prev => ({
+				...prev,
+				company_id: company.id,
+				company_name: company.name,
+				dynamic_bitrix_company_id: company.bitrix_id?.toString() || '',
+			}))
+		} else {
+			setVisit(prev => ({
+				...prev,
+				company_id: 0,
+				company_name: '',
+				dynamic_bitrix_company_id: '',
+			}))
+		}
+	}
 
 	// Custom field values (stored separately, merged into dynamic_fields on submit)
 	const [customValues, setCustomValues] = useState<Record<string, any>>({})
@@ -382,7 +454,7 @@ export const VisitCreatePage: React.FC = () => {
 
 				<form onSubmit={handleSubmit}>
 					<Grid container spacing={3}>
-						{/* Company card (always shown) */}
+						{/* Company card / company selector */}
 						<Grid item xs={12}>
 							{companyId ? (
 								<Card
@@ -409,9 +481,77 @@ export const VisitCreatePage: React.FC = () => {
 									</CardContent>
 								</Card>
 							) : (
-								<Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
-									Компания не выбрана. Пожалуйста, вернитесь на страницу визитов и выберите компанию.
-								</Alert>
+								<Card
+									variant="outlined"
+									sx={{
+										borderRadius: 3,
+										border: 'none',
+										boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+									}}
+								>
+									<CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+										<Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+											<SearchIcon color="action" fontSize="small" sx={{ mr: 1 }} />
+											<Typography variant="subtitle2" color="text.secondary">
+												Выберите компанию
+											</Typography>
+										</Box>
+										<Autocomplete
+											options={companyOptions}
+											getOptionLabel={(option) => `${option.name}${option.inn ? ` (ИНН: ${option.inn})` : ''}`}
+											value={selectedCompany}
+											onChange={(_event, newValue) => handleCompanySelect(newValue)}
+											onInputChange={(_event, newInputValue) => setCompanySearchTerm(newInputValue)}
+											loading={isSearchingCompanies}
+											noOptionsText={companySearchTerm.length < 2 ? 'Введите минимум 2 символа для поиска' : 'Компании не найдены'}
+											loadingText="Поиск компаний..."
+											isOptionEqualToValue={(option, value) => option.id === value.id}
+											renderOption={(props, option) => (
+												<li {...props} key={option.id}>
+													<Box>
+														<Typography variant="body1">{option.name}</Typography>
+														<Typography variant="caption" color="text.secondary">
+															{option.inn ? `ИНН: ${option.inn}` : ''}
+															{option.region ? ` | ${option.region}` : ''}
+														</Typography>
+													</Box>
+												</li>
+											)}
+											renderInput={(params) => (
+												<TextField
+													{...params}
+													label="Поиск компании"
+													placeholder="Введите название или ИНН компании"
+													size="small"
+													data-testid="company-search-input"
+													InputProps={{
+														...params.InputProps,
+														endAdornment: (
+															<>
+																{isSearchingCompanies ? <CircularProgress color="inherit" size={20} /> : null}
+																{params.InputProps.endAdornment}
+															</>
+														),
+													}}
+												/>
+											)}
+											fullWidth
+										/>
+										{selectedCompany && (
+											<Box sx={{ mt: 1.5, ml: 0.5 }}>
+												<Typography variant="body2" color="text.secondary">
+													Выбрана: <strong>{selectedCompany.name}</strong>
+													{selectedCompany.inn && ` (ИНН: ${selectedCompany.inn})`}
+												</Typography>
+											</Box>
+										)}
+										{!selectedCompany && (
+											<Alert severity="info" sx={{ mt: 1.5, borderRadius: 2 }}>
+												Найдите и выберите компанию для создания визита
+											</Alert>
+										)}
+									</CardContent>
+								</Card>
 							)}
 						</Grid>
 

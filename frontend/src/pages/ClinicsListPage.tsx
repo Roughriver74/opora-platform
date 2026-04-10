@@ -41,6 +41,11 @@ import EditIcon from '@mui/icons-material/Edit'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
+import FileUploadIcon from '@mui/icons-material/FileUpload'
+import CloudUploadIcon from '@mui/icons-material/CloudUpload'
+import DescriptionIcon from '@mui/icons-material/Description'
+import CloseIcon from '@mui/icons-material/Close'
 import { clinicService, Clinic, ClinicFilters, ClinicInput } from '../services/clinicService'
 import { useAuth } from '../context/AuthContext'
 import { cleanAddressString } from '../utils/addressUtils'
@@ -84,13 +89,17 @@ const ClinicsListPage: React.FC = () => {
 	const [newCompany, setNewCompany] = useState<{
 		name: string;
 		inn: string;
+		kpp: string;
 		address: string;
 		region: string;
+		company_type: string;
 	}>({
 		name: '',
 		inn: '',
+		kpp: '',
 		address: '',
 		region: '',
+		company_type: 'CUSTOMER',
 	})
 
 	// Состояния для обработки результатов проверки и создания
@@ -99,7 +108,132 @@ const ClinicsListPage: React.FC = () => {
 	const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
 	const [advancedFilters, setAdvancedFilters] = useState<any[]>([]);
 
+	// Import/Export state
+	const [importDialogOpen, setImportDialogOpen] = useState(false)
+	const [importFile, setImportFile] = useState<File | null>(null)
+	const [isImporting, setIsImporting] = useState(false)
+	const [isExporting, setIsExporting] = useState(false)
+	const [importResult, setImportResult] = useState<{
+		imported: number;
+		updated: number;
+		errors: string[];
+	} | null>(null)
+	const [isDragOver, setIsDragOver] = useState(false)
 
+	// Import/Export handlers
+	const handleExport = async () => {
+		try {
+			setIsExporting(true)
+			const blob = await clinicService.exportCompanies()
+			const url = window.URL.createObjectURL(blob)
+			const link = document.createElement('a')
+			link.href = url
+			const today = new Date().toISOString().slice(0, 10)
+			link.download = `companies_${today}.xlsx`
+			document.body.appendChild(link)
+			link.click()
+			document.body.removeChild(link)
+			window.URL.revokeObjectURL(url)
+			setSnackbar({
+				open: true,
+				message: 'Файл экспортирован',
+				severity: 'success',
+			})
+		} catch (error: any) {
+			setSnackbar({
+				open: true,
+				message: `Ошибка экспорта: ${error?.response?.data?.detail || error.message || 'Неизвестная ошибка'}`,
+				severity: 'error',
+			})
+		} finally {
+			setIsExporting(false)
+		}
+	}
+
+	const handleDownloadTemplate = async () => {
+		try {
+			const blob = await clinicService.downloadImportTemplate()
+			const url = window.URL.createObjectURL(blob)
+			const link = document.createElement('a')
+			link.href = url
+			link.download = 'import_template.xlsx'
+			document.body.appendChild(link)
+			link.click()
+			document.body.removeChild(link)
+			window.URL.revokeObjectURL(url)
+		} catch (error: any) {
+			setSnackbar({
+				open: true,
+				message: `Ошибка загрузки шаблона: ${error?.response?.data?.detail || error.message || 'Неизвестная ошибка'}`,
+				severity: 'error',
+			})
+		}
+	}
+
+	const handleImportSubmit = async () => {
+		if (!importFile) return
+		try {
+			setIsImporting(true)
+			const result = await clinicService.importCompanies(importFile)
+			setImportResult(result)
+			queryClient.invalidateQueries(['clinics'])
+			setSnackbar({
+				open: true,
+				message: `Импорт завершен: добавлено ${result.imported}, обновлено ${result.updated}`,
+				severity: result.errors.length > 0 ? 'warning' : 'success',
+			})
+		} catch (error: any) {
+			setSnackbar({
+				open: true,
+				message: `Ошибка импорта: ${error?.response?.data?.detail || error.message || 'Неизвестная ошибка'}`,
+				severity: 'error',
+			})
+		} finally {
+			setIsImporting(false)
+		}
+	}
+
+	const handleCloseImportDialog = () => {
+		setImportDialogOpen(false)
+		setImportFile(null)
+		setImportResult(null)
+		setIsDragOver(false)
+	}
+
+	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		if (e.target.files && e.target.files[0]) {
+			setImportFile(e.target.files[0])
+			setImportResult(null)
+		}
+	}
+
+	const handleDragOver = (e: React.DragEvent) => {
+		e.preventDefault()
+		setIsDragOver(true)
+	}
+
+	const handleDragLeave = (e: React.DragEvent) => {
+		e.preventDefault()
+		setIsDragOver(false)
+	}
+
+	const handleDrop = (e: React.DragEvent) => {
+		e.preventDefault()
+		setIsDragOver(false)
+		if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+			const file = e.dataTransfer.files[0]
+			if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+				setImportFile(file)
+				setImportResult(null)
+			} else {
+				setSnackbar({
+					open: true,
+					message: 'Допустимы только файлы Excel (.xlsx, .xls)',
+					severity: 'warning',
+				})
+			}
+		}
+	}
 
 	// Update URL when filters change
 	useEffect(() => {
@@ -326,37 +460,27 @@ const ClinicsListPage: React.FC = () => {
 		}
 
 		// Создаем новый базовый объект для создания компании, только с полями, которые поддерживаются в бэкенде
-		const baseData = {
+		const createCompanyData = {
 			name: newCompany.name,
-			company_type: 'CUSTOMER',
+			company_type: newCompany.company_type || 'CUSTOMER',
 			address: cleanAddressString(newCompany.address),
 			city: '',
 			country: 'Россия',
 			inn: newCompany.inn,
-			region: newCompany.region, // Добавляем поле region в базовые данные (только для локальной БД)
+			kpp: newCompany.kpp || '',
+			region: newCompany.region,
 			dynamic_fields: {
 				uf_crm_1741267701427: newCompany.inn,
 				uf_crm_6679726eb1750: cleanAddressString(newCompany.address),
 			}
 		};
 
-		const createCompanyData = {
-			name: baseData.name,
-			company_type: baseData.company_type,
-			address: baseData.address,
-			city: baseData.city,
-			country: baseData.country,
-			inn: baseData.inn,
-			region: baseData.region, // Добавляем поле region (только для локальной БД)
-			dynamic_fields: baseData.dynamic_fields
-		};
-
 		// Выводим данные для отправки для отладки
 		console.log('Отправка данных для создания компании:', createCompanyData);
 
-		// Создаем прямо объект с правильными полями, без использования интерфейса ClinicInput
+		// Создаем компанию локально (без обязательной привязки к Bitrix24)
 		createClinicMutation.mutate(createCompanyData as any);
-	};;
+	};
 
 	// Обработчик перехода к редактированию для существующей компании
 	const handleGoToExistingCompany = () => {
@@ -387,8 +511,10 @@ const ClinicsListPage: React.FC = () => {
 		setNewCompany({
 			name: '',
 			inn: '',
+			kpp: '',
 			address: '',
-			region: '' // Добавляем поле region в начальные данные
+			region: '',
+			company_type: 'CUSTOMER',
 		});
 		setExistingClinic(null);
 		setCreateModalOpen(true);
@@ -611,13 +737,32 @@ const ClinicsListPage: React.FC = () => {
 								</Button>
 							</Grid>
 
-							{!isMobile && (
-								<Grid item xs={12}>
-									<Button variant="contained" startIcon={<AddCircleOutlineIcon />} onClick={handleOpenCreateModal} sx={{ mb: 2 }}>
-										Создать компанию
+							<Grid item xs={12}>
+								<Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
+									<Button variant="contained" startIcon={<AddCircleOutlineIcon />} onClick={handleOpenCreateModal} data-testid="add-company-button">
+										Добавить компанию
 									</Button>
-								</Grid>
-							)}
+									{user?.role === 'org_admin' || user?.role === 'platform_admin' ? (
+										<>
+											<Button
+												variant="outlined"
+												startIcon={isExporting ? <CircularProgress size={18} /> : <FileDownloadIcon />}
+												onClick={handleExport}
+												disabled={isExporting}
+											>
+												Экспорт
+											</Button>
+											<Button
+												variant="outlined"
+												startIcon={<FileUploadIcon />}
+												onClick={() => setImportDialogOpen(true)}
+											>
+												Импорт
+											</Button>
+										</>
+									) : null}
+								</Stack>
+							</Grid>
 
 						</Grid>
 
@@ -745,7 +890,7 @@ const ClinicsListPage: React.FC = () => {
 			/>
 
 			{/* Модальное окно создания компании */}
-			<Dialog open={createModalOpen} onClose={handleCloseCreateModal} maxWidth="sm" fullWidth>
+			<Dialog open={createModalOpen} onClose={handleCloseCreateModal} maxWidth="sm" fullWidth data-testid="create-company-dialog">
 				<DialogTitle>Создание новой компании</DialogTitle>
 				<DialogContent>
 					<Stack spacing={2} sx={{ mt: 1 }}>
@@ -756,6 +901,7 @@ const ClinicsListPage: React.FC = () => {
 							onChange={handleNewCompanyChange}
 							fullWidth
 							required
+							data-testid="company-name-input"
 						/>
 						<TextField
 							label="ИНН"
@@ -764,16 +910,32 @@ const ClinicsListPage: React.FC = () => {
 							onChange={handleNewCompanyChange}
 							fullWidth
 							required
+							data-testid="company-inn-input"
 						/>
 						<TextField
-							label="Адрес"
-							name="address"
-							value={newCompany.address}
+							label="КПП"
+							name="kpp"
+							value={newCompany.kpp}
 							onChange={handleNewCompanyChange}
 							fullWidth
-							multiline
-							rows={3}
+							data-testid="company-kpp-input"
 						/>
+						<FormControl fullWidth required>
+							<InputLabel id="company-type-select-label">Тип компании</InputLabel>
+							<Select
+								labelId="company-type-select-label"
+								id="company-type-select"
+								value={newCompany.company_type}
+								label="Тип компании"
+								onChange={(e: SelectChangeEvent<string>) => setNewCompany({ ...newCompany, company_type: e.target.value })}
+								data-testid="company-type-select"
+							>
+								<MenuItem value="CUSTOMER">Клиент</MenuItem>
+								<MenuItem value="SUPPLIER">Поставщик</MenuItem>
+								<MenuItem value="PARTNER">Партнер</MenuItem>
+								<MenuItem value="OTHER">Другое</MenuItem>
+							</Select>
+						</FormControl>
 						<FormControl fullWidth required>
 							<InputLabel id="region-select-label">Регион</InputLabel>
 							<Select
@@ -783,6 +945,7 @@ const ClinicsListPage: React.FC = () => {
 								label="Регион"
 								onChange={handleRegionSelectChange}
 								required
+								data-testid="company-region-select"
 							>
 								<MenuItem value=""><em>Не выбрано</em></MenuItem>
 								<MenuItem value="ДНР">ДНР</MenuItem>
@@ -797,6 +960,15 @@ const ClinicsListPage: React.FC = () => {
 								<MenuItem value="ЮФО">ЮФО</MenuItem>
 							</Select>
 						</FormControl>
+						<TextField
+							label="Адрес"
+							name="address"
+							value={newCompany.address}
+							onChange={handleNewCompanyChange}
+							fullWidth
+							multiline
+							rows={2}
+						/>
 					</Stack>
 				</DialogContent>
 				<DialogActions>
@@ -808,6 +980,7 @@ const ClinicsListPage: React.FC = () => {
 						color="primary"
 						variant="contained"
 						disabled={isInnChecking || !newCompany.name || !newCompany.inn || !newCompany.region}
+						data-testid="create-company-submit"
 					>
 						{isInnChecking ? <CircularProgress size={24} /> : 'Создать'}
 					</Button>
