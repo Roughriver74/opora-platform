@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ОПОРА — Desktop Layout Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #F2F2F7; color: #1a1a1a; height: 100vh; overflow: hidden; }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: 220px;
+    background: #fff;
+    border-right: 1px solid #e0e0e0;
+    display: flex; flex-direction: column;
+    transition: width 0.25s cubic-bezier(0.4,0,0.2,1);
+    z-index: 100;
+    overflow: hidden;
+  }
+  .sidebar.collapsed { width: 64px; }
+
+  .sidebar-header {
+    height: 60px; display: flex; align-items: center;
+    padding: 0 16px; border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+  }
+  .sidebar-header .logo {
+    font-weight: 800; font-size: 20px; color: #1976d2;
+    letter-spacing: -0.5px; white-space: nowrap;
+  }
+  .sidebar.collapsed .logo-text { display: none; }
+
+  .sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px; cursor: pointer;
+    transition: background 0.15s; text-decoration: none; color: #555;
+    white-space: nowrap;
+  }
+  .nav-item:hover { background: #f0f0f5; }
+  .nav-item.active { background: #e3f2fd; color: #1976d2; }
+  .nav-item .icon {
+    width: 24px; height: 24px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .nav-item .label { font-size: 14px; font-weight: 500; }
+  .sidebar.collapsed .nav-item .label { display: none; }
+  .sidebar.collapsed .nav-item { justify-content: center; padding: 10px 0; }
+
+  .sidebar-footer {
+    padding: 12px; border-top: 1px solid #e0e0e0;
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  .sidebar-footer .avatar {
+    width: 36px; height: 36px; border-radius: 50%; background: #1976d2;
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; flex-shrink: 0;
+  }
+  .sidebar-footer .user-info { overflow: hidden; }
+  .sidebar-footer .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .sidebar-footer .user-email { font-size: 11px; color: #888; white-space: nowrap; }
+  .sidebar.collapsed .user-info { display: none; }
+
+  .collapse-btn {
+    position: absolute; top: 18px; right: -12px;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #fff; border: 1px solid #e0e0e0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 12px; color: #888;
+    transition: transform 0.25s;
+    z-index: 101;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .sidebar.collapsed .collapse-btn { transform: rotate(180deg); }
+
+  /* ===== MAIN AREA ===== */
+  .main-area {
+    margin-left: 220px;
+    transition: margin-left 0.25s cubic-bezier(0.4,0,0.2,1);
+    height: 100vh; display: flex; flex-direction: column;
+  }
+  .main-area.sidebar-collapsed { margin-left: 64px; }
+
+  /* ===== APPBAR ===== */
+  .appbar {
+    height: 60px; background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #e0e0e0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; flex-shrink: 0;
+  }
+  .appbar-title { font-size: 18px; font-weight: 700; }
+  .appbar-actions { display: flex; align-items: center; gap: 8px; }
+  .appbar-actions .btn-icon {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: #f0f0f5; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; font-size: 16px;
+    transition: background 0.15s;
+  }
+  .appbar-actions .btn-icon:hover { background: #e3f2fd; }
+
+  /* ===== CONTENT ===== */
+  .content {
+    flex: 1; overflow-y: auto; padding: 24px;
+  }
+  .content-inner {
+    max-width: 1400px; margin: 0 auto;
+  }
+
+  /* ===== TOOLBAR ===== */
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 12px; }
+  .toolbar-left .search {
+    padding: 8px 14px; border: 1px solid #e0e0e0; border-radius: 10px;
+    font-size: 14px; width: 280px; font-family: inherit;
+    background: #fff;
+  }
+  .toolbar-left .filter-chip {
+    padding: 6px 14px; border: 1px solid #e0e0e0; border-radius: 20px;
+    font-size: 13px; background: #fff; cursor: pointer; font-family: inherit;
+  }
+  .toolbar-right .btn-primary {
+    padding: 8px 20px; border-radius: 10px; border: none;
+    background: #1976d2; color: #fff; font-weight: 600;
+    font-size: 14px; cursor: pointer; font-family: inherit;
+  }
+
+  /* ===== CARD GRID ===== */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 1200px) { .card-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 900px) { .card-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: #fff; border-radius: 14px;
+    padding: 20px; border: 1px solid #eee;
+    transition: box-shadow 0.2s, transform 0.15s;
+    cursor: pointer;
+  }
+  .card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .card-title { font-size: 15px; font-weight: 700; line-height: 1.3; }
+  .card-badge {
+    padding: 2px 10px; border-radius: 12px; font-size: 11px;
+    font-weight: 600; background: #e8f5e9; color: #2e7d32;
+    flex-shrink: 0;
+  }
+  .card-badge.warning { background: #fff3e0; color: #e65100; }
+  .card-badge.error { background: #ffebee; color: #c62828; }
+
+  .card-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .card-label { font-size: 12px; color: #888; }
+  .card-value { font-size: 13px; font-weight: 500; }
+
+  .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0f0f0; }
+  .card-footer .btn-edit {
+    padding: 5px 14px; border-radius: 8px; border: 1px solid #1976d2;
+    background: transparent; color: #1976d2; font-size: 12px;
+    font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .card-footer .visits-count { font-size: 12px; color: #888; }
+
+  /* ===== PAGINATION ===== */
+  .pagination {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 20px; padding: 12px 0;
+  }
+  .pagination .info { font-size: 13px; color: #888; }
+  .pagination .pages { display: flex; gap: 4px; }
+  .pagination .page-btn {
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e0e0e0;
+    background: #fff; cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; font-family: inherit;
+  }
+  .pagination .page-btn.active { background: #1976d2; color: #fff; border-color: #1976d2; }
+
+  /* ===== MOBILE MOCKUP LABEL ===== */
+  .mockup-label {
+    position: fixed; bottom: 16px; right: 16px;
+    background: #1976d2; color: #fff; padding: 8px 16px;
+    border-radius: 20px; font-size: 12px; font-weight: 600;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15); z-index: 200;
+  }
+
+  /* ===== SWITCHER ===== */
+  .view-switcher {
+    position: fixed; top: 16px; right: 16px; z-index: 200;
+    display: flex; gap: 4px; background: #fff; border-radius: 10px;
+    padding: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  .view-switcher button {
+    padding: 6px 14px; border: none; border-radius: 8px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    background: transparent; color: #555; font-family: inherit;
+  }
+  .view-switcher button.active { background: #1976d2; color: #fff; }
+
+  /* ===== MOBILE VIEW ===== */
+  .mobile-frame {
+    display: none;
+    width: 390px; margin: 20px auto;
+    background: #fff; border-radius: 24px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    overflow: hidden; height: calc(100vh - 40px);
+    flex-direction: column; position: relative;
+  }
+  .mobile-frame .mobile-appbar {
+    height: 56px; background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #e0e0e0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; flex-shrink: 0;
+  }
+  .mobile-frame .mobile-appbar .logo { font-weight: 800; font-size: 18px; color: #1976d2; }
+  .mobile-frame .mobile-content {
+    flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 80px;
+  }
+  .mobile-frame .mobile-card {
+    background: #fff; border-radius: 14px; padding: 16px;
+    border: 1px solid #eee; margin-bottom: 12px;
+  }
+  .mobile-frame .mobile-bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 64px; background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px); border-top: 1px solid #e0e0e0;
+    display: flex; align-items: center; justify-content: space-around;
+  }
+  .mobile-frame .nav-tab {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 10px; color: #888; cursor: pointer;
+  }
+  .mobile-frame .nav-tab.active { color: #1976d2; }
+  .mobile-frame .nav-tab .tab-icon { font-size: 20px; }
+  .mobile-frame .mobile-fab {
+    position: absolute; bottom: 80px; right: 16px;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: #1976d2; color: #fff; border: none;
+    font-size: 24px; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(25,118,210,0.4);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  body.mobile-view .sidebar,
+  body.mobile-view .main-area { display: none; }
+  body.mobile-view .mobile-frame { display: flex; }
+  body.mobile-view { background: #F2F2F7; overflow: auto; }
+</style>
+</head>
+<body>
+
+<!-- View Switcher -->
+<div class="view-switcher">
+  <button class="active" onclick="setView('desktop')">Desktop</button>
+  <button onclick="setView('mobile')">Mobile</button>
+</div>
+
+<!-- ===== SIDEBAR ===== -->
+<div class="sidebar" id="sidebar">
+  <div class="collapse-btn" onclick="toggleSidebar()">◀</div>
+  <div class="sidebar-header">
+    <div class="logo">
+      <span>О</span><span class="logo-text">ПОРА</span>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-item" href="#">
+      <span class="icon">📅</span>
+      <span class="label">Визиты</span>
+    </a>
+    <a class="nav-item active" href="#">
+      <span class="icon">🏢</span>
+      <span class="label">Компании</span>
+    </a>
+    <a class="nav-item" href="#">
+      <span class="icon">👤</span>
+      <span class="label">Контакты</span>
+    </a>
+    <a class="nav-item" href="#">
+      <span class="icon">⚙️</span>
+      <span class="label">Настройки</span>
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="avatar">ЕС</div>
+    <div class="user-info">
+      <div class="user-name">Евгений Сикунов</div>
+      <div class="user-email">evgenij@opora.ru</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN AREA ===== -->
+<div class="main-area" id="main-area">
+  <div class="appbar">
+    <div class="appbar-title">Компании</div>
+    <div class="appbar-actions">
+      <button class="btn-icon" title="Календарь">📆</button>
+      <button class="btn-icon" title="Карта">🗺</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="content-inner">
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input class="search" placeholder="Поиск по названию или ИНН..." />
+          <button class="filter-chip">Регион ▾</button>
+          <button class="filter-chip">Сортировка ▾</button>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn-primary">+ Создать компанию</button>
+        </div>
+      </div>
+
+      <!-- Card Grid -->
+      <div class="card-grid">
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">ООО «Стоматология Плюс»</div>
+            <span class="card-badge">synced</span>
+          </div>
+          <div class="card-row"><span class="card-label">ИНН</span><span class="card-value">7701234567</span></div>
+          <div class="card-row"><span class="card-label">Менеджер</span><span class="card-value">Иванов А.П.</span></div>
+          <div class="card-row"><span class="card-label">Последний визит</span><span class="card-value">08.04.2026</span></div>
+          <div class="card-row"><span class="card-label">Последняя продажа</span><span class="card-value">15 000 ₽</span></div>
+          <div class="card-footer">
+            <span class="visits-count">12 визитов</span>
+            <button class="btn-edit">Редактировать</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Клиника «Здоровье»</div>
+            <span class="card-badge warning">pending</span>
+          </div>
+          <div class="card-row"><span class="card-label">ИНН</span><span class="card-value">7709876543</span></div>
+          <div class="card-row"><span class="card-label">Менеджер</span><span class="card-value">Петрова М.В.</span></div>
+          <div class="card-row"><span class="card-label">Последний визит</span><span class="card-value">02.04.2026</span></div>
+          <div class="card-row"><span class="card-label">Последняя продажа</span><span class="card-value">8 200 ₽</span></div>
+          <div class="card-footer">
+            <span class="visits-count">7 визитов</span>
+            <button class="btn-edit">Редактировать</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">МЦ «Профессор»</div>
+            <span class="card-badge">synced</span>
+          </div>
+          <div class="card-row"><span class="card-label">ИНН</span><span class="card-value">7705551234</span></div>
+          <div class="card-row"><span class="card-label">Менеджер</span><span class="card-value">Сидоров К.Н.</span></div>
+          <div class="card-row"><span class="card-label">Последний визит</span><span class="card-value">05.04.2026</span></div>
+          <div class="card-row"><span class="card-label">Последняя продажа</span><span class="card-value">32 400 ₽</span></div>
+          <div class="card-footer">
+            <span class="visits-count">24 визита</span>
+            <button class="btn-edit">Редактировать</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">ООО «Дентал Сервис»</div>
+            <span class="card-badge">synced</span>
+          </div>
+          <div class="card-row"><span class="card-label">ИНН</span><span class="card-value">5001112233</span></div>
+          <div class="card-row"><span class="card-label">Менеджер</span><span class="card-value">Козлов Д.И.</span></div>
+          <div class="card-row"><span class="card-label">Последний визит</span><span class="card-value">01.04.2026</span></div>
+          <div class="card-row"><span class="card-label">Последняя продажа</span><span class="card-value">—</span></div>
+          <div class="card-footer">
+            <span class="visits-count">3 визита</span>
+            <button class="btn-edit">Редактировать</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Поликлиника №7</div>
+            <span class="card-badge error">error</span>
+          </div>
+          <div class="card-row"><span class="card-label">ИНН</span><span class="card-value">6301445566</span></div>
+          <div class="card-row"><span class="card-label">Менеджер</span><span class="card-value">Новикова Е.С.</span></div>
+          <div class="card-row"><span class="card-label">Последний визит</span><span class="card-value">28.03.2026</span></div>
+          <div class="card-row"><span class="card-label">Последняя продажа</span><span class="card-value">5 600 ₽</span></div>
+          <div class="card-footer">
+            <span class="visits-count">9 визитов</span>
+            <button class="btn-edit">Редактировать</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">ООО «МедЛаб Диагностика»</div>
+            <span class="card-badge">synced</span>
+          </div>
+          <div class="card-row"><span class="card-label">ИНН</span><span class="card-value">7712001122</span></div>
+          <div class="card-row"><span class="card-label">Менеджер</span><span class="card-value">Иванов А.П.</span></div>
+          <div class="card-row"><span class="card-label">Последний визит</span><span class="card-value">10.04.2026</span></div>
+          <div class="card-row"><span class="card-label">Последняя продажа</span><span class="card-value">47 000 ₽</span></div>
+          <div class="card-footer">
+            <span class="visits-count">31 визит</span>
+            <button class="btn-edit">Редактировать</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <div class="info">Найдено: 156 компаний · Показано 1–6</div>
+        <div class="pages">
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+          <button class="page-btn">...</button>
+          <button class="page-btn">26</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MOBILE FRAME ===== -->
+<div class="mobile-frame">
+  <div class="mobile-appbar">
+    <div class="logo">ОПОРА</div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn-icon" style="width:32px;height:32px;border:none;background:#f0f0f5;border-radius:50%;font-size:14px;cursor:pointer;">📆</button>
+      <div style="width:32px;height:32px;border-radius:50%;background:#1976d2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">ЕС</div>
+    </div>
+  </div>
+  <div class="mobile-content">
+    <div style="font-size:22px;font-weight:700;margin-bottom:16px;">Компании</div>
+
+    <div class="mobile-card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:15px;font-weight:700;">ООО «Стоматология Плюс»</div>
+        <span class="card-badge" style="font-size:10px;">synced</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;">
+        <div><span style="color:#888;font-size:11px;">ИНН</span><br>7701234567</div>
+        <div><span style="color:#888;font-size:11px;">Менеджер</span><br>Иванов А.П.</div>
+        <div><span style="color:#888;font-size:11px;">Посл. визит</span><br>08.04.2026</div>
+        <div><span style="color:#888;font-size:11px;">Визитов</span><br>12</div>
+      </div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+        <button class="btn-edit" style="padding:5px 14px;border-radius:8px;border:1px solid #1976d2;background:transparent;color:#1976d2;font-size:12px;font-weight:600;cursor:pointer;">Редактировать</button>
+      </div>
+    </div>
+
+    <div class="mobile-card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:15px;font-weight:700;">Клиника «Здоровье»</div>
+        <span class="card-badge warning" style="font-size:10px;">pending</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;">
+        <div><span style="color:#888;font-size:11px;">ИНН</span><br>7709876543</div>
+        <div><span style="color:#888;font-size:11px;">Менеджер</span><br>Петрова М.В.</div>
+        <div><span style="color:#888;font-size:11px;">Посл. визит</span><br>02.04.2026</div>
+        <div><span style="color:#888;font-size:11px;">Визитов</span><br>7</div>
+      </div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+        <button class="btn-edit" style="padding:5px 14px;border-radius:8px;border:1px solid #1976d2;background:transparent;color:#1976d2;font-size:12px;font-weight:600;cursor:pointer;">Редактировать</button>
+      </div>
+    </div>
+
+    <div class="mobile-card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:15px;font-weight:700;">МЦ «Профессор»</div>
+        <span class="card-badge" style="font-size:10px;">synced</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;">
+        <div><span style="color:#888;font-size:11px;">ИНН</span><br>7705551234</div>
+        <div><span style="color:#888;font-size:11px;">Менеджер</span><br>Сидоров К.Н.</div>
+        <div><span style="color:#888;font-size:11px;">Посл. визит</span><br>05.04.2026</div>
+        <div><span style="color:#888;font-size:11px;">Визитов</span><br>24</div>
+      </div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+        <button class="btn-edit" style="padding:5px 14px;border-radius:8px;border:1px solid #1976d2;background:transparent;color:#1976d2;font-size:12px;font-weight:600;cursor:pointer;">Редактировать</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="mobile-fab">+</button>
+
+  <div class="mobile-bottom-nav">
+    <div class="nav-tab"><span class="tab-icon">📅</span>Визиты</div>
+    <div class="nav-tab active"><span class="tab-icon">🏢</span>Компании</div>
+    <div class="nav-tab"><span class="tab-icon">👤</span>Контакты</div>
+    <div class="nav-tab"><span class="tab-icon">⚙️</span>Настройки</div>
+  </div>
+</div>
+
+<div class="mockup-label">ОПОРА — Desktop Layout Mockup</div>
+
+<script>
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+    document.getElementById('main-area').classList.toggle('sidebar-collapsed');
+  }
+
+  function setView(view) {
+    const btns = document.querySelectorAll('.view-switcher button');
+    btns.forEach(b => b.classList.remove('active'));
+    if (view === 'mobile') {
+      document.body.classList.add('mobile-view');
+      btns[1].classList.add('active');
+    } else {
+      document.body.classList.remove('mobile-view');
+      btns[0].classList.add('active');
+    }
+  }
+</script>
+</body>
+</html>
