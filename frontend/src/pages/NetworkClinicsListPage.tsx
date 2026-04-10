@@ -375,7 +375,7 @@ const NetworkClinicsListPage: React.FC = () => {
     }
 
     const renderMobileClinicCard = (clinic: Clinic) => (
-        <Card sx={{ mb: 2, position: 'relative' }} key={clinic.id}>
+        <Card sx={{ height: '100%', position: 'relative' }}>
             <CardContent>
                 <Typography variant="h6" gutterBottom>
                     {clinic.name}
@@ -434,6 +434,17 @@ const NetworkClinicsListPage: React.FC = () => {
 							  Филиалы
 							</Typography>
 						</Grid>
+						{!isMobile && (
+							<Grid item xs container justifyContent="flex-end">
+								<Button
+									variant="contained"
+									startIcon={<AddCircleOutlineIcon />}
+									onClick={handleOpenCreateModal}
+								>
+									Добавить филиал
+								</Button>
+							</Grid>
+						)}
 					</Grid>
 				</CardContent>
 			</Card>
@@ -481,7 +492,13 @@ const NetworkClinicsListPage: React.FC = () => {
 									</FormControl>
 								</Box>
 
-								{data.data?.map((clinic: any) => renderMobileClinicCard(clinic))}
+								<Grid container spacing={2}>
+									{data.data?.map((clinic: any) => (
+										<Grid item xs={12} md={6} lg={4} key={clinic.id || clinic.bitrix_id}>
+											{renderMobileClinicCard(clinic)}
+										</Grid>
+									))}
+								</Grid>
 							</Box>
 
                             <TablePagination
@@ -543,20 +560,19 @@ const NetworkClinicsListPage: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-			<Fab
-				color="primary"
-				onClick={handleOpenCreateModal}
-				sx={{
-					position: 'fixed',
-					bottom: 84, // Above bottom nav
-					right: 'calc(50% - 280px)', // Centered wrapper logic
-					'@media (max-width: 600px)': {
+			{isMobile && (
+				<Fab
+					color="primary"
+					onClick={handleOpenCreateModal}
+					sx={{
+						position: 'fixed',
+						bottom: 84,
 						right: 20,
-					}
-				}}
-			>
-				<AddCircleOutlineIcon fontSize="large" />
-			</Fab>
+					}}
+				>
+					<AddCircleOutlineIcon fontSize="large" />
+				</Fab>
+			)}
         </Box>
     )
 }
