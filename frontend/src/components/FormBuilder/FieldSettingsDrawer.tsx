@@ -31,6 +31,10 @@ const FieldSettingsDrawer: React.FC<Props> = ({
     setKeyManuallyEdited(false);
   }, [field?.key]);
 
+  useEffect(() => {
+    if (!hasBitrix) setTab(0);
+  }, [hasBitrix]);
+
   if (!field) return null;
 
   const handleLabelChange = (label: string) => {
@@ -149,6 +153,7 @@ const FieldSettingsDrawer: React.FC<Props> = ({
               <TextField
                 label="Тип поля Bitrix24"
                 size="small"
+                fullWidth
                 value={field.bitrix_field_type ?? ''}
                 InputProps={{ readOnly: true }}
                 helperText="Определяется автоматически при выборе поля"
