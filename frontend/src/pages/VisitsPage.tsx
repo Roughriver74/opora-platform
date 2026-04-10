@@ -15,6 +15,9 @@ import {
   Card,
   CardActionArea,
   useTheme,
+  useMediaQuery,
+  Grid,
+  Button,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -33,7 +36,8 @@ import {
 export const VisitsPage: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
-  
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const [tabIndex, setTabIndex] = useState(0); // 0 = upcoming, 1 = completed
   const visitFilter = tabIndex === 0 ? 'upcoming' : 'completed';
   const [filteredVisits, setFilteredVisits] = useState<Visit[]>([]);
@@ -82,14 +86,21 @@ export const VisitsPage: React.FC = () => {
 
   return (
     <Box sx={{ position: 'relative', minHeight: '100%', pb: 4 }}>
-      {/* Mobile Top Header Area */}
+      {/* Header */}
       <Box sx={{ px: 2, pt: 1, pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h1">
           Визиты
         </Typography>
-        <IconButton onClick={() => refetch()} disabled={isFetching} sx={{ bgcolor: 'background.paper', boxShadow: 1 }}>
-          <RefreshIcon color={isFetching ? 'disabled' : 'primary'} />
-        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <IconButton onClick={() => refetch()} disabled={isFetching} sx={{ bgcolor: 'background.paper', boxShadow: 1 }}>
+            <RefreshIcon color={isFetching ? 'disabled' : 'primary'} />
+          </IconButton>
+          {!isMobile && (
+            <Button variant="contained" onClick={() => navigate('/companies')}>
+              Создать визит
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* Tabs */}
@@ -137,49 +148,53 @@ export const VisitsPage: React.FC = () => {
             Ошибка при загрузке визитов. Пожалуйста, попробуйте обновить страницу.
           </Alert>
         ) : filteredVisits.length > 0 ? (
-          filteredVisits.map((visit) => {
-            const status = getVisitStatus(visit);
-            return (
-              <Card key={visit.id} sx={{ mb: 2 }}>
-                <CardActionArea 
-                  onClick={() => navigate(`/visits/${visit.id}`)}
-                  sx={{ p: 2, display: 'flex', alignItems: 'flex-start' }}
-                >
-                  <Avatar sx={{ bgcolor: 'primary.light', mr: 2, mt: 0.5 }}>
-                    <EventIcon />
-                  </Avatar>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography 
-                      variant="subtitle1" 
-                      sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+          <Grid container spacing={2}>
+            {filteredVisits.map((visit) => {
+              const status = getVisitStatus(visit);
+              return (
+                <Grid item xs={12} md={6} lg={4} key={visit.id}>
+                  <Card sx={{ mb: { xs: 0, md: 0 } }}>
+                    <CardActionArea
+                      onClick={() => navigate(`/visits/${visit.id}`)}
+                      sx={{ p: 2, display: 'flex', alignItems: 'flex-start' }}
                     >
-                      {visit.company?.name || `Компания №${visit.company_id}` || 'Неизвестная компания'}
-                    </Typography>
-                    
-                    <Typography variant="body2" color="primary" sx={{ mb: 0.5, fontWeight: 500 }}>
-                      {visit.dynamic_fields?.['ufcrm18type'] || visit.visit_type || 'Визит'}
-                    </Typography>
+                      <Avatar sx={{ bgcolor: 'primary.light', mr: 2, mt: 0.5 }}>
+                        <EventIcon />
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                        >
+                          {visit.company?.name || `Компания №${visit.company_id}` || 'Неизвестная компания'}
+                        </Typography>
 
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                      {new Date(visit.date).toLocaleString('ru-RU', {
-                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                      })}
-                    </Typography>
+                        <Typography variant="body2" color="primary" sx={{ mb: 0.5, fontWeight: 500 }}>
+                          {visit.dynamic_fields?.['ufcrm18type'] || visit.visit_type || 'Визит'}
+                        </Typography>
 
-                    <Chip 
-                      label={getStatusDisplayName(status)} 
-                      color={getStatusColor(status) as any} 
-                      size="small"
-                      sx={{ height: 22, fontSize: '0.7rem', fontWeight: 600 }}
-                    />
-                  </Box>
-                  <Box sx={{ alignSelf: 'center', ml: 1, color: 'text.secondary' }}>
-                    <ChevronRight />
-                  </Box>
-                </CardActionArea>
-              </Card>
-            );
-          })
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                          {new Date(visit.date).toLocaleString('ru-RU', {
+                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                          })}
+                        </Typography>
+
+                        <Chip
+                          label={getStatusDisplayName(status)}
+                          color={getStatusColor(status) as any}
+                          size="small"
+                          sx={{ height: 22, fontSize: '0.7rem', fontWeight: 600 }}
+                        />
+                      </Box>
+                      <Box sx={{ alignSelf: 'center', ml: 1, color: 'text.secondary' }}>
+                        <ChevronRight />
+                      </Box>
+                    </CardActionArea>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
         ) : (
           <Box p={4} textAlign="center">
             <Typography variant="body1" color="text.secondary">
@@ -191,22 +206,20 @@ export const VisitsPage: React.FC = () => {
         )}
       </Box>
 
-      {/* Primary Floating Action Button inside standard Mobile container constraint */}
-      <Fab 
-        color="primary" 
-        onClick={() => navigate('/companies')} // Usually add visit originates from company or search
-        sx={{ 
-          position: 'fixed', 
-          bottom: 84, // Above bottom nav (64 + 20)
-          right: 'calc(50% - 280px)', // Centered container max-width 600px -> half is 300px
-          // for mobile screens it aligns to right edge
-          '@media (max-width: 600px)': {
+      {/* FAB — mobile only */}
+      {isMobile && (
+        <Fab
+          color="primary"
+          onClick={() => navigate('/companies')}
+          sx={{
+            position: 'fixed',
+            bottom: 84,
             right: 20,
-          }
-        }}
-      >
-        <AddIcon fontSize="large" />
-      </Fab>
+          }}
+        >
+          <AddIcon fontSize="large" />
+        </Fab>
+      )}
     </Box>
   );
 };
