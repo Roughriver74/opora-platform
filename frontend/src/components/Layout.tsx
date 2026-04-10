@@ -58,7 +58,8 @@ export const Layout: React.FC = ({ children }: { children?: React.ReactNode }) =
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const isAdmin = user?.is_admin || false;
+  const isAdmin = user?.role === 'org_admin' || user?.role === 'platform_admin';
+  const isPlatformAdmin = user?.role === 'platform_admin';
 
   // User menu
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -249,6 +250,19 @@ export const Layout: React.FC = ({ children }: { children?: React.ReactNode }) =
             <MenuItem onClick={() => { handleCloseMenu(); navigate('/admin/delete-visits'); }} sx={{ py: 1.5 }}>
               <ListItemIcon><DeleteForever fontSize="small" /></ListItemIcon> Удаление визитов
             </MenuItem>
+          )}
+          {isAdmin && (
+            <MenuItem onClick={() => { handleCloseMenu(); navigate('/admin/settings'); }} sx={{ py: 1.5 }}>
+              <ListItemIcon><Settings fontSize="small" /></ListItemIcon> Настройки
+            </MenuItem>
+          )}
+          {isPlatformAdmin && (
+            <>
+              <Divider />
+              <MenuItem onClick={() => { handleCloseMenu(); navigate('/platform/organizations'); }} sx={{ py: 1.5 }}>
+                <ListItemIcon><Business fontSize="small" /></ListItemIcon> Платформа
+              </MenuItem>
+            </>
           )}
           <Divider />
           <MenuItem onClick={handleLogout} sx={{ py: 1.5, color: 'error.main' }}>

@@ -398,6 +398,18 @@ export const AuthPage: React.FC = () => {
                 'Войти'
               )}
             </Button>
+
+            <Typography align="center" variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+              Нет аккаунта?{' '}
+              <Typography
+                component="span"
+                variant="body2"
+                sx={{ color: 'primary.main', cursor: 'pointer', fontWeight: 600 }}
+                onClick={() => navigate('/register')}
+              >
+                Зарегистрироваться
+              </Typography>
+            </Typography>
           </form>
         </Box>
       </Fade>

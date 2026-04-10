@@ -8,6 +8,8 @@ import { VisitDetailsPage } from './pages/VisitDetailsPage';
 import { VisitCreatePage } from './pages/VisitCreatePage';
 import ClinicEditPage from './pages/ClinicEditPage';
 import { AuthPage } from './pages/AuthPage';
+import { RegisterPage } from './pages/RegisterPage';
+import InviteAcceptPage from './pages/InviteAcceptPage';
 import { ProfilePage } from './pages/ProfilePage';
 import FieldMappingPage from './pages/admin/FieldMappingPage';
 import ContactsListPage from './pages/ContactsListPage';
@@ -20,6 +22,7 @@ import AuthProvider from './context/AuthContext';
 import AdminRoute from './components/AdminRoute';
 import NetworkClinicEditPage from './pages/NetworkClinicEditPage';
 import DeleteVisits from './pages/admin/DeleteVisits';
+import PlatformOrganizationsPage from './pages/platform/PlatformOrganizationsPage';
 
 // Create a client for React Query
 const queryClient = new QueryClient();
@@ -43,6 +46,8 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/invite/:token" element={<InviteAcceptPage />} />
 
             {/* Protected Routes */}
             <Route path="/" element={
@@ -71,6 +76,8 @@ function App() {
               <Route path="/admin/delete-visits" element={<AdminRoute><DeleteVisits /></AdminRoute>} />
               <Route path="admin/user-management" element={<AdminRoute><UserManagementPage /></AdminRoute>} />
               <Route path="admin/settings" element={<AdminRoute><GlobalSettingsPage /></AdminRoute>} />
+              {/* Platform admin */}
+              <Route path="platform/organizations" element={<PlatformOrganizationsPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
