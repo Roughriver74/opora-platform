@@ -1,6 +1,7 @@
 """
 Platform-admin-only endpoints for managing organizations across the platform.
 """
+import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,9 +10,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
+from app.config import Settings
 from app.models import Organization, User, Visit
 from app.services.uow import UnitOfWork, get_uow
 from app.utils.utils import require_platform_admin
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -46,6 +50,17 @@ class PlatformStats(BaseModel):
     total_users: int
     total_visits: int
     active_organizations: int
+
+
+class SmtpStatusResponse(BaseModel):
+    configured: bool
+    host: str
+    from_email: str
+
+
+class SmtpTestResponse(BaseModel):
+    success: bool
+    message: str
 
 
 # ---- Endpoints ----
@@ -207,3 +222,91 @@ async def platform_stats(
         total_visits=total_visits,
         active_organizations=active_orgs,
     )
+
+
+# ---- SMTP Settings Endpoints ----
+
+
+@router.get("/smtp-status", response_model=SmtpStatusResponse)
+async def smtp_status(
+    current_user: User = Depends(require_platform_admin),
+):
+    """Get SMTP configuration status (platform_admin only)."""
+    configured = bool(Settings.SMTP_HOST and Settings.SMTP_USER and Settings.SMTP_PASSWORD)
+
+    # Mask the host: show first part, mask the rest (e.g. "smtp.***")
+    host = Settings.SMTP_HOST
+    if host:
+        parts = host.split(".", 1)
+        if len(parts) > 1:
+            host = f"{parts[0]}.***"
+        # If it's a single-part host, show it as-is
+    else:
+        host = ""
+
+    return SmtpStatusResponse(
+        configured=configured,
+        host=host,
+        from_email=Settings.SMTP_FROM or "",
+    )
+
+
+@router.post("/smtp-test", response_model=SmtpTestResponse)
+async def smtp_test(
+    current_user: User = Depends(require_platform_admin),
+):
+    """Send a test email to the current admin's email (platform_admin only)."""
+    from app.services.email_service import _is_smtp_configured, _send_email, _wrap_html
+
+    if not _is_smtp_configured():
+        return SmtpTestResponse(
+            success=False,
+            message="SMTP не настроен. Задайте переменные SMTP_HOST, SMTP_USER, SMTP_PASSWORD в .env файле на сервере.",
+        )
+
+    to_email = current_user.email
+    if not to_email:
+        return SmtpTestResponse(
+            success=False,
+            message="У вашего аккаунта не указан email.",
+        )
+
+    subject = "ОПОРА — Тестовое письмо"
+    inner_html = """\
+  <div class="body">
+    <h2>Тестовое письмо</h2>
+    <p>
+      Если вы видите это письмо, значит SMTP настроен корректно
+      и платформа ОПОРА может отправлять email-уведомления.
+    </p>
+    <p style="color:#94a3b8; font-size:13px;">
+      Это автоматическое тестовое сообщение из панели администратора.
+    </p>
+  </div>"""
+
+    html_body = _wrap_html(inner_html)
+    text_body = (
+        "Тестовое письмо\n\n"
+        "Если вы видите это письмо, значит SMTP настроен корректно "
+        "и платформа ОПОРА может отправлять email-уведомления.\n\n"
+        "---\nЭто автоматическое тестовое сообщение из панели администратора."
+    )
+
+    try:
+        success = await _send_email(to_email, subject, html_body, text_body)
+        if success:
+            return SmtpTestResponse(
+                success=True,
+                message=f"Тестовое письмо успешно отправлено на {to_email}",
+            )
+        else:
+            return SmtpTestResponse(
+                success=False,
+                message="Не удалось отправить письмо. Проверьте настройки SMTP и логи сервера.",
+            )
+    except Exception as e:
+        logger.exception("SMTP test failed")
+        return SmtpTestResponse(
+            success=False,
+            message=f"Ошибка при отправке: {str(e)}",
+        )
