@@ -33,8 +33,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("organization_id", "entity_type", name="uq_form_template_org_entity"),
     )
-    op.create_index("ix_form_templates_id", "form_templates", ["id"])
-
     # 2. Migrate data from visit_form_templates into form_templates
     op.execute("""
         INSERT INTO form_templates (organization_id, entity_type, fields, created_at)
@@ -61,10 +59,12 @@ def upgrade() -> None:
             ),
             vft.created_at
         FROM visit_form_templates vft
-        ON CONFLICT DO NOTHING
+        ON CONFLICT (organization_id, entity_type) DO UPDATE SET fields = EXCLUDED.fields
     """)
 
 
 def downgrade() -> None:
-    op.drop_index("ix_form_templates_id", table_name="form_templates")
+    # WARNING: This downgrade is lossy. Merged Bitrix field data stored in
+    # form_templates is NOT written back to field_mappings on rollback.
+    # The original visit_form_templates rows are preserved (not touched by upgrade).
     op.drop_table("form_templates")
