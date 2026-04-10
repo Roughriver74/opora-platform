@@ -2,18 +2,24 @@ FROM python:3.11-slim
 
 WORKDIR /src
 
-# Install necessary packages
+# System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     postgresql-client \
-    cron \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY /app /src/app
-
+# Python dependencies
+COPY app/requirements.txt /src/app/requirements.txt
 RUN pip install --no-cache-dir -r app/requirements.txt
+
+# Application code
+COPY app /src/app
+
+# Create upload directory
+RUN mkdir -p /src/app/upload
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run migrations then start server
+CMD ["sh", "-c", "cd /src/app && alembic upgrade head 2>/dev/null; cd /src && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"]
