@@ -344,6 +344,22 @@ class Invitation(Base):
     inviter = relationship("User", foreign_keys=[invited_by])
 
 
+class VisitFormTemplate(Base):
+    """Per-organization visit form template — defines which fields appear on the visit creation form."""
+
+    __tablename__ = "visit_form_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id"), nullable=False, unique=True
+    )
+    fields = Column(JSONB, default=[])  # Array of field definitions
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    organization = relationship("Organization")
+
+
 class Payment(Base):
     """Payment records for billing / subscription management"""
 

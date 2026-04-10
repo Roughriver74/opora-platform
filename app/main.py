@@ -23,6 +23,7 @@ from app.routers import (
     settings_routers,
     tasks_routers,
     users_routers,
+    visit_form_routers,
     visit_routers,
 )
 from app.schedulers.import_companies_from_excel import scheduler
@@ -105,6 +106,11 @@ app.include_router(
     help_routers.router,
     prefix=f"{api_prefix}/help",
     tags=["Справка"],
+)
+app.include_router(
+    visit_form_routers.router,
+    prefix=f"{api_prefix}/visit-form",
+    tags=["Шаблон формы визита"],
 )
 
 
