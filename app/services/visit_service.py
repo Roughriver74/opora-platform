@@ -341,10 +341,14 @@ class VisitService:
 
             return await self.make_response_dict(db_visit_fetched)
 
+        except HTTPException:
+            raise
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ошибка при создании визита: {str(e)}",
+                detail=f"Ошибка при создании визита: {type(e).__name__}: {str(e)}",
             )
 
     @logger()
@@ -404,17 +408,18 @@ class VisitService:
             local_company = (
                 (
                     await self.session.execute(
-                        select(Company).where(Company.id == int(visit.company_id))
+                        select(Company).where(
+                            Company.id == int(visit.company_id),
+                            Company.organization_id == current_user.organization_id,
+                        )
                     )
                 )
                 .scalars()
                 .first()
             )
-            bitrix_company_id = (
-                str(local_company.bitrix_id)
-                if local_company and local_company.bitrix_id
-                else str(visit.company_id)
-            )
+            if local_company:
+                return local_company
+            bitrix_company_id = str(visit.company_id)
 
         db_company = (
             (
