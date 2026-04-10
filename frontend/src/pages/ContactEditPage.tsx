@@ -578,7 +578,7 @@ const ContactEditPage: React.FC = () => {
         </Box>
       </Box>
 
-      <Box sx={{ px: { xs: 2, md: 3 }, maxWidth: 800, mx: 'auto' }}>
+      <Box sx={{ px: { xs: 2, md: 3 }, maxWidth: 900, mx: 'auto' }}>
         {bitrixTimeout && (
           <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
             Запрос выполняется дольше обычного. Пожалуйста, подождите...
@@ -702,24 +702,26 @@ const ContactEditPage: React.FC = () => {
       </Card>
       </Box>
 
-      {/* Floating Save Button */}
-      <Fab
-        color='primary'
-        sx={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          zIndex: 1000,
-        }}
-        onClick={handleSubmit}
-        disabled={updateMutation.isLoading || updateBitrixMutation.isLoading}
-      >
-        {updateMutation.isLoading || updateBitrixMutation.isLoading ? (
-          <CircularProgress size={24} color='inherit' />
-        ) : (
-          <SaveIcon />
-        )}
-      </Fab>
+      {/* Floating Save Button (mobile only) */}
+      {isMobile && (
+        <Fab
+          color='primary'
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            zIndex: 1000,
+          }}
+          onClick={handleSubmit}
+          disabled={updateMutation.isLoading || updateBitrixMutation.isLoading}
+        >
+          {updateMutation.isLoading || updateBitrixMutation.isLoading ? (
+            <CircularProgress size={24} color='inherit' />
+          ) : (
+            <SaveIcon />
+          )}
+        </Fab>
+      )}
     </Box>
   )
 }

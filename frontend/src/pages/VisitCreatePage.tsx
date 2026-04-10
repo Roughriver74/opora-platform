@@ -350,7 +350,7 @@ export const VisitCreatePage: React.FC = () => {
 				<Box sx={{ width: 48 }} /> {/* Placeholder to balance flex */}
 			</Box>
 
-			<Box sx={{ px: { xs: 2, md: 3 }, maxWidth: 800, mx: 'auto' }}>
+			<Box sx={{ px: { xs: 2, md: 3 }, maxWidth: 900, mx: 'auto' }}>
 				{formError && (
 					<Alert severity='error' sx={{ mb: 2, borderRadius: 2 }}>
 						{formError}

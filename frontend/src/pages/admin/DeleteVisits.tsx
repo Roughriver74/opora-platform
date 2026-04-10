@@ -48,7 +48,7 @@ const DeleteVisits: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: 3, maxWidth: 600, margin: 'auto' }}>
+        <Box sx={{ p: 3, maxWidth: 900, margin: 'auto' }}>
             <Typography variant="h5" gutterBottom>
                 Удалить визит
             </Typography>

@@ -114,7 +114,7 @@ export const ProfilePage: React.FC = () => {
 				</Typography>
 			</Box>
 
-			<Box sx={{ px: { xs: 2, md: 3 }, maxWidth: 600, mx: 'auto' }}>
+			<Box sx={{ px: { xs: 2, md: 3 }, maxWidth: 900, mx: 'auto' }}>
 				{/* Profile Card */}
 				<Card
 					variant='outlined'
