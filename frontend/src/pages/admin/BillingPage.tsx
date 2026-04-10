@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -26,11 +26,12 @@ import {
   TrendingUp,
   CheckCircle,
 } from '@mui/icons-material';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getBillingPlan,
   getPayments,
   requestUpgrade,
+  checkPaymentStatus,
   BillingPlan,
   Payment,
   UpgradeResponse,

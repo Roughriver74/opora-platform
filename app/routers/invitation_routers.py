@@ -1,6 +1,7 @@
 """
 Invitation endpoints for org admins to invite users to their organization.
 """
+import logging
 import secrets
 from datetime import datetime, timedelta
 from typing import List
@@ -11,8 +12,11 @@ from starlette import status
 
 from app.models import Invitation, Organization, User
 from app.schemas.invitation_schema import CreateInvitation, InvitationResponse
+from app.services.email_service import send_invitation_email
 from app.services.uow import UnitOfWork, get_uow
 from app.utils.utils import get_current_admin_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -106,6 +110,23 @@ async def create_invitation(
     await session.commit()
     await session.refresh(invitation)
 
+    # Try to send invitation email (non-blocking: don't fail the request on error)
+    inviter_name = " ".join(
+        part for part in [current_user.first_name, current_user.last_name] if part
+    ) or current_user.email
+    email_sent = await send_invitation_email(
+        to_email=data.email,
+        invite_token=invitation.token,
+        org_name=org.name if org else "Организация",
+        inviter_name=inviter_name,
+    )
+    if not email_sent:
+        logger.warning(
+            "Invitation created (id=%s) but email to %s was not sent",
+            invitation.id,
+            data.email,
+        )
+
     return InvitationResponse(
         id=invitation.id,
         email=invitation.email,
@@ -113,6 +134,7 @@ async def create_invitation(
         token=invitation.token,
         accepted_at=None,
         expires_at=invitation.expires_at.isoformat(),
+        email_sent=email_sent,
     )
 
 

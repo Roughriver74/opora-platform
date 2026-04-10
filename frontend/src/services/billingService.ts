@@ -42,6 +42,14 @@ export interface Payment {
   description: string;
 }
 
+export interface CheckPaymentResponse {
+  payment_id: string;
+  local_status: string;
+  yukassa_status: string;
+  paid: boolean;
+  amount: number;
+}
+
 // --- API calls ---
 
 export const getBillingPlan = async (): Promise<BillingPlan> => {
@@ -56,5 +64,10 @@ export const requestUpgrade = async (data: UpgradeRequest): Promise<UpgradeRespo
 
 export const getPayments = async (): Promise<Payment[]> => {
   const response = await api.get('/billing/payments');
+  return response.data;
+};
+
+export const checkPaymentStatus = async (paymentId: number): Promise<CheckPaymentResponse> => {
+  const response = await api.get(`/billing/check-payment/${paymentId}`);
   return response.data;
 };

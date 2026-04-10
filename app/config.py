@@ -44,6 +44,21 @@ class Settings:
     cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:4200")
     CORS_ORIGINS: List[str] = ["*"] if DEV_MODE else cors_origins_str.split(",")
 
+    # Настройки ЮКасса
+    YUKASSA_SHOP_ID: str = os.getenv("YUKASSA_SHOP_ID", "")
+    YUKASSA_SECRET_KEY: str = os.getenv("YUKASSA_SECRET_KEY", "")
+    YUKASSA_RETURN_URL: str = os.getenv(
+        "YUKASSA_RETURN_URL", "http://localhost:4200/admin/billing"
+    )
+
+    # Настройки SMTP (email)
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM: str = os.getenv("SMTP_FROM", "noreply@myopora.ru")
+    APP_URL: str = os.getenv("APP_URL", "http://localhost:4200")
+
     # Настройки для файлов
     EXCEL_UPLOAD_PATH: str = os.getenv("EXCEL_UPLOAD_PATH", "./upload")
     TOKEN_DADATA = os.getenv("TOKEN_DADATA", "")

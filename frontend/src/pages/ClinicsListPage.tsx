@@ -716,17 +716,17 @@ const ClinicsListPage: React.FC = () => {
 	return (
 
 
-		<Box sx={{ p: 3 }}>
+		<Box sx={{ p: { xs: 1.5, md: 3 } }}>
 			<FilterForm columns={columns} onApply={handleApplyFilters} />
 			<Card>
-				<CardContent>
+				<CardContent sx={{ p: { xs: 1.5, md: 3 } }}>
 
 					<Grid container spacing={2} alignItems="flex-end">
 						<Grid item xs={12} container spacing={2} alignItems="flex-start">
 							{/* Кнопка создания вынесена в FAB */}
 							<OLMapModal open={isMapOpen} onClose={() => setIsMapOpen(false)} clinics={data.items} />
 
-							<Grid item xs={12} md={12}>
+							<Grid item xs={12}>
 								<Button
 									variant="contained"
 									startIcon={<MapOutlined />}
@@ -738,10 +738,17 @@ const ClinicsListPage: React.FC = () => {
 							</Grid>
 
 							<Grid item xs={12}>
-								<Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-									<Button variant="contained" startIcon={<AddCircleOutlineIcon />} onClick={handleOpenCreateModal} data-testid="add-company-button">
-										Добавить компанию
-									</Button>
+								<Stack
+									direction={{ xs: 'column', sm: 'row' }}
+									spacing={1}
+									flexWrap="wrap"
+									sx={{ mb: 2 }}
+								>
+									{!isMobile && (
+										<Button variant="contained" startIcon={<AddCircleOutlineIcon />} onClick={handleOpenCreateModal} data-testid="add-company-button" fullWidth={isMobile}>
+											Добавить компанию
+										</Button>
+									)}
 									{user?.role === 'org_admin' || user?.role === 'platform_admin' ? (
 										<>
 											<Button
@@ -749,6 +756,8 @@ const ClinicsListPage: React.FC = () => {
 												startIcon={isExporting ? <CircularProgress size={18} /> : <FileDownloadIcon />}
 												onClick={handleExport}
 												disabled={isExporting}
+												fullWidth={isMobile}
+												size={isMobile ? 'small' : 'medium'}
 											>
 												Экспорт
 											</Button>
@@ -756,6 +765,8 @@ const ClinicsListPage: React.FC = () => {
 												variant="outlined"
 												startIcon={<FileUploadIcon />}
 												onClick={() => setImportDialogOpen(true)}
+												fullWidth={isMobile}
+												size={isMobile ? 'small' : 'medium'}
 											>
 												Импорт
 											</Button>
@@ -799,7 +810,7 @@ const ClinicsListPage: React.FC = () => {
 			</Card>
 
 			<Card>
-				<CardContent>
+				<CardContent sx={{ p: { xs: 1.5, md: 3 } }}>
 					{data?.items?.length === 0 ? (
 						<Alert severity='info'>
 							Не найдено компаний с указанными параметрами фильтрации
@@ -890,7 +901,7 @@ const ClinicsListPage: React.FC = () => {
 			/>
 
 			{/* Модальное окно создания компании */}
-			<Dialog open={createModalOpen} onClose={handleCloseCreateModal} maxWidth="sm" fullWidth data-testid="create-company-dialog">
+			<Dialog open={createModalOpen} onClose={handleCloseCreateModal} maxWidth="sm" fullWidth fullScreen={isMobile} data-testid="create-company-dialog">
 				<DialogTitle>Создание новой компании</DialogTitle>
 				<DialogContent>
 					<Stack spacing={2} sx={{ mt: 1 }}>
@@ -1007,7 +1018,7 @@ const ClinicsListPage: React.FC = () => {
 			</Dialog>
 
 			{/* Import dialog */}
-			<Dialog open={importDialogOpen} onClose={handleCloseImportDialog} maxWidth="sm" fullWidth>
+			<Dialog open={importDialogOpen} onClose={handleCloseImportDialog} maxWidth="sm" fullWidth fullScreen={isMobile}>
 				<DialogTitle>
 					Импорт компаний из Excel
 					<IconButton

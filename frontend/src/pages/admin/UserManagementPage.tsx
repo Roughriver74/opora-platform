@@ -24,6 +24,10 @@ import {
   CircularProgress,
   Chip,
   Autocomplete,
+  Card,
+  CardContent,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -94,6 +98,8 @@ const getRoleColor = (user: User): 'error' | 'warning' | 'info' | 'default' => {
 export const UserManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState(false);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
@@ -276,17 +282,18 @@ export const UserManagementPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ mt: 4, p: { xs: 2, md: 3 } }}>
+    <Box sx={{ mt: { xs: 2, md: 4 }, p: { xs: 2, md: 3 } }}>
       <Button
         variant="contained"
         color="primary"
         onClick={() => handleOpenDialog()}
         sx={{ mb: 3 }}
+        fullWidth={isMobile}
       >
         Создать пользователя
       </Button>
 
-      <Paper elevation={3} sx={{ p: 3 }}>
+      <Paper elevation={3} sx={{ p: { xs: 2, md: 3 } }}>
         <Typography variant="h5" gutterBottom>
           Управление пользователями
         </Typography>
@@ -301,7 +308,71 @@ export const UserManagementPage: React.FC = () => {
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
+        ) : isMobile ? (
+          /* Mobile: Card-based layout */
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {users?.map((user) => (
+              <Card key={user.id} variant="outlined" sx={{ borderRadius: 2 }}>
+                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
+                        {[user.first_name, user.last_name].filter(Boolean).join(' ') || '-'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" noWrap>
+                        {user.email}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', ml: 1 }}>
+                      <IconButton
+                        onClick={() => handleOpenDialog(user)}
+                        color="primary"
+                        size="small"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        onClick={() => handleDeleteUser(user.id)}
+                        color="error"
+                        size="small"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <Chip
+                      size="small"
+                      label={getRoleLabel(user)}
+                      color={getRoleColor(user)}
+                      sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                    />
+                    <Chip
+                      size="small"
+                      label={user.is_active ? 'Активен' : 'Неактивен'}
+                      color={user.is_active ? 'success' : 'default'}
+                      variant="outlined"
+                      sx={{ fontSize: '0.75rem' }}
+                    />
+                  </Box>
+                  {user.regions && user.regions.length > 0 && (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                      {user.regions.map((region) => (
+                        <Chip key={region} label={region} size="small" variant="outlined" />
+                      ))}
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+            {(!users || users.length === 0) && (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                Пользователи не найдены
+              </Typography>
+            )}
+          </Box>
         ) : (
+          /* Desktop: Table layout */
           <TableContainer>
             <Table>
               <TableHead>
@@ -365,7 +436,7 @@ export const UserManagementPage: React.FC = () => {
         )}
       </Paper>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>
           {editingUser ? 'Редактирование пользователя' : 'Создание пользователя'}
         </DialogTitle>

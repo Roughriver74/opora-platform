@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
@@ -9,7 +10,10 @@ from sqlalchemy import select
 from app.config import Settings as settings
 from app.models import Invitation, Organization, User
 from app.schemas.auth_schema import AcceptInvite, OrgRegister, Token, UserCreate, UserResponse
+from app.services.email_service import send_welcome_email
 from app.services.uow import UnitOfWork, get_uow
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -162,6 +166,14 @@ async def register_org(data: OrgRegister, uow: UnitOfWork = Depends(get_uow)) ->
         },
         expires_delta=access_token_expires,
     )
+
+    # 5. Send welcome email (non-blocking: don't fail registration on error)
+    try:
+        email_ok = await send_welcome_email(to_email=user.email, org_name=org.name)
+        if not email_ok:
+            logger.warning("Welcome email to %s was not sent", user.email)
+    except Exception:
+        logger.exception("Unexpected error sending welcome email to %s", user.email)
 
     return {
         "access_token": access_token,

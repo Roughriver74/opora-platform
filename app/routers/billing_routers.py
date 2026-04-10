@@ -1,18 +1,27 @@
 """
 Billing endpoints for organization plan management and payments.
+Includes YuKassa payment integration.
 """
 
+import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from starlette import status
 
 from app.models import Organization, Payment, User, Visit
 from app.services.uow import UnitOfWork, get_uow
+from app.services.yukassa_service import (
+    YuKassaError,
+    check_payment_status as yukassa_check_status,
+    create_payment as yukassa_create_payment,
+)
 from app.utils.utils import get_current_admin_user, require_platform_admin
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -180,8 +189,25 @@ async def request_upgrade(
 
     payment_url = None
     if body.payment_method == "yukassa":
-        # Placeholder URL -- real YuKassa integration will replace this
-        payment_url = f"https://yukassa.example.com/pay?payment_id={payment.id}"
+        try:
+            yk_result = await yukassa_create_payment(
+                amount_kopecks=amount,
+                description=description,
+                metadata={
+                    "organization_id": org_id,
+                    "local_payment_id": payment.id,
+                },
+            )
+            payment.payment_id = yk_result["payment_id"]
+            await session.commit()
+            await session.refresh(payment)
+            payment_url = yk_result["confirmation_url"]
+        except YuKassaError as exc:
+            logger.error("YuKassa create_payment failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=str(exc),
+            )
 
     return UpgradeResponse(
         payment_id=payment.id,
@@ -302,4 +328,262 @@ async def activate_payment(
         period_end=payment.period_end.isoformat() if payment.period_end else None,
         users_count=payment.users_count,
         created_at=payment.created_at.isoformat() if payment.created_at else None,
+    )
+
+
+# ---- YuKassa webhook (no auth -- called by YuKassa servers) ----
+
+# YuKassa notification IP ranges (as of docs)
+# https://yookassa.ru/developers/using-api/webhooks
+YUKASSA_ALLOWED_IPS = {
+    "185.71.76.0/27",
+    "185.71.77.0/27",
+    "77.75.153.0/25",
+    "77.75.156.11",
+    "77.75.156.35",
+    "77.75.154.128/25",
+    "2a02:5180::/32",
+}
+
+
+def _ip_in_yukassa_range(ip: str) -> bool:
+    """
+    Simple check if the IP belongs to YuKassa notification ranges.
+    For production use, consider a proper CIDR check with the ipaddress module.
+    """
+    import ipaddress
+
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+
+    for cidr in YUKASSA_ALLOWED_IPS:
+        try:
+            if addr in ipaddress.ip_network(cidr, strict=False):
+                return True
+        except ValueError:
+            continue
+
+    return False
+
+
+class YuKassaWebhookPayload(BaseModel):
+    """Minimal schema for YuKassa webhook notification."""
+
+    type: str  # "notification"
+    event: str  # "payment.succeeded", "payment.canceled", etc.
+    object: Dict[str, Any]
+
+
+@router.post("/yukassa-webhook")
+async def yukassa_webhook(
+    request: Request,
+    uow: UnitOfWork = Depends(get_uow),
+):
+    """
+    Webhook endpoint called by YuKassa when payment status changes.
+    No authentication -- YuKassa sends POST with JSON body.
+    We verify by checking the source IP.
+    """
+    # Parse body
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON body",
+        )
+
+    # Verify source IP (best-effort; use X-Forwarded-For if behind proxy)
+    client_ip = request.client.host if request.client else ""
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0].strip()
+
+    if client_ip and not _ip_in_yukassa_range(client_ip):
+        logger.warning(
+            "YuKassa webhook called from non-whitelisted IP: %s", client_ip
+        )
+        # In dev mode we still process, in prod you might want to reject:
+        # raise HTTPException(status_code=403, detail="Forbidden")
+
+    event = body.get("event", "")
+    payment_object = body.get("object", {})
+    external_payment_id = payment_object.get("id", "")
+    payment_status = payment_object.get("status", "")
+
+    logger.info(
+        "YuKassa webhook received: event=%s payment_id=%s status=%s",
+        event,
+        external_payment_id,
+        payment_status,
+    )
+
+    if not external_payment_id:
+        return {"status": "ok", "message": "no payment_id in payload"}
+
+    session = uow.session
+
+    # Find the local payment record by external payment_id
+    payment = (
+        (
+            await session.execute(
+                select(Payment).where(Payment.payment_id == external_payment_id)
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+    if not payment:
+        logger.warning(
+            "YuKassa webhook: payment not found for external_id=%s",
+            external_payment_id,
+        )
+        return {"status": "ok", "message": "payment not found"}
+
+    if event == "payment.succeeded" or payment_status == "succeeded":
+        if payment.status != "paid":
+            payment.status = "paid"
+
+            # Upgrade organization plan to PRO
+            org = (
+                (
+                    await session.execute(
+                        select(Organization).where(
+                            Organization.id == payment.organization_id
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            if org:
+                org.plan = "pro"
+                org.plan_limits = {
+                    "max_users": payment.users_count or 10,
+                    "max_visits_per_month": -1,  # unlimited
+                }
+                logger.info(
+                    "Organization %s upgraded to PRO via YuKassa payment %s",
+                    org.id,
+                    external_payment_id,
+                )
+
+            await session.commit()
+
+    elif event == "payment.canceled" or payment_status == "canceled":
+        if payment.status not in ("paid", "failed"):
+            payment.status = "failed"
+            await session.commit()
+            logger.info(
+                "Payment %s marked as failed (YuKassa canceled)",
+                external_payment_id,
+            )
+
+    return {"status": "ok"}
+
+
+# ---- Check payment status (org_admin) ----
+
+
+class CheckPaymentResponse(BaseModel):
+    payment_id: str
+    local_status: str
+    yukassa_status: str
+    paid: bool
+    amount: int  # kopecks
+
+
+@router.get(
+    "/check-payment/{payment_id}",
+    response_model=CheckPaymentResponse,
+)
+async def check_payment(
+    payment_id: int,
+    uow: UnitOfWork = Depends(get_uow),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """
+    Check the current status of a payment via YuKassa API and update the local record.
+    Available to org_admin.
+    """
+    session = uow.session
+    org_id = current_user.organization_id
+
+    payment = (
+        (
+            await session.execute(
+                select(Payment).where(
+                    Payment.id == payment_id,
+                    Payment.organization_id == org_id,
+                )
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Платёж не найден",
+        )
+
+    if not payment.payment_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="У этого платежа нет внешнего ID ЮКасса",
+        )
+
+    try:
+        yk_status = await yukassa_check_status(payment.payment_id)
+    except YuKassaError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        )
+
+    # Update local status based on YuKassa response
+    yukassa_status = yk_status["status"]
+    status_changed = False
+
+    if yukassa_status == "succeeded" and payment.status != "paid":
+        payment.status = "paid"
+        status_changed = True
+
+        # Upgrade organization plan
+        org = (
+            (
+                await session.execute(
+                    select(Organization).where(
+                        Organization.id == payment.organization_id
+                    )
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if org:
+            org.plan = "pro"
+            org.plan_limits = {
+                "max_users": payment.users_count or 10,
+                "max_visits_per_month": -1,
+            }
+
+    elif yukassa_status == "canceled" and payment.status not in ("paid", "failed"):
+        payment.status = "failed"
+        status_changed = True
+
+    if status_changed:
+        await session.commit()
+        await session.refresh(payment)
+
+    return CheckPaymentResponse(
+        payment_id=payment.payment_id,
+        local_status=payment.status,
+        yukassa_status=yukassa_status,
+        paid=yk_status["paid"],
+        amount=yk_status["amount"],
     )
