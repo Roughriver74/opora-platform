@@ -500,7 +500,7 @@ const ClinicsListPage: React.FC = () => {
 
 	// Мобильное представление компании в виде карточки
 	const renderMobileClinicCard = (clinic: Clinic) => (
-		<Card sx={{ mb: 2, position: 'relative' }} key={clinic.id}>
+		<Card sx={{ position: 'relative', height: '100%' }}>
 			<CardContent>
 				<Typography variant="h6" gutterBottom>
 					{clinic.name}
@@ -611,6 +611,14 @@ const ClinicsListPage: React.FC = () => {
 								</Button>
 							</Grid>
 
+							{!isMobile && (
+								<Grid item xs={12}>
+									<Button variant="contained" startIcon={<AddCircleOutlineIcon />} onClick={handleOpenCreateModal} sx={{ mb: 2 }}>
+										Создать компанию
+									</Button>
+								</Grid>
+							)}
+
 						</Grid>
 
 						<Grid item xs={12}>
@@ -700,7 +708,13 @@ const ClinicsListPage: React.FC = () => {
 										</Select>
 									</FormControl>
 								</Box>
-								{data?.items?.map((clinic: Clinic) => renderMobileClinicCard(clinic))}
+								<Grid container spacing={2}>
+									{data?.items?.map((clinic: Clinic) => (
+										<Grid item xs={12} md={6} lg={4} key={clinic.id}>
+											{renderMobileClinicCard(clinic)}
+										</Grid>
+									))}
+								</Grid>
 							</Box>
 
 							<TablePagination
@@ -819,20 +833,11 @@ const ClinicsListPage: React.FC = () => {
 				</DialogActions>
 			</Dialog>
 
-			<Fab
-				color="primary"
-				onClick={handleOpenCreateModal}
-				sx={{
-					position: 'fixed',
-					bottom: 84, // Above bottom nav
-					right: 'calc(50% - 280px)', // Centered wrapper logic
-					'@media (max-width: 600px)': {
-						right: 20,
-					}
-				}}
-			>
-				<AddCircleOutlineIcon fontSize="large" />
-			</Fab>
+			{isMobile && (
+				<Fab color="primary" onClick={handleOpenCreateModal} sx={{ position: 'fixed', bottom: 84, right: 20 }}>
+					<AddCircleOutlineIcon fontSize="large" />
+				</Fab>
+			)}
 		</Box>
 	)
 }
