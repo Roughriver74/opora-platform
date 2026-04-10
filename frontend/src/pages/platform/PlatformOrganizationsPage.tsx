@@ -118,7 +118,7 @@ const PlatformOrganizationsPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       <>
       <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
         Управление платформой

@@ -120,7 +120,7 @@ export const GlobalSettingsPage: React.FC = () => {
 
   return (
     <>
-      <Box sx={{ width: '100%' }}>
+      <Box sx={{ width: '100%', maxWidth: 900, mx: 'auto' }}>
         <Typography variant="h5" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
           <SettingsIcon sx={{ mr: 1 }} />
           Глобальные настройки

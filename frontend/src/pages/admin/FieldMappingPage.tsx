@@ -105,6 +105,10 @@ const StyledContainer = styled(Container)(({ theme }) => ({
   flexGrow: 1,
   backgroundColor: theme.palette.background.paper,
   marginTop: theme.spacing(3),
+  padding: theme.spacing(2),
+  [theme.breakpoints.up('md')]: {
+    padding: theme.spacing(3),
+  },
 }));
 
 const StyledPaper = styled(Paper)(({ theme }) => ({

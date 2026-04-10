@@ -276,7 +276,7 @@ export const UserManagementPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ mt: 4 }}>
+    <Box sx={{ mt: 4, p: { xs: 2, md: 3 } }}>
       <Button
         variant="contained"
         color="primary"
