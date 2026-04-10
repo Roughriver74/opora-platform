@@ -77,11 +77,9 @@ const FormBuilder: React.FC<Props> = ({ entityType }) => {
       type: 'text',
       required: false,
     };
-    setFields(prev => {
-      const updated = [...prev, newField];
-      setSelectedIndex(updated.length - 1);
-      return updated;
-    });
+    const newIndex = fields.length;
+    setFields(prev => [...prev, newField]);
+    setSelectedIndex(newIndex);
     markChanged();
   };
 
