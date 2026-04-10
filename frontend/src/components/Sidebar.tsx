@@ -24,6 +24,7 @@ import {
   AdminPanelSettings,
   Payment,
   HelpOutline,
+  EditNote,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -43,6 +44,7 @@ const mainItems: NavItem[] = [
 
 const adminItems: NavItem[] = [
   { label: 'Настройки', icon: <Settings />, path: '/admin/settings' },
+  { label: 'Форма визита', icon: <EditNote />, path: '/admin/visit-form' },
   { label: 'Пользователи', icon: <Person />, path: '/admin/user-management' },
   { label: 'Тарифы', icon: <Payment />, path: '/admin/billing' },
   { label: 'Удаление визитов', icon: <DeleteForever />, path: '/admin/delete-visits' },

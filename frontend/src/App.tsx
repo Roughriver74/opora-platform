@@ -83,6 +83,7 @@ function App() {
               <Route path="admin/user-management" element={<AdminRoute><UserManagementPage /></AdminRoute>} />
               <Route path="admin/settings" element={<AdminRoute><GlobalSettingsPage /></AdminRoute>} />
               <Route path="admin/billing" element={<AdminRoute><BillingPage /></AdminRoute>} />
+              <Route path="admin/visit-form" element={<AdminRoute><VisitFormEditorPage /></AdminRoute>} />
               <Route path="help" element={<HelpPage />} />
               {/* Platform admin */}
               <Route path="platform/organizations" element={<PlatformOrganizationsPage />} />

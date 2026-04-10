@@ -11,7 +11,15 @@ import {
 	IconButton,
 	Fab,
 	useTheme,
-	useMediaQuery
+	useMediaQuery,
+	TextField,
+	FormControl,
+	InputLabel,
+	Select,
+	MenuItem,
+	FormControlLabel,
+	Switch,
+	SelectChangeEvent,
 } from '@mui/material'
 import {
 	ChevronLeft as ChevronLeftIcon,
@@ -19,12 +27,27 @@ import {
 	Business as BusinessIcon
 } from '@mui/icons-material'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { clinicService } from '../services/clinicService'
 import { DynamicFields } from '../components/DynamicFields'
 
-// Типы для визита
+// --------------- Types ---------------
+
+interface FieldDefinition {
+	key: string
+	label: string
+	type: string
+	required: boolean
+	options?: string[]
+}
+
+interface VisitFormTemplate {
+	id?: number
+	organization_id?: number
+	fields: FieldDefinition[]
+}
+
 interface Visit {
 	id?: number
 	company_id: number
@@ -35,13 +58,12 @@ interface Visit {
 	comment: string
 	with_distributor: boolean
 	sansus: boolean
-
 	doctors: number[]
-	contacts: number[] // Контакты
-	[key: string]: any // Для динамических полей
+	contacts: number[]
+	[key: string]: any
 }
 
-
+// --------------- Component ---------------
 
 export const VisitCreatePage: React.FC = () => {
 	const navigate = useNavigate()
@@ -49,7 +71,6 @@ export const VisitCreatePage: React.FC = () => {
 	const { companyId: companyIdFromPath } = useParams<{ companyId: string }>()
 	const clinicFromState = location.state?.clinic
 
-	// Получаем ID компании из параметров URL или из состояния
 	const searchParams = new URLSearchParams(location.search)
 	const companyIdFromUrl = searchParams.get('companyId')
 	const companyIdFromState = location.state?.companyId
@@ -62,82 +83,80 @@ export const VisitCreatePage: React.FC = () => {
 	const [formError, setFormError] = useState<string | null>(null)
 	const [isLoadingCompany, setIsLoadingCompany] = useState(false)
 
+	// Custom field values (stored separately, merged into dynamic_fields on submit)
+	const [customValues, setCustomValues] = useState<Record<string, any>>({})
+
 	const formatDateForAPI = (dateStr?: string | null): string => {
-		const date = dateStr ? new Date(dateStr) : new Date();
-
+		const date = dateStr ? new Date(dateStr) : new Date()
 		if (isNaN(date.getTime())) {
-			return formatDateForAPI();
+			return formatDateForAPI()
 		}
+		const year = date.getFullYear()
+		const month = String(date.getMonth() + 1).padStart(2, '0')
+		const day = String(date.getDate()).padStart(2, '0')
+		const hours = String(date.getHours()).padStart(2, '0')
+		const minutes = String(date.getMinutes()).padStart(2, '0')
+		const seconds = String(date.getSeconds()).padStart(2, '0')
+		return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+	}
 
-		const year = date.getFullYear();
-		const month = String(date.getMonth() + 1).padStart(2, "0");
-		const day = String(date.getDate()).padStart(2, "0");
-		const hours = String(date.getHours()).padStart(2, "0");
-		const minutes = String(date.getMinutes()).padStart(2, "0");
-		const seconds = String(date.getSeconds()).padStart(2, "0");
-
-		return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-	};
-
-	// Состояние формы
+	// Form state
 	const [visit, setVisit] = useState<Visit>({
 		company_id: companyId ? parseInt(companyId.toString()) : 0,
 		visit_type: 'first_visit',
-		date: formatDateForAPI(), // Используем локальное время с правильным форматированием
+		date: formatDateForAPI(),
 		status: 'planned',
 		comment: '',
 		with_distributor: false,
 		sansus: false,
 		doctors: [],
-		contacts: [], // Добавляем пустой массив контактов
-		dynamic_bitrix_company_id: '', // Храним Bitrix ID компании как динамическое поле
-		ufCrm18Comment: '123123213'
-
+		contacts: [],
+		dynamic_bitrix_company_id: '',
+		ufCrm18Comment: '123123213',
 	})
 
-	// Загрузка данных компании, если указан ID
+	// --------------- Load form template ---------------
+
+	const { data: formTemplate, isLoading: isLoadingTemplate } = useQuery<VisitFormTemplate>(
+		['visitFormTemplate'],
+		async () => {
+			const res = await api.get('/visit-form/')
+			return res.data
+		},
+		{
+			staleTime: 300000, // 5 minutes
+		}
+	)
+
+	// --------------- Load company data ---------------
+
 	useEffect(() => {
 		const fetchCompanyData = async () => {
 			if (companyId) {
 				try {
 					setIsLoadingCompany(true)
-					// Получаем данные компании из состояния или из API
 					if (location.state?.companyName) {
-						console.log(location.state)
-						// Если данные компании переданы в состоянии, используем их
 						setVisit(prev => ({
 							...prev,
 							company_id: parseInt(companyId.toString()),
 							company_name: location.state.companyName,
-							ufCrm18Comment: clinicFromState.name || '213123',
-
+							ufCrm18Comment: clinicFromState?.name || '213123',
 						}))
 					} else {
-						// Иначе запрашиваем данные компании из API
 						try {
-							// Сначала получаем данные из локальной БД, чтобы узнать bitrix_id
-							const localCompany = await clinicService.getClinic(parseInt(companyId.toString()), false);
-
-							// Проверяем наличие bitrix_id
+							const localCompany = await clinicService.getClinic(parseInt(companyId.toString()), false)
 							if (localCompany && localCompany.bitrix_id) {
-								// Используем bitrix_id для запроса данных из Bitrix
-								const companyData = await clinicService.getClinicById(localCompany.bitrix_id);
-
-								console.log('Получены данные компании:', companyData);
-
-								// Проверяем, в каком формате пришли данные (Bitrix или локальная БД)
+								const companyData = await clinicService.getClinicById(localCompany.bitrix_id)
 								const companyName = 'TITLE' in companyData
 									? companyData.TITLE
-									: companyData.name || `Компания #${companyId}`;
-
+									: companyData.name || `Компания #${companyId}`
 								setVisit(prev => ({
 									...prev,
 									company_id: parseInt(companyId.toString()),
 									company_name: companyName,
-									dynamic_bitrix_company_id: localCompany.bitrix_id?.toString() || '', // Преобразуем в строку
+									dynamic_bitrix_company_id: localCompany.bitrix_id?.toString() || '',
 								}))
 							} else {
-								// Если bitrix_id отсутствует, используем данные из локальной БД
 								setVisit(prev => ({
 									...prev,
 									company_id: parseInt(companyId.toString()),
@@ -145,8 +164,7 @@ export const VisitCreatePage: React.FC = () => {
 								}))
 							}
 						} catch (error) {
-							console.error('Ошибка при получении данных компании из API:', error)
-							// Используем ID как имя компании в случае ошибки
+							console.error('Error fetching company data from API:', error)
 							setVisit(prev => ({
 								...prev,
 								company_id: parseInt(companyId.toString()),
@@ -155,99 +173,94 @@ export const VisitCreatePage: React.FC = () => {
 						}
 					}
 				} catch (error) {
-					console.error('Ошибка при загрузке данных компании:', error)
+					console.error('Error loading company data:', error)
 					setFormError('Не удалось загрузить данные компании')
 				} finally {
 					setIsLoadingCompany(false)
 				}
 			}
 		}
-
 		fetchCompanyData()
 	}, [companyId, location.state])
 
+	// --------------- Create visit mutation ---------------
 
-
-	// Мутация для создания визита
 	const createVisitMutation = useMutation({
 		mutationFn: async (newVisit: Visit) => {
 			const response = await api.post('/visits/', newVisit)
 			return response.data
 		},
 		onSuccess: (data) => {
-			// Переходим на страницу деталей визита
 			navigate(`/visits/${data.id}`)
 		},
 		onError: (error: any) => {
-			// Обрабатываем объекты ошибок валидации
 			let errorMessage = 'Ошибка при создании визита'
-
 			if (error.response?.data?.detail) {
 				const detail = error.response.data.detail
-
-				// Проверяем, является ли detail объектом или массивом
 				if (typeof detail === 'object' && detail !== null) {
 					if (Array.isArray(detail)) {
-						// Если это массив ошибок
 						errorMessage = detail
-							.map(err => {
-								if (typeof err === 'string') return err
-								return err.msg || JSON.stringify(err)
-							})
+							.map((err: any) => (typeof err === 'string' ? err : err.msg || JSON.stringify(err)))
 							.join(', ')
 					} else if (detail.msg) {
-						// Если это объект с полем msg
 						errorMessage = detail.msg
 					} else {
-						// Пробуем преобразовать объект в строку
 						try {
 							errorMessage = JSON.stringify(detail)
-						} catch (e) {
+						} catch {
 							errorMessage = 'Неизвестная ошибка валидации'
 						}
 					}
 				} else if (typeof detail === 'string') {
-					// Если это просто строка
 					errorMessage = detail
 				}
 			}
-
 			setFormError(errorMessage)
 		},
 	})
-
 
 	const handleDynamicFieldChange = (name: string, value: any) => {
 		setVisit(prev => ({ ...prev, [name]: value }))
 	}
 
-
-
+	const handleCustomFieldChange = (key: string, value: any) => {
+		setCustomValues(prev => ({ ...prev, [key]: value }))
+	}
 
 	const ensureValidDate = (dateValue: string | null | undefined): string => {
+		return formatDateForAPI(dateValue)
+	}
 
-		return formatDateForAPI(dateValue);
-	};
+	// --------------- Submit ---------------
 
-	// Обработчик отправки формы
-	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault();
+	const handleSubmit = (e?: React.FormEvent) => {
+		if (e) e.preventDefault()
 
-		const visitData = { ...visit };
-
-		// Гарантируем, что статус всегда в нижнем регистре
-		if (visitData.status && typeof visitData.status === 'string') {
-			visitData.status = visitData.status.toLowerCase();
+		// Validate required template fields
+		if (formTemplate?.fields) {
+			for (const field of formTemplate.fields) {
+				if (field.required) {
+					const val = customValues[field.key]
+					if (val === undefined || val === null || val === '') {
+						setFormError(`Поле "${field.label}" обязательно для заполнения`)
+						return
+					}
+				}
+			}
 		}
 
+		const visitData = { ...visit }
+		if (visitData.status && typeof visitData.status === 'string') {
+			visitData.status = visitData.status.toLowerCase()
+		}
 
-		const dynamicFields: Record<string, any> = {};
-		let dateFromDynamicField: string | null = null;
+		const dynamicFields: Record<string, any> = {}
+		let dateFromDynamicField: string | null = null
 
 		Object.keys(visit).forEach(key => {
 			if (key.startsWith('dynamic_')) {
-				const fieldName = key.substring(8);
-				let fieldValue = visit[key];
+				const fieldName = key.substring(8)
+				let fieldValue = visit[key]
 
 				if (
 					fieldName === '1732026275473' &&
@@ -255,57 +268,63 @@ export const VisitCreatePage: React.FC = () => {
 					typeof fieldValue === 'string'
 				) {
 					if (fieldValue.includes('T')) {
-						dateFromDynamicField = formatDateForAPI(fieldValue);
+						dateFromDynamicField = formatDateForAPI(fieldValue)
 					} else {
-						dateFromDynamicField = fieldValue;
+						dateFromDynamicField = fieldValue
 					}
 				}
 
 				if (
 					fieldValue &&
 					typeof fieldValue === 'string' &&
-					(fieldName.includes('date') ||
-						fieldName.includes('time') ||
-						fieldName === 'date')
+					(fieldName.includes('date') || fieldName.includes('time') || fieldName === 'date')
 				) {
 					try {
-
-
 						if (!fieldValue.includes('T')) {
-
-							const now = new Date();
-							const timeStr = `T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`;
-							fieldValue = `${fieldValue}${timeStr}`;
+							const now = new Date()
+							const timeStr = `T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`
+							fieldValue = `${fieldValue}${timeStr}`
 						}
-
-						// Создаем объект даты и форматируем строго в правильном формате
-						const dateObj = new Date(fieldValue);
+						const dateObj = new Date(fieldValue)
 						if (!isNaN(dateObj.getTime())) {
-							// Используем форматированную версию с локальным временем
-							const formattedDate = formatDateForAPI(fieldValue);
-							fieldValue = formattedDate;
-
+							fieldValue = formatDateForAPI(fieldValue)
 						}
 					} catch (error) {
-						console.error(
-							`Error formatting dynamic date field ${fieldName}:`,
-							error
-						);
+						console.error(`Error formatting dynamic date field ${fieldName}:`, error)
 					}
 				}
 
-				dynamicFields[fieldName] = fieldValue;
-			} else if (!['company_id', 'visit_type', 'date', 'status', 'comment', 'with_distributor', 'sansus', 'doctors', 'contacts'].includes(key)) {
-				dynamicFields[key] = visit[key];
+				dynamicFields[fieldName] = fieldValue
+			} else if (
+				!['company_id', 'visit_type', 'date', 'status', 'comment', 'with_distributor', 'sansus', 'doctors', 'contacts'].includes(key)
+			) {
+				dynamicFields[key] = visit[key]
 			}
-		});
-		// console.log('ААААААААААА=', 'Филиал:' + clinicFromState.name + '</br>' + 'Адрес:' + clinicFromState.dynamic_fields['ufCrm31_1744890745'])
+		})
 
-		dynamicFields['date'] = dateFromDynamicField ?? ensureValidDate(visitData.date);
-		dynamicFields['1732026990932'] = dateFromDynamicField ?? ensureValidDate(visitData.date);
+		// Merge custom template field values into dynamic_fields
+		if (formTemplate?.fields) {
+			for (const field of formTemplate.fields) {
+				const val = customValues[field.key]
+				if (val !== undefined && val !== null && val !== '') {
+					dynamicFields[field.key] = val
+
+					// Also map well-known keys to top-level visit properties
+					if (field.key === 'visit_type') {
+						visitData.visit_type = val
+					} else if (field.key === 'comment') {
+						visitData.comment = val
+					} else if (field.key === 'with_distributor') {
+						visitData.with_distributor = !!val
+					}
+				}
+			}
+		}
+
+		dynamicFields['date'] = dateFromDynamicField ?? ensureValidDate(visitData.date)
+		dynamicFields['1732026990932'] = dateFromDynamicField ?? ensureValidDate(visitData.date)
 		dynamicFields['1732026275473'] = dateFromDynamicField ?? ensureValidDate(visitData.date)
-		visitData.date = ensureValidDate(visitData.date);
-
+		visitData.date = ensureValidDate(visitData.date)
 
 		if (Object.keys(dynamicFields).length > 0) {
 			visitData.dynamic_fields = dynamicFields
@@ -314,7 +333,9 @@ export const VisitCreatePage: React.FC = () => {
 		createVisitMutation.mutate(visitData)
 	}
 
-	if (isLoadingCompany) {
+	// --------------- Render ---------------
+
+	if (isLoadingCompany || isLoadingTemplate) {
 		return (
 			<Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
 				<CircularProgress />
@@ -322,74 +343,121 @@ export const VisitCreatePage: React.FC = () => {
 		)
 	}
 
+	const templateFields = formTemplate?.fields || []
+
 	return (
 		<Box sx={{ pb: 10, minHeight: '100%', bgcolor: 'background.default' }}>
 			{/* Mobile Header */}
-			<Box 
-				sx={{ 
-					px: 1, 
-					pt: 1, 
-					pb: 1, 
-					display: 'flex', 
-					justifyContent: 'space-between', 
+			<Box
+				sx={{
+					px: 1,
+					pt: 1,
+					pb: 1,
+					display: 'flex',
+					justifyContent: 'space-between',
 					alignItems: 'center',
 					position: 'sticky',
 					top: 0,
 					zIndex: 100,
 					bgcolor: 'background.paper',
 					boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-					mb: 2
+					mb: 2,
 				}}
 			>
 				<IconButton onClick={() => navigate(-1)} sx={{ color: 'primary.main' }}>
 					<ChevronLeftIcon fontSize="large" />
 				</IconButton>
-				<Typography variant='h6' sx={{ fontWeight: 600 }}>
+				<Typography variant="h6" sx={{ fontWeight: 600 }}>
 					Новый визит
 				</Typography>
-				<Box sx={{ width: 48 }} /> {/* Placeholder to balance flex */}
+				<Box sx={{ width: 48 }} />
 			</Box>
 
 			<Box sx={{ px: { xs: 2, md: 3 }, maxWidth: 900, mx: 'auto' }}>
 				{formError && (
-					<Alert severity='error' sx={{ mb: 2, borderRadius: 2 }}>
+					<Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
 						{formError}
 					</Alert>
 				)}
 
 				<form onSubmit={handleSubmit}>
 					<Grid container spacing={3}>
+						{/* Company card (always shown) */}
 						<Grid item xs={12}>
 							{companyId ? (
-								<Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+								<Card
+									variant="outlined"
+									sx={{
+										borderRadius: 3,
+										border: 'none',
+										boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+									}}
+								>
 									<CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
 										<Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
 											<BusinessIcon color="action" fontSize="small" sx={{ mr: 1 }} />
-											<Typography variant='subtitle2' color="text.secondary">Компания</Typography>
+											<Typography variant="subtitle2" color="text.secondary">
+												Компания
+											</Typography>
 										</Box>
-										<Typography variant='body1' sx={{ fontWeight: 500, ml: 3.5 }}>{visit.company_name}</Typography>
-										<Typography variant='caption' color='text.secondary' sx={{ ml: 3.5, display: 'block' }}>
+										<Typography variant="body1" sx={{ fontWeight: 500, ml: 3.5 }}>
+											{visit.company_name}
+										</Typography>
+										<Typography variant="caption" color="text.secondary" sx={{ ml: 3.5, display: 'block' }}>
 											ID: {visit.company_id}
 										</Typography>
 									</CardContent>
 								</Card>
 							) : (
-								<Alert severity='warning' sx={{ mb: 2, borderRadius: 2 }}>
-									Компания не выбрана. Пожалуйста, вернитесь на страницу визитов
-									и выберите компанию.
+								<Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+									Компания не выбрана. Пожалуйста, вернитесь на страницу визитов и выберите компанию.
 								</Alert>
 							)}
 						</Grid>
 
-						{/* Динамические поля из админ-панели */}
+						{/* Template-driven custom fields */}
+						{templateFields.length > 0 && (
+							<Grid item xs={12}>
+								<Card
+									variant="outlined"
+									sx={{
+										borderRadius: 3,
+										border: 'none',
+										boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+									}}
+								>
+									<CardContent>
+										<Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+											Данные визита
+										</Typography>
+										<Grid container spacing={2}>
+											{templateFields.map((field) => (
+												<Grid item xs={12} md={6} key={field.key}>
+													{renderTemplateField(field, customValues[field.key], handleCustomFieldChange)}
+												</Grid>
+											))}
+										</Grid>
+									</CardContent>
+								</Card>
+							</Grid>
+						)}
+
+						{/* Bitrix24 dynamic fields from admin field-mapping */}
 						<Grid item xs={12}>
-							<Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+							<Card
+								variant="outlined"
+								sx={{
+									borderRadius: 3,
+									border: 'none',
+									boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+								}}
+							>
 								<CardContent>
-									<Typography variant='subtitle1' sx={{ mb: 2, fontWeight: 600 }}>
-										Данные визита
+									<Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+										Дополнительные поля
 									</Typography>
 									<DynamicFields
-										entityType='visit'
+										entityType="visit"
 										formData={visit}
 										onChange={handleDynamicFieldChange}
 										gridSize={{ xs: 12, md: 6 }}
@@ -398,21 +466,25 @@ export const VisitCreatePage: React.FC = () => {
 							</Card>
 						</Grid>
 
-						{/* Desktop Save Button (Hidden on Mobile) */}
+						{/* Desktop Save Button */}
 						{!isMobile && (
 							<Grid item xs={12}>
 								<Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
-									<Button variant='outlined' onClick={() => navigate(-1)} sx={{ borderRadius: 2 }}>
+									<Button variant="outlined" onClick={() => navigate(-1)} sx={{ borderRadius: 2 }}>
 										Отмена
 									</Button>
 									<Button
-										type='submit'
-										variant='contained'
-										color='primary'
+										type="submit"
+										variant="contained"
+										color="primary"
 										sx={{ borderRadius: 2 }}
 										disabled={createVisitMutation.isLoading || !visit.company_id}
 									>
-										{createVisitMutation.isLoading ? <CircularProgress size={24} color="inherit" /> : 'Создать визит'}
+										{createVisitMutation.isLoading ? (
+											<CircularProgress size={24} color="inherit" />
+										) : (
+											'Создать визит'
+										)}
 									</Button>
 								</Box>
 							</Grid>
@@ -421,10 +493,10 @@ export const VisitCreatePage: React.FC = () => {
 				</form>
 			</Box>
 
-			{/* Mobile Floating Action Button */}
+			{/* Mobile FAB */}
 			{isMobile && (
 				<Fab
-					color='primary'
+					color="primary"
 					sx={{
 						position: 'fixed',
 						bottom: 24,
@@ -435,7 +507,7 @@ export const VisitCreatePage: React.FC = () => {
 					disabled={createVisitMutation.isLoading || !visit.company_id}
 				>
 					{createVisitMutation.isLoading ? (
-						<CircularProgress size={24} color='inherit' />
+						<CircularProgress size={24} color="inherit" />
 					) : (
 						<SaveIcon />
 					)}
@@ -443,4 +515,103 @@ export const VisitCreatePage: React.FC = () => {
 			)}
 		</Box>
 	)
+}
+
+// --------------- Template field renderer ---------------
+
+function renderTemplateField(
+	field: FieldDefinition,
+	value: any,
+	onChange: (key: string, value: any) => void
+) {
+	switch (field.type) {
+		case 'text':
+			return (
+				<TextField
+					fullWidth
+					label={field.label}
+					required={field.required}
+					size="small"
+					value={value || ''}
+					onChange={(e) => onChange(field.key, e.target.value)}
+				/>
+			)
+		case 'textarea':
+			return (
+				<TextField
+					fullWidth
+					label={field.label}
+					required={field.required}
+					size="small"
+					multiline
+					rows={3}
+					value={value || ''}
+					onChange={(e) => onChange(field.key, e.target.value)}
+				/>
+			)
+		case 'select':
+			return (
+				<FormControl fullWidth size="small" required={field.required}>
+					<InputLabel>{field.label}</InputLabel>
+					<Select
+						label={field.label}
+						value={value || ''}
+						onChange={(e: SelectChangeEvent) => onChange(field.key, e.target.value)}
+					>
+						{(field.options || []).map(opt => (
+							<MenuItem key={opt} value={opt}>
+								{opt}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+			)
+		case 'checkbox':
+			return (
+				<FormControlLabel
+					control={
+						<Switch
+							checked={!!value}
+							onChange={(e) => onChange(field.key, e.target.checked)}
+						/>
+					}
+					label={field.label}
+				/>
+			)
+		case 'date':
+			return (
+				<TextField
+					fullWidth
+					label={field.label}
+					type="date"
+					required={field.required}
+					size="small"
+					InputLabelProps={{ shrink: true }}
+					value={value || ''}
+					onChange={(e) => onChange(field.key, e.target.value)}
+				/>
+			)
+		case 'number':
+			return (
+				<TextField
+					fullWidth
+					label={field.label}
+					type="number"
+					required={field.required}
+					size="small"
+					value={value ?? ''}
+					onChange={(e) => onChange(field.key, e.target.value)}
+				/>
+			)
+		default:
+			return (
+				<TextField
+					fullWidth
+					label={field.label}
+					size="small"
+					value={value || ''}
+					onChange={(e) => onChange(field.key, e.target.value)}
+				/>
+			)
+	}
 }

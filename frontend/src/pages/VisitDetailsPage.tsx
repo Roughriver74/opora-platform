@@ -54,6 +54,15 @@ import { adminApi, FieldMapping } from "../services/adminApi";
 import { clinicService } from "../services/clinicService";
 import { CreateTaskDialog } from "../components/CreateTaskDialog";
 import { Task, taskService } from "../services/taskService";
+import { api } from "../services/api";
+
+interface TemplateFieldDefinition {
+  key: string;
+  label: string;
+  type: string;
+  required: boolean;
+  options?: string[];
+}
 
 interface Contact {
   id: number;
@@ -178,6 +187,28 @@ export const VisitDetailsPage: React.FC = () => {
       staleTime: 300000, // 5 minutes
     }
   );
+
+  // Fetch visit form template for label lookup
+  const { data: visitFormTemplate } = useQuery<{ fields: TemplateFieldDefinition[] }>(
+    ["visitFormTemplate"],
+    async () => {
+      const res = await api.get("/visit-form/");
+      return res.data;
+    },
+    { staleTime: 300000 }
+  );
+
+  // Build a key->label map from the template
+  const templateLabelMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    if (visitFormTemplate?.fields) {
+      for (const f of visitFormTemplate.fields) {
+        map[f.key] = f.label;
+      }
+    }
+    return map;
+  }, [visitFormTemplate]);
+
   // Вспомогательная функция для получения адреса клиники
   const getClinicAddress = (company: any): string => {
     if (!company) return "";
@@ -287,6 +318,11 @@ export const VisitDetailsPage: React.FC = () => {
     entityType: "visit" | "clinic" | "doctor",
     fieldId: string
   ): string => {
+    // First check the visit form template labels
+    if (entityType === "visit" && templateLabelMap[fieldId]) {
+      return templateLabelMap[fieldId];
+    }
+
     let mappings: FieldMapping[] | undefined;
 
     if (entityType === "visit") mappings = visitFieldMappings;
