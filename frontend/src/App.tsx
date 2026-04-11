@@ -49,6 +49,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+const HomeRedirect: React.FC = () => {
+  const stored = localStorage.getItem('user');
+  if (stored) {
+    try {
+      const user = JSON.parse(stored);
+      if (user.role === 'platform_admin') {
+        return <Navigate to="/platform/dashboard" replace />;
+      }
+    } catch { /* ignore */ }
+  }
+  return <Navigate to="/visits" replace />;
+};
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -71,7 +84,7 @@ function App() {
                 </AuthProvider>
               </ProtectedRoute>
             }>
-              <Route index element={<Navigate to="/visits" replace />} />
+              <Route index element={<HomeRedirect />} />
               <Route path="visits" element={<VisitsPage />} />
               <Route path="visits/new" element={<VisitCreatePage />} />
               <Route path="visits/new/:companyId" element={<VisitCreatePage />} />

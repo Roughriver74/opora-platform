@@ -59,58 +59,15 @@ interface PlatformStats {
   total_visits: number;
 }
 
-interface SmtpStatus {
-  configured: boolean;
-  host: string;
-  from_email: string;
-}
-
-interface SmtpTestResult {
-  success: boolean;
-  message: string;
-}
-
 const PlatformOrganizationsPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [updateError, setUpdateError] = useState<string | null>(null);
-  const [smtpTestMessage, setSmtpTestMessage] = useState<{ text: string; severity: 'success' | 'error' } | null>(null);
 
   // Create org dialog
   const [createOpen, setCreateOpen] = useState(false);
   const [newOrg, setNewOrg] = useState({ name: '', owner_email: '', owner_password: '', plan: 'free', max_users: 3, max_visits_per_month: 500 });
-
-  // Fetch SMTP status
-  const { data: smtpStatus, isLoading: smtpLoading } = useQuery<SmtpStatus>(
-    ['smtpStatus'],
-    async () => {
-      const response = await api.get('/platform/smtp-status');
-      return response.data;
-    }
-  );
-
-  // SMTP test mutation
-  const smtpTestMutation = useMutation(
-    async () => {
-      const response = await api.post('/platform/smtp-test');
-      return response.data as SmtpTestResult;
-    },
-    {
-      onSuccess: (data) => {
-        setSmtpTestMessage({
-          text: data.message,
-          severity: data.success ? 'success' : 'error',
-        });
-      },
-      onError: (err: any) => {
-        setSmtpTestMessage({
-          text: err.response?.data?.message || 'Ошибка при отправке тестового письма',
-          severity: 'error',
-        });
-      },
-    }
-  );
 
   // Fetch platform stats
   const { data: stats, isLoading: statsLoading } = useQuery<PlatformStats>(
@@ -255,110 +212,6 @@ const PlatformOrganizationsPage: React.FC = () => {
           </CardContent>
         </Card>
       </Box>
-
-      {/* SMTP Settings Card */}
-      <Card sx={{ mb: 3, borderRadius: 2 }}>
-        <CardContent sx={{ py: 2, px: 2.5, '&:last-child': { pb: 2 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-            <Email sx={{ color: 'primary.main', fontSize: 22 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              Настройки SMTP
-            </Typography>
-          </Box>
-
-          {smtpLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : (
-            <>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5, flexWrap: 'wrap' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Статус:
-                  </Typography>
-                  {smtpStatus?.configured ? (
-                    <Chip
-                      icon={<CheckCircle sx={{ fontSize: 16 }} />}
-                      label="Настроен"
-                      size="small"
-                      color="success"
-                      variant="outlined"
-                      sx={{ fontWeight: 600 }}
-                    />
-                  ) : (
-                    <Chip
-                      icon={<Cancel sx={{ fontSize: 16 }} />}
-                      label="Не настроен"
-                      size="small"
-                      color="error"
-                      variant="outlined"
-                      sx={{ fontWeight: 600 }}
-                    />
-                  )}
-                </Box>
-
-                {smtpStatus?.host && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Хост:
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                      {smtpStatus.host}
-                    </Typography>
-                  </Box>
-                )}
-
-                {smtpStatus?.from_email && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      От:
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                      {smtpStatus.from_email}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-
-              <Divider sx={{ my: 1.5 }} />
-
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Настройте SMTP переменные в .env файле на сервере
-                </Typography>
-                <Tooltip title={smtpStatus?.configured ? 'Отправить тестовое письмо на ваш email' : 'Сначала настройте SMTP'}>
-                  <span>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={smtpTestMutation.isLoading ? <CircularProgress size={16} /> : <Send />}
-                      onClick={() => {
-                        setSmtpTestMessage(null);
-                        smtpTestMutation.mutate();
-                      }}
-                      disabled={smtpTestMutation.isLoading}
-                      sx={{ textTransform: 'none' }}
-                    >
-                      Тест email
-                    </Button>
-                  </span>
-                </Tooltip>
-              </Box>
-
-              {smtpTestMessage && (
-                <Alert
-                  severity={smtpTestMessage.severity}
-                  sx={{ mt: 1.5, borderRadius: 1.5 }}
-                  onClose={() => setSmtpTestMessage(null)}
-                >
-                  {smtpTestMessage.text}
-                </Alert>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
 
       {updateError && (
         <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setUpdateError(null)}>
