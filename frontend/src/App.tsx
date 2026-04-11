@@ -34,6 +34,7 @@ import PlatformOrganizationsPage from './pages/platform/PlatformOrganizationsPag
 import PlatformDashboardPage from './pages/platform/PlatformDashboardPage';
 import PlatformUsersPage from './pages/platform/PlatformUsersPage';
 import PlatformOrgDetailPage from './pages/platform/PlatformOrgDetailPage';
+import PlatformPaymentsPage from './pages/platform/PlatformPaymentsPage';
 
 // Create a client for React Query
 const queryClient = new QueryClient();
@@ -103,6 +104,7 @@ function App() {
               <Route path="platform/organizations" element={<PlatformAdminRoute><PlatformOrganizationsPage /></PlatformAdminRoute>} />
               <Route path="platform/organizations/:id" element={<PlatformAdminRoute><PlatformOrgDetailPage /></PlatformAdminRoute>} />
               <Route path="platform/users" element={<PlatformAdminRoute><PlatformUsersPage /></PlatformAdminRoute>} />
+              <Route path="platform/payments" element={<PlatformAdminRoute><PlatformPaymentsPage /></PlatformAdminRoute>} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

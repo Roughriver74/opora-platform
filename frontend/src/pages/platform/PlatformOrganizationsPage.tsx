@@ -23,6 +23,12 @@ import {
   Button,
   Divider,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Stack,
 } from '@mui/material';
 import {
   Business,
@@ -32,6 +38,7 @@ import {
   CheckCircle,
   Cancel,
   Send,
+  Add,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
@@ -69,6 +76,10 @@ const PlatformOrganizationsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [smtpTestMessage, setSmtpTestMessage] = useState<{ text: string; severity: 'success' | 'error' } | null>(null);
+
+  // Create org dialog
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newOrg, setNewOrg] = useState({ name: '', owner_email: '', owner_password: '', plan: 'free', max_users: 3, max_visits_per_month: 500 });
 
   // Fetch SMTP status
   const { data: smtpStatus, isLoading: smtpLoading } = useQuery<SmtpStatus>(
@@ -133,6 +144,24 @@ const PlatformOrganizationsPage: React.FC = () => {
       },
       onError: (err: any) => {
         setUpdateError(err.response?.data?.message || 'Ошибка при обновлении организации');
+      },
+    }
+  );
+
+  const createOrgMutation = useMutation(
+    async (data: typeof newOrg) => {
+      const response = await api.post('/platform/organizations', data);
+      return response.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['platformOrganizations']);
+        queryClient.invalidateQueries(['platformStats']);
+        setCreateOpen(false);
+        setNewOrg({ name: '', owner_email: '', owner_password: '', plan: 'free', max_users: 3, max_visits_per_month: 500 });
+      },
+      onError: (err: any) => {
+        setUpdateError(err.response?.data?.detail || 'Ошибка при создании организации');
       },
     }
   );
@@ -343,6 +372,14 @@ const PlatformOrganizationsPage: React.FC = () => {
         </Alert>
       )}
 
+      {/* Create org button */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="subtitle1" fontWeight={600}>Организации</Typography>
+        <Button variant="contained" size="small" startIcon={<Add />} onClick={() => setCreateOpen(true)}>
+          Создать организацию
+        </Button>
+      </Box>
+
       {/* Organizations table */}
       <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
         <Table size="small">
@@ -424,6 +461,35 @@ const PlatformOrganizationsPage: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Создать организацию</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <TextField label="Название компании" size="small" fullWidth required
+              value={newOrg.name} onChange={(e) => setNewOrg({ ...newOrg, name: e.target.value })} />
+            <TextField label="Email владельца" size="small" fullWidth required type="email"
+              value={newOrg.owner_email} onChange={(e) => setNewOrg({ ...newOrg, owner_email: e.target.value })} />
+            <TextField label="Пароль владельца" size="small" fullWidth required type="password"
+              value={newOrg.owner_password} onChange={(e) => setNewOrg({ ...newOrg, owner_password: e.target.value })} />
+            <Select value={newOrg.plan} size="small" onChange={(e) => setNewOrg({ ...newOrg, plan: e.target.value })}>
+              <MenuItem value="free">FREE</MenuItem>
+              <MenuItem value="pro">PRO</MenuItem>
+              <MenuItem value="enterprise">ENTERPRISE</MenuItem>
+            </Select>
+            <TextField label="Макс. пользователей" size="small" type="number" fullWidth
+              value={newOrg.max_users} onChange={(e) => setNewOrg({ ...newOrg, max_users: parseInt(e.target.value) || 1 })} />
+            <TextField label="Макс. визитов в месяц" size="small" type="number" fullWidth
+              value={newOrg.max_visits_per_month} onChange={(e) => setNewOrg({ ...newOrg, max_visits_per_month: parseInt(e.target.value) || 100 })} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateOpen(false)}>Отмена</Button>
+          <Button variant="contained" onClick={() => createOrgMutation.mutate(newOrg)}
+            disabled={!newOrg.name || !newOrg.owner_email || !newOrg.owner_password || createOrgMutation.isLoading}>
+            Создать
+          </Button>
+        </DialogActions>
+      </Dialog>
       </>
     </Box>
   );

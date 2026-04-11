@@ -56,6 +56,7 @@ const platformAdminItems: NavItem[] = [
   { label: 'Обзор', icon: <SpeedOutlined />, path: '/platform/dashboard' },
   { label: 'Организации', icon: <Business />, path: '/platform/organizations' },
   { label: 'Пользователи', icon: <Group />, path: '/platform/users' },
+  { label: 'Платежи', icon: <CreditCard />, path: '/platform/payments' },
 ];
 
 const bottomItems: NavItem[] = [

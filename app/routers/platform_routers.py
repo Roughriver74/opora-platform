@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.config import Settings
-from app.models import Organization, User, Visit
+from app.models import Organization, Payment, User, Visit
 from app.services.uow import UnitOfWork, get_uow
 from app.utils.utils import require_platform_admin
 
@@ -454,6 +454,204 @@ async def list_all_users(
         )
         for u, org_name in rows
     ]
+
+
+# ---- Payments ----
+
+
+class PaymentResponse(BaseModel):
+    id: int
+    organization_id: int
+    organization_name: Optional[str] = None
+    amount: int
+    currency: str
+    status: str
+    payment_method: Optional[str] = None
+    description: Optional[str] = None
+    created_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/payments", response_model=List[PaymentResponse])
+async def list_all_payments(
+    uow: UnitOfWork = Depends(get_uow),
+    current_user: User = Depends(require_platform_admin),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    organization_id: Optional[int] = Query(None),
+    payment_status: Optional[str] = Query(None, alias="status"),
+):
+    """List all payments across all organizations (platform_admin only)."""
+    session = uow.session
+
+    query = (
+        select(Payment, Organization.name.label("org_name"))
+        .outerjoin(Organization, Payment.organization_id == Organization.id)
+    )
+    if organization_id is not None:
+        query = query.where(Payment.organization_id == organization_id)
+    if payment_status:
+        query = query.where(Payment.status == payment_status)
+
+    query = query.order_by(Payment.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    rows = (await session.execute(query)).all()
+
+    return [
+        PaymentResponse(
+            id=p.id,
+            organization_id=p.organization_id,
+            organization_name=org_name,
+            amount=p.amount,
+            currency=p.currency or "RUB",
+            status=p.status,
+            payment_method=p.payment_method,
+            description=p.description,
+            created_at=p.created_at.isoformat() if p.created_at else None,
+        )
+        for p, org_name in rows
+    ]
+
+
+# ---- Create Organization ----
+
+
+class CreateOrgRequest(BaseModel):
+    name: str
+    owner_email: str
+    owner_password: str
+    plan: str = "free"
+    max_users: int = 1
+    max_visits_per_month: int = 100
+
+
+@router.post("/organizations", response_model=OrgResponse)
+async def create_organization(
+    data: CreateOrgRequest,
+    uow: UnitOfWork = Depends(get_uow),
+    current_user: User = Depends(require_platform_admin),
+):
+    """Create a new organization with owner user (platform_admin only)."""
+    import secrets
+
+    session = uow.session
+
+    # Check if email already registered
+    existing = (
+        (await session.execute(select(User).where(User.email == data.owner_email)))
+        .scalars()
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Пользователь с таким email уже существует")
+
+    # Generate slug
+    slug = data.name.lower().replace(" ", "-")
+    slug = "".join(c for c in slug if c.isalnum() or c == "-")
+    existing_slug = (
+        (await session.execute(select(Organization).where(Organization.slug == slug)))
+        .scalars()
+        .first()
+    )
+    if existing_slug:
+        slug = f"{slug}-{secrets.token_hex(3)}"
+
+    org = Organization(
+        name=data.name,
+        slug=slug,
+        plan=data.plan,
+        plan_limits={"max_users": data.max_users, "max_visits_per_month": data.max_visits_per_month},
+        is_active=True,
+    )
+    session.add(org)
+    await session.flush()
+
+    user = User(
+        email=data.owner_email,
+        role="org_admin",
+        organization_id=org.id,
+        is_active=True,
+    )
+    user.set_password(data.owner_password)
+    session.add(user)
+    await session.flush()
+
+    org.owner_id = user.id
+    await session.commit()
+    await session.refresh(org)
+
+    logger.info("Organization '%s' created by platform admin (owner: %s)", data.name, data.owner_email)
+
+    return OrgResponse(
+        id=org.id,
+        name=org.name,
+        slug=org.slug,
+        plan=org.plan or "free",
+        plan_limits=org.plan_limits,
+        is_active=org.is_active,
+        owner_id=org.owner_id,
+        user_count=1,
+        created_at=org.created_at.isoformat() if org.created_at else None,
+    )
+
+
+# ---- User Management ----
+
+
+class UserToggleRequest(BaseModel):
+    is_active: bool
+
+
+@router.put("/users/{user_id}/toggle", response_model=dict)
+async def toggle_user_active(
+    user_id: int,
+    data: UserToggleRequest,
+    uow: UnitOfWork = Depends(get_uow),
+    current_user: User = Depends(require_platform_admin),
+):
+    """Activate or deactivate a user (platform_admin only)."""
+    session = uow.session
+    user = (
+        (await session.execute(select(User).where(User.id == user_id)))
+        .scalars()
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if user.role == "platform_admin":
+        raise HTTPException(status_code=403, detail="Нельзя деактивировать платформенного администратора")
+
+    user.is_active = data.is_active
+    await session.commit()
+    return {"detail": f"Пользователь {'активирован' if data.is_active else 'деактивирован'}", "user_id": user_id}
+
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str
+
+
+@router.put("/users/{user_id}/reset-password", response_model=dict)
+async def reset_user_password(
+    user_id: int,
+    data: ResetPasswordRequest,
+    uow: UnitOfWork = Depends(get_uow),
+    current_user: User = Depends(require_platform_admin),
+):
+    """Reset a user's password (platform_admin only)."""
+    session = uow.session
+    user = (
+        (await session.execute(select(User).where(User.id == user_id)))
+        .scalars()
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    user.set_password(data.new_password)
+    await session.commit()
+    logger.info("Password reset for user %s by platform admin", user.email)
+    return {"detail": "Пароль сброшен", "user_id": user_id}
 
 
 # ---- SMTP Settings Endpoints ----

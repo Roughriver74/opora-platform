@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Chip, CircularProgress, TextField,
-  MenuItem, Select, FormControl, InputLabel, Grid, Stack,
+  MenuItem, Select, FormControl, InputLabel, Grid, IconButton,
+  Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
+import BlockIcon from '@mui/icons-material/Block';
+import LockResetIcon from '@mui/icons-material/LockReset';
 import { api } from '../../services/api';
 
 interface PlatformUser {
@@ -22,11 +25,6 @@ interface PlatformUser {
   created_at: string | null;
 }
 
-interface OrgOption {
-  id: number;
-  name: string;
-}
-
 const ROLE_LABELS: Record<string, string> = {
   org_admin: 'Администратор',
   user: 'Пользователь',
@@ -34,12 +32,17 @@ const ROLE_LABELS: Record<string, string> = {
 
 const PlatformUsersPage: React.FC = () => {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [orgFilter, setOrgFilter] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [page] = useState(1);
 
-  const { data: orgs = [] } = useQuery<OrgOption[]>(
+  // Reset password dialog
+  const [resetUser, setResetUser] = useState<PlatformUser | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+
+  const { data: orgs = [] } = useQuery<any[]>(
     ['platformOrgsAll'],
     async () => { const r = await api.get('/platform/organizations?page_size=200'); return r.data; }
   );
@@ -49,10 +52,29 @@ const PlatformUsersPage: React.FC = () => {
   if (roleFilter) params.set('role', roleFilter);
   if (search) params.set('search', search);
 
+  const queryKey = ['platformUsers', orgFilter, roleFilter, search, page];
+
   const { data: users = [], isLoading } = useQuery<PlatformUser[]>(
-    ['platformUsers', orgFilter, roleFilter, search, page],
+    queryKey,
     async () => { const r = await api.get(`/platform/users?${params}`); return r.data; },
     { keepPreviousData: true }
+  );
+
+  const toggleActive = useMutation(
+    async ({ userId, isActive }: { userId: number; isActive: boolean }) =>
+      api.put(`/platform/users/${userId}/toggle`, { is_active: isActive }),
+    { onSuccess: () => qc.invalidateQueries(queryKey) }
+  );
+
+  const resetPassword = useMutation(
+    async ({ userId, password }: { userId: number; password: string }) =>
+      api.put(`/platform/users/${userId}/reset-password`, { new_password: password }),
+    {
+      onSuccess: () => {
+        setResetUser(null);
+        setNewPassword('');
+      },
+    }
   );
 
   return (
@@ -100,7 +122,8 @@ const PlatformUsersPage: React.FC = () => {
                 <TableCell>Роль</TableCell>
                 <TableCell>Организация</TableCell>
                 <TableCell align="center">Активен</TableCell>
-                <TableCell>Дата регистрации</TableCell>
+                <TableCell>Регистрация</TableCell>
+                <TableCell align="center">Действия</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -109,17 +132,12 @@ const PlatformUsersPage: React.FC = () => {
                   <TableCell>{u.email}</TableCell>
                   <TableCell>{[u.first_name, u.last_name].filter(Boolean).join(' ') || '—'}</TableCell>
                   <TableCell>
-                    <Chip
-                      label={ROLE_LABELS[u.role] ?? u.role}
-                      size="small"
-                      color={u.role === 'org_admin' ? 'primary' : 'default'}
-                    />
+                    <Chip label={ROLE_LABELS[u.role] ?? u.role} size="small" color={u.role === 'org_admin' ? 'primary' : 'default'} />
                   </TableCell>
                   <TableCell>
                     {u.organization_name ? (
                       <Typography
-                        variant="body2"
-                        color="primary"
+                        variant="body2" color="primary"
                         sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
                         onClick={() => navigate(`/platform/organizations/${u.organization_id}`)}
                       >
@@ -133,11 +151,27 @@ const PlatformUsersPage: React.FC = () => {
                       : <CancelIcon color="error" fontSize="small" />}
                   </TableCell>
                   <TableCell>{u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '—'}</TableCell>
+                  <TableCell align="center">
+                    <Tooltip title={u.is_active ? 'Деактивировать' : 'Активировать'}>
+                      <IconButton
+                        size="small"
+                        color={u.is_active ? 'error' : 'success'}
+                        onClick={() => toggleActive.mutate({ userId: u.id, isActive: !u.is_active })}
+                      >
+                        {u.is_active ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Сбросить пароль">
+                      <IconButton size="small" onClick={() => { setResetUser(u); setNewPassword(''); }}>
+                        <LockResetIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
                 </TableRow>
               ))}
               {users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={7} align="center">
                     <Typography color="text.secondary" py={3}>Пользователи не найдены</Typography>
                   </TableCell>
                 </TableRow>
@@ -146,6 +180,34 @@ const PlatformUsersPage: React.FC = () => {
           </Table>
         </TableContainer>
       )}
+
+      <Dialog open={!!resetUser} onClose={() => setResetUser(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Сброс пароля</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            Пользователь: {resetUser?.email}
+          </Typography>
+          <TextField
+            label="Новый пароль"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            fullWidth
+            size="small"
+            autoFocus
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResetUser(null)}>Отмена</Button>
+          <Button
+            variant="contained"
+            disabled={!newPassword || newPassword.length < 6 || resetPassword.isLoading}
+            onClick={() => resetUser && resetPassword.mutate({ userId: resetUser.id, password: newPassword })}
+          >
+            Сбросить
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
