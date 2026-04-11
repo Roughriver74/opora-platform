@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -64,6 +65,7 @@ interface SmtpTestResult {
 
 const PlatformOrganizationsPage: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [smtpTestMessage, setSmtpTestMessage] = useState<{ text: string; severity: 'success' | 'error' } | null>(null);
@@ -359,7 +361,11 @@ const PlatformOrganizationsPage: React.FC = () => {
               organizations.map((org) => (
                 <TableRow key={org.id} hover>
                   <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 600, cursor: 'pointer', color: 'primary.main', '&:hover': { textDecoration: 'underline' } }}
+                      onClick={() => navigate(`/platform/organizations/${org.id}`)}
+                    >
                       {org.name}
                     </Typography>
                   </TableCell>

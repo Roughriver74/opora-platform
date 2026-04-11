@@ -25,6 +25,8 @@ import {
   CreditCard,
   HelpOutline,
   Assignment,
+  SpeedOutlined,
+  Business,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -51,7 +53,9 @@ const adminItems: NavItem[] = [
 ];
 
 const platformAdminItems: NavItem[] = [
-  { label: 'Платформа', icon: <AdminPanelSettings />, path: '/platform/organizations' },
+  { label: 'Обзор', icon: <SpeedOutlined />, path: '/platform/dashboard' },
+  { label: 'Организации', icon: <Business />, path: '/platform/organizations' },
+  { label: 'Пользователи', icon: <Group />, path: '/platform/users' },
 ];
 
 const bottomItems: NavItem[] = [
@@ -212,11 +216,13 @@ const Sidebar: React.FC = () => {
 
       {/* Navigation */}
       <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', py: 1 }}>
-        <List disablePadding>
-          {mainItems.map(renderNavItem)}
-        </List>
+        {!isPlatformAdmin && (
+          <List disablePadding>
+            {mainItems.map(renderNavItem)}
+          </List>
+        )}
 
-        {isOrgAdmin && (
+        {!isPlatformAdmin && isOrgAdmin && (
           <>
             <Divider sx={{ my: 1, mx: 2 }} />
             <List disablePadding>
@@ -227,7 +233,6 @@ const Sidebar: React.FC = () => {
 
         {isPlatformAdmin && (
           <>
-            <Divider sx={{ my: 1, mx: 2 }} />
             <List disablePadding>
               {platformAdminItems.map(renderNavItem)}
             </List>

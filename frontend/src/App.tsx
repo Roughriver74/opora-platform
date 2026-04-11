@@ -20,7 +20,7 @@ import NetworkClinicsListPage from './pages/NetworkClinicsListPage';
 import GlobalSettingsPage from './pages/admin/GlobalSettingsPage';
 import AuthProvider from './context/AuthContext';
 import { SidebarProvider } from './context/SidebarContext';
-import AdminRoute from './components/AdminRoute';
+import AdminRoute, { PlatformAdminRoute } from './components/AdminRoute';
 import NetworkClinicEditPage from './pages/NetworkClinicEditPage';
 import DeleteVisits from './pages/admin/DeleteVisits';
 import VisitFormEditorPage from './pages/admin/VisitFormEditorPage';
@@ -28,6 +28,9 @@ import BillingPage from './pages/admin/BillingPage';
 import FormBuilderPage from './components/FormBuilder/FormBuilderPage';
 import HelpPage from './pages/HelpPage';
 import PlatformOrganizationsPage from './pages/platform/PlatformOrganizationsPage';
+import PlatformDashboardPage from './pages/platform/PlatformDashboardPage';
+import PlatformUsersPage from './pages/platform/PlatformUsersPage';
+import PlatformOrgDetailPage from './pages/platform/PlatformOrgDetailPage';
 
 // Create a client for React Query
 const queryClient = new QueryClient();
@@ -88,7 +91,10 @@ function App() {
               <Route path="admin/form-builder" element={<AdminRoute><FormBuilderPage /></AdminRoute>} />
               <Route path="help" element={<HelpPage />} />
               {/* Platform admin */}
-              <Route path="platform/organizations" element={<PlatformOrganizationsPage />} />
+              <Route path="platform/dashboard" element={<PlatformAdminRoute><PlatformDashboardPage /></PlatformAdminRoute>} />
+              <Route path="platform/organizations" element={<PlatformAdminRoute><PlatformOrganizationsPage /></PlatformAdminRoute>} />
+              <Route path="platform/organizations/:id" element={<PlatformAdminRoute><PlatformOrgDetailPage /></PlatformAdminRoute>} />
+              <Route path="platform/users" element={<PlatformAdminRoute><PlatformUsersPage /></PlatformAdminRoute>} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
