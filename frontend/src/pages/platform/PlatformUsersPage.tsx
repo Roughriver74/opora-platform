@@ -11,6 +11,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import BlockIcon from '@mui/icons-material/Block';
 import LockResetIcon from '@mui/icons-material/LockReset';
+import LoginIcon from '@mui/icons-material/Login';
+import DownloadIcon from '@mui/icons-material/Download';
 import { api } from '../../services/api';
 
 interface PlatformUser {
@@ -23,12 +25,35 @@ interface PlatformUser {
   organization_id: number | null;
   organization_name: string | null;
   created_at: string | null;
+  last_login_at: string | null;
 }
 
 const ROLE_LABELS: Record<string, string> = {
   org_admin: 'Администратор',
   user: 'Пользователь',
 };
+
+function exportUsersToCSV(users: PlatformUser[]) {
+  const headers = ['ID', 'Email', 'Имя', 'Роль', 'Организация', 'Активен', 'Регистрация', 'Последний вход'];
+  const rows = users.map(u => [
+    u.id,
+    u.email,
+    [u.first_name, u.last_name].filter(Boolean).join(' '),
+    ROLE_LABELS[u.role] ?? u.role,
+    u.organization_name ?? '',
+    u.is_active ? 'Да' : 'Нет',
+    u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '',
+    u.last_login_at ? new Date(u.last_login_at).toLocaleDateString('ru-RU') : '',
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(String).map(v => `"${v.replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `users_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const PlatformUsersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -77,9 +102,37 @@ const PlatformUsersPage: React.FC = () => {
     }
   );
 
+  const impersonate = useMutation(
+    async (userId: number) => {
+      const r = await api.post(`/platform/impersonate/${userId}`);
+      return r.data;
+    },
+    {
+      onSuccess: (data) => {
+        // Save new token and user, then navigate to main app
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        navigate('/visits');
+        // Force full page reload to reinitialize AuthContext with new credentials
+        window.location.href = '/visits';
+      },
+    }
+  );
+
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" fontWeight={600} mb={3}>Пользователи платформы</Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h5" fontWeight={600}>Пользователи платформы</Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<DownloadIcon />}
+          onClick={() => exportUsersToCSV(users)}
+          disabled={users.length === 0}
+        >
+          Экспорт CSV
+        </Button>
+      </Box>
 
       <Grid container spacing={2} mb={3}>
         <Grid item xs={12} sm={4}>
@@ -123,6 +176,7 @@ const PlatformUsersPage: React.FC = () => {
                 <TableCell>Организация</TableCell>
                 <TableCell align="center">Активен</TableCell>
                 <TableCell>Регистрация</TableCell>
+                <TableCell>Последний вход</TableCell>
                 <TableCell align="center">Действия</TableCell>
               </TableRow>
             </TableHead>
@@ -151,7 +205,22 @@ const PlatformUsersPage: React.FC = () => {
                       : <CancelIcon color="error" fontSize="small" />}
                   </TableCell>
                   <TableCell>{u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '—'}</TableCell>
+                  <TableCell>
+                    {u.last_login_at
+                      ? new Date(u.last_login_at).toLocaleDateString('ru-RU')
+                      : <Typography variant="body2" color="text.disabled">Никогда</Typography>}
+                  </TableCell>
                   <TableCell align="center">
+                    <Tooltip title="Войти как пользователь">
+                      <IconButton
+                        size="small"
+                        color="info"
+                        onClick={() => impersonate.mutate(u.id)}
+                        disabled={impersonate.isLoading}
+                      >
+                        <LoginIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     <Tooltip title={u.is_active ? 'Деактивировать' : 'Активировать'}>
                       <IconButton
                         size="small"
@@ -171,7 +240,7 @@ const PlatformUsersPage: React.FC = () => {
               ))}
               {users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={8} align="center">
                     <Typography color="text.secondary" py={3}>Пользователи не найдены</Typography>
                   </TableCell>
                 </TableRow>

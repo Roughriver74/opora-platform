@@ -57,6 +57,7 @@ class PlatformUserResponse(BaseModel):
     organization_id: Optional[int] = None
     organization_name: Optional[str] = None
     created_at: Optional[str] = None
+    last_login_at: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -154,6 +155,7 @@ async def list_organizations(
     current_user: User = Depends(require_platform_admin),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    search: Optional[str] = Query(None),
 ):
     """List all organizations with user counts (platform_admin only)."""
     session = uow.session
@@ -172,9 +174,12 @@ async def list_organizations(
         select(Organization, func.coalesce(user_count_sq.c.user_count, 0).label("user_count"))
         .outerjoin(user_count_sq, Organization.id == user_count_sq.c.organization_id)
         .order_by(Organization.id)
-        .offset((page - 1) * page_size)
-        .limit(page_size)
     )
+
+    if search:
+        query = query.where(Organization.name.ilike(f"%{search}%"))
+
+    query = query.offset((page - 1) * page_size).limit(page_size)
 
     rows = (await session.execute(query)).all()
     result = []
@@ -298,6 +303,7 @@ async def get_org_details(
                 organization_id=u.organization_id,
                 organization_name=org.name,
                 created_at=u.created_at.isoformat() if u.created_at else None,
+                last_login_at=u.last_login_at.isoformat() if u.last_login_at else None,
             )
             for u in users
         ],
@@ -451,6 +457,7 @@ async def list_all_users(
             organization_id=u.organization_id,
             organization_name=org_name,
             created_at=u.created_at.isoformat() if u.created_at else None,
+            last_login_at=u.last_login_at.isoformat() if u.last_login_at else None,
         )
         for u, org_name in rows
     ]
@@ -652,6 +659,100 @@ async def reset_user_password(
     await session.commit()
     logger.info("Password reset for user %s by platform admin", user.email)
     return {"detail": "Пароль сброшен", "user_id": user_id}
+
+
+# ---- Impersonation ----
+
+
+@router.post("/impersonate/{user_id}", response_model=dict)
+async def impersonate_user(
+    user_id: int,
+    uow: UnitOfWork = Depends(get_uow),
+    current_user: User = Depends(require_platform_admin),
+):
+    """Generate a JWT token for another user (platform_admin only). Allows 'login as' functionality."""
+    from datetime import timedelta
+    session = uow.session
+
+    target_user = (
+        (await session.execute(select(User).where(User.id == user_id)))
+        .scalars()
+        .first()
+    )
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if target_user.role == "platform_admin":
+        raise HTTPException(status_code=403, detail="Нельзя войти под платформенным администратором")
+
+    access_token_expires = timedelta(hours=8)
+    access_token = await uow.auth.create_access_token(
+        data={
+            "sub": target_user.email,
+            "user_id": target_user.id,
+            "role": target_user.role,
+            "organization_id": target_user.organization_id,
+        },
+        expires_delta=access_token_expires,
+    )
+    logger.info(
+        "Platform admin %s impersonated user %s (id=%s)",
+        current_user.email, target_user.email, user_id,
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": target_user.id,
+            "email": target_user.email,
+            "role": target_user.role,
+            "organization_id": target_user.organization_id,
+            "first_name": target_user.first_name,
+            "last_name": target_user.last_name,
+            "regions": target_user.regions or [],
+        },
+    }
+
+
+# ---- Delete Organization ----
+
+
+@router.delete("/organizations/{org_id}", response_model=dict)
+async def delete_organization(
+    org_id: int,
+    uow: UnitOfWork = Depends(get_uow),
+    current_user: User = Depends(require_platform_admin),
+):
+    """Delete an organization and all its data (platform_admin only). Irreversible."""
+    from sqlalchemy import delete as sql_delete
+
+    session = uow.session
+
+    org = (
+        (await session.execute(select(Organization).where(Organization.id == org_id)))
+        .scalars()
+        .first()
+    )
+    if not org:
+        raise HTTPException(status_code=404, detail="Организация не найдена")
+
+    org_name = org.name
+
+    # Clear owner reference first to avoid FK constraint
+    org.owner_id = None
+    await session.flush()
+
+    # Delete org users (cascade)
+    await session.execute(sql_delete(User).where(User.organization_id == org_id))
+
+    # Delete the organization (visits/companies have ON DELETE CASCADE or will error — handle gracefully)
+    await session.delete(org)
+    await session.commit()
+
+    logger.warning(
+        "Organization '%s' (id=%s) deleted by platform admin %s",
+        org_name, org_id, current_user.email,
+    )
+    return {"detail": f"Организация '{org_name}' удалена", "org_id": org_id}
 
 
 # ---- SMTP Settings Endpoints ----

@@ -47,6 +47,10 @@ async def login_for_access_token(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    # Track last login time
+    user.last_login_at = datetime.utcnow()
+    await uow.session.commit()
+    await uow.session.refresh(user)
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = await uow.auth.create_access_token(
         data={

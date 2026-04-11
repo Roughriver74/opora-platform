@@ -21,7 +21,6 @@ import {
   CardContent,
   SelectChangeEvent,
   Button,
-  Divider,
   Tooltip,
   Dialog,
   DialogTitle,
@@ -29,16 +28,15 @@ import {
   DialogActions,
   TextField,
   Stack,
+  IconButton,
 } from '@mui/material';
 import {
   Business,
   People,
   TrendingUp,
-  Email,
-  CheckCircle,
-  Cancel,
-  Send,
   Add,
+  Delete,
+  Download,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
@@ -50,6 +48,7 @@ interface Organization {
   plan: 'FREE' | 'PRO';
   is_active: boolean;
   users_count: number;
+  user_count: number;
   created_at: string;
 }
 
@@ -59,15 +58,42 @@ interface PlatformStats {
   total_visits: number;
 }
 
+function exportOrgsToCSV(orgs: Organization[]) {
+  const headers = ['ID', 'Название', 'Slug', 'Тариф', 'Пользователи', 'Активна', 'Создана'];
+  const rows = orgs.map(o => [
+    o.id,
+    o.name,
+    o.slug,
+    o.plan,
+    o.user_count ?? o.users_count ?? 0,
+    o.is_active ? 'Да' : 'Нет',
+    o.created_at ? new Date(o.created_at).toLocaleDateString('ru-RU') : '',
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(String).map(v => `"${v.replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `organizations_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const PlatformOrganizationsPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   // Create org dialog
   const [createOpen, setCreateOpen] = useState(false);
   const [newOrg, setNewOrg] = useState({ name: '', owner_email: '', owner_password: '', plan: 'free', max_users: 3, max_visits_per_month: 500 });
+
+  // Delete org dialog
+  const [deleteOrg, setDeleteOrg] = useState<Organization | null>(null);
+
+  const orgQueryKey = ['platformOrganizations', search];
 
   // Fetch platform stats
   const { data: stats, isLoading: statsLoading } = useQuery<PlatformStats>(
@@ -80,9 +106,11 @@ const PlatformOrganizationsPage: React.FC = () => {
 
   // Fetch organizations
   const { data: organizations, isLoading: orgsLoading, error: orgsError } = useQuery<Organization[]>(
-    ['platformOrganizations'],
+    orgQueryKey,
     async () => {
-      const response = await api.get('/platform/organizations');
+      const params = new URLSearchParams({ page_size: '200' });
+      if (search) params.set('search', search);
+      const response = await api.get(`/platform/organizations?${params}`);
       return response.data;
     }
   );
@@ -95,7 +123,7 @@ const PlatformOrganizationsPage: React.FC = () => {
     },
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(['platformOrganizations']);
+        queryClient.invalidateQueries(orgQueryKey);
         queryClient.invalidateQueries(['platformStats']);
         setUpdateError(null);
       },
@@ -112,13 +140,30 @@ const PlatformOrganizationsPage: React.FC = () => {
     },
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(['platformOrganizations']);
+        queryClient.invalidateQueries(orgQueryKey);
         queryClient.invalidateQueries(['platformStats']);
         setCreateOpen(false);
         setNewOrg({ name: '', owner_email: '', owner_password: '', plan: 'free', max_users: 3, max_visits_per_month: 500 });
       },
       onError: (err: any) => {
         setUpdateError(err.response?.data?.detail || 'Ошибка при создании организации');
+      },
+    }
+  );
+
+  const deleteOrgMutation = useMutation(
+    async (orgId: number) => {
+      await api.delete(`/platform/organizations/${orgId}`);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(orgQueryKey);
+        queryClient.invalidateQueries(['platformStats']);
+        setDeleteOrg(null);
+      },
+      onError: (err: any) => {
+        setUpdateError(err.response?.data?.detail || 'Ошибка при удалении организации');
+        setDeleteOrg(null);
       },
     }
   );
@@ -225,12 +270,30 @@ const PlatformOrganizationsPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Create org button */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      {/* Toolbar */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 2, flexWrap: 'wrap' }}>
         <Typography variant="subtitle1" fontWeight={600}>Организации</Typography>
-        <Button variant="contained" size="small" startIcon={<Add />} onClick={() => setCreateOpen(true)}>
-          Создать организацию
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <TextField
+            size="small"
+            placeholder="Поиск по названию..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ width: 220 }}
+          />
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<Download />}
+            onClick={() => organizations && exportOrgsToCSV(organizations)}
+            disabled={!organizations || organizations.length === 0}
+          >
+            CSV
+          </Button>
+          <Button variant="contained" size="small" startIcon={<Add />} onClick={() => setCreateOpen(true)}>
+            Создать
+          </Button>
+        </Box>
       </Box>
 
       {/* Organizations table */}
@@ -244,6 +307,7 @@ const PlatformOrganizationsPage: React.FC = () => {
               <TableCell sx={{ fontWeight: 700 }} align="center">Пользователи</TableCell>
               <TableCell sx={{ fontWeight: 700 }} align="center">Активна</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Создана</TableCell>
+              <TableCell sx={{ fontWeight: 700 }} align="center">Действия</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -283,7 +347,7 @@ const PlatformOrganizationsPage: React.FC = () => {
                   </TableCell>
                   <TableCell align="center">
                     <Typography variant="body2">
-                      {org.users_count}
+                      {org.user_count ?? org.users_count ?? 0}
                     </Typography>
                   </TableCell>
                   <TableCell align="center">
@@ -300,11 +364,18 @@ const PlatformOrganizationsPage: React.FC = () => {
                       {formatDate(org.created_at)}
                     </Typography>
                   </TableCell>
+                  <TableCell align="center">
+                    <Tooltip title="Удалить организацию">
+                      <IconButton size="small" color="error" onClick={() => setDeleteOrg(org)}>
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                   <Typography variant="body2" color="text.secondary">
                     Нет организаций
                   </Typography>
@@ -314,6 +385,8 @@ const PlatformOrganizationsPage: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Create org dialog */}
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Создать организацию</DialogTitle>
         <DialogContent>
@@ -340,6 +413,27 @@ const PlatformOrganizationsPage: React.FC = () => {
           <Button variant="contained" onClick={() => createOrgMutation.mutate(newOrg)}
             disabled={!newOrg.name || !newOrg.owner_email || !newOrg.owner_password || createOrgMutation.isLoading}>
             Создать
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete org dialog */}
+      <Dialog open={!!deleteOrg} onClose={() => setDeleteOrg(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Удалить организацию?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Организация <strong>{deleteOrg?.name}</strong> и все её данные (пользователи, визиты, настройки) будут удалены безвозвратно.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteOrg(null)}>Отмена</Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={deleteOrgMutation.isLoading}
+            onClick={() => deleteOrg && deleteOrgMutation.mutate(deleteOrg.id)}
+          >
+            Удалить
           </Button>
         </DialogActions>
       </Dialog>
