@@ -50,6 +50,8 @@ services:
       - FTP_PASSWORD=${FTP_PASSWORD:-}
       - FTP_DIRECTORY=${FTP_DIRECTORY:-}
       - FTP_FILENAME=${FTP_FILENAME:-}
+      - PLATFORM_ADMIN_TOKEN=${PLATFORM_ADMIN_TOKEN:-}
+      - ADMIN_DOMAIN=${ADMIN_DOMAIN:-}
     volumes:
       - ./upload:/app/upload
     ports:
