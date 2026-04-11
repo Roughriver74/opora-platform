@@ -1,10 +1,9 @@
 import logging
 import secrets
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 
 from app.config import Settings as settings
@@ -22,19 +21,22 @@ router = APIRouter()
 @router.post("/login", response_model=dict)
 async def login_for_access_token(
     request: Request,
-    data: Optional[Dict[str, Any]] = Body(None),
-    form_data: OAuth2PasswordRequestForm = Depends(None),
     uow: UnitOfWork = Depends(get_uow),
 ) -> Any:
-    # Если данные приходят в формате JSON (от фронтенда)
-    if data and "email" in data and "password" in data:
-        username = data["email"]
-        password = data["password"]
-    # Если данные приходят в формате формы (от Swagger UI)
-    elif form_data:
-        username = form_data.username
-        password = form_data.password
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = await request.json()
+        username = body.get("email") or body.get("username")
+        password = body.get("password")
+    elif "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type:
+        form = await request.form()
+        username = form.get("username") or form.get("email")
+        password = form.get("password")
     else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request format"
+        )
+    if not username or not password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request format"
         )
