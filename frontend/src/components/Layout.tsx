@@ -107,7 +107,7 @@ export const Layout: React.FC = ({ children }: { children?: React.ReactNode }) =
   const handleCreateVisit = (clinic: BitrixCompany) => {
     setSearchDialogOpen(false);
     navigate(`/visits/new/${clinic.ID}`, {
-      state: { companyId: clinic.ID, companyName: clinic.TITLE, companyInn: clinic.UF_CRM_1741267701427 },
+      state: { companyId: clinic.ID, companyName: clinic.TITLE, companyInn: clinic.inn || clinic.dynamic_fields?.inn || '' },
     });
   };
 

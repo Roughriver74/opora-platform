@@ -1,26 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Card,
-  CardContent,
   CircularProgress,
   Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CardActionArea,
-  Avatar,
-  Divider,
-  Fab,
   Alert,
   Chip,
   Grid,
   Button,
+  Fab,
+  Avatar,
+  TextField,
+  TablePagination,
+  InputAdornment,
   useMediaQuery,
   useTheme
 } from '@mui/material';
@@ -28,6 +22,7 @@ import { LoadingButton } from '@mui/lab';
 import PersonIcon from '@mui/icons-material/Person';
 import SyncIcon from '@mui/icons-material/Sync';
 import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { contactService, Contact } from '../services/contactService';
 
@@ -37,9 +32,15 @@ const ContactsListPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const { data: contacts, isLoading, isError } = useQuery(
-    ['contacts'],
-    () => contactService.getContacts()
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+
+  const { data, isLoading, isError } = useQuery(
+    ['contacts', page, pageSize, search],
+    () => contactService.getContacts(page + 1, pageSize, search || undefined),
+    { keepPreviousData: true }
   );
 
   const syncMutation = useMutation(
@@ -50,6 +51,15 @@ const ContactsListPage: React.FC = () => {
       }
     }
   );
+
+  const handleSearch = () => {
+    setSearch(searchInput);
+    setPage(0);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSearch();
+  };
 
   const getSyncStatusSx = (status: string) => {
     switch (status) {
@@ -64,7 +74,7 @@ const ContactsListPage: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
         <CircularProgress />
@@ -82,9 +92,12 @@ const ContactsListPage: React.FC = () => {
     );
   }
 
+  const contacts = data?.items || [];
+  const total = data?.total || 0;
+
   return (
     <Box p={3} pb={12}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>Контакты</Typography>
         <Box display="flex" gap={1}>
           {!isMobile && (
@@ -109,28 +122,51 @@ const ContactsListPage: React.FC = () => {
         </Box>
       </Box>
 
-      {contacts?.length === 0 ? (
+      <Box mb={2}>
+        <TextField
+          size="small"
+          placeholder="Поиск по имени..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onKeyPress={handleKeyPress}
+          onBlur={handleSearch}
+          fullWidth
+          sx={{ maxWidth: 400 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" />
+              </InputAdornment>
+            ),
+          }}
+        />
+      </Box>
+
+      {contacts.length === 0 ? (
         <Alert severity="info">
-          Контакты не найдены. Создайте новый контакт.
+          {search ? `Контакты по запросу "${search}" не найдены.` : 'Контакты не найдены. Создайте новый контакт.'}
         </Alert>
       ) : (
-        <Grid container spacing={2}>
-          {contacts?.map((contact: Contact) => {
-            const email = contact.dynamic_fields?.email
-              ? Array.isArray(contact.dynamic_fields.email)
-                ? contact.dynamic_fields.email.map((item: any) => item.VALUE).join(', ')
-                : contact.dynamic_fields.email
-              : '';
-            const phone = contact.dynamic_fields?.phone
-              ? Array.isArray(contact.dynamic_fields.phone)
-                ? contact.dynamic_fields.phone.map((item: any) => item.VALUE).join(', ')
-                : contact.dynamic_fields.phone
-              : '';
+        <>
+          <Grid container spacing={2}>
+            {contacts.map((contact: Contact) => {
+              const email = contact.dynamic_fields?.email
+                ? Array.isArray(contact.dynamic_fields.email)
+                  ? contact.dynamic_fields.email.map((item: any) => item.VALUE).join(', ')
+                  : contact.dynamic_fields.email
+                : '';
+              const phone = contact.dynamic_fields?.phone
+                ? Array.isArray(contact.dynamic_fields.phone)
+                  ? contact.dynamic_fields.phone.map((item: any) => item.VALUE).join(', ')
+                  : contact.dynamic_fields.phone
+                : '';
 
-            return (
-              <Grid item xs={12} md={6} lg={4} key={contact.id}>
-                <Card sx={{ borderRadius: 4, overflow: 'hidden', height: '100%' }}>
-                  <CardActionArea onClick={() => navigate(`/contacts/${contact.id}`)}>
+              return (
+                <Grid item xs={12} md={6} lg={4} key={contact.id}>
+                  <Card
+                    sx={{ borderRadius: 4, overflow: 'hidden', height: '100%', cursor: 'pointer' }}
+                    onClick={() => navigate(`/contacts/${contact.id}`)}
+                  >
                     <Box display="flex" alignItems="center" p={2}>
                       <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
                         <PersonIcon />
@@ -154,12 +190,28 @@ const ContactsListPage: React.FC = () => {
                         <ArrowForwardIosIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                       </Box>
                     </Box>
-                  </CardActionArea>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+
+          <TablePagination
+            component="div"
+            count={total}
+            page={page}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            rowsPerPage={pageSize}
+            onRowsPerPageChange={(e) => {
+              setPageSize(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 20, 50]}
+            labelRowsPerPage="На странице:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`}
+            sx={{ mt: 2 }}
+          />
+        </>
       )}
 
       {isMobile && (

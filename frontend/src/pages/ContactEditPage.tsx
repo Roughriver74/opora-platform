@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   MultiFieldDisplay,
@@ -30,6 +30,7 @@ import {
   FormControlLabel,
   FormHelperText,
   Fab,
+  Autocomplete,
   useTheme,
   useMediaQuery,
 } from '@mui/material'
@@ -43,6 +44,8 @@ import SyncIcon from '@mui/icons-material/Sync'
 import SaveIcon from '@mui/icons-material/Save'
 import PersonIcon from '@mui/icons-material/Person'
 import SyncProblemIcon from '@mui/icons-material/SyncProblem'
+import BusinessIcon from '@mui/icons-material/Business'
+import { clinicService, Clinic } from '../services/clinicService'
 
 // Расширенный интерфейс для данных, получаемых из Bitrix24
 interface BitrixContactData {
@@ -80,6 +83,22 @@ const ContactEditPage: React.FC = () => {
   const [lockFormUpdate, setLockFormUpdate] = useState(false)
   // Сохраняем последние значения формы для восстановления
   const [lastFormValues, setLastFormValues] = useState<Record<string, any>>({})
+
+  // Company selection for new contact creation
+  const isCreateMode = !id
+  const [selectedCompany, setSelectedCompany] = useState<Clinic | null>(null)
+  const [companyOptions, setCompanyOptions] = useState<Clinic[]>([])
+  const [companySearchInput, setCompanySearchInput] = useState('')
+
+  const handleCompanySearch = useCallback(async (searchTerm: string) => {
+    if (searchTerm.length < 2) return
+    try {
+      const result = await clinicService.getClinics({ page: 1, page_size: 10, search: searchTerm })
+      setCompanyOptions(result.items || [])
+    } catch (e) {
+      console.error('Error searching companies:', e)
+    }
+  }, [])
 
   // Синхронизация данных с Bitrix24 только для текущего контакта
   const syncMutation = useMutation(
@@ -370,15 +389,28 @@ const ContactEditPage: React.FC = () => {
   }, [bitrixContact, contact, formValues, fieldMappings, isBitrixLoading, bitrixTimeout, lockFormUpdate, updateBitrixMutation.isSuccess])
 
   // Мутация для обновления контакта
+  const createMutation = useMutation(
+    async (data: any) => {
+      return await contactService.createContact(data)
+    },
+    {
+      onSuccess: (data: any) => {
+        queryClient.invalidateQueries(['contacts'])
+        navigate(`/contacts/${data.id}`)
+      },
+      onError: (error: any) => {
+        console.error('Ошибка при создании контакта:', error)
+      },
+    }
+  )
+
   const updateMutation = useMutation(
     async (data: ContactUpdate) => {
       if (!id) throw new Error('ID контакта не указан')
-      console.log(`Обновление контакта с ID ${id}:`, data)
       return await contactService.updateContact(Number(id), data)
     },
     {
       onSuccess: data => {
-        console.log('Контакт успешно обновлен:', data)
         queryClient.invalidateQueries(['contact', id])
       },
       onError: error => {
@@ -392,20 +424,38 @@ const ContactEditPage: React.FC = () => {
   // Обработка отправки формы
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    console.log('Отправка формы с данными:', formValues)
+
+    // Validation
+    if (!formValues.name?.trim()) {
+      setFormErrors({ name: 'Имя контакта обязательно' })
+      return
+    }
 
     // Сохраняем текущие значения формы
     setLastFormValues({ ...formValues })
 
     try {
-      // Подготавливаем данные для обновления
+      if (isCreateMode) {
+        // CREATE mode
+        const createData: any = {
+          name: formValues.name,
+          contact_type: formValues.contact_type || 'LPR',
+          dynamic_fields: formValues.dynamic_fields || {},
+        }
+        if (selectedCompany) {
+          createData.company_id = selectedCompany.id
+        }
+        await createMutation.mutateAsync(createData)
+        return
+      }
+
+      // UPDATE mode
       const updateData: ContactUpdate = {
         name: formValues.name,
         contact_type: formValues.contact_type,
         dynamic_fields: formValues.dynamic_fields || {},
       }
 
-      // Обновляем контакт в локальной базе данных
       await updateMutation.mutateAsync(updateData)
 
       // Если есть bitrix_id, обновляем данные в Bitrix24
@@ -606,6 +656,29 @@ const ContactEditPage: React.FC = () => {
               Основная информация
             </Typography>
             <Grid container spacing={3}>
+              {isCreateMode && (
+                <Grid item xs={12}>
+                  <Autocomplete
+                    options={companyOptions}
+                    getOptionLabel={(option) => `${option.name}${option.inn ? ` (ИНН: ${option.inn})` : ''}`}
+                    value={selectedCompany}
+                    onChange={(_, value) => setSelectedCompany(value)}
+                    onInputChange={(_, value) => {
+                      setCompanySearchInput(value)
+                      handleCompanySearch(value)
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Привязать к компании (необязательно)"
+                        placeholder="Начните вводить название компании..."
+                      />
+                    )}
+                    noOptionsText={companySearchInput.length < 2 ? 'Введите минимум 2 символа' : 'Компании не найдены'}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                  />
+                </Grid>
+              )}
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth

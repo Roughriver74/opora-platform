@@ -10,7 +10,7 @@ from app.config import BITRIX_FIELDS_MAP
 from app.emuns.clinic_enum import SyncStatus
 from app.models import Company, Contact, company_contacts
 from app.schemas.contact_schema import ContactUpdate
-from app.services.bitrix24 import Bitrix24Client, require_bitrix24
+from app.services.bitrix24 import Bitrix24ApiError, Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
 
@@ -28,6 +28,38 @@ class ContactService:
         if current_user and not current_user.is_platform_admin:
             query = query.where(Contact.organization_id == current_user.organization_id)
         return (await self.session.execute(query)).scalars().all()
+
+    @logger()
+    async def get_contacts_paginated(self, current_user=None, page: int = 1, page_size: int = 20, search: str = None):
+        from math import ceil
+        from sqlalchemy import func as sa_func
+
+        query = select(Contact)
+        count_query = select(sa_func.count(Contact.id))
+
+        if current_user and not current_user.is_platform_admin:
+            query = query.where(Contact.organization_id == current_user.organization_id)
+            count_query = count_query.where(Contact.organization_id == current_user.organization_id)
+
+        if search:
+            search_filter = Contact.name.ilike(f"%{search}%")
+            query = query.where(search_filter)
+            count_query = count_query.where(search_filter)
+
+        total = await self.session.scalar(count_query)
+        total_pages = ceil(total / page_size) if total else 0
+
+        query = query.order_by(Contact.id.desc())
+        query = query.offset((page - 1) * page_size).limit(page_size)
+        contacts = (await self.session.execute(query)).scalars().all()
+
+        return {
+            "items": contacts,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+        }
 
     @logger()
     async def get_company_contacts(
@@ -168,9 +200,12 @@ class ContactService:
                 await self._update_contact_from_bitrix(contact, bitrix_contact)
                 contact.sync_status = SyncStatus.SYNCED.value
                 contact.last_synced = datetime.now()
+        except Bitrix24ApiError as e:
+            contact.sync_status = SyncStatus.ERROR.value
+            contact.sync_error = str(e)
         except Exception as e:
             contact.sync_status = SyncStatus.ERROR.value
-            contact.error_message = str(e)  # Добавляем сообщение об ошибке
+            contact.sync_error = f"Неожиданная ошибка: {str(e)}"
         finally:
             await self.session.commit()
             await self.session.refresh(contact)
@@ -203,7 +238,7 @@ class ContactService:
             name=contact.name,
             contact_type=contact.contact_type,
             dynamic_fields=contact.dynamic_fields or {},
-            bitrix_id=contact.bitrix_id,
+            bitrix_id=getattr(contact, 'bitrix_id', None),
             sync_status=SyncStatus.PENDING.value,
             organization_id=current_user.organization_id if current_user else None,
         )
@@ -211,6 +246,19 @@ class ContactService:
         self.session.add(db_contact)
         await self.session.commit()
         await self.session.refresh(db_contact)
+
+        # Link contact to company if company_id provided
+        company_id = getattr(contact, 'company_id', None)
+        if company_id:
+            company = (
+                await self.session.execute(
+                    select(Company).where(Company.id == company_id)
+                )
+            ).scalars().first()
+            if company:
+                db_contact.companies.append(company)
+                await self.session.commit()
+                await self.session.refresh(db_contact)
 
         if not contact.bitrix_id and self.bitrix24 is not None:
             try:
@@ -241,15 +289,22 @@ class ContactService:
                 if bitrix_result:
                     db_contact.bitrix_id = int(bitrix_result)
                     db_contact.sync_status = SyncStatus.SYNCED.value
+                    db_contact.sync_error = None
                     db_contact.last_synced = datetime.now()
                     await self.session.commit()
                     await self.session.refresh(db_contact)
                 else:
                     db_contact.sync_status = SyncStatus.ERROR.value
+                    db_contact.sync_error = "Bitrix24 вернул пустой результат при создании контакта"
                     await self.session.commit()
 
+            except Bitrix24ApiError as e:
+                db_contact.sync_status = SyncStatus.ERROR.value
+                db_contact.sync_error = str(e)
+                await self.session.commit()
             except Exception as e:
                 db_contact.sync_status = SyncStatus.ERROR.value
+                db_contact.sync_error = f"Неожиданная ошибка: {str(e)}"
                 await self.session.commit()
 
         return db_contact
@@ -306,15 +361,23 @@ class ContactService:
 
                 if success:
                     db_contact.sync_status = SyncStatus.SYNCED.value
+                    db_contact.sync_error = None
                     db_contact.last_synced = datetime.now()
                 else:
                     db_contact.sync_status = SyncStatus.ERROR.value
+                    db_contact.sync_error = "Bitrix24 вернул неуспешный результат при обновлении"
 
                 await self.session.commit()
                 await self.session.refresh(db_contact)
 
+            except Bitrix24ApiError as e:
+                db_contact.sync_status = SyncStatus.ERROR.value
+                db_contact.sync_error = str(e)
+                await self.session.commit()
+                await self.session.refresh(db_contact)
             except Exception as e:
                 db_contact.sync_status = SyncStatus.ERROR.value
+                db_contact.sync_error = f"Неожиданная ошибка: {str(e)}"
                 await self.session.commit()
                 await self.session.refresh(db_contact)
 
@@ -375,8 +438,12 @@ class ContactService:
 
                 if db_contact:
                     db_contact.name = name
-                    db_contact.dynamic_fields = dynamic_fields
+                    # Merge dynamic_fields instead of overwriting
+                    existing_dynamic = db_contact.dynamic_fields or {}
+                    existing_dynamic.update(dynamic_fields)
+                    db_contact.dynamic_fields = existing_dynamic
                     db_contact.sync_status = SyncStatus.SYNCED.value
+                    db_contact.sync_error = None
                     db_contact.last_synced = datetime.now()
                 else:
                     db_contact = Contact(
@@ -394,7 +461,13 @@ class ContactService:
                 await self.session.refresh(db_contact)
                 updated_contacts.append(db_contact)
 
-            except Exception:
+            except Bitrix24ApiError as e:
+                import logging
+                logging.getLogger(__name__).error("Ошибка sync контакта %s: %s", bitrix_contact.get("ID", "?"), str(e))
+                await self.session.rollback()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error("Неожиданная ошибка sync контакта %s: %s", bitrix_contact.get("ID", "?"), str(e))
                 await self.session.rollback()
         return updated_contacts
 

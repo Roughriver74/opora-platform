@@ -81,7 +81,7 @@ export const DynamicFields: React.FC<DynamicFieldsProps> = ({
 			'comments',
 			'комментарий',
 			'коммент',
-			'UF_CRM_6679726ED58C3',
+			// Bitrix поля комментариев определяются через display_name, не через хардкод ID
 		]
 		return commentKeywords.some(
 			keyword =>
@@ -278,8 +278,10 @@ export const DynamicFields: React.FC<DynamicFieldsProps> = ({
 	const renderField = (field: FieldMapping) => {
 		const fieldName = `dynamic_${field.app_field_name}`
 		const fieldValue = formData[fieldName] || ''
-		// Специальная проверка для блокировки поля даты визита с ID 1732026275473
+		// Проверка для блокировки полей даты визита (по типу поля, без хардкода field ID)
 		const isDateField =
+			field.field_type === 'date' ||
+			field.field_type === 'datetime' ||
 			field.app_field_name === '1732026275473' ||
 			field.app_field_name === 'ufCrm18_1732026275473'
 		const isVisitCompleted =

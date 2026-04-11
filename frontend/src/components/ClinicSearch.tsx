@@ -120,7 +120,7 @@ export const ClinicSearch: React.FC<ClinicSearchProps> = ({ onSelectCompany }) =
                     secondary={
                       <Box>
                         <Typography variant="body2" component="span">
-                          ИНН: {company.UF_CRM_1741267701427 || 'Не указан'}
+                          ИНН: {company.inn || company.dynamic_fields?.inn || 'Не указан'}
                         </Typography>
                         {company.ADDRESS && (
                           <Typography variant="body2" component="div">

@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -14,6 +15,17 @@ from app.config import (
 from app.config import Settings as settings  # noqa
 from app.database_session import SessionLocal
 from app.utils.logger import logger
+
+log = logging.getLogger(__name__)
+
+
+class Bitrix24ApiError(Exception):
+    """Raised when Bitrix24 API returns an error or is unreachable."""
+
+    def __init__(self, message: str, status_code: int = 0, error_code: str = ""):
+        self.status_code = status_code
+        self.error_code = error_code
+        super().__init__(message)
 
 
 class Bitrix24Client:
@@ -36,13 +48,45 @@ class Bitrix24Client:
                     text = await response.text()
                     try:
                         data = json.loads(text)
-                        if response.status >= 400:
-                            return {"result": []}
-                        return data
                     except json.JSONDecodeError:
-                        return {"result": []}
-        except aiohttp.ClientError:
-            return {"result": []}
+                        log.error("Bitrix24 returned non-JSON response for %s: %s", method, text[:200])
+                        raise Bitrix24ApiError(
+                            f"Невалидный ответ от Bitrix24 ({method}): {text[:200]}",
+                            status_code=response.status,
+                        )
+
+                    if response.status >= 400:
+                        error = data.get("error", "")
+                        error_desc = data.get("error_description", str(data))
+                        log.error("Bitrix24 API error %s [%d]: %s — %s", method, response.status, error, error_desc)
+                        raise Bitrix24ApiError(
+                            f"Ошибка Bitrix24 ({method}): {error} — {error_desc}",
+                            status_code=response.status,
+                            error_code=error,
+                        )
+
+                    # Bitrix24 may return 200 with error in body
+                    if "error" in data and data.get("error"):
+                        error = data["error"]
+                        error_desc = data.get("error_description", "")
+                        log.warning("Bitrix24 API logical error %s: %s — %s", method, error, error_desc)
+                        raise Bitrix24ApiError(
+                            f"Ошибка Bitrix24 ({method}): {error} — {error_desc}",
+                            status_code=response.status,
+                            error_code=error,
+                        )
+
+                    return data
+        except Bitrix24ApiError:
+            raise
+        except aiohttp.ClientError as e:
+            log.error("Bitrix24 network error for %s: %s", method, str(e))
+            raise Bitrix24ApiError(f"Ошибка сети при обращении к Bitrix24 ({method}): {str(e)}") from e
+        except Exception as e:
+            if isinstance(e, Bitrix24ApiError):
+                raise
+            log.error("Unexpected error calling Bitrix24 %s: %s", method, str(e))
+            raise Bitrix24ApiError(f"Неожиданная ошибка Bitrix24 ({method}): {str(e)}") from e
 
     @logger()
     async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
@@ -422,6 +466,39 @@ async def get_bitrix_client() -> Optional[Bitrix24Client]:
         return None
 
     # Ensure trailing slash for correct URL joining
+    if not webhook_url.endswith("/"):
+        webhook_url += "/"
+
+    return Bitrix24Client(webhook_url)
+
+
+async def get_org_bitrix_client(organization_id: int) -> Optional[Bitrix24Client]:
+    """
+    Get Bitrix24 client for a specific organization.
+    Priority: Organization.bitrix24_webhook_url → global_settings → env var.
+    """
+    from app.models import Organization
+
+    webhook_url: Optional[str] = None
+
+    # 1. Try organization-specific setting first
+    try:
+        async with SessionLocal() as session:
+            result = await session.execute(
+                select(Organization.bitrix24_webhook_url).where(
+                    Organization.id == organization_id
+                )
+            )
+            org_webhook = result.scalar_one_or_none()
+            if org_webhook and org_webhook.strip():
+                webhook_url = org_webhook.strip()
+    except Exception:
+        pass
+
+    # 2. Fall back to global client
+    if not webhook_url:
+        return await get_bitrix_client()
+
     if not webhook_url.endswith("/"):
         webhook_url += "/"
 

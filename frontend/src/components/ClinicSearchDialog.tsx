@@ -173,9 +173,9 @@ export const ClinicSearchDialog: React.FC<ClinicSearchDialogProps> = ({
                       primary={clinic.TITLE} 
                       secondary={
                         <Box>
-                          {clinic.UF_CRM_1741267701427 && (
+                          {(clinic.inn || clinic.dynamic_fields?.inn) && (
                             <Typography variant="body2" component="span" display="block">
-                              ИНН: {clinic.UF_CRM_1741267701427}
+                              ИНН: {clinic.inn || clinic.dynamic_fields?.inn}
                             </Typography>
                           )}
                           {clinic.ADDRESS && (

@@ -71,14 +71,8 @@ const fieldTypes = [
 ];
 
 const mapBitrixTypeToAppType = (bitrixType: string, fieldId?: string): string => {
-  const knownAddressFields = [
-    '6679726eb1750',
-    'uf_crm_6679726eb1750',
-    'UF_CRM_6679726EB1750',
-    'ADDRESS',
-  ];
+  // Определяем адресные поля по семантике, без хардкода ID
   if (fieldId && (
-    knownAddressFields.includes(fieldId) ||
     fieldId.toLowerCase().includes('address') ||
     fieldId.toLowerCase().includes('адрес')
   )) {

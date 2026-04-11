@@ -526,7 +526,7 @@ async def sync_clinics_from_bitrix(
     uow: UnitOfWork = Depends(get_uow), current_user=Depends(get_current_user)
 ):
     """Sync clinics from Bitrix24 to local database."""
-    return await uow.clinic.sync_clinics_from_bitrix()
+    return await uow.clinic.sync_clinics_from_bitrix(current_user=current_user)
 
 
 @router.post("/upload-excel", response_model=dict)

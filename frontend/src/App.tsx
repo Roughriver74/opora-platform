@@ -22,11 +22,14 @@ import AuthProvider from './context/AuthContext';
 import { SidebarProvider } from './context/SidebarContext';
 import AdminRoute, { PlatformAdminRoute } from './components/AdminRoute';
 import NetworkClinicEditPage from './pages/NetworkClinicEditPage';
+import DoctorsListPage from './pages/DoctorsListPage';
+import DoctorEditPage from './pages/DoctorEditPage';
 import DeleteVisits from './pages/admin/DeleteVisits';
-import VisitFormEditorPage from './pages/admin/VisitFormEditorPage';
+// Legacy VisitFormEditorPage removed — replaced by FormBuilderPage
 import BillingPage from './pages/admin/BillingPage';
 import FormBuilderPage from './components/FormBuilder/FormBuilderPage';
 import HelpPage from './pages/HelpPage';
+import ErrorBoundary from './components/ErrorBoundary';
 import PlatformOrganizationsPage from './pages/platform/PlatformOrganizationsPage';
 import PlatformDashboardPage from './pages/platform/PlatformDashboardPage';
 import PlatformUsersPage from './pages/platform/PlatformUsersPage';
@@ -62,7 +65,9 @@ function App() {
               <ProtectedRoute>
                 <AuthProvider>
                   <SidebarProvider>
-                    <Layout />
+                    <ErrorBoundary>
+                      <Layout />
+                    </ErrorBoundary>
                   </SidebarProvider>
                 </AuthProvider>
               </ProtectedRoute>
@@ -79,7 +84,9 @@ function App() {
               <Route path="contacts" element={<ContactsListPage />} />
               <Route path="contacts/new" element={<ContactEditPage />} />
               <Route path="contacts/:id" element={<ContactEditPage />} />
-              <Route path="doctors" element={<div>Doctors Page (Coming Soon)</div>} />
+              <Route path="doctors" element={<DoctorsListPage />} />
+              <Route path="doctors/new" element={<DoctorEditPage />} />
+              <Route path="doctors/:id" element={<DoctorEditPage />} />
               <Route path="profile" element={<ProfilePage />} />
               {/* Административные маршруты с проверкой прав */}
               <Route path="admin/field-mapping" element={<AdminRoute><FieldMappingPage /></AdminRoute>} />
@@ -87,7 +94,8 @@ function App() {
               <Route path="admin/user-management" element={<AdminRoute><UserManagementPage /></AdminRoute>} />
               <Route path="admin/settings" element={<AdminRoute><GlobalSettingsPage /></AdminRoute>} />
               <Route path="admin/billing" element={<AdminRoute><BillingPage /></AdminRoute>} />
-              <Route path="admin/visit-form" element={<AdminRoute><VisitFormEditorPage /></AdminRoute>} />
+              {/* Legacy visit-form redirects to form-builder */}
+              <Route path="admin/visit-form" element={<Navigate to="/admin/form-builder" replace />} />
               <Route path="admin/form-builder" element={<AdminRoute><FormBuilderPage /></AdminRoute>} />
               <Route path="help" element={<HelpPage />} />
               {/* Platform admin */}

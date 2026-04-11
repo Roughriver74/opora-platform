@@ -273,7 +273,8 @@ export const VisitDetailsPage: React.FC = () => {
       return company.address;
     }
     if (company.dynamic_fields && typeof company.dynamic_fields === 'object') {
-      const addressKeys = ['address', 'ADDRESS', '6679726eb1750', 'uf_crm_6679726eb1750', 'UF_CRM_6679726eb1750'];
+      // Ищем адрес по семантическому ключу и UF_CRM_ полям с адресными данными
+      const addressKeys = ['address', 'ADDRESS', ...Object.keys(company.dynamic_fields).filter(k => k.toLowerCase().includes('address'))];
       for (const k of addressKeys) {
         if (company.dynamic_fields[k] && typeof company.dynamic_fields[k] === 'string' && company.dynamic_fields[k].trim() !== '') {
           return company.dynamic_fields[k];

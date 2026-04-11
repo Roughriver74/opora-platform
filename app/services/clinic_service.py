@@ -22,7 +22,7 @@ from app.config import (
 )
 from app.database_session import SessionLocal
 from app.emuns.clinic_enum import SyncStatus
-from app.models import ClinicAddress, Company, Visit
+from app.models import ClinicAddress, Company, FormTemplate, Visit
 from app.schemas.clinic_schema import (
     AddressSchema,
     AdvancedFilterParams,
@@ -35,7 +35,7 @@ from app.schemas.clinic_schema import (
     GetAddressSchema,
     PaginatedResponse,
 )
-from app.services.bitrix24 import Bitrix24Client, require_bitrix24
+from app.services.bitrix24 import Bitrix24ApiError, Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
 
@@ -416,10 +416,13 @@ class ClinicService:
         return clinic
 
     @logger()
-    async def _sync_clinic_with_bitrix_for_get(self, clinic):
-        """Синхронизирует данные клиники с Bitrix24."""
+    async def pull_from_bitrix(self, clinic):
+        """Получает данные компании из Bitrix24 и обновляет локальную запись."""
         if self.bitrix24 is None:
             return
+        if not clinic.bitrix_id:
+            return
+
         try:
             bitrix_company = await self.bitrix24.get_company(clinic.bitrix_id)
             if not bitrix_company:
@@ -427,20 +430,38 @@ class ClinicService:
 
             clinic.name = bitrix_company.get("TITLE", clinic.name)
 
-            dynamic_fields = await self._extract_dynamic_fields(bitrix_company)
-            clinic.dynamic_fields = dynamic_fields
+            new_dynamic_fields = await self._extract_dynamic_fields(bitrix_company)
+            # Merge instead of overwrite
+            existing_dynamic = clinic.dynamic_fields or {}
+            existing_dynamic.update(new_dynamic_fields)
+            clinic.dynamic_fields = existing_dynamic
 
             clinic.sync_status = SyncStatus.SYNCED.value
+            clinic.sync_error = None
             clinic.last_synced = datetime.now()
 
             await self.session.commit()
             await self.session.refresh(clinic)
 
-        except Exception as e:
+        except Bitrix24ApiError as e:
+            clinic.sync_status = SyncStatus.ERROR.value
+            clinic.sync_error = str(e)
+            await self.session.commit()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error synchronizing clinic {clinic.id} with Bitrix24: {str(e)}",
+                detail=f"Ошибка синхронизации клиники {clinic.id} с Bitrix24: {str(e)}",
             )
+        except Exception as e:
+            clinic.sync_status = SyncStatus.ERROR.value
+            clinic.sync_error = f"Неожиданная ошибка: {str(e)}"
+            await self.session.commit()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Ошибка синхронизации клиники {clinic.id} с Bitrix24: {str(e)}",
+            )
+
+    # Backward compatibility alias
+    _sync_clinic_with_bitrix_for_get = pull_from_bitrix
 
     @staticmethod
     @logger()
@@ -474,10 +495,14 @@ class ClinicService:
 
         try:
             await self.sync_clinic_with_bitrix_for_create(db_clinic, clinic)
-        except Exception:
+        except Bitrix24ApiError as e:
             db_clinic.sync_status = SyncStatus.ERROR.value
+            db_clinic.sync_error = str(e)
             await self.session.commit()
-            # Do NOT re-raise: company is created locally, Bitrix sync failure is non-fatal
+        except Exception as e:
+            db_clinic.sync_status = SyncStatus.ERROR.value
+            db_clinic.sync_error = f"Неожиданная ошибка: {str(e)}"
+            await self.session.commit()
 
         return db_clinic
 
@@ -506,25 +531,8 @@ class ClinicService:
 
     @logger()
     async def sync_clinic_with_bitrix_for_create(self, db_clinic, clinic: ClinicCreate):
-        """Синхронизирует клинику с Bitrix24."""
-        if self.bitrix24 is None:
-            db_clinic.sync_status = SyncStatus.PENDING.value
-            await self.session.commit()
-            await self.session.refresh(db_clinic)
-            return
-
-        fields = await self._prepare_bitrix_fields(clinic)
-        result = await self.bitrix24.create_company(fields)
-
-        if result:
-            db_clinic.bitrix_id = result
-            db_clinic.sync_status = SyncStatus.SYNCED.value
-            db_clinic.last_synced = datetime.utcnow()
-        else:
-            db_clinic.sync_status = SyncStatus.ERROR.value
-
-        await self.session.commit()
-        await self.session.refresh(db_clinic)
+        """Синхронизирует клинику с Bitrix24 при создании. Делегирует в push_to_bitrix."""
+        await self.push_to_bitrix(db_clinic, clinic_schema=clinic)
 
     @staticmethod
     @logger()
@@ -578,14 +586,15 @@ class ClinicService:
 
         if db_clinic.bitrix_id and self.bitrix24 is not None:
             try:
-                await self._sync_with_bitrix(db_clinic)
+                await self.push_to_bitrix(db_clinic)
+            except Bitrix24ApiError as e:
+                db_clinic.sync_status = SyncStatus.ERROR.value
+                db_clinic.sync_error = str(e)
+                await self.session.commit()
             except Exception as e:
                 db_clinic.sync_status = SyncStatus.ERROR.value
+                db_clinic.sync_error = f"Неожиданная ошибка: {str(e)}"
                 await self.session.commit()
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Error synchronizing clinic with Bitrix24: {str(e)}",
-                )
         return db_clinic
 
     @staticmethod
@@ -668,39 +677,118 @@ class ClinicService:
             setattr(db_clinic, key, value)
 
     @logger()
-    async def _sync_with_bitrix(
-        self, db_clinic
-    ):  # TODO переписать в один метод синхронизации клиник с битрой
-        """Синхронизирует клинику с Bitrix24."""
-        bitrix_data = {
-            "TITLE": db_clinic.name,
-            "COMPANY_TYPE": db_clinic.company_type or "",
-        }
+    async def push_to_bitrix(self, db_clinic, clinic_schema=None):
+        """
+        Отправляет данные компании в Bitrix24.
+        Создаёт новую компанию если bitrix_id отсутствует, обновляет если есть.
+        Использует FormTemplate для маппинга полей если доступен.
+        """
+        if self.bitrix24 is None:
+            db_clinic.sync_status = SyncStatus.PENDING.value
+            await self.session.commit()
+            return
 
-        if db_clinic.dynamic_fields:
-            bitrix_data.update(
-                {
-                    "ADDRESS": db_clinic.dynamic_fields.get("address", ""),
-                    "ADDRESS_CITY": db_clinic.dynamic_fields.get("city", ""),
-                    "ADDRESS_COUNTRY": db_clinic.dynamic_fields.get("country", ""),
-                    "UF_CRM_1741267701427": db_clinic.dynamic_fields.get(
-                        "inn"
-                    ),  # TODO возможно переделать
-                }
-            )
+        # Build Bitrix fields using FormTemplate or fallback to hardcoded mapping
+        bitrix_data = await self._build_bitrix_fields(db_clinic, clinic_schema)
 
-        success = await self.bitrix24.update_company(
-            db_clinic.bitrix_id, bitrix_data, db_clinic.dynamic_fields
-        )
-
-        if success:
-            db_clinic.sync_status = SyncStatus.SYNCED.value
-            db_clinic.last_synced = datetime.utcnow()
-        else:
+        try:
+            if db_clinic.bitrix_id:
+                # Update existing company
+                success = await self.bitrix24.update_company(
+                    db_clinic.bitrix_id, bitrix_data, db_clinic.dynamic_fields
+                )
+                if success:
+                    db_clinic.sync_status = SyncStatus.SYNCED.value
+                    db_clinic.sync_error = None
+                    db_clinic.last_synced = datetime.utcnow()
+                else:
+                    db_clinic.sync_status = SyncStatus.ERROR.value
+                    db_clinic.sync_error = "Bitrix24 вернул неуспешный результат при обновлении"
+            else:
+                # Create new company
+                result = await self.bitrix24.create_company(bitrix_data)
+                if result:
+                    db_clinic.bitrix_id = result if isinstance(result, int) else self._extract_bitrix_id(result)
+                    db_clinic.sync_status = SyncStatus.SYNCED.value
+                    db_clinic.sync_error = None
+                    db_clinic.last_synced = datetime.utcnow()
+                else:
+                    db_clinic.sync_status = SyncStatus.ERROR.value
+                    db_clinic.sync_error = "Bitrix24 вернул пустой результат при создании компании"
+        except Bitrix24ApiError as e:
             db_clinic.sync_status = SyncStatus.ERROR.value
+            db_clinic.sync_error = str(e)
+        except Exception as e:
+            db_clinic.sync_status = SyncStatus.ERROR.value
+            db_clinic.sync_error = f"Неожиданная ошибка: {str(e)}"
 
         await self.session.commit()
         await self.session.refresh(db_clinic)
+
+    @logger()
+    async def _build_bitrix_fields(self, db_clinic, clinic_schema=None) -> dict:
+        """
+        Формирует словарь полей для Bitrix24 API.
+        Приоритет: FormTemplate → hardcoded mapping.
+        """
+        bitrix_data = {
+            "TITLE": db_clinic.name,
+            "COMPANY_TYPE": db_clinic.company_type or "CUSTOMER",
+        }
+
+        # Try FormTemplate first
+        form_template = (
+            await self.session.execute(
+                select(FormTemplate).where(
+                    FormTemplate.entity_type == "clinic",
+                    FormTemplate.organization_id == db_clinic.organization_id,
+                )
+            )
+        ).scalars().first()
+
+        if form_template and form_template.fields:
+            # Use FormTemplate for field mapping
+            for field_def in form_template.fields:
+                bitrix_field_id = field_def.get("bitrix_field_id")
+                key = field_def.get("key")
+                if not bitrix_field_id or not key:
+                    continue
+
+                # Get value from model attribute or dynamic_fields
+                value = getattr(db_clinic, key, None)
+                if value is None and db_clinic.dynamic_fields:
+                    value = db_clinic.dynamic_fields.get(key)
+                if value is not None:
+                    bitrix_data[bitrix_field_id] = value
+        else:
+            # Fallback: hardcoded field mapping
+            if db_clinic.inn:
+                bitrix_data["UF_CRM_1741267701427"] = db_clinic.inn
+
+            if db_clinic.dynamic_fields:
+                bitrix_data.update({
+                    "ADDRESS": db_clinic.dynamic_fields.get("address", ""),
+                    "ADDRESS_CITY": db_clinic.dynamic_fields.get("city", ""),
+                    "ADDRESS_COUNTRY": db_clinic.dynamic_fields.get("country", ""),
+                })
+                inn_from_dynamic = db_clinic.dynamic_fields.get("inn")
+                if inn_from_dynamic:
+                    bitrix_data["UF_CRM_1741267701427"] = inn_from_dynamic
+
+            if db_clinic.is_network:
+                bitrix_data["UF_CRM_1742890765753"] = db_clinic.is_network
+
+        # Also add from schema if provided (for create flow)
+        if clinic_schema:
+            if hasattr(clinic_schema, "dynamic_fields") and clinic_schema.dynamic_fields:
+                for field_key, field_value in clinic_schema.dynamic_fields.items():
+                    if field_key.startswith("UF_CRM_") or field_key.startswith("UF_"):
+                        bitrix_data[field_key.upper()] = field_value
+
+        return bitrix_data
+
+    # Backward compatibility alias
+    _sync_with_bitrix = push_to_bitrix
 
     @logger()
     async def update_clinic_in_bitrix(self, data: dict):
@@ -805,40 +893,56 @@ class ClinicService:
         return standard_fields, dynamic_fields
 
     @logger()
-    async def sync_clinics_from_bitrix(self):
+    async def sync_clinics_from_bitrix(self, current_user=None):
         """Синхронизирует клиники из Bitrix24 в локальную базу данных."""
         self._require_bitrix()
         companies = await self.bitrix24.get_companies()
 
+        organization_id = current_user.organization_id if current_user else None
+        import logging
+        log = logging.getLogger(__name__)
         for company in companies:
             try:
                 if "ID" not in company or "TITLE" not in company:
                     continue
-                await self._process_company(company)
-            except Exception:
+                await self._process_company(company, organization_id=organization_id)
+            except Exception as e:
+                log.error("Ошибка обработки компании %s: %s", company.get("ID", "?"), str(e))
                 continue
 
         await self.session.commit()
         return await self._get_all_clinics()
 
     @logger()
-    async def _process_company(self, company: dict):
+    async def _process_company(self, company: dict, organization_id: int = None):
         """Обрабатывает одну компанию из Bitrix24."""
-        db_clinic = await self._fetch_clinic_from_db(
-            clinic_id=company["ID"], back_none=True
-        )
+        # Search by bitrix_id, not by local id
+        bitrix_id = int(company["ID"])
+        query = select(Company).where(Company.bitrix_id == bitrix_id)
+        result = await self.session.execute(query)
+        db_clinic = result.scalars().first()
+
+        dynamic_fields = await self._extract_dynamic_fields(company)
 
         company_data = {
             "name": company["TITLE"],
-            "bitrix_id": company["ID"],
+            "bitrix_id": bitrix_id,
             "sync_status": "synced",
+            "sync_error": None,
             "last_synced": datetime.utcnow(),
-            "dynamic_fields": await self._extract_dynamic_fields(company),
         }
 
         if db_clinic:
+            # Merge dynamic_fields instead of overwriting
+            existing_dynamic = db_clinic.dynamic_fields or {}
+            existing_dynamic.update(dynamic_fields)
+            company_data["dynamic_fields"] = existing_dynamic
             await self._update_clinic(db_clinic, company_data)
         else:
+            company_data["dynamic_fields"] = dynamic_fields
+            company_data["region"] = dynamic_fields.get("region", "")
+            if organization_id:
+                company_data["organization_id"] = organization_id
             db_clinic = Company(**company_data)
             self.session.add(db_clinic)
 
@@ -896,6 +1000,7 @@ class ClinicService:
     async def create_clinic_in_bitrix(self, clinic_id: int):
         """
         Создает клинику в Bitrix24 и обновляет её данные в локальной базе данных.
+        Делегирует в push_to_bitrix.
         """
         self._require_bitrix()
         clinic = await self._fetch_clinic_from_db(clinic_id)
@@ -906,11 +1011,9 @@ class ClinicService:
                 detail="This clinic already has a Bitrix24 ID. Use update instead.",
             )
 
-        company_data = await self._prepare_company_data(clinic)
-        created_company_id = await self.bitrix24.create_company(company_data)
+        await self.push_to_bitrix(clinic)
 
-        if created_company_id:
-            await self._update_clinic_with_bitrix_id(clinic, created_company_id)
+        if clinic.bitrix_id:
             return JSONResponse(
                 status_code=status.HTTP_201_CREATED,
                 content={
@@ -922,7 +1025,7 @@ class ClinicService:
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create company with id: {created_company_id} in Bitrix24: ",
+                detail=f"Не удалось создать компанию в Bitrix24: {clinic.sync_error}",
             )
 
     @staticmethod
@@ -1021,46 +1124,35 @@ class ClinicService:
     async def _create_new_company_in_bitrix(self, clinic, inn):
         """
         Создает новую компанию в Bitrix24 и связывает её с клиникой.
+        Делегирует в push_to_bitrix.
         """
-        company_fields = await self._prepare_company_fields(clinic, inn)
-        result = await self.bitrix24.create_company(company_fields)
+        # Ensure INN is set for the push
+        if inn and not clinic.inn:
+            if not clinic.dynamic_fields:
+                clinic.dynamic_fields = {}
+            clinic.dynamic_fields["inn"] = inn
 
-        if not result:
+        await self.push_to_bitrix(clinic)
+
+        if clinic.bitrix_id:
+            return JSONResponse(
+                status_code=status.HTTP_201_CREATED,
+                content={
+                    "success": True,
+                    "message": f"Создана новая компания в Битрикс с ID {clinic.bitrix_id}",
+                    "clinic_id": clinic.id,
+                    "bitrix_id": clinic.bitrix_id,
+                },
+            )
+        else:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={
                     "success": False,
-                    "message": "Не удалось создать компанию в Битрикс",
+                    "message": f"Не удалось создать компанию в Битрикс: {clinic.sync_error}",
                     "clinic_id": clinic.id,
                 },
             )
-
-        bitrix_id = self._extract_bitrix_id(result)
-        if not bitrix_id:
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={
-                    "success": False,
-                    "message": "Ошибка при создании компании: неизвестный формат результата",
-                    "clinic_id": clinic.id,
-                },
-            )
-
-        clinic.bitrix_id = int(bitrix_id)
-        clinic.sync_status = SyncStatus.SYNCED.value
-        clinic.last_synced = datetime.now()
-        await self.session.commit()
-        await self.session.refresh(clinic)
-
-        return JSONResponse(
-            status_code=status.HTTP_201_CREATED,
-            content={
-                "success": True,
-                "message": f"Создана новая компания в Битрикс с ID {bitrix_id}",
-                "clinic_id": clinic.id,
-                "bitrix_id": bitrix_id,
-            },
-        )
 
     @staticmethod
     @logger()

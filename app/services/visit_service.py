@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime
 from typing import Dict, List
 
@@ -18,7 +19,7 @@ from app.emuns.clinic_enum import SyncStatus
 from app.emuns.visit_enum import EntityType, VisitStatus
 from app.models import Company, Doctor, FormTemplate, GlobalSettings, Organization, User, Visit
 from app.schemas.visit_schema import VisitCreate, VisitDeleteSchema
-from app.services.bitrix24 import Bitrix24Client, require_bitrix24
+from app.services.bitrix24 import Bitrix24ApiError, Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
 
 
@@ -580,6 +581,14 @@ class VisitService:
             )
         ).scalars().first()
 
+        if not form_template:
+            import logging
+            logging.getLogger(__name__).warning(
+                "FormTemplate для визитов не найден (org_id=%s). Динамические поля не будут синхронизированы с Bitrix24.",
+                current_user.organization_id if current_user else "?"
+            )
+            db_visit.sync_error = "FormTemplate для визитов не настроен — динамические поля не синхронизированы"
+
         template_fields = form_template.fields if form_template else []
         field_mapping_dict = {
             f["key"]: f["bitrix_field_id"]
@@ -634,13 +643,20 @@ class VisitService:
 
                 if db_visit.bitrix_id:
                     db_visit.sync_status = SyncStatus.SYNCED.value
+                    db_visit.sync_error = None
                     db_visit.last_synced = datetime.now()
                 else:
                     db_visit.sync_status = SyncStatus.ERROR.value
+                    db_visit.sync_error = "Bitrix24 не вернул ID после создания визита"
             else:
                 db_visit.sync_status = SyncStatus.ERROR.value
-        except Exception:
+                db_visit.sync_error = "Bitrix24 вернул пустой результат при создании визита"
+        except Bitrix24ApiError as e:
             db_visit.sync_status = SyncStatus.ERROR.value
+            db_visit.sync_error = str(e)
+        except Exception as e:
+            db_visit.sync_status = SyncStatus.ERROR.value
+            db_visit.sync_error = f"Неожиданная ошибка: {str(e)}"
 
         await self.session.commit()
         await self.session.refresh(db_visit)
@@ -887,12 +903,19 @@ class VisitService:
             )
             if result:
                 db_visit.sync_status = SyncStatus.SYNCED.value
+                db_visit.sync_error = None
                 db_visit.last_synced = datetime.now()
             else:
                 db_visit.sync_status = SyncStatus.ERROR.value
+                db_visit.sync_error = "Bitrix24 вернул пустой результат при обновлении визита"
             await self.session.commit()
-        except Exception:
+        except Bitrix24ApiError as e:
             db_visit.sync_status = SyncStatus.ERROR.value
+            db_visit.sync_error = str(e)
+            await self.session.commit()
+        except Exception as e:
+            db_visit.sync_status = SyncStatus.ERROR.value
+            db_visit.sync_error = f"Неожиданная ошибка: {str(e)}"
             await self.session.commit()
         await self.session.refresh(db_visit)
         return db_visit
@@ -901,27 +924,11 @@ class VisitService:
     @logger()
     async def _parse_date(date_str: str) -> datetime:
         """Парсит строку даты в объект datetime."""
-
-        if isinstance(date_str, str):
-            for fmt in DATE_FORMATS_UPDATE_VISIT:
-                try:
-                    return datetime.strptime(date_str, fmt).replace(tzinfo=None)
-                except ValueError:
-                    continue
-
-            if date_str.endswith("Z"):
-                return datetime.fromisoformat(date_str.replace("Z", "+00:00")).replace(
-                    tzinfo=None
-                )
-
-            if "T" not in date_str:
-                return datetime.strptime(
-                    f"{date_str}T00:00:00", "%Y-%m-%dT%H:%M:%S"
-                ).replace(tzinfo=None)
-        else:
-            return date_str
-
-        raise ValueError("Неверный формат даты.")
+        from app.utils.date_utils import parse_date
+        result = parse_date(date_str)
+        if result is None:
+            raise ValueError(f"Неверный формат даты: {date_str}")
+        return result
 
     @staticmethod
     @logger()

@@ -53,7 +53,7 @@ export interface Clinic {
   last_visit_date?: string; // Дата последнего визита
   visits_count?: number; // Количество визитов
   is_network?: boolean; // Признак сети клиник
-  UF_CRM_1742890765753?: string,
+  bitrix_is_network?: string, // маппится из Bitrix24 dynamic_fields
   bitrixMainClinicID?: number,
   clinic_coordinates: {
     latitude: number;
@@ -88,10 +88,9 @@ export interface BitrixCompany {
   ID: string;
   TITLE: string;
   COMPANY_TYPE?: string;
-  UF_CRM_1741267701427?: string; // ИНН
   ADDRESS?: string;
   CITY?: string;
-  [key: string]: any; // Для динамических полей UF_CRM_*
+  [key: string]: any; // Все UF_CRM_* поля из Bitrix24 (динамические, без хардкода)
 }
 
 export interface PaginatedResponse<T> {
@@ -107,10 +106,11 @@ export interface ClinicFilters {
   name?: string;
   inn?: string;
   company_type?: string;
+  search?: string; // Общий поиск по имени/ИНН
   page?: number;
   page_size?: number;
-  sort_by?: string; // Поле для сортировки
-  sort_direction?: 'asc' | 'desc'; // Направление сортировки
+  sort_by?: string;
+  sort_direction?: 'asc' | 'desc';
 }
 
 export const clinicService = {
@@ -306,8 +306,8 @@ export const clinicService = {
             data[key] = cleanAddressString(data[key]);
           }
 
-          // Проверяем известное поле адреса с ID 6679726EB1750
-          if (key === 'UF_CRM_6679726EB1750' && typeof data[key] === 'string') {
+          // Проверяем UF_CRM_ поля, содержащие адресные данные
+          if (key.startsWith('UF_CRM_') && typeof data[key] === 'string' && data[key].includes('|;|')) {
             data[key] = cleanAddressString(data[key]);
           }
         });
@@ -365,8 +365,8 @@ export const clinicService = {
             data[key] = cleanAddressString(data[key]);
           }
 
-          // Проверяем известное поле адреса с ID 6679726EB1750
-          if (key === 'UF_CRM_6679726EB1750' && typeof data[key] === 'string') {
+          // Проверяем UF_CRM_ поля, содержащие адресные данные
+          if (key.startsWith('UF_CRM_') && typeof data[key] === 'string' && data[key].includes('|;|')) {
             data[key] = cleanAddressString(data[key]);
           }
         });
@@ -432,7 +432,7 @@ export const clinicService = {
           COMPANY_TYPE: localClinic.company_type || '',
           ADDRESS: cleanAddress,
           CITY: localClinic.city || '',
-          UF_CRM_1741267701427: localClinic.inn || '', // ИНН
+          inn: localClinic.inn || '',
           ...cleanDynamicFields // Добавляем очищенные динамические поля
         };
       } catch (localError) {
@@ -486,7 +486,7 @@ export const clinicService = {
           COMPANY_TYPE: localClinic.company_type || '',
           ADDRESS: cleanAddress,
           CITY: localClinic.city || '',
-          UF_CRM_1741267701427: localClinic.inn || '',
+          inn: localClinic.inn || '',
           ...cleanDynamicFields
         };
       } catch (localError) {
@@ -597,9 +597,10 @@ export const clinicService = {
       }
 
       // Создаем копию fields, чтобы не мутировать исходные данные
+      // is_network маппится на соответствующее Bitrix поле на бэкенде через FormTemplate
       const updatedFields = {
         ...data.fields,
-        UF_CRM_1742890765753: isNetwork ? 1 : 0,
+        is_network: isNetwork ? 1 : 0,
       };
 
       // Формируем данные для запроса

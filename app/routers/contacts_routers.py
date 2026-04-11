@@ -9,12 +9,21 @@ from app.utils.utils import get_current_user
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ContactResponseBase])
+@router.get("/")
 async def get_contacts(
-    uow: UnitOfWork = Depends(get_uow), current_user=Depends(get_current_user)
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: str = Query(None),
+    uow: UnitOfWork = Depends(get_uow),
+    current_user=Depends(get_current_user),
 ):
-    """Get all contacts (LPRs)."""
-    return await uow.contact.get_contacts(current_user=current_user)
+    """Get contacts (LPRs) with pagination."""
+    return await uow.contact.get_contacts_paginated(
+        current_user=current_user,
+        page=page,
+        page_size=page_size,
+        search=search,
+    )
 
 
 @router.get("/company/{company_id}", response_model=List[Dict[str, Any]])

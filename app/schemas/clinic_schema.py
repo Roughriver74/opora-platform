@@ -85,6 +85,7 @@ class ClinicResponseBase(BaseModel):
     name: str
     bitrix_id: Optional[int] = None
     sync_status: Optional[str] = None
+    sync_error: Optional[str] = None
     last_synced: Optional[datetime] = None
     dynamic_fields: Optional[Dict[str, Any]] = Field(default_factory=dict)
     is_network: Optional[bool] = None

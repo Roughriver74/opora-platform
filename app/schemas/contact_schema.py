@@ -21,6 +21,7 @@ class ContactBase(BaseModel):
 
 class ContactCreate(ContactBase):
     bitrix_id: Optional[int] = None
+    company_id: Optional[int] = None  # Link contact to company on creation
 
 
 class ContactUpdate(BaseModel):
@@ -44,6 +45,7 @@ class ContactResponseBase(BaseModel):
     bitrix_id: Optional[int] = None
     contact_type: Optional[str] = None
     sync_status: Optional[str] = None
+    sync_error: Optional[str] = None
     last_synced: Optional[datetime] = None
     dynamic_fields: Optional[Dict[str, Any]] = None
 

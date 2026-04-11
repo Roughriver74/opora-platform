@@ -175,6 +175,7 @@ class Company(Base):
     dynamic_fields = Column(JSONB, default={})
     last_synced = Column(DateTime(timezone=True))
     sync_status = Column(String, default="pending")
+    sync_error = Column(Text, nullable=True)
     is_network = Column(Boolean, default=False)
     organization_id = Column(
         Integer, ForeignKey("organizations.id"), nullable=False
@@ -184,6 +185,8 @@ class Company(Base):
     contacts = relationship(
         "Contact", secondary=company_contacts, back_populates="companies"
     )
+    addresses = relationship("ClinicAddress", backref="company", lazy="select")
+    network_clinics = relationship("NetworkClinic", backref="parent_company", lazy="select")
 
 
 class Visit(Base):
@@ -193,7 +196,7 @@ class Visit(Base):
     bitrix_id = Column(Integer, unique=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
-    date = Column(DateTime)
+    date = Column(DateTime(timezone=True))
     organization_id = Column(
         Integer, ForeignKey("organizations.id"), nullable=False
     )
@@ -203,8 +206,9 @@ class Visit(Base):
     comment = Column(Text, default="")
     with_distributor = Column(Boolean, default=False)
     sansus = Column(Boolean, default=False)
-    last_synced = Column(DateTime)
+    last_synced = Column(DateTime(timezone=True))
     sync_status = Column(String, default="pending")
+    sync_error = Column(Text, nullable=True)
     geo = Column(Boolean, default=False)
 
     company = relationship(
@@ -228,6 +232,7 @@ class Doctor(Base):
     dynamic_fields = Column(JSONB, default={})
     last_synced = Column(DateTime(timezone=True))
     sync_status = Column(String, default="pending")
+    sync_error = Column(Text, nullable=True)
     organization_id = Column(
         Integer, ForeignKey("organizations.id"), nullable=False
     )
@@ -245,6 +250,7 @@ class Contact(Base):
     dynamic_fields = Column(JSONB, default={})
     last_synced = Column(DateTime(timezone=True))
     sync_status = Column(String, default="pending")
+    sync_error = Column(Text, nullable=True)
     organization_id = Column(
         Integer, ForeignKey("organizations.id"), nullable=False
     )
@@ -295,7 +301,7 @@ class NetworkClinic(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     bitrix_id = Column(Integer)
-    company_id = Column(Integer, ForeignKey("companies.bitrix_id"))
+    company_id = Column(Integer, ForeignKey("companies.id"))
     name = Column(String)
     doctor_bitrix_id = Column(JSONB, default=list)
     dynamic_fields = Column(JSONB, default={})

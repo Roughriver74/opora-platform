@@ -91,7 +91,6 @@ interface BitrixClinicData {
 	sync_status: string
 	last_synced: string
 	[key: string]: any
-	UF_CRM_1742890765753?: number
 }
 
 interface BitrixCompany {
@@ -103,8 +102,12 @@ interface BitrixCompany {
 	ADDRESS_COUNTRY?: string
 	EMAIL?: any[]
 	PHONE?: any[]
-	UF_CRM_1741267701427?: string // ИНН
-	[key: string]: any // Для динамических полей UF_CRM_*
+	[key: string]: any
+}
+
+// Helper: find bitrix_field_id by semantic app_field_name from fieldMappings
+const findBitrixFieldId = (mappings: FieldMapping[], appFieldName: string): string | undefined => {
+	return mappings.find(m => m.app_field_name === appFieldName)?.bitrix_field_id
 }
 
 interface UserProfile {
@@ -155,14 +158,7 @@ const processEnumValue = (value: any): string => {
 
 
 const isAddressField = (fieldName: string): boolean => {
-	const knownAddressFields = [
-		'6679726eb1750',
-		'uf_crm_6679726eb1750',
-		'UF_CRM_6679726EB1750',
-		'address',
-		'ADDRESS',
-	]
-	if (knownAddressFields.includes(fieldName)) return true
+	if (fieldName.toLowerCase() === 'address') return true
 	const addressKeywords = ['address', 'адрес', 'location']
 	return addressKeywords.some(keyword =>
 		fieldName.toLowerCase().includes(keyword)
@@ -277,24 +273,33 @@ const ClinicEditPage: React.FC = () => {
 	const fetchClinicData = async (forceBitrixSync: boolean = false) => {
 		if (locationState?.bitrixData) {
 			const bitrixCompany = locationState.bitrixData
+			const innBitrixFieldId = findBitrixFieldId(fieldMappings, 'inn')
+			const addressBitrixFieldId = findBitrixFieldId(fieldMappings, 'address')
+
+			// Extract INN from bitrix data using dynamic field mapping
+			let innValue = bitrixCompany.inn || ''
+			if (innBitrixFieldId && innBitrixFieldId in bitrixCompany) {
+				innValue = bitrixCompany[innBitrixFieldId] || innValue
+			}
+
 			const formattedData: BitrixClinicData = {
 				bitrix_id: bitrixCompany.ID,
 				name: bitrixCompany.TITLE || '',
 				company_type: bitrixCompany.COMPANY_TYPE || '',
 				address: cleanAddressString(bitrixCompany.ADDRESS) || '',
-				city: bitrixCompany.CITY || '', // Используем поле CITY вместо ADDRESS_CITY
-				country: bitrixCompany.COUNTRY || '', // Используем поле COUNTRY вместо ADDRESS_COUNTRY
-				inn:
-					'UF_CRM_1741267701427' in bitrixCompany
-						? bitrixCompany.UF_CRM_1741267701427 || ''
-						: bitrixCompany.inn || '',
+				city: bitrixCompany.CITY || '',
+				country: bitrixCompany.COUNTRY || '',
+				inn: innValue,
 				bitrix_data: bitrixCompany,
 				dynamic_fields: {},
 				sync_status: 'synced',
 				last_synced: new Date().toISOString(),
 			}
 			for (const [key, value] of Object.entries(bitrixCompany)) {
-				if (key.startsWith('UF_CRM_') && key !== 'UF_CRM_1741267701427') {
+				if (key.startsWith('UF_CRM_')) {
+					// Skip the INN field - it is handled as a top-level field
+					if (innBitrixFieldId && key === innBitrixFieldId) continue
+
 					const fieldId = key.replace('UF_CRM_', '').toLowerCase()
 					const fieldMapping = fieldMappings.find(
 						m =>
@@ -306,8 +311,9 @@ const ClinicEditPage: React.FC = () => {
 							typeof value === 'string'
 							? cleanAddressString(value)
 							: value
+					// If this is the address field from mapping, set the top-level address
 					if (
-						(key === 'UF_CRM_6679726EB1750' || !formattedData.address) &&
+						(addressBitrixFieldId && key === addressBitrixFieldId || !formattedData.address) &&
 						typeof value === 'string'
 					) {
 						formattedData.address = cleanAddressString(value)
@@ -390,15 +396,12 @@ const ClinicEditPage: React.FC = () => {
 
 					// Проверяем все возможные источники для поля ИНН
 					let innValue = ''
+					const innFieldId = findBitrixFieldId(fieldMappings, 'inn')
 
 					if (isBitrixFormat) {
-						// Проверяем наличие ИНН в данных из Bitrix
-						if (
-							'UF_CRM_1741267701427' in bitrixData &&
-							(bitrixData as BitrixCompany).UF_CRM_1741267701427
-						) {
-							innValue =
-								(bitrixData as BitrixCompany).UF_CRM_1741267701427 || ''
+						// Проверяем наличие ИНН в данных из Bitrix через dynamic mapping
+						if (innFieldId && innFieldId in bitrixData && (bitrixData as any)[innFieldId]) {
+							innValue = (bitrixData as any)[innFieldId] || ''
 						} else if ('inn' in bitrixData) {
 							innValue = (bitrixData as any).inn || ''
 						}
@@ -415,9 +418,12 @@ const ClinicEditPage: React.FC = () => {
 					// Устанавливаем значение ИНН в основные поля
 					formattedData.inn = innValue
 
-					// Сохраняем ИНН в динамических полях
-					formattedData.dynamic_fields['UF_CRM_1741267701427'] = innValue
-					formattedData.dynamic_fields['1741267701427'] = innValue
+					// Сохраняем ИНН в динамических полях using the mapping field ID
+					if (innFieldId) {
+						formattedData.dynamic_fields[innFieldId] = innValue
+						const shortId = innFieldId.replace('UF_CRM_', '').toLowerCase()
+						formattedData.dynamic_fields[shortId] = innValue
+					}
 
 					return formattedData
 				} catch (error) {
@@ -457,11 +463,12 @@ const ClinicEditPage: React.FC = () => {
 			}
 
 			const initialValues = { ...data }
+			const isNetworkFieldId = findBitrixFieldId(fieldMappings, 'is_network')
 
-			formValues.is_network = data.dynamic_fields?.UF_CRM_1742890765753 || false
+			formValues.is_network = (isNetworkFieldId && data.dynamic_fields?.[isNetworkFieldId]) || data.is_network || false
 			initialValues.is_network = Boolean(
 				data.is_network ||
-				data.dynamic_fields?.UF_CRM_1742890765753 === 1
+				(isNetworkFieldId && data.dynamic_fields?.[isNetworkFieldId] === 1)
 			)
 
 			// Очищаем адресные поля от служебных данных Bitrix24
@@ -476,15 +483,16 @@ const ClinicEditPage: React.FC = () => {
 
 			// Очищаем адресные поля в динамических полях
 			if (initialValues.dynamic_fields) {
-				// Проверяем известные адресные поля и очищаем их
+				const addressBitrixId = findBitrixFieldId(fieldMappings, 'address')
+				// Build address field keys dynamically from field mapping
 				const addressFields = [
 					'address',
 					'ADDRESS',
-					'6679726eb1750',
-					'UF_CRM_6679726EB1750',
-					'uf_crm_6679726eb1750',
-					'UF_CRM_ADDRESS',
-					'uf_crm_address',
+					...(addressBitrixId ? [
+						addressBitrixId,
+						addressBitrixId.toLowerCase(),
+						addressBitrixId.replace('UF_CRM_', '').toLowerCase(),
+					] : []),
 				]
 
 				addressFields.forEach(field => {
@@ -518,10 +526,12 @@ const ClinicEditPage: React.FC = () => {
 			}
 
 			// Проверяем наличие ИНН в разных форматах
+			const innBitrixId = findBitrixFieldId(fieldMappings, 'inn')
+			const innShortId = innBitrixId ? innBitrixId.replace('UF_CRM_', '').toLowerCase() : ''
 			const innFromDynamicFields =
 				initialValues.dynamic_fields &&
-				(initialValues.dynamic_fields['UF_CRM_1741267701427'] ||
-					initialValues.dynamic_fields['1741267701427'])
+				(innBitrixId && initialValues.dynamic_fields[innBitrixId] ||
+					innShortId && initialValues.dynamic_fields[innShortId])
 
 			// Определяем финальное значение ИНН из всех возможных источников
 			const finalInn = initialValues.inn || innFromDynamicFields || ''
@@ -529,10 +539,11 @@ const ClinicEditPage: React.FC = () => {
 			// Сохраняем ИНН в основной структуре данных
 			initialValues.inn = finalInn
 
-			// Всегда сохраняем ИНН в динамических полях с полным именем поля
-			initialValues.dynamic_fields['UF_CRM_1741267701427'] = finalInn
-			// Для совместимости сохраняем также без префикса
-			initialValues.dynamic_fields['1741267701427'] = finalInn
+			// Сохраняем ИНН в динамических полях через mapping
+			if (innBitrixId) {
+				initialValues.dynamic_fields[innBitrixId] = finalInn
+				initialValues.dynamic_fields[innShortId] = finalInn
+			}
 
 			setFormValues(initialValues)
 			if (initialLoadRef.current) {
@@ -599,10 +610,11 @@ const ClinicEditPage: React.FC = () => {
 			// Взять динамические поля из существующих данных в базе
 			if (existingClinic.dynamic_fields) {
 				// Сохранить только поля ИНН из существующих динамических полей
+				const innBitrixId = findBitrixFieldId(fieldMappings, 'inn')
+				const innShortId = innBitrixId ? innBitrixId.replace('UF_CRM_', '').toLowerCase() : ''
 				const innFields = [
-					'UF_CRM_1741267701427',
-					'1741267701427',
-					'uf_crm_1741267701427',
+					...(innBitrixId ? [innBitrixId, innBitrixId.toLowerCase()] : []),
+					...(innShortId ? [innShortId] : []),
 				]
 				for (const field of innFields) {
 					if (existingClinic.dynamic_fields[field]) {
@@ -612,11 +624,13 @@ const ClinicEditPage: React.FC = () => {
 			}
 
 			if (data.dynamic_fields) {
+				const innBitrixId = findBitrixFieldId(fieldMappings, 'inn')
+				const innShortId = innBitrixId ? innBitrixId.replace('UF_CRM_', '').toLowerCase() : ''
 				Object.entries(data.dynamic_fields).forEach(([key, value]) => {
 					if (
-						key !== 'UF_CRM_1741267701427' &&
-						key !== '1741267701427' &&
-						key !== 'uf_crm_1741267701427' &&
+						key !== innBitrixId &&
+						key !== innShortId &&
+						key !== innBitrixId?.toLowerCase() &&
 						!key.includes('inn') &&
 						key !== 'inn'
 					) {
@@ -663,23 +677,24 @@ const ClinicEditPage: React.FC = () => {
 				? cleanAddressString(data.address)
 				: ''
 
+			const innBitrixId = findBitrixFieldId(fieldMappings, 'inn')
+			const addressBitrixId = findBitrixFieldId(fieldMappings, 'address')
+			const addressShortId = addressBitrixId ? addressBitrixId.replace('UF_CRM_', '').toLowerCase() : ''
+
 			const fields: Record<string, any> = {
 				TITLE: data.name || '',
 				EMAIL: prepareDataForBitrix(data.email || []),
 				PHONE: prepareDataForBitrix(data.phone || []),
 				id: clinic?.bitrix_id,
-				// Всегда включаем ИНН в запрос, даже если он пустой
-				UF_CRM_1741267701427: data.inn || '',
 				// Жестко задаем тип компании как CUSTOMER
 				COMPANY_TYPE: 'CUSTOMER',
-				// Всегда добавляем адрес, даже если он пустой
-				// ВАЖНО! На бэкенде к полям с префиксом UF_CRM_ добавляется еще один префикс UF_
-				// Поэтому используем только стандартные поля и поле без префикса
 				ADDRESS: cleanedAddress,
-				// Добавляем динамические поля без префикса - бэкенд сам добавит нужные префиксы
-				'6679726eb1750': cleanedAddress,
-				...(data.city && { CITY: data.city }), // Используем поле CITY вместо ADDRESS_CITY
-				...(data.country && { COUNTRY: data.country }), // Используем поле COUNTRY вместо ADDRESS_COUNTRY
+				...(data.city && { CITY: data.city }),
+				...(data.country && { COUNTRY: data.country }),
+				// Добавляем ИНН через mapping
+				...(innBitrixId && { [innBitrixId]: data.inn || '' }),
+				// Добавляем адрес через mapping (short id for backend prefix handling)
+				...(addressShortId && { [addressShortId]: cleanedAddress }),
 				...Object.fromEntries(
 					fieldMappings
 						.filter(
@@ -722,11 +737,9 @@ const ClinicEditPage: React.FC = () => {
 										value = option.bitrix_value
 
 										// Добавляем логи для отладки полей типа enum/list
-										if (m.bitrix_field_id === 'UF_CRM_1732785161063') {
-											console.log(
-												`Найдено соответствие для поля ${m.display_name}: ${stringValue} -> ${value}`
-											)
-										}
+										console.log(
+											`Найдено соответствие для поля ${m.display_name}: ${stringValue} -> ${value}`
+										)
 									} else {
 										// Если не нашли соответствие, пробуем найти по числовому значению
 										const numericValue = Number(value)
@@ -756,9 +769,9 @@ const ClinicEditPage: React.FC = () => {
 				),
 			}
 
-			// Добавляем адрес в специальное поле UF_CRM_6679726EB1750
-			if (cleanedAddress) {
-				fields['UF_CRM_6679726EB1750'] = cleanedAddress
+			// Добавляем адрес в поле из mapping
+			if (cleanedAddress && addressBitrixId) {
+				fields[addressBitrixId] = cleanedAddress
 			}
 
 			console.log('Отправка данных для обновления в Bitrix24:', {
@@ -928,11 +941,12 @@ const ClinicEditPage: React.FC = () => {
 				})
 
 				// Обработка динамических полей и специальных полей
+				const syncInnFieldId = findBitrixFieldId(fieldMappings, 'inn')
 				for (const [key, value] of Object.entries(freshData as any)) {
 					// Обработка динамических полей UF_CRM_*
 					if (key.startsWith('UF_CRM_')) {
-						// Специальная обработка для поля ИНН
-						if (key === 'UF_CRM_1741267701427') {
+						// Skip INN field - handled as top-level field
+						if (syncInnFieldId && key === syncInnFieldId) {
 							continue
 						}
 
@@ -954,7 +968,6 @@ const ClinicEditPage: React.FC = () => {
 								mapping.field_type === 'list' ||
 								mapping.field_type === 'enum'
 							) {
-								// Выводим исходное значение для отладки
 
 								// Проверим, есть ли опции для этого поля
 								if (mapping.value_options) {
@@ -974,8 +987,6 @@ const ClinicEditPage: React.FC = () => {
 										// Если нашли соответствие, используем app_value
 										if (matchingOption) {
 											processedValue = matchingOption.app_value
-
-											// Добавляем логирование для проблемного поля
 
 										} else {
 											// Если не нашли, пробуем найти по числовому значению
@@ -1078,10 +1089,12 @@ const ClinicEditPage: React.FC = () => {
 						...dynamicFields,
 					}
 
+					const mergeInnFieldId = findBitrixFieldId(fieldMappings, 'inn')
+					const mergeInnShortId = mergeInnFieldId ? mergeInnFieldId.replace('UF_CRM_', '').toLowerCase() : ''
 					// Проверяем наличие ИНН в разных форматах
 					const innFromDynamicFields =
 						mergedDynamicFields &&
-						(mergedDynamicFields['inn'] || mergedDynamicFields['1741267701427'])
+						(mergedDynamicFields['inn'] || (mergeInnShortId && mergedDynamicFields[mergeInnShortId]))
 
 					// Приоритет: 1) ИНН из обновленных значений, 2) ИНН из динамических полей
 					const finalInn = updatedValues.inn || innFromDynamicFields || ''
@@ -1089,10 +1102,11 @@ const ClinicEditPage: React.FC = () => {
 					// Сохраняем ИНН в основной структуре данных
 					updatedValues.inn = finalInn
 
-					// Всегда сохраняем ИНН в динамических полях с полным именем поля
-					mergedDynamicFields['UF_CRM_1741267701427'] = finalInn
-					// Для совместимости сохраняем также без префикса
-					mergedDynamicFields['1741267701427'] = finalInn
+					// Сохраняем ИНН в динамических полях через mapping
+					if (mergeInnFieldId) {
+						mergedDynamicFields[mergeInnFieldId] = finalInn
+						mergedDynamicFields[mergeInnShortId] = finalInn
+					}
 
 					// Устанавливаем обновленные динамические поля
 					updatedValues.dynamic_fields = mergedDynamicFields
@@ -1288,9 +1302,11 @@ const ClinicEditPage: React.FC = () => {
 						// Проверяем, что получены данные из Bitrix24
 						if (bitrixData) {
 							console.log('Получены данные из Bitrix24:', bitrixData)
-							// Проверяем наличие поля UF_CRM_1741267701427 (ИНН)
-							if ('UF_CRM_1741267701427' in bitrixData) {
-								const innValue = bitrixData.UF_CRM_1741267701427 || ''
+							// Проверяем наличие поля ИНН через mapping
+							const loadInnFieldId = findBitrixFieldId(fieldMappings, 'inn')
+							const loadInnShortId = loadInnFieldId ? loadInnFieldId.replace('UF_CRM_', '').toLowerCase() : ''
+							if (loadInnFieldId && loadInnFieldId in bitrixData) {
+								const innValue = (bitrixData as any)[loadInnFieldId] || ''
 
 								// Обновляем только поле ИНН, не переписывая всю форму
 								setFormValues(prev => ({
@@ -1298,8 +1314,8 @@ const ClinicEditPage: React.FC = () => {
 									inn: innValue,
 									dynamic_fields: {
 										...prev.dynamic_fields,
-										UF_CRM_1741267701427: innValue,
-										'1741267701427': innValue,
+										...(loadInnFieldId && { [loadInnFieldId]: innValue }),
+										...(loadInnShortId && { [loadInnShortId]: innValue }),
 									},
 								}))
 							}
@@ -1400,11 +1416,12 @@ const ClinicEditPage: React.FC = () => {
 			})
 
 			// Обработка динамических полей и специальных полей
+			const sync2InnFieldId = findBitrixFieldId(fieldMappings, 'inn')
 			for (const [key, value] of Object.entries(freshData as any)) {
 				// Обработка динамических полей UF_CRM_*
 				if (key.startsWith('UF_CRM_')) {
-					// Специальная обработка для поля ИНН
-					if (key === 'UF_CRM_1741267701427') {
+					// Skip INN field - handled as top-level field
+					if (sync2InnFieldId && key === sync2InnFieldId) {
 						continue
 					}
 
@@ -1538,10 +1555,12 @@ const ClinicEditPage: React.FC = () => {
 					...dynamicFields,
 				}
 
+				const sync2MergeInnId = findBitrixFieldId(fieldMappings, 'inn')
+				const sync2MergeInnShortId = sync2MergeInnId ? sync2MergeInnId.replace('UF_CRM_', '').toLowerCase() : ''
 				// Проверяем наличие ИНН в разных форматах
 				const innFromDynamicFields =
 					mergedDynamicFields &&
-					(mergedDynamicFields['inn'] || mergedDynamicFields['1741267701427'])
+					(mergedDynamicFields['inn'] || (sync2MergeInnShortId && mergedDynamicFields[sync2MergeInnShortId]))
 
 				// Приоритет: 1) ИНН из обновленных значений, 2) ИНН из динамических полей
 				const finalInn = updatedValues.inn || innFromDynamicFields || ''
@@ -1549,10 +1568,11 @@ const ClinicEditPage: React.FC = () => {
 				// Сохраняем ИНН в основной структуре данных
 				updatedValues.inn = finalInn
 
-				// Всегда сохраняем ИНН в динамических полях с полным именем поля
-				mergedDynamicFields['UF_CRM_1741267701427'] = finalInn
-				// Для совместимости сохраняем также без префикса
-				mergedDynamicFields['1741267701427'] = finalInn
+				// Сохраняем ИНН в динамических полях через mapping
+				if (sync2MergeInnId) {
+					mergedDynamicFields[sync2MergeInnId] = finalInn
+					mergedDynamicFields[sync2MergeInnShortId] = finalInn
+				}
 
 				// Устанавливаем обновленные динамические поля
 				updatedValues.dynamic_fields = mergedDynamicFields
@@ -1704,40 +1724,41 @@ const ClinicEditPage: React.FC = () => {
 
 		// Специальная обработка для поля ИНН
 		if (fieldName === 'inn') {
+			const innFieldId = findBitrixFieldId(fieldMappings, 'inn')
+			const innShortId = innFieldId ? innFieldId.replace('UF_CRM_', '').toLowerCase() : ''
 			// Обновляем значение в форме с обновлением динамических полей
 			setFormValues(prev => {
-				// Создаем копию динамических полей или пустой объект, если их нет
 				const dynamic_fields = prev.dynamic_fields
 					? { ...prev.dynamic_fields }
 					: {}
 
-				// Сохраняем ИНН в динамических полях с полным именем поля
-				dynamic_fields['UF_CRM_1741267701427'] = processedValue
-				// Для совместимости сохраняем также без префикса
-				dynamic_fields['1741267701427'] = processedValue
+				// Сохраняем ИНН в динамических полях через mapping
+				if (innFieldId) {
+					dynamic_fields[innFieldId] = processedValue
+					dynamic_fields[innShortId] = processedValue
+				}
 
 				return { ...prev, [fieldName]: processedValue, dynamic_fields }
 			})
 		} else if (fieldName === 'address') {
+			const addrFieldId = findBitrixFieldId(fieldMappings, 'address')
+			const addrShortId = addrFieldId ? addrFieldId.replace('UF_CRM_', '').toLowerCase() : ''
 			// Специальная обработка для адресных полей
 			setFormValues(prev => {
-				// Создаем копию динамических полей или пустой объект, если их нет
 				const dynamic_fields = prev.dynamic_fields
 					? { ...prev.dynamic_fields }
 					: {}
 
-				// Обновляем адрес во всех форматах для совместимости с Bitrix24
+				// Обновляем адрес в стандартных форматах
 				dynamic_fields['address'] = processedValue
 				dynamic_fields['ADDRESS'] = processedValue
 
-				// Известный ID поля адреса в Bitrix24
-				dynamic_fields['6679726eb1750'] = processedValue
-
-				// Поля с префиксом UF_CRM_
-				dynamic_fields['UF_CRM_6679726EB1750'] = processedValue
-				dynamic_fields['uf_crm_6679726eb1750'] = processedValue
-				dynamic_fields['UF_CRM_ADDRESS'] = processedValue
-				dynamic_fields['uf_crm_address'] = processedValue
+				// Обновляем адрес через mapping
+				if (addrFieldId) {
+					dynamic_fields[addrFieldId] = processedValue
+					dynamic_fields[addrFieldId.toLowerCase()] = processedValue
+					dynamic_fields[addrShortId] = processedValue
+				}
 
 				return {
 					...prev,
@@ -1782,7 +1803,9 @@ const ClinicEditPage: React.FC = () => {
 				/>
 			);
 		}
-		if (fieldName.includes('1742890765753')) {
+		// Check if this is the is_network field by app_field_name from mapping
+		if (mapping.app_field_name === 'is_network' || mapping.display_name?.includes('Сетевая')) {
+			const isNetworkBitrixId = mapping.bitrix_field_id
 			return (
 				<FormControlLabel
 					control={
@@ -1795,7 +1818,7 @@ const ClinicEditPage: React.FC = () => {
 									is_network: newValue,
 									dynamic_fields: {
 										...prev.dynamic_fields,
-										UF_CRM_1742890765753: newValue ? 1 : 0,
+										...(isNetworkBitrixId && { [isNetworkBitrixId]: newValue ? 1 : 0 }),
 									},
 								}));
 								if (clinic?.id) {
@@ -1807,11 +1830,12 @@ const ClinicEditPage: React.FC = () => {
 						/>
 					}
 					label={mapping.display_name}
-					sx={{ marginLeft: 0 }} // убираем лишний отступ
+					sx={{ marginLeft: 0 }}
 				/>
 			)
 		}
-		if (fieldName.includes('1732785161063')) {
+		// Check for the branch count field by display_name
+		if (mapping.display_name === 'Количество филиалов') {
 			return (
 				<Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
 					{/* QuantityLoader */}
@@ -2081,7 +2105,8 @@ const ClinicEditPage: React.FC = () => {
 			setFormErrors(newErrors)
 			return
 		}
-		const checkedAddress = formValues.UF_CRM_6679726EB1750 || formValues.dynamic_fields['UF_CRM_6679726EB1750']
+		const submitAddrFieldId = findBitrixFieldId(fieldMappings, 'address')
+		const checkedAddress = formValues.address || (submitAddrFieldId && formValues.dynamic_fields?.[submitAddrFieldId]) || ''
 		if (checkedAddress) {
 			const result = await validateAddress(checkedAddress);
 			if (!result.success) {
@@ -2153,22 +2178,44 @@ const ClinicEditPage: React.FC = () => {
 		console.log("DATATOSEND=", dataToSend)
 		const dynamicFields: Record<string, any> = {};
 
+		// Use field mappings to populate dynamic fields
+		const btxAddrId = findBitrixFieldId(fieldMappings, 'address')
+		const btxAddrShortId = btxAddrId ? btxAddrId.replace('UF_CRM_', '').toLowerCase() : ''
+		const btxInnId = findBitrixFieldId(fieldMappings, 'inn')
+		const btxInnShortId = btxInnId ? btxInnId.replace('UF_CRM_', '').toLowerCase() : ''
+		const btxNetworkId = findBitrixFieldId(fieldMappings, 'is_network')
+		const btxNetworkShortId = btxNetworkId ? btxNetworkId.replace('UF_CRM_', '').toLowerCase() : ''
+
 		const cleanedAddress =
-			dataToSend['6679726eb1750'] ||
+			(btxAddrShortId && dataToSend[btxAddrShortId]) ||
 			dataToSend.address ||
-			dataToSend.dynamic_fields?.['6679726eb1750'] ||
+			(btxAddrShortId && dataToSend.dynamic_fields?.[btxAddrShortId]) ||
 			'';
-		dynamicFields['6679726eb1750'] = cleanedAddress;
-		dynamicFields['UF_CRM_6679726EB1750'] = cleanedAddress;
-		const innValue = dataToSend.inn || dataToSend.dynamic_fields?.['1741267701427'] || '';
-		dynamicFields['1741267701427'] = innValue;
-		dynamicFields['1719681844672'] = dataToSend['1719681844672'] ? 1 : 0;;
-		dynamicFields['UF_CRM_1741267701427'] = innValue;
-		dynamicFields['UF_CRM_1719681844672'] = dataToSend['1719681844672'] ? 1 : 0;
-		dynamicFields['1719681844672'] = dataToSend['1719681844672'];
+		if (btxAddrShortId) dynamicFields[btxAddrShortId] = cleanedAddress;
+		if (btxAddrId) dynamicFields[btxAddrId] = cleanedAddress;
+
+		const innValue = dataToSend.inn || (btxInnShortId && dataToSend.dynamic_fields?.[btxInnShortId]) || '';
+		if (btxInnShortId) dynamicFields[btxInnShortId] = innValue;
+		if (btxInnId) dynamicFields[btxInnId] = innValue;
+
+		// Populate all other UF_CRM fields from fieldMappings dynamically
+		fieldMappings.forEach(m => {
+			if (m.bitrix_field_id?.startsWith('UF_CRM_') &&
+				m.app_field_name !== 'inn' &&
+				m.app_field_name !== 'address' &&
+				m.app_field_name !== 'is_network') {
+				const shortId = m.bitrix_field_id.replace('UF_CRM_', '').toLowerCase()
+				const val = dataToSend[m.app_field_name]
+				if (val !== undefined) {
+					dynamicFields[shortId] = val
+					dynamicFields[m.bitrix_field_id] = val
+				}
+			}
+		})
+
 		if (dataToSend.is_network !== undefined) {
-			dynamicFields['1742890765753'] = dataToSend.is_network ? 1 : 0;
-			dynamicFields['UF_CRM_1742890765753'] = dataToSend.is_network ? 1 : 0;
+			if (btxNetworkShortId) dynamicFields[btxNetworkShortId] = dataToSend.is_network ? 1 : 0;
+			if (btxNetworkId) dynamicFields[btxNetworkId] = dataToSend.is_network ? 1 : 0;
 		}
 
 		dataToSend.dynamic_fields = dynamicFields;
@@ -2195,8 +2242,8 @@ const ClinicEditPage: React.FC = () => {
 		// Создаем копию объекта, чтобы не изменять оригинал
 		const cleanedFields = { ...dynamicFields }
 
-		// Список полей, которые нужно удалить
-		const fieldsToRemove = [
+		// Build list of fields to remove dynamically
+		const fieldsToRemove: string[] = [
 			'ADDRESS', // Поле ADDRESS
 			'UF_CRM_ADDRESS', // Поле UF_CRM_ADDRESS
 
@@ -2270,12 +2317,15 @@ const ClinicEditPage: React.FC = () => {
 				const cleanedAddress = cleanAddressString(updateData.address)
 
 				// Создаем список всех необходимых ключей для адреса
+				// Ищем все возможные адресные ключи — без хардкода UF_CRM_ ID
 				const addressKeys = [
-					'address', // Базовый ключ
-					'ADDRESS', // Верхний регистр
-					'6679726eb1750', // ID поля без префикса UF_CRM_
-					'uf_crm_6679726eb1750', // ID поля с префиксом в нижнем регистре
-					'UF_CRM_6679726EB1750', // ID поля с префиксом в верхнем регистре
+					'address',
+					'ADDRESS',
+					// Динамически добавляем Bitrix-ключи из fieldMappings
+					...fieldMappings
+						.filter(m => m.app_field_name?.toLowerCase().includes('address') || m.display_name?.toLowerCase().includes('адрес'))
+						.map(m => m.bitrix_field_id)
+						.filter(Boolean),
 				]
 
 				// Ищем специальное поле адреса в маппинге
@@ -2299,9 +2349,14 @@ const ClinicEditPage: React.FC = () => {
 					tempDynamicFields[key] = cleanedAddress
 				})
 
-				// Добавляем формат Bitrix с разделителем |;|
+				// Добавляем формат Bitrix с разделителем |;| для адресных полей из маппинга
 				const bitrixFormat = `${cleanedAddress}|;|12882`
-				tempDynamicFields['UF_CRM_6679726EB1750'] = bitrixFormat
+				const addressBitrixMapping = fieldMappings.find(
+					m => m.app_field_name?.toLowerCase().includes('address') && m.bitrix_field_id
+				)
+				if (addressBitrixMapping?.bitrix_field_id) {
+					tempDynamicFields[addressBitrixMapping.bitrix_field_id] = bitrixFormat
+				}
 
 				// Принудительно создаем новый объект с использованием JSON.stringify/parse
 				// для гарантированного разрыва связи с оригинальным объектом
@@ -2640,14 +2695,14 @@ const ClinicEditPage: React.FC = () => {
 
 	const addressChanged = (name: string, value: string | null) => {
 		handleFieldChange(name, value);
+		// Обновляем адрес в семантическом ключе, бэкенд маппит на Bitrix поле через FormTemplate
 		setFormValues((prev) => ({
 			...prev,
 			[name]: value,
-			UF_CRM_6679726EB1750: value,
+			address: value,
 			dynamic_fields: {
 				...prev.dynamic_fields,
-				UF_CRM_6679726EB1750: value,
-				'6679726eb1750': value,
+				address: value,
 			},
 		}));
 	};
@@ -3256,7 +3311,7 @@ const ClinicEditPage: React.FC = () => {
 																									is_network: newValue,
 																									dynamic_fields: {
 																										...prev.dynamic_fields,
-																										UF_CRM_1742890765753: newValue ? 1 : 0,
+																										is_network: newValue ? 1 : 0,
 																									},
 																								}));
 																								if (clinicId) {

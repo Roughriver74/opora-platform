@@ -86,6 +86,7 @@ class VisitResponseBase(BaseModel):
     dynamic_fields: Optional[Dict[str, Any]] = Field(default_factory=dict)
     bitrix_id: Optional[int] = None
     sync_status: Optional[str] = None
+    sync_error: Optional[str] = None
     last_synced: Optional[datetime] = None
     company: Optional[CompanyResponse] = None
     status: Optional[str] = None

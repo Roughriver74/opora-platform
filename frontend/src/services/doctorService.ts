@@ -3,27 +3,39 @@ import { api } from './api';
 export interface Doctor {
   id: number;
   name: string;
-  specialization: string;
-  contact: string;
-  position?: string;
-  phone?: string;
-  email?: string;
   bitrix_id?: number;
-  sync_status: string;
+  sync_status?: string;
+  sync_error?: string;
   last_synced?: string;
+  dynamic_fields?: Record<string, any>;
+  organization_id?: number;
+}
+
+export interface DoctorCreate {
+  name: string;
+  bitrix_id?: number;
   dynamic_fields?: Record<string, any>;
 }
 
-export interface DoctorInput {
-  name: string;
-  specialization: string;
-  contact: string;
+export interface DoctorUpdate {
+  name?: string;
+  dynamic_fields?: Record<string, any>;
+}
+
+export interface PaginatedDoctors {
+  items: Doctor[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
 
 export const doctorService = {
-  // Получить всех специалистов
-  getDoctors: async (): Promise<Doctor[]> => {
-    const response = await api.get('/doctors/');
+  // Получить специалистов с пагинацией
+  getDoctors: async (page: number = 1, pageSize: number = 20, search?: string): Promise<PaginatedDoctors> => {
+    const response = await api.get('/doctors/', {
+      params: { page, page_size: pageSize, ...(search ? { search } : {}) }
+    });
     return response.data;
   },
 
@@ -34,13 +46,13 @@ export const doctorService = {
   },
 
   // Создать нового специалиста
-  createDoctor: async (doctor: DoctorInput): Promise<Doctor> => {
+  createDoctor: async (doctor: DoctorCreate): Promise<Doctor> => {
     const response = await api.post('/doctors/', doctor);
     return response.data;
   },
 
   // Обновить существующего специалиста
-  updateDoctor: async (id: number, doctor: DoctorInput): Promise<Doctor> => {
+  updateDoctor: async (id: number, doctor: DoctorUpdate): Promise<Doctor> => {
     const response = await api.put(`/doctors/${id}`, doctor);
     return response.data;
   },

@@ -8,6 +8,7 @@ export interface Contact {
   bitrix_id?: number;
   last_synced?: string;
   sync_status?: string;
+  sync_error?: string | null;
   dynamic_fields?: Record<string, any>;
   position?: string;
   email?: string;
@@ -27,15 +28,25 @@ export interface ContactUpdate {
   dynamic_fields?: Record<string, any>;
 }
 
+export interface PaginatedContacts {
+  items: Contact[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 /**
  * Сервис для работы с контактами
  */
 export const contactService = {
   /**
-   * Получить все контакты
+   * Получить контакты с пагинацией
    */
-  async getContacts(): Promise<Contact[]> {
-    const response = await api.get('/contacts/');
+  async getContacts(page: number = 1, pageSize: number = 20, search?: string): Promise<PaginatedContacts> {
+    const response = await api.get('/contacts/', {
+      params: { page, page_size: pageSize, ...(search ? { search } : {}) }
+    });
     return response.data;
   },
 
