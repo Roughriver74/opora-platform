@@ -262,6 +262,8 @@ class ContactService:
 
         if not contact.bitrix_id and self.bitrix24 is not None:
             try:
+                from app.utils.bitrix_field_mapper import get_field_mapping, map_to_bitrix
+
                 bitrix_fields = {
                     "NAME": (
                         contact.name.split(" ")[0]
@@ -277,12 +279,18 @@ class ContactService:
                 }
 
                 if contact.dynamic_fields:
-                    for field_name, value in contact.dynamic_fields.items():
-                        if not field_name.startswith("uf_crm_"):
-                            bitrix_field_name = f"UF_CRM_{field_name.upper()}"
-                        else:
-                            bitrix_field_name = field_name.upper()
-                        bitrix_fields[bitrix_field_name] = value
+                    org_id = db_contact.organization_id
+                    field_mapping, list_mappings, _ = await get_field_mapping(
+                        self.session, org_id, "contact"
+                    )
+                    if field_mapping:
+                        mapped = map_to_bitrix(contact.dynamic_fields, field_mapping, list_mappings)
+                        bitrix_fields.update(mapped)
+                    else:
+                        # Fallback: pass UF_CRM_ fields as-is
+                        for field_name, value in contact.dynamic_fields.items():
+                            if field_name.startswith("UF_CRM_") or field_name.startswith("UF_"):
+                                bitrix_fields[field_name.upper()] = value
 
                 bitrix_result = await self.bitrix24.create_contact(bitrix_fields)
 

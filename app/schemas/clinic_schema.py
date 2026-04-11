@@ -134,6 +134,7 @@ class FilterGroup(BaseModel):
 class AdvancedFilterParams(BaseModel):
     filter_groups: Optional[List[FilterGroup]] = None
     global_logical_operator: str = "AND"
+    search: Optional[str] = None  # Generic search by name or INN
     region: Optional[str] = None
     name: Optional[str] = None
     inn: Optional[str] = None

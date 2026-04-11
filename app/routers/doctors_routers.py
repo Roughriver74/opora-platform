@@ -70,6 +70,16 @@ async def delete_doctor_in_bitrix(
     return await uow.doctor.delete_doctor_bitrix(doctor_bitrix_id=doctor_bitrix_id)
 
 
+@router.post("/sync", status_code=status.HTTP_200_OK)
+async def sync_doctors_from_bitrix(
+    uow: UnitOfWork = Depends(get_uow),
+    current_user=Depends(get_current_user),
+):
+    """Sync doctors from Bitrix24 to local database."""
+    result = await uow.doctor.sync_doctors_from_bitrix(current_user=current_user)
+    return {"synced": len(result), "message": f"Синхронизировано {len(result)} докторов"}
+
+
 # ── Local CRUD endpoints ─────────────────────────────────────────
 
 

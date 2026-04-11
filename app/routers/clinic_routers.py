@@ -47,6 +47,7 @@ async def get_clinics(
     global_logical_operator: str = Query(
         "AND", description="Global logical operator for filter groups"
     ),
+    search: Optional[str] = Query(None, description="Search by name or INN"),
     region: Optional[str] = Query(None, description="Filter by specific region"),
     name: Optional[str] = Query(None, description="Filter by name"),
     inn: Optional[str] = Query(None, description="Filter by INN"),
@@ -77,6 +78,7 @@ async def get_clinics(
     filter_params = AdvancedFilterParams(
         filter_groups=filter_groups_parsed,
         global_logical_operator=global_logical_operator,
+        search=search,
         region=region,
         name=name,
         inn=inn,

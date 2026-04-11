@@ -158,12 +158,14 @@ DYNAMIC_FIELDS_TO_ADD: dict = {
     "visits_winter": int,
 }
 
+# Standard (non-UF_CRM_) field mapping for extracting company data from Bitrix.
+# UF_CRM_* fields are extracted dynamically (all fields starting with UF_).
+# INN field ID is resolved via FormTemplate per organization.
 EXTRACT_DYNAMIC_FIELDS_MAPPING: dict = {
     "company_type": "COMPANY_TYPE",
     "address": "ADDRESS",
     "city": "ADDRESS_CITY",
     "country": "ADDRESS_COUNTRY",
-    "inn": "UF_CRM_1741267701427",
 }
 
 CREATE_CLINIC_MODEL_FIELDS: set = {
@@ -191,6 +193,8 @@ EXCLUDED_CLINIC_CREATE_SCHEMA_FIELDS: set = {
 
 UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "/app/upload")
 
+# Legacy hardcoded date field keys — should be resolved from FormTemplate per organization.
+# Kept as fallback only.
 DATE_FIELDS_KEY: list = ["1732026275473", "1732026990932"]
 
 BITRIX_FIELDS_MAP: dict = {
@@ -201,24 +205,17 @@ BITRIX_FIELDS_MAP: dict = {
     "PHONE": "phone",
 }
 
+# Payload for fetching companies from Bitrix — select "*" to get all fields including UF_CRM_*
 GET_COMPANIES_PAYLOAD: dict = {
-    "select": [
-        "ID",
-        "TITLE",
-        "COMPANY_TYPE",
-        "ADDRESS",
-        "ADDRESS_CITY",
-        "ADDRESS_COUNTRY",
-        "UF_CRM_1741267701427",
-    ]
+    "select": ["*"],
 }
 
 BITRIX24_SELECT_PAYLOAD_FIELDS: list = [
     "ID",
     "TITLE",
-    "UF_CRM_1741267701427",
     "ADDRESS",
     "CITY",
+    # UF_CRM_* fields are included via "*" select or fetched dynamically
 ]
 
 CRM_COMPANY_UPDATE: str = "crm.company.update"

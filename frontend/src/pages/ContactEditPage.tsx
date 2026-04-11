@@ -57,6 +57,7 @@ interface BitrixContactData {
   bitrix_data: any
   dynamic_fields: Record<string, any>
   sync_status: string
+  sync_error?: string | null
   last_synced: string
 }
 
@@ -649,6 +650,13 @@ const ContactEditPage: React.FC = () => {
         )}
 
         {renderSyncStatus()}
+
+        {/* Show sync error if present */}
+        {contact?.sync_error && (
+          <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+            <strong>Ошибка синхронизации:</strong> {contact.sync_error}
+          </Alert>
+        )}
 
         <Card variant="outlined" sx={{ borderRadius: 3, border: 'none', boxShadow: (theme: any) => theme.palette.mode === 'light' ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)', mb: 3 }}>
           <CardContent>

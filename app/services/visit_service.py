@@ -148,7 +148,10 @@ class VisitService:
                     )
 
                     bitrix_data["DATE"] = formatted_date
-                    bitrix_data["UF_CRM_1732026990932"] = formatted_date
+                    # Use FormTemplate to resolve date field ID instead of hardcode
+                    date_bitrix_id = field_mapping_dict.get("date")
+                    if date_bitrix_id:
+                        bitrix_data[date_bitrix_id] = formatted_date
                     bitrix_data["date"] = formatted_date
 
                     if not db_visit.dynamic_fields:
@@ -198,7 +201,10 @@ class VisitService:
 
                             if field == "date":
                                 bitrix_data["DATE"] = processed_value
-                                bitrix_data["UF_CRM_1732026990932"] = processed_value
+                                # Date Bitrix field resolved from FormTemplate mapping
+                                date_btx_id = field_mapping_dict.get("date")
+                                if date_btx_id:
+                                    bitrix_data[date_btx_id] = processed_value
                                 bitrix_data["date"] = processed_value
 
                         elif field_type == "list" or field in list_field_mappings:
@@ -532,6 +538,20 @@ class VisitService:
             )
             db_visit.doctors = doctors
 
+        # Link contacts to visit
+        if hasattr(visit, "contacts") and visit.contacts:
+            from app.models import Contact
+            contacts = (
+                (
+                    await self.session.execute(
+                        select(Contact).where(Contact.id.in_(visit.contacts))
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            db_visit.contacts = contacts
+
     @logger()
     async def _sync_with_bitrix24(
         self, db_visit, visit: VisitCreate, current_user: User
@@ -563,13 +583,9 @@ class VisitService:
             "ASSIGNED_BY_ID": current_user.bitrix_user_id,
         }
         if formatted_date:
-            bitrix_data.update(
-                {
-                    "DATE": formatted_date,
-                    "UF_CRM_1732026990932": formatted_date,
-                    "date": formatted_date,
-                }
-            )
+            bitrix_data["DATE"] = formatted_date
+            bitrix_data["date"] = formatted_date
+            # Date Bitrix field ID resolved from FormTemplate below
             db_visit.dynamic_fields["date"] = formatted_date
 
         form_template = (
@@ -600,6 +616,12 @@ class VisitService:
             for f in template_fields
             if f.get("bitrix_field_type") == "list" and f.get("bitrix_value_mapping")
         }
+
+        # Add date field using FormTemplate mapping
+        if formatted_date:
+            date_bitrix_id = field_mapping_dict.get("date")
+            if date_bitrix_id:
+                bitrix_data[date_bitrix_id] = formatted_date
 
         if hasattr(visit, "dynamic_fields") and visit.dynamic_fields:
             for field, value in visit.dynamic_fields.items():

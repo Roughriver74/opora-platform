@@ -16,6 +16,7 @@ import {
   EventNote,
   CorporateFare,
   People,
+  LocalHospital,
   Tune,
   ChevronLeft,
   ChevronRight,
@@ -42,6 +43,7 @@ const mainItems: NavItem[] = [
   { label: 'Визиты', icon: <EventNote />, path: '/visits' },
   { label: 'Компании', icon: <CorporateFare />, path: '/companies' },
   { label: 'Контакты', icon: <People />, path: '/contacts' },
+  { label: 'Доктора', icon: <LocalHospital />, path: '/doctors' },
 ];
 
 const adminItems: NavItem[] = [

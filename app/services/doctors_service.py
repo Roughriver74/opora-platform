@@ -127,3 +127,63 @@ class DoctorService:
     async def delete_doctor_bitrix(self, doctor_bitrix_id: int):
         self._require_bitrix()
         return await self.bitrix24.delete_contact(doctor_bitrix_id=doctor_bitrix_id)
+
+    @logger()
+    async def sync_doctors_from_bitrix(self, current_user=None):
+        """Sync all contacts with TYPE_ID matching doctor types from Bitrix24."""
+        self._require_bitrix()
+        import logging
+        log = logging.getLogger(__name__)
+
+        organization_id = current_user.organization_id if current_user else None
+        contacts = await self.bitrix24.get_contacts()
+        synced = []
+
+        for contact in contacts:
+            try:
+                bitrix_id = int(contact.get("ID", 0))
+                if not bitrix_id:
+                    continue
+
+                name = f"{contact.get('NAME', '')} {contact.get('LAST_NAME', '')}".strip()
+                if not name:
+                    continue
+
+                # Check if doctor exists locally
+                db_doctor = (
+                    await self.session.execute(
+                        select(Doctor).where(Doctor.bitrix_id == bitrix_id)
+                    )
+                ).scalars().first()
+
+                dynamic_fields = {}
+                for key, value in contact.items():
+                    if key.startswith("UF_") and value:
+                        dynamic_fields[key.lower()] = value
+
+                if db_doctor:
+                    db_doctor.name = name
+                    existing = db_doctor.dynamic_fields or {}
+                    existing.update(dynamic_fields)
+                    db_doctor.dynamic_fields = existing
+                    db_doctor.sync_status = SyncStatus.SYNCED.value
+                    db_doctor.sync_error = None
+                    db_doctor.last_synced = datetime.now()
+                else:
+                    db_doctor = Doctor(
+                        bitrix_id=bitrix_id,
+                        name=name,
+                        dynamic_fields=dynamic_fields,
+                        sync_status=SyncStatus.SYNCED.value,
+                        last_synced=datetime.now(),
+                        organization_id=organization_id,
+                    )
+                    self.session.add(db_doctor)
+
+                synced.append(db_doctor)
+            except Exception as e:
+                log.error("Error syncing doctor %s: %s", contact.get("ID", "?"), str(e))
+                continue
+
+        await self.session.commit()
+        return synced

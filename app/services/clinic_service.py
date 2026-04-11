@@ -47,6 +47,22 @@ class ClinicService:
     def _require_bitrix(self) -> Bitrix24Client:
         return require_bitrix24(self.bitrix24)
 
+    async def _get_bitrix_field_id(self, org_id: int, entity_type: str, semantic_key: str) -> str | None:
+        """Resolve Bitrix field ID from FormTemplate by semantic key."""
+        template = (
+            await self.session.execute(
+                select(FormTemplate).where(
+                    FormTemplate.entity_type == entity_type,
+                    FormTemplate.organization_id == org_id,
+                )
+            )
+        ).scalars().first()
+        if template and template.fields:
+            for f in template.fields:
+                if f.get("key") == semantic_key and f.get("bitrix_field_id"):
+                    return f["bitrix_field_id"]
+        return None
+
     @logger()
     async def get_clinic(
         self,
@@ -171,10 +187,19 @@ class ClinicService:
     @logger()
     async def _apply_basic_filters(query, filter_params: AdvancedFilterParams):
         """Применяет базовые фильтры."""
-        if filter_params.name:
-            query = query.filter(Company.name.ilike(f"%{filter_params.name}%"))
-        if filter_params.inn:
-            query = query.filter(Company.inn.ilike(f"%{filter_params.inn}%"))
+        if filter_params.search:
+            # Generic search: OR by name and INN
+            query = query.filter(
+                or_(
+                    Company.name.ilike(f"%{filter_params.search}%"),
+                    Company.inn.ilike(f"%{filter_params.search}%"),
+                )
+            )
+        else:
+            if filter_params.name:
+                query = query.filter(Company.name.ilike(f"%{filter_params.name}%"))
+            if filter_params.inn:
+                query = query.filter(Company.inn.ilike(f"%{filter_params.inn}%"))
         if filter_params.company_type:
             query = query.filter(Company.company_type == filter_params.company_type)
         return query
@@ -390,9 +415,8 @@ class ClinicService:
             await self._sync_clinic_with_bitrix_for_get(clinic)
 
         clinic_dict = ClinicResponseBase.model_validate(clinic).model_dump()
-        clinic_dict["dynamic_fields"]["UF_CRM_1742890765753"] = clinic_dict[
-            "is_network"
-        ]
+        # Store is_network in dynamic_fields by semantic key, not hardcoded Bitrix ID
+        clinic_dict["dynamic_fields"]["is_network"] = clinic_dict["is_network"]
         if clinic_location:
             clinic_dict["clinic_coordinates"] = {
                 "latitude": clinic_location.longitude,
@@ -538,7 +562,8 @@ class ClinicService:
     @logger()
     async def _prepare_bitrix_fields(clinic: ClinicCreate) -> dict:
         """
-        Подготавливает данные для отправки в Bitrix24.
+        Legacy: подготавливает данные для отправки в Bitrix24.
+        Используйте push_to_bitrix() с FormTemplate вместо этого метода.
         """
         fields = {
             "TITLE": clinic.name,
@@ -548,16 +573,13 @@ class ClinicService:
             for field_key, field_value in clinic.dynamic_fields.items():
                 fields[field_key.upper()] = field_value
 
-        if (
-            clinic.inn
-        ):  # TODO проверить как работает с фронтом and "UF_CRM_1741267701427" not in fields:
-            fields["UF_CRM_1741267701427"] = clinic.inn
-
-        if getattr(clinic, "address", None) and "UF_CRM_6679726EB1750" not in fields:
-            fields["UF_CRM_6679726EB1750"] = clinic.address
-
+        # Semantic fields — backend maps to Bitrix IDs via FormTemplate in push_to_bitrix
+        if clinic.inn:
+            fields["inn"] = clinic.inn
+        if getattr(clinic, "address", None):
+            fields["address"] = clinic.address
         if clinic.is_network:
-            fields["UF_CRM_1742890765753"] = clinic.is_network
+            fields["is_network"] = clinic.is_network
 
         return fields
 
@@ -574,9 +596,16 @@ class ClinicService:
         if dynamic_fields:
             await self._update_dynamic_fields(db_clinic, dynamic_fields)
 
-            is_network_field = dynamic_fields.get("UF_CRM_1742890765753", None)
+            # Check for is_network in dynamic_fields (semantic key or legacy Bitrix key)
+            is_network_field = dynamic_fields.get("is_network", None)
+            if is_network_field is None:
+                # Fallback: check any UF_CRM_ key that looks like a boolean network flag
+                for k, v in dynamic_fields.items():
+                    if k.startswith("UF_CRM_") and isinstance(v, (bool, int)) and v in (0, 1, True, False):
+                        is_network_field = v
+                        break
             if is_network_field is not None:
-                clinic_data["is_network"] = is_network_field
+                clinic_data["is_network"] = bool(is_network_field)
 
         await self._update_standard_fields(db_clinic, clinic_data)
 
@@ -761,22 +790,18 @@ class ClinicService:
                 if value is not None:
                     bitrix_data[bitrix_field_id] = value
         else:
-            # Fallback: hardcoded field mapping
-            if db_clinic.inn:
-                bitrix_data["UF_CRM_1741267701427"] = db_clinic.inn
-
+            # Fallback: standard Bitrix fields only (no UF_CRM_* without FormTemplate)
+            import logging
+            logging.getLogger(__name__).warning(
+                "FormTemplate для клиник не найден (org_id=%s). UF_CRM_ поля не будут отправлены.",
+                db_clinic.organization_id,
+            )
             if db_clinic.dynamic_fields:
                 bitrix_data.update({
                     "ADDRESS": db_clinic.dynamic_fields.get("address", ""),
                     "ADDRESS_CITY": db_clinic.dynamic_fields.get("city", ""),
                     "ADDRESS_COUNTRY": db_clinic.dynamic_fields.get("country", ""),
                 })
-                inn_from_dynamic = db_clinic.dynamic_fields.get("inn")
-                if inn_from_dynamic:
-                    bitrix_data["UF_CRM_1741267701427"] = inn_from_dynamic
-
-            if db_clinic.is_network:
-                bitrix_data["UF_CRM_1742890765753"] = db_clinic.is_network
 
         # Also add from schema if provided (for create flow)
         if clinic_schema:
@@ -850,40 +875,33 @@ class ClinicService:
     @logger()
     async def _map_fields(self, data: dict):
         """Разделяет поля на стандартные и динамические."""
-        fields = data.get("fields")
+        fields = data.get("fields", {})
         dy_fields = data.get("dynamic_fields", {})
         standard_fields = {}
         dynamic_fields = {}
 
         for key, value in fields.items():
-            key = key.upper()
-            if key in ["TITLE", "NAME"]:
+            key_upper = key.upper()
+            if key_upper in ["TITLE", "NAME"]:
                 standard_fields["TITLE"] = value
-            elif key in ["COMPANY_TYPE", "ADDRESS", "CITY", "COUNTRY"]:
+            elif key_upper in ["COMPANY_TYPE", "ADDRESS", "CITY", "COUNTRY"]:
                 dynamic_fields[key.lower()] = value
-            elif key.startswith("UF_CRM_"):
-                dynamic_fields[key] = value
-            elif key.startswith("UF_"):
-                dynamic_fields[key[3:]] = value
-            elif key == "UF_CRM_1741267701427":
+            elif key_upper in ["EMAIL", "PHONE"]:
+                standard_fields[key_upper] = value
+            elif key.lower() == "inn":
                 dynamic_fields["inn"] = value
-                dynamic_fields["UF_CRM_1741267701427"] = value
-            elif key in ["EMAIL", "PHONE"]:
-                standard_fields[key] = value
+            elif key.startswith("UF_CRM_") or key.startswith("UF_"):
+                dynamic_fields[key] = value
+            else:
+                dynamic_fields[key.lower()] = value
 
-        for (
-            key,
-            value,
-        ) in dy_fields.items():
-            key = key.upper()
-            if key in ["EMAIL", "PHONE"]:
-                standard_fields[key] = value
-            elif key == "UF_CRM_1741267701427":
+        for key, value in dy_fields.items():
+            key_upper = key.upper()
+            if key_upper in ["EMAIL", "PHONE"]:
+                standard_fields[key_upper] = value
+            elif key.lower() == "inn":
                 dynamic_fields["inn"] = value
-                dynamic_fields["UF_CRM_1741267701427"] = value
-            elif key.startswith("UF_CRM_"):
-                dynamic_fields[key] = value
-            elif key.startswith("UF_"):
+            elif key.startswith("UF_CRM_") or key.startswith("UF_"):
                 dynamic_fields[key[3:]] = value
             elif key in ["TITLE", "NAME"]:
                 standard_fields["TITLE"] = value
@@ -1037,7 +1055,7 @@ class ClinicService:
             "COMPANY_TYPE": clinic.company_type or "CUSTOMER",
         }
         if clinic.inn:
-            company_data["UF_CRM_1741267701427"] = clinic.inn
+            company_data["inn"] = clinic.inn
         return company_data
 
     @logger()
@@ -1092,10 +1110,13 @@ class ClinicService:
         """
         if hasattr(clinic, "inn") and clinic.inn:
             return clinic.inn
-        elif clinic.dynamic_fields and "inn" in clinic.dynamic_fields:
-            return clinic.dynamic_fields["inn"]
-        elif clinic.dynamic_fields and "UF_CRM_1741267701427" in clinic.dynamic_fields:
-            return clinic.dynamic_fields["UF_CRM_1741267701427"]
+        if clinic.dynamic_fields:
+            if "inn" in clinic.dynamic_fields:
+                return clinic.dynamic_fields["inn"]
+            # Fallback: find INN-like value (10-12 digit string) in UF_CRM_ fields
+            for k, v in clinic.dynamic_fields.items():
+                if k.startswith("UF_CRM_") and isinstance(v, str) and len(v) in (10, 12) and v.isdigit():
+                    return v
         return None
 
     @logger()
@@ -1114,7 +1135,7 @@ class ClinicService:
             status_code=status.HTTP_200_OK,
             content={
                 "success": True,
-                "message": f"Найдена компания в Битрикс с ИНН {company['UF_CRM_1741267701427']}",
+                "message": f"Найдена компания в Битрикс (ID: {bitrix_id})",
                 "clinic_id": clinic.id,
                 "bitrix_id": bitrix_id,
             },
@@ -1165,7 +1186,8 @@ class ClinicService:
             "COMPANY_TYPE": clinic.company_type or "CUSTOMER",
             "ADDRESS": getattr(clinic, "address", ""),
             "CITY": getattr(clinic, "city", ""),
-            "UF_CRM_1741267701427": inn,  # ИНН
+            # INN mapped via FormTemplate in push_to_bitrix; stored as semantic key here
+            "inn": inn,
         }
         main_manager = getattr(clinic, "main_manager", None)
         if (
@@ -1219,24 +1241,37 @@ class ClinicService:
                 for c in companies
             ]
 
+        # Resolve INN Bitrix field ID from FormTemplate
+        inn_field_id = None
+        if current_user and current_user.organization_id:
+            inn_field_id = await self._get_bitrix_field_id(
+                current_user.organization_id, "clinic", "inn"
+            )
+        if not inn_field_id:
+            # No FormTemplate — cannot search by INN in Bitrix without knowing field ID
+            import logging
+            logging.getLogger(__name__).warning("INN Bitrix field ID not found in FormTemplate, falling back to local DB search")
+            query = select(Company).where(Company.inn.ilike(f"%{inn}%"))
+            if current_user and not current_user.is_platform_admin:
+                query = query.where(Company.organization_id == current_user.organization_id)
+            companies = (await self.session.execute(query)).scalars().all()
+            return [{"ID": c.id, "TITLE": c.name, "INN": c.inn} for c in companies]
+
         payload = {
-            "select": BITRIX24_SELECT_PAYLOAD_FIELDS,
-            "filter": {"UF_CRM_1741267701427": inn},
+            "select": ["*"],
+            "filter": {inn_field_id: inn},
         }
         endpoint = "crm.company.list"
-
         response = await self.bitrix24.make_request_async(endpoint, payload)
-
         result = response.get("result", [])
 
         if not result:
             alt_payload = {
-                "select": BITRIX24_SELECT_PAYLOAD_FIELDS,
-                "filter": {"%UF_CRM_1741267701427": inn},
+                "select": ["*"],
+                "filter": {f"%{inn_field_id}": inn},
             }
             alt_response = await self.bitrix24.make_request_async(endpoint, alt_payload)
             alt_result = alt_response.get("result", [])
-
             if alt_result:
                 result = alt_result
 
@@ -1332,12 +1367,15 @@ class ClinicService:
             for company in companies:
                 company_id = company.id
                 company_is_network = company.is_network
-                company_address = company.dynamic_fields.get(
-                    "UF_CRM_6679726EB1750", None
-                )
-                company_address_no_uf_crm = company.dynamic_fields.get(
-                    "6679726EB1750", None
-                )
+                # Find address in dynamic_fields by semantic key or UF_CRM_ pattern
+                company_address = company.dynamic_fields.get("address", None)
+                if not company_address:
+                    # Fallback: search for address-like UF_CRM_ fields
+                    for k, v in company.dynamic_fields.items():
+                        if "address" in k.lower() or (isinstance(v, str) and "|;|" in v):
+                            company_address = v
+                            break
+                company_address_no_uf_crm = company_address  # unified lookup
                 if company_address and company_address_no_uf_crm:
                     continue
                 elif company_address_no_uf_crm:
