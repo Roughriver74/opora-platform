@@ -92,7 +92,7 @@ export const VisitsPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ position: 'relative', minHeight: '100%', pb: 4 }}>
+    <Box sx={{ position: 'relative', minHeight: '100%', pb: 12 }}>
       {/* Header */}
       <Box sx={{ px: 2, pt: 1, pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h1">
@@ -120,14 +120,14 @@ export const VisitsPage: React.FC = () => {
             bgcolor: 'background.paper',
             borderRadius: 3,
             p: 0.5,
-            minHeight: 36,
+            minHeight: 44,
             '& .MuiTab-root': {
-              minHeight: 36,
+              minHeight: 44,
               borderRadius: 2,
               textTransform: 'none',
               fontWeight: 600,
               fontSize: '0.9rem',
-              py: 0.5,
+              py: 1,
             },
             '& .MuiTabs-indicator': {
               display: 'none',

@@ -416,7 +416,7 @@ export const VisitCreatePage: React.FC = () => {
 	const templateFields = formTemplate?.fields || []
 
 	return (
-		<Box sx={{ pb: 10, minHeight: '100%', bgcolor: 'background.default' }}>
+		<Box sx={{ pb: 14, minHeight: '100%', bgcolor: 'background.default' }}>
 			{/* Mobile Header */}
 			<Box
 				sx={{
@@ -637,8 +637,8 @@ export const VisitCreatePage: React.FC = () => {
 					color="primary"
 					sx={{
 						position: 'fixed',
-						bottom: 24,
-						right: 24,
+						bottom: 84,
+						right: 20,
 						zIndex: 1000,
 					}}
 					onClick={handleSubmit}

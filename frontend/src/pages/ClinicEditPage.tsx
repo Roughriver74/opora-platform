@@ -2733,7 +2733,7 @@ const ClinicEditPage: React.FC = () => {
 	}
 
 	return (
-		<Container maxWidth='lg' sx={{ py: { xs: 2, sm: 3 } }}>
+		<Container maxWidth='lg' sx={{ py: { xs: 2, sm: 3 }, pb: { xs: 14, sm: 3 } }}>
 			{/* Полноэкранный индикатор загрузки данных из Битрикса */}
 			{(initialBitrixLoading || (isBitrixLoading && !dataFullyLoaded)) && (
 				<Box
@@ -2823,9 +2823,9 @@ const ClinicEditPage: React.FC = () => {
 								onClick={syncWithBitrix}
 								sx={{
 									whiteSpace: 'nowrap',
-									minWidth: isMobile ? '40px' : '120px',
-									width: isMobile ? '40px' : 'auto',
-									height: isMobile ? '40px' : 'auto',
+									minWidth: isMobile ? '48px' : '120px',
+									width: isMobile ? '48px' : 'auto',
+									height: isMobile ? '48px' : 'auto',
 									padding: isMobile ? '8px' : '8px 16px',
 									display: 'flex',
 									justifyContent: 'center',
@@ -2850,9 +2850,9 @@ const ClinicEditPage: React.FC = () => {
 									onClick={() => setPastVisitsDialogOpen(true)}
 									sx={{
 										whiteSpace: 'nowrap',
-										minWidth: isMobile ? '40px' : '120px',
-										width: isMobile ? '40px' : 'auto',
-										height: isMobile ? '40px' : 'auto',
+										minWidth: isMobile ? '48px' : '120px',
+										width: isMobile ? '48px' : 'auto',
+										height: isMobile ? '48px' : 'auto',
 										padding: isMobile ? '8px' : '8px 16px',
 										display: 'flex',
 										justifyContent: 'center',
@@ -2874,9 +2874,9 @@ const ClinicEditPage: React.FC = () => {
 									onClick={() => navigate(`/visits/new/${id}`)}
 									sx={{
 										whiteSpace: 'nowrap',
-										minWidth: isMobile ? '40px' : '120px',
-										width: isMobile ? '40px' : 'auto',
-										height: isMobile ? '40px' : 'auto',
+										minWidth: isMobile ? '48px' : '120px',
+										width: isMobile ? '48px' : 'auto',
+										height: isMobile ? '48px' : 'auto',
 										padding: isMobile ? '8px' : '8px 16px',
 										display: 'flex',
 										justifyContent: 'center',
@@ -2906,9 +2906,9 @@ const ClinicEditPage: React.FC = () => {
 							disabled={Object.keys(formErrors).length > 0}
 							sx={{
 								whiteSpace: 'nowrap',
-								minWidth: isMobile ? '40px' : '120px',
-								width: isMobile ? '40px' : 'auto',
-								height: isMobile ? '40px' : 'auto',
+								minWidth: isMobile ? '48px' : '120px',
+								width: isMobile ? '48px' : 'auto',
+								height: isMobile ? '48px' : 'auto',
 								padding: isMobile ? '8px' : '8px 16px',
 								display: 'flex',
 								justifyContent: 'center',
@@ -3361,8 +3361,8 @@ const ClinicEditPage: React.FC = () => {
 						color='primary'
 						sx={{
 							position: 'fixed',
-							bottom: 16,
-							right: 16,
+							bottom: 84,
+							right: 20,
 							zIndex: 1000,
 						}}
 						onClick={onSubmit}
