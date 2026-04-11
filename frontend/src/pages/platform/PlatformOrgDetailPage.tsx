@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Grid, Card, CardContent, Chip, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Paper, Button,
-  CircularProgress, Alert, Divider, Stack,
+  CircularProgress, Alert, Divider, Stack, TextField, Dialog,
+  DialogTitle, DialogContent, DialogActions, MenuItem, Select,
+  FormControl, InputLabel,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import EditIcon from '@mui/icons-material/Edit';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { api } from '../../services/api';
@@ -52,10 +55,37 @@ const PlatformOrgDetailPage: React.FC = () => {
     { onSuccess: () => qc.invalidateQueries(['platformOrgDetails', id]) }
   );
 
-  const changePlan = useMutation(
-    async (plan: string) => api.put(`/platform/organizations/${id}`, { plan }),
-    { onSuccess: () => qc.invalidateQueries(['platformOrgDetails', id]) }
+  const updateOrg = useMutation(
+    async (data: Record<string, any>) => api.put(`/platform/organizations/${id}`, data),
+    { onSuccess: () => { qc.invalidateQueries(['platformOrgDetails', id]); setEditOpen(false); } }
   );
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editPlan, setEditPlan] = useState('');
+  const [editMaxUsers, setEditMaxUsers] = useState('');
+  const [editMaxVisits, setEditMaxVisits] = useState('');
+  const [editName, setEditName] = useState('');
+
+  const openEditDialog = () => {
+    if (!org) return;
+    setEditPlan(org.plan);
+    setEditMaxUsers(String(org.plan_limits?.max_users ?? ''));
+    setEditMaxVisits(String(org.plan_limits?.max_visits_per_month ?? ''));
+    setEditName(org.name);
+    setEditOpen(true);
+  };
+
+  const handleSave = () => {
+    const data: Record<string, any> = {};
+    if (editName !== org!.name) data.name = editName;
+    if (editPlan !== org!.plan) data.plan = editPlan;
+    const newLimits: Record<string, number> = {};
+    if (editMaxUsers) newLimits.max_users = parseInt(editMaxUsers, 10);
+    if (editMaxVisits) newLimits.max_visits_per_month = parseInt(editMaxVisits, 10);
+    if (Object.keys(newLimits).length > 0) data.plan_limits = newLimits;
+    if (Object.keys(data).length > 0) updateOrg.mutate(data);
+    else setEditOpen(false);
+  };
 
   if (isLoading) return <Box p={3}><CircularProgress /></Box>;
   if (error || !org) return <Box p={3}><Alert severity="error">Организация не найдена</Alert></Box>;
@@ -141,25 +171,14 @@ const PlatformOrgDetailPage: React.FC = () => {
                 >
                   {org.is_active ? 'Деактивировать' : 'Активировать'}
                 </Button>
-                {org.plan === 'free' ? (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={() => changePlan.mutate('pro')}
-                    disabled={changePlan.isLoading}
-                  >
-                    Перевести на PRO
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => changePlan.mutate('free')}
-                    disabled={changePlan.isLoading}
-                  >
-                    Перевести на FREE
-                  </Button>
-                )}
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<EditIcon />}
+                  onClick={openEditDialog}
+                >
+                  Изменить тариф
+                </Button>
               </Stack>
             </CardContent>
           </Card>
@@ -204,6 +223,53 @@ const PlatformOrgDetailPage: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Редактирование организации</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <TextField
+              label="Название"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              fullWidth
+              size="small"
+            />
+            <FormControl size="small" fullWidth>
+              <InputLabel>Тариф</InputLabel>
+              <Select value={editPlan} label="Тариф" onChange={(e) => setEditPlan(e.target.value)}>
+                <MenuItem value="free">FREE</MenuItem>
+                <MenuItem value="pro">PRO</MenuItem>
+                <MenuItem value="enterprise">ENTERPRISE</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Макс. пользователей"
+              type="number"
+              value={editMaxUsers}
+              onChange={(e) => setEditMaxUsers(e.target.value)}
+              fullWidth
+              size="small"
+              helperText="Оставьте пустым для безлимита"
+            />
+            <TextField
+              label="Макс. визитов в месяц"
+              type="number"
+              value={editMaxVisits}
+              onChange={(e) => setEditMaxVisits(e.target.value)}
+              fullWidth
+              size="small"
+              helperText="Оставьте пустым для безлимита"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)}>Отмена</Button>
+          <Button variant="contained" onClick={handleSave} disabled={updateOrg.isLoading}>
+            Сохранить
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
