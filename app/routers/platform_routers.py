@@ -6,7 +6,9 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from datetime import datetime, timedelta
+
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
@@ -45,11 +47,48 @@ class OrgUpdate(BaseModel):
     bitrix24_webhook_url: Optional[str] = None
 
 
+class PlatformUserResponse(BaseModel):
+    id: int
+    email: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    role: str
+    is_active: bool
+    organization_id: Optional[int] = None
+    organization_name: Optional[str] = None
+    created_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class PlatformStats(BaseModel):
     total_organizations: int
     total_users: int
     total_visits: int
     active_organizations: int
+    new_organizations_last_30d: int
+    new_users_last_30d: int
+    paid_organizations: int
+
+
+class OrgDetailsResponse(BaseModel):
+    id: int
+    name: str
+    slug: Optional[str] = None
+    plan: str
+    plan_limits: Optional[dict] = None
+    is_active: bool
+    owner_id: Optional[int] = None
+    api_key: Optional[str] = None
+    bitrix24_webhook_url: Optional[str] = None
+    created_at: Optional[str] = None
+    user_count: int = 0
+    visit_count: int = 0
+    users: List[PlatformUserResponse] = []
+
+    class Config:
+        from_attributes = True
 
 
 class SmtpStatusResponse(BaseModel):
@@ -193,6 +232,78 @@ async def get_organization(
     )
 
 
+@router.get("/organizations/{org_id}/details", response_model=OrgDetailsResponse)
+async def get_org_details(
+    org_id: int,
+    uow: UnitOfWork = Depends(get_uow),
+    current_user: User = Depends(require_platform_admin),
+):
+    """Get detailed organization info with users and stats (platform_admin only)."""
+    session = uow.session
+
+    org = (
+        (await session.execute(select(Organization).where(Organization.id == org_id)))
+        .scalars()
+        .first()
+    )
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Организация не найдена")
+
+    users = (
+        (
+            await session.execute(
+                select(User)
+                .where(User.organization_id == org_id)
+                .order_by(User.created_at.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    visit_count = await session.scalar(
+        select(func.count(Visit.id)).where(Visit.organization_id == org_id)
+    ) or 0
+
+    # Mask sensitive fields
+    webhook = org.bitrix24_webhook_url
+    if webhook and len(webhook) > 20:
+        webhook = webhook[:20] + "***"
+
+    api_key = org.api_key
+    if api_key and len(api_key) > 8:
+        api_key = api_key[:8] + "***"
+
+    return OrgDetailsResponse(
+        id=org.id,
+        name=org.name,
+        slug=org.slug,
+        plan=org.plan or "free",
+        plan_limits=org.plan_limits,
+        is_active=org.is_active,
+        owner_id=org.owner_id,
+        api_key=api_key,
+        bitrix24_webhook_url=webhook,
+        created_at=org.created_at.isoformat() if org.created_at else None,
+        user_count=len(users),
+        visit_count=visit_count,
+        users=[
+            PlatformUserResponse(
+                id=u.id,
+                email=u.email,
+                first_name=u.first_name,
+                last_name=u.last_name,
+                role=u.role,
+                is_active=u.is_active,
+                organization_id=u.organization_id,
+                organization_name=org.name,
+                created_at=u.created_at.isoformat() if u.created_at else None,
+            )
+            for u in users
+        ],
+    )
+
+
 @router.put("/organizations/{org_id}", response_model=OrgResponse)
 async def update_organization(
     org_id: int,
@@ -260,12 +371,89 @@ async def platform_stats(
     total_users = await session.scalar(select(func.count(User.id))) or 0
     total_visits = await session.scalar(select(func.count(Visit.id))) or 0
 
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+
+    new_orgs = await session.scalar(
+        select(func.count(Organization.id)).where(Organization.created_at >= thirty_days_ago)
+    ) or 0
+    new_users = await session.scalar(
+        select(func.count(User.id)).where(
+            User.created_at >= thirty_days_ago,
+            User.role != "platform_admin",
+        )
+    ) or 0
+    paid_orgs = await session.scalar(
+        select(func.count(Organization.id)).where(
+            Organization.is_active.is_(True),
+            Organization.plan != "free",
+        )
+    ) or 0
+
     return PlatformStats(
         total_organizations=total_orgs,
         total_users=total_users,
         total_visits=total_visits,
         active_organizations=active_orgs,
+        new_organizations_last_30d=new_orgs,
+        new_users_last_30d=new_users,
+        paid_organizations=paid_orgs,
     )
+
+
+@router.get("/users", response_model=List[PlatformUserResponse])
+async def list_all_users(
+    uow: UnitOfWork = Depends(get_uow),
+    current_user: User = Depends(require_platform_admin),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    organization_id: Optional[int] = Query(None),
+    role: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+):
+    """List all users across all organizations (platform_admin only)."""
+    session = uow.session
+
+    query = (
+        select(User, Organization.name.label("org_name"))
+        .outerjoin(Organization, User.organization_id == Organization.id)
+        .where(User.role != "platform_admin")
+    )
+
+    if organization_id is not None:
+        query = query.where(User.organization_id == organization_id)
+    if role:
+        query = query.where(User.role == role)
+    if search:
+        search_term = f"%{search}%"
+        query = query.where(
+            or_(
+                User.email.ilike(search_term),
+                User.first_name.ilike(search_term),
+                User.last_name.ilike(search_term),
+            )
+        )
+
+    query = (
+        query.order_by(User.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    rows = (await session.execute(query)).all()
+
+    return [
+        PlatformUserResponse(
+            id=u.id,
+            email=u.email,
+            first_name=u.first_name,
+            last_name=u.last_name,
+            role=u.role,
+            is_active=u.is_active,
+            organization_id=u.organization_id,
+            organization_name=org_name,
+            created_at=u.created_at.isoformat() if u.created_at else None,
+        )
+        for u, org_name in rows
+    ]
 
 
 # ---- SMTP Settings Endpoints ----
