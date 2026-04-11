@@ -23,7 +23,6 @@ class VisitBase(BaseModel):
     comment: Optional[str] = None
     with_distributor: bool = False
     sansus: bool = False
-    doctors: List[int] = []
     contacts: List[int] = []
     dynamic_fields: Optional[Dict[str, Any]] = Field(default_factory=dict)
 

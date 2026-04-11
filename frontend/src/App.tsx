@@ -22,8 +22,6 @@ import AuthProvider from './context/AuthContext';
 import { SidebarProvider } from './context/SidebarContext';
 import AdminRoute, { PlatformAdminRoute } from './components/AdminRoute';
 import NetworkClinicEditPage from './pages/NetworkClinicEditPage';
-import DoctorsListPage from './pages/DoctorsListPage';
-import DoctorEditPage from './pages/DoctorEditPage';
 import DeleteVisits from './pages/admin/DeleteVisits';
 // Legacy VisitFormEditorPage removed — replaced by FormBuilderPage
 import BillingPage from './pages/admin/BillingPage';
@@ -85,9 +83,6 @@ function App() {
               <Route path="contacts" element={<ContactsListPage />} />
               <Route path="contacts/new" element={<ContactEditPage />} />
               <Route path="contacts/:id" element={<ContactEditPage />} />
-              <Route path="doctors" element={<DoctorsListPage />} />
-              <Route path="doctors/new" element={<DoctorEditPage />} />
-              <Route path="doctors/:id" element={<DoctorEditPage />} />
               <Route path="profile" element={<ProfilePage />} />
               {/* Административные маршруты с проверкой прав */}
               <Route path="admin/field-mapping" element={<AdminRoute><FieldMappingPage /></AdminRoute>} />

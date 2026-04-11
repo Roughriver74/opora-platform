@@ -60,7 +60,7 @@ async def get_clinics(
     ),
     uow: UnitOfWork = Depends(get_uow),
 ):
-    """Получить список клиник согласно условиям."""
+    """Получить список компаний согласно условиям."""
 
     # Парсим сложные фильтры из JSON строки
     filter_groups_parsed = None
@@ -519,7 +519,7 @@ async def update_clinic_in_bitrix(
     uow: UnitOfWork = Depends(get_uow),
     current_user=Depends(get_current_user),
 ):
-    """Обновляет данные клиники напрямую в Bitrix24 без сохранения в локальной базе данных."""
+    """Обновляет данные компании напрямую в Bitrix24 без сохранения в локальной базе данных."""
     return await uow.clinic.update_clinic_in_bitrix(data=data)
 
 

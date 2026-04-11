@@ -60,7 +60,6 @@ interface Visit {
 	comment: string
 	with_distributor: boolean
 	sansus: boolean
-	doctors: number[]
 	contacts: number[]
 	[key: string]: any
 }
@@ -181,7 +180,6 @@ export const VisitCreatePage: React.FC = () => {
 		comment: '',
 		with_distributor: false,
 		sansus: false,
-		doctors: [],
 		contacts: [],
 		dynamic_bitrix_company_id: '',
 		ufCrm18Comment: '123123213',
@@ -368,7 +366,7 @@ export const VisitCreatePage: React.FC = () => {
 
 				dynamicFields[fieldName] = fieldValue
 			} else if (
-				!['company_id', 'visit_type', 'date', 'status', 'comment', 'with_distributor', 'sansus', 'doctors', 'contacts'].includes(key)
+				!['company_id', 'visit_type', 'date', 'status', 'comment', 'with_distributor', 'sansus', 'contacts'].includes(key)
 			) {
 				dynamicFields[key] = visit[key]
 			}

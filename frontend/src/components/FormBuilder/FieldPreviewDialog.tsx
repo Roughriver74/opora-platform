@@ -21,7 +21,7 @@ const STANDARD_FIELDS: Record<EntityType, Array<{ label: string; type: string }>
     { label: 'ФИО', type: 'text' },
     { label: 'Тип контакта', type: 'text' },
   ],
-  network_clinic: [{ label: 'Название клиники', type: 'text' }],
+  network_clinic: [{ label: 'Название филиала', type: 'text' }],
 };
 
 function renderField(field: { label: string; type: string; options?: string[] }, disabled = true) {

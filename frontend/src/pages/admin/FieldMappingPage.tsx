@@ -49,12 +49,12 @@ interface FormData extends Omit<FieldMappingCreate, 'value_options'> {
   };
 }
 
-const entityTypes = ["visit", "clinic", "doctor", "network_clinic"];
+const entityTypes = ["visit", "clinic", "contact", "network_clinic"];
 
 const entityTypeLabels: Record<string, string> = {
   visit: "Визиты",
   clinic: "Компании",
-  doctor: "Специалисты",
+  contact: "Контакты",
   network_clinic: "Филиалы",
 };
 const fieldTypes = [
@@ -181,8 +181,8 @@ const FieldMappingPage: React.FC = () => {
           return adminApi.getBitrixSmartProcessFieldValues(1054, params.fieldId);
         case 'clinic':
           return adminApi.getBitrixCompanyFieldValues(params.fieldId);
-        case 'doctor':
-          return adminApi.getBitrixDoctorFields();
+        case 'contact':
+          return adminApi.getBitrixContactFieldValues(params.fieldId);
         default:
           throw new Error(`Неизвестный тип сущности: ${params.entityType}`);
       }
@@ -266,8 +266,8 @@ const FieldMappingPage: React.FC = () => {
           return adminApi.getBitrixVisitFields();
         case 'clinic':
           return adminApi.getBitrixCompanyFields();
-        case 'doctor':
-          return adminApi.getBitrixDoctorFields();
+        case 'contact':
+          return adminApi.getBitrixDoctorFields(); // contacts use same Bitrix contact fields
         case 'network_clinic':
           return adminApi.getNetworkClinicsFields();
         default:

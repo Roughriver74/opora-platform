@@ -17,7 +17,7 @@ from app.config import (
 )
 from app.emuns.clinic_enum import SyncStatus
 from app.emuns.visit_enum import EntityType, VisitStatus
-from app.models import Company, Doctor, FormTemplate, GlobalSettings, Organization, User, Visit
+from app.models import Company, FormTemplate, GlobalSettings, Organization, User, Visit
 from app.schemas.visit_schema import VisitCreate, VisitDeleteSchema
 from app.services.bitrix24 import Bitrix24ApiError, Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
@@ -226,7 +226,6 @@ class VisitService:
                             select(Visit)
                             .options(
                                 joinedload(Visit.company),
-                                joinedload(Visit.doctors),
                             )
                             .where(Visit.id == visit_id)
                         )
@@ -241,14 +240,6 @@ class VisitService:
                     and visit_with_relations.company.bitrix_id
                 ):
                     bitrix_data["companyId"] = visit_with_relations.company.bitrix_id
-
-                if visit_with_relations and visit_with_relations.doctors:
-                    contact_ids = []
-                    for doctor in visit_with_relations.doctors:
-                        if doctor.bitrix_id:
-                            contact_ids.append(doctor.bitrix_id)
-                    if contact_ids:
-                        bitrix_data["contactId"] = contact_ids
 
                 result = await self.bitrix24.update_smart_process_item(
                     Settings.BITRIX24_SMART_PROCESS_VISIT_ID,
@@ -316,7 +307,7 @@ class VisitService:
             db_visit = Visit(**visit_data)
 
             # 5. Обработка динамических полей и врачей
-            await self._process_dynamic_fields_and_doctors(db_visit, visit)
+            await self._process_dynamic_fields_and_contacts(db_visit, visit)
 
             # 6. Сохранение визита в базу данных
             self.session.add(db_visit)
@@ -330,7 +321,6 @@ class VisitService:
                         .options(
                             joinedload(Visit.company),
                             joinedload(Visit.user),
-                            joinedload(Visit.doctors),
                             joinedload(Visit.contacts),
                         )
                         .where(Visit.id == db_visit.id)
@@ -475,7 +465,7 @@ class VisitService:
         """
         Подготавливает данные для создания визита.
         """
-        visit_data = visit.model_dump(exclude={"doctors", "dynamic_fields"})
+        visit_data = visit.model_dump(exclude={"contacts", "dynamic_fields"})
         visit_data["company_id"] = db_company.id
 
         if "date" in visit_data and isinstance(visit_data["date"], str):
@@ -504,11 +494,11 @@ class VisitService:
         return visit_data
 
     @logger()
-    async def _process_dynamic_fields_and_doctors(
+    async def _process_dynamic_fields_and_contacts(
         self, db_visit: Visit, visit: VisitCreate
     ):
         """
-        Обрабатывает динамические поля и связанных врачей.
+        Обрабатывает динамические поля и связанных контактов.
         """
         if hasattr(visit, "dynamic_fields") and visit.dynamic_fields:
             db_visit.dynamic_fields = visit.dynamic_fields
@@ -525,18 +515,6 @@ class VisitService:
                             continue
                         db_visit.date = date_obj
                         break
-
-        if hasattr(visit, "doctors") and visit.doctors:
-            doctors = (
-                (
-                    await self.session.execute(
-                        select(Doctor).where(Doctor.id.in_(visit.doctors))
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            db_visit.doctors = doctors
 
         # Link contacts to visit
         if hasattr(visit, "contacts") and visit.contacts:
@@ -709,11 +687,6 @@ class VisitService:
             )
 
             # 6. Обновление связанных врачей
-            if "doctor_ids" in update_data:
-                db_visit = await self._update_doctors(
-                    db_visit, update_data["doctor_ids"]
-                )
-
             # 7. Сохранение изменений в базе данных
             db_visit.sync_status = SyncStatus.PENDING.value
             self.session.add(db_visit)
@@ -779,8 +752,6 @@ class VisitService:
         if "date" in raw_data:
             update_data["date"] = await self._parse_date(raw_data["date"])
 
-        if "doctor_ids" in raw_data:
-            update_data["doctor_ids"] = raw_data["doctor_ids"]
 
         if "dynamic_fields" in raw_data:
             update_data["dynamic_fields"] = raw_data["dynamic_fields"]
@@ -832,27 +803,6 @@ class VisitService:
         updated_fields.update(dynamic_fields)
         db_visit.dynamic_fields = updated_fields
 
-        await self.session.commit()
-        await self.session.refresh(db_visit)
-        return db_visit
-
-    @logger()
-    async def _update_doctors(self, db_visit, doctor_ids: List[int]):
-        """
-        Обновляет список связанных врачей.
-        """
-        doctors = (
-            (
-                await self.session.execute(
-                    select(Doctor).where(Doctor.id.in_(doctor_ids))
-                )
-            )
-            .scalars()
-            .all()
-        )
-
-        db_visit.doctors.clear()
-        db_visit.doctors.extend(doctors)
         await self.session.commit()
         await self.session.refresh(db_visit)
         return db_visit

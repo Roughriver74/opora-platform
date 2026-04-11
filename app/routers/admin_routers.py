@@ -101,15 +101,6 @@ async def get_company_fields(
     return await uow.admin.get_company_fields()
 
 
-@router.get("/bitrix/fields/doctor")
-async def get_doctor_fields(
-    uow: UnitOfWork = Depends(get_uow),
-    current_user: User = Depends(get_current_admin_user),
-):
-    """Получение списка всех полей для контактов (докторов) из Bitrix24"""
-    return await uow.admin.get_contact_fields()
-
-
 # Маршруты для глобальных настроек
 @router.get("/settings", response_model=List[GlobalSettingResponse])
 async def get_global_settings(
@@ -212,7 +203,7 @@ async def get_field_values(
 ):
     """Получение списочных значений для поля из Bitrix24"""
 
-    bitrix_entity_type = "contact" if entity_type == "doctor" else entity_type
+    bitrix_entity_type = entity_type
     return await uow.admin.get_field_enum_values(
         bitrix_entity_type, field_id, entity_type_id
     )

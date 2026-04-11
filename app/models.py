@@ -90,13 +90,6 @@ class OrgSettings(Base):
 
 
 # Таблицы ассоциаций для отношений многие-ко-многим
-visit_doctors = Table(
-    "visit_doctors",
-    Base.metadata,
-    Column("visit_id", Integer, ForeignKey("visits.id")),
-    Column("doctor_id", Integer, ForeignKey("doctors.id")),
-)
-
 company_contacts = Table(
     "company_contacts",
     Base.metadata,
@@ -215,29 +208,9 @@ class Visit(Base):
         "Company", back_populates="visits", lazy="selectin"
     )  # Используем selectinload
     user = relationship("User", back_populates="visits", lazy="selectin")
-    doctors = relationship(
-        "Doctor", secondary=visit_doctors, back_populates="visits", lazy="selectin"
-    )
     contacts = relationship(
         "Contact", secondary=visit_contacts, back_populates="visits", lazy="selectin"
     )
-
-
-class Doctor(Base):
-    __tablename__ = "doctors"
-
-    id = Column(Integer, primary_key=True, index=True)
-    bitrix_id = Column(Integer, unique=True, index=True)
-    name = Column(String)
-    dynamic_fields = Column(JSONB, default={})
-    last_synced = Column(DateTime(timezone=True))
-    sync_status = Column(String, default="pending")
-    sync_error = Column(Text, nullable=True)
-    organization_id = Column(
-        Integer, ForeignKey("organizations.id"), nullable=False
-    )
-
-    visits = relationship("Visit", secondary=visit_doctors, back_populates="doctors")
 
 
 class Contact(Base):

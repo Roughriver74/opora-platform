@@ -216,7 +216,7 @@ const OLMapModal: React.FC<OLMapModalProps> = ({ open, onClose, clinics }) => {
                 onEntered: handleUpdateMapSize,
             }}
         >
-            <DialogTitle>Карта клиник</DialogTitle>
+            <DialogTitle>Карта компаний</DialogTitle>
             <DialogContent style={{ height: '600px', padding: 0 }}>
                 <div ref={mapRef} className="map" style={{ width: '100%', height: '100%' }} />
             </DialogContent>

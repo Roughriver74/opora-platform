@@ -11,7 +11,6 @@ from app.services.clinic_service import ClinicService
 from app.services.contact_service import ContactService
 from app.services.custom_section_service import CustomSectionService
 from app.services.dadata_service import DaDataService
-from app.services.doctors_service import DoctorService
 from app.services.network_clinic_service import NetWorkClinicService
 from app.services.settings_service import SettingsService
 from app.services.tasks_service import TasksService
@@ -32,7 +31,6 @@ class UnitOfWork:
         self.visit = VisitService
         self.bitrix24 = bitrix24
         self.contact = ContactService
-        self.doctor = DoctorService
         self.settings = SettingsService
         self.users = UsersService
         self.custom_section = CustomSectionService
@@ -47,7 +45,6 @@ class UnitOfWork:
         self.clinic = ClinicService(self.session, self.bitrix24)
         self.visit = VisitService(self.session, self.bitrix24)
         self.contact = ContactService(self.session, self.bitrix24)
-        self.doctor = DoctorService(self.session, self.bitrix24)
         self.settings = SettingsService(self.session)
         self.users = UsersService(self.session, self.bitrix24)
         self.custom_section = CustomSectionService(self.session)

@@ -61,13 +61,3 @@ class PhoneEmailSchema(BaseModel):
     model_config = {"extra": "ignore"}
 
 
-class DoctorBitrixSchema(BaseModel):
-    NAME: Optional[str] = None
-    SECOND_NAME: Optional[str] = None
-    LAST_NAME: Optional[str] = None
-    COMPANY_ID: int
-    EMAIL: Optional[List[PhoneEmailSchema]] = None
-    PHONE: Optional[List[PhoneEmailSchema]] = None
-    TYPE_ID: Optional[str] = Field(default="CLIENT")
-
-    model_config = {"extra": "ignore"}

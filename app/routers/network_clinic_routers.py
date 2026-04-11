@@ -17,7 +17,7 @@ router = APIRouter()
 
 @router.get(
     "/",
-    description="Получение списка сетевых клиник.",
+    description="Получение списка филиалов.",
     response_model=List[ResponseNetworkClinicSchema],
     status_code=status.HTTP_200_OK,
 )
@@ -29,7 +29,7 @@ async def get_network_clinics(
 
 @router.post(
     "/",
-    description="Создание новой сетевой клиники.",
+    description="Создание нового филиала.",
     response_model=ResponseNetworkClinicSchema,
     status_code=status.HTTP_201_CREATED,
 )
@@ -45,7 +45,7 @@ async def create_network_clinic(
 
 @router.get(
     "/{bitrix_network_clinic_id}",
-    description="Получение информации о сетевой клинике.",
+    description="Получение информации о филиале.",
     response_model=ResponseNetworkClinicWithClinicBitrixIdSchema,
     status_code=status.HTTP_200_OK,
 )
@@ -66,7 +66,7 @@ async def get_network_clinic(
 
 @router.post(
     "/update_clinic",
-    description="Обновление сетевой клиники.",
+    description="Обновление филиала.",
     status_code=status.HTTP_201_CREATED,
 )
 async def update_network_clinic(
@@ -84,7 +84,7 @@ async def update_network_clinic(
 
 @router.delete(
     "/{bitrix_network_clinic_id}",
-    description="Удаление сетевой клиники.",
+    description="Удаление филиала.",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_network_clinic(
@@ -97,7 +97,7 @@ async def delete_network_clinic(
 
 @router.get(
     "/clinic/{clinic_id}",
-    description="Получение списка сетевых клиник для конкретной компании с пагинацией и сортировкой.",
+    description="Получение списка филиалов для конкретной компании с пагинацией и сортировкой.",
     response_model=PaginatedResponse,
     status_code=status.HTTP_200_OK,
 )
@@ -130,7 +130,7 @@ async def get_network_clinics_by_clinic_id(
 
 @router.post(
     "/clinic_update_network",
-    description="Обновление поля is_network у клиник.",
+    description="Обновление поля is_network у компаний.",
     status_code=status.HTTP_200_OK,
 )
 async def clinic_update_network_clinic(
@@ -142,7 +142,7 @@ async def clinic_update_network_clinic(
 
 @router.post(
     "/sync-network-clinics-to-bitrix",
-    description="Синхронизация всех сетевых клиник c bitrix.",
+    description="Синхронизация всех филиалов c bitrix.",
     status_code=status.HTTP_200_OK,
 )
 async def bitrix_sync_network_clinics(
@@ -156,7 +156,7 @@ async def bitrix_sync_network_clinics(
 
 @router.post(
     "/sync-network-clinics-from-bitrix",
-    description="Обновление сетевых клиник в бд из bitrix.",
+    description="Обновление филиалов в бд из bitrix.",
     status_code=status.HTTP_200_OK,
 )
 async def bitrix_sync_network_clinics(
@@ -168,7 +168,7 @@ async def bitrix_sync_network_clinics(
 
 @router.post(
     "/doctor",
-    description="Получение доктора сетевой клиники.",
+    description="Получение контакта филиала.",
     status_code=status.HTTP_200_OK,
 )
 async def get_doctor(

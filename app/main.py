@@ -13,7 +13,6 @@ from app.routers import (
     contacts_routers,
     custom_sections_routers,
     dadata_router,
-    doctors_routers,
     form_template_routers,
     help_routers,
     invitation_routers,
@@ -60,9 +59,6 @@ app.include_router(
     clinic_routers.router, prefix=f"{api_prefix}/clinics", tags=["Компании"]
 )
 app.include_router(visit_routers.router, prefix=f"{api_prefix}/visits", tags=["Визиты"])
-app.include_router(
-    doctors_routers.router, prefix=f"{api_prefix}/doctors", tags=["Специалисты"]
-)
 app.include_router(
     contacts_routers.router, prefix=f"{api_prefix}/contacts", tags=["Контакты"]
 )
