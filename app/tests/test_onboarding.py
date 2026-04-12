@@ -89,6 +89,17 @@ async def test_setup_with_invalid_template(client, admin_headers):
 
 
 @pytest.mark.asyncio
+async def test_setup_requires_org_admin(client, auth_headers):
+    """Обычный пользователь (не org_admin) получает 403."""
+    response = await client.post(
+        "/api/onboarding/setup",
+        json={"template_id": "cleaning", "company_name": "Test", "team_size": "1-5"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_list_templates_endpoint(client):
     """GET /api/onboarding/templates возвращает список шаблонов."""
     response = await client.get("/api/onboarding/templates")
