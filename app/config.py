@@ -196,6 +196,7 @@ EXCLUDED_CLINIC_CREATE_SCHEMA_FIELDS: set = {
 
 
 UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "/app/upload")
+UPLOAD_PHOTOS_DIR: str = os.getenv("UPLOAD_PHOTOS_DIR", "./uploads/photos")
 
 # Legacy hardcoded date field keys — should be resolved from FormTemplate per organization.
 # Kept as fallback only.

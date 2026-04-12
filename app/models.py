@@ -206,6 +206,14 @@ class Visit(Base):
     sync_error = Column(Text, nullable=True)
     geo = Column(Boolean, default=False)
 
+    # Чекин/чекаут с геолокацией
+    checkin_at = Column(DateTime(timezone=True), nullable=True)
+    checkin_lat = Column(FLOAT, nullable=True)
+    checkin_lon = Column(FLOAT, nullable=True)
+    checkout_at = Column(DateTime(timezone=True), nullable=True)
+    checkout_lat = Column(FLOAT, nullable=True)
+    checkout_lon = Column(FLOAT, nullable=True)
+
     company = relationship(
         "Company", back_populates="visits", lazy="selectin"
     )  # Используем selectinload
@@ -213,6 +221,24 @@ class Visit(Base):
     contacts = relationship(
         "Contact", secondary=visit_contacts, back_populates="visits", lazy="selectin"
     )
+
+
+class VisitPhoto(Base):
+    __tablename__ = "visit_photos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    visit_id = Column(Integer, ForeignKey("visits.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    file_path = Column(String, nullable=False)
+    thumbnail_path = Column(String, nullable=True)
+    latitude = Column(FLOAT, nullable=True)
+    longitude = Column(FLOAT, nullable=True)
+    taken_at = Column(DateTime(timezone=True), nullable=True)
+    uploaded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    file_size_bytes = Column(Integer, nullable=True)
+
+    visit = relationship("Visit", backref="photos")
+    organization = relationship("Organization")
 
 
 class Contact(Base):
