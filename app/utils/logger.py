@@ -1,176 +1,152 @@
+"""
+Structured JSON logging для OPORA Platform.
+Каждая запись — валидный JSON с полями: timestamp, level, message, request_id, extra.
+"""
 import asyncio
-import functools
+import json
 import logging
-import os
-import shutil
-import traceback
-from typing import Callable, Union
+import sys
+import uuid
+from contextvars import ContextVar
+from datetime import datetime
+from functools import wraps
+from typing import Any
 
-import aiofiles
-from aiologger import Logger
-from aiologger.handlers.files import AsyncFileHandler
-from fastapi import UploadFile
+# Context variable для Request ID (прокидывается через middleware)
+request_id_var: ContextVar[str] = ContextVar("request_id", default="")
+
+# PII поля, которые маскируем в логах
+_PII_FIELDS = {"password", "token", "secret", "authorization", "api_key", "webhook_url"}
 
 
-class CustomFormatter(logging.Formatter):
-    def format(self, record):
-        record.message = record.get_message()
-        if self.usesTime():
-            record.asctime = self.formatTime(record, self.datefmt)
-        s = self.formatMessage(record)
+def _mask_pii(data: Any, depth: int = 0) -> Any:
+    """Рекурсивно маскирует PII поля в dict/list."""
+    if depth > 5:
+        return data
+    if isinstance(data, dict):
+        return {
+            k: "***" if k.lower() in _PII_FIELDS else _mask_pii(v, depth + 1)
+            for k, v in data.items()
+        }
+    if isinstance(data, list):
+        return [_mask_pii(item, depth + 1) for item in data]
+    return data
+
+
+class JsonFormatter(logging.Formatter):
+    """Форматирует лог-записи как JSON строки."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        log_entry = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "logger": record.name,
+            "request_id": request_id_var.get(""),
+        }
+
+        # Добавляем extra поля если есть
+        if hasattr(record, "extra"):
+            log_entry["extra"] = _mask_pii(record.extra)
+
+        # Добавляем exc_info если есть
         if record.exc_info:
-            if not record.exc_text:
-                record.exc_text = self.formatException(record.exc_info)
-        if record.exc_text:
-            if s[-1:] != "\n":
-                s = s + "\n"
-            s = s + record.exc_text
-        if record.stack_info:
-            if s[-1:] != "\n":
-                s = s + "\n"
-            s = s + self.formatStack(record.stack_info)
-        return s
+            log_entry["exception"] = self.formatException(record.exc_info)
+
+        return json.dumps(log_entry, ensure_ascii=False)
 
 
-logger_log = None
+def _get_logger(name: str = "opora") -> logging.Logger:
+    """Возвращает настроенный JSON logger."""
+    _logger = logging.getLogger(name)
+
+    if not _logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(JsonFormatter())
+        _logger.addHandler(handler)
+        _logger.setLevel(logging.INFO)
+        _logger.propagate = False
+
+    return _logger
 
 
-async def setup_logger():
-    global logger_log
-    if logger_log is None:  # Убедитесь, что логгер уже не инициализирован
-        logger_log = Logger(name="visits")
-        current_directory = os.getcwd()
-        log_directory = os.path.join(current_directory, "logs")
-        log_path = os.path.join(log_directory, "app_logger.log")
-
-        os.makedirs(log_directory, exist_ok=True)
-
-        rotating_handler = RotatingAsyncFileHandler(
-            filename=log_path, max_bytes=20 * 1024 * 1024, backup_count=10
-        )
-        log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        date_format = "%Y-%m-%d %H:%M:%S"
-        formatter = CustomFormatter(fmt=log_format, datefmt=date_format)
-        rotating_handler.formatter = formatter
-        logger_log.add_handler(rotating_handler)
-
-    return logger_log
+# Глобальный инстанс
+app_logger = _get_logger("opora")
 
 
-class RotatingAsyncFileHandler(AsyncFileHandler):
-    def __init__(self, filename, max_bytes=1 * 1024 * 1024, backup_count=10, **kwargs):
-        super().__init__(filename=filename, **kwargs)
-        self.filename = filename
-        self.max_bytes = max_bytes
-        self.backup_count = backup_count
-        self._lock = asyncio.Lock()
+# ---------------------------------------------------------------------------
+# Вспомогательные функции для прямого логирования
+# ---------------------------------------------------------------------------
 
-    async def emit(self, record):
-        async with self._lock:
-            # Проверяем ротацию
-            if await self._rotate_logs_if_needed():
-                if self.stream:
-                    await self.stream.flush()
-                    await asyncio.to_thread(os.fsync, self.stream.fileno())
-                return
-
-            # Пишем лог
-            await super().emit(record)
-
-            # Счётчик для периодического fsync
-            self._write_count = getattr(self, "_write_count", 0) + 1
-
-            if self.stream and self._write_count % 50 == 0:
-                await self.stream.flush()
-                await asyncio.to_thread(os.fsync, self.stream.fileno())
-
-    async def _rotate_logs_if_needed(self):
-        if (
-            os.path.exists(self.filename)
-            and os.path.getsize(self.filename) >= self.max_bytes
-        ):
-            await self._rotate_logs()
-
-    async def _rotate_logs(self):
-        if self.backup_count > 0:
-            # Разделяем имя файла и расширение
-            base_name, ext = os.path.splitext(self.filename)
-
-            # Удаляем самый старый файл, если он существует
-            oldest_log = f"{base_name}_{self.backup_count}{ext}"
-            if os.path.exists(oldest_log):
-                os.remove(oldest_log)
-
-            # Перемещаем файлы в порядке убывания
-            for i in range(self.backup_count - 1, 0, -1):
-                src = f"{base_name}_{i}{ext}"
-                dst = f"{base_name}_{i + 1}{ext}"
-                if os.path.exists(src):
-                    shutil.move(src, dst)
-
-            # Переименовываем текущий файл
-            new_filename = f"{base_name}_1{ext}"
-            shutil.move(self.filename, new_filename)
-
-            # Создаем новый пустой файл для записи
-            async with aiofiles.open(self.filename, "a") as log_file:
-                pass  # Закрытие потока после открытия
+def log_info(message: str, **extra):
+    app_logger.info(message, extra={"extra": extra} if extra else {})
 
 
-def log_bytes_info(file: Union[UploadFile, bytes], additional_info: str = ""):
-    """Логирует информацию о потоке байтов или файле."""
-    if isinstance(file, UploadFile):
-        content_type = file.content_type
-        filename = file.filename
-        file_size = len(file.file.read())
-        file.file.seek(0)
-        return f"{additional_info} File: {filename}, Content-Type: {content_type}, Size: {file_size} bytes"
-    elif isinstance(file, bytes):
-        file_size = len(file)
-        return f"{additional_info} Bytes stream with size: {file_size} bytes"
-    else:
-        return f"{additional_info} Unknown file type"
+def log_error(message: str, exc: Exception = None, **extra):
+    app_logger.error(message, exc_info=exc, extra={"extra": extra} if extra else {})
 
 
-def logger():
-    """Декоратор для логирования вызовов функций."""
+def log_warning(message: str, **extra):
+    app_logger.warning(message, extra={"extra": extra} if extra else {})
 
-    def decorator(func: Callable):
-        @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            logger_log = await setup_logger()
 
-            args_info = [
-                (
-                    log_bytes_info(arg, additional_info="Received argument")
-                    if isinstance(arg, (UploadFile, bytes))
-                    else str(arg)
-                )
-                for arg in args
-            ]
-            kwargs_info = {
-                k: (
-                    log_bytes_info(v, additional_info="Received keyword argument")
-                    if isinstance(v, (UploadFile, bytes))
-                    else v
-                )
-                for k, v in kwargs.items()
-            }
+# ---------------------------------------------------------------------------
+# Декоратор @logger()
+# ---------------------------------------------------------------------------
 
+def logger(skip_args: bool = False):
+    """
+    Декоратор для логирования вызовов функций.
+    Логирует начало, конец и ошибки.
+    Совместим с @logger() на async- и sync-функциях.
+    """
+    def decorator(func):
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            fn_name = f"{func.__module__}.{func.__qualname__}"
+            req_id = request_id_var.get("")
+
+            app_logger.debug(
+                f"-> {fn_name}",
+                extra={"extra": {"request_id": req_id}},
+            )
             try:
-                await logger_log.info(
-                    f"Вызов функции {func.__name__} с аргументами: {args_info}, ключевыми аргументами: {kwargs_info}"
-                )
                 result = await func(*args, **kwargs)
-                await logger_log.info(f"Функция {func.__name__} вернула: {result}")
                 return result
             except Exception as e:
-                error_trace = traceback.format_exc()
-                await logger_log.error(
-                    f"Ошибка в функции {func.__name__}: {str(e)}\nТрассировка: {error_trace}"
+                app_logger.error(
+                    f"Error in {fn_name}: {type(e).__name__}: {e}",
+                    exc_info=True,
+                    extra={"extra": {"request_id": req_id}},
                 )
-                raise e
+                raise
 
-        return wrapper
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            fn_name = f"{func.__module__}.{func.__qualname__}"
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                app_logger.error(
+                    f"Error in {fn_name}: {type(e).__name__}: {e}",
+                    exc_info=True,
+                )
+                raise
+
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        return sync_wrapper
 
     return decorator
+
+
+# ---------------------------------------------------------------------------
+# Обратная совместимость: setup_logger() вызывается в main.py on_startup
+# ---------------------------------------------------------------------------
+
+async def setup_logger():
+    """
+    Заглушка для обратной совместимости.
+    Новый логгер инициализируется при импорте модуля; явная настройка не нужна.
+    """
+    return app_logger

@@ -1,75 +1,83 @@
+/* Service Worker для OPORA PWA */
 const CACHE_NAME = 'opora-v1';
-const STATIC_ASSETS = ['/', '/index.html'];
+const STATIC_ASSETS = [
+  '/',
+  '/static/js/main.chunk.js',
+  '/static/js/bundle.js',
+  '/manifest.json',
+];
 
-// Install: cache app shell
+// Install: кэшируем статику
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS).catch(() => {
+        // Игнорируем ошибки при первоначальном кэшировании (файлы могут не существовать)
+      });
+    })
   );
   self.skipWaiting();
 });
 
-// Activate: clean up old caches
+// Activate: удаляем старые кэши
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+    })
   );
   self.clients.claim();
 });
 
-// Fetch strategy
+// Fetch: стратегия Network First для API, Cache First для статики
 self.addEventListener('fetch', (event) => {
-  const { request } = event;
+  const url = new URL(event.request.url);
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') return;
-
-  // API calls: network-first with cache fallback
-  if (request.url.includes('/api/')) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          return response;
-        })
-        .catch(() =>
-          caches.match(request).then(
-            (cached) =>
-              cached ||
-              new Response(
-                JSON.stringify({ error: 'Нет подключения к интернету' }),
-                { status: 503, headers: { 'Content-Type': 'application/json' } }
-              )
-          )
-        )
-    );
+  // API запросы — только сеть, без кэша
+  if (url.pathname.startsWith('/api/')) {
     return;
   }
 
-  // Static assets & app shell: cache-first with network fallback
-  event.respondWith(
-    caches.match(request).then(
-      (cached) =>
-        cached ||
-        fetch(request)
+  // Статические ресурсы — Cache First
+  if (event.request.method === 'GET') {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) {
+          // Обновляем кэш в фоне
+          fetch(event.request)
+            .then((response) => {
+              if (response && response.status === 200) {
+                caches.open(CACHE_NAME).then((cache) => {
+                  cache.put(event.request, response);
+                });
+              }
+            })
+            .catch(() => {});
+          return cached;
+        }
+
+        // Нет в кэше — сеть
+        return fetch(event.request)
           .then((response) => {
-            // Only cache same-origin successful responses
-            if (response.ok && response.type === 'basic') {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            if (response && response.status === 200 && event.request.method === 'GET') {
+              const responseClone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseClone);
+              });
             }
             return response;
           })
           .catch(() => {
-            // For navigation requests, return cached index.html (SPA fallback)
-            if (request.mode === 'navigate') {
-              return caches.match('/index.html');
+            // Оффлайн-фолбэк для navigation запросов
+            if (event.request.mode === 'navigate') {
+              return caches.match('/');
             }
-            return new Response('Нет подключения', { status: 503 });
-          })
-    )
-  );
+          });
+      })
+    );
+  }
 });

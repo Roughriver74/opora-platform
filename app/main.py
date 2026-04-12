@@ -1,12 +1,18 @@
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from app.utils.logger import setup_logger
+from app.utils.rate_limit import limiter
 
 from app.config import Settings
-from app.middleware import catch_exceptions_middleware
+from app.middleware import catch_exceptions_middleware, request_id_middleware
 from app.routers import (
     admin_routers,
+    analytics_routers,
+    audit_routers,
     auth_routers,
     billing_routers,
     clinic_routers,
@@ -41,14 +47,35 @@ app = FastAPI(
     ],
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Prometheus метрики — настраивается ДО middleware
+instrumentator = Instrumentator(
+    should_group_status_codes=True,
+    should_ignore_untemplated=True,
+    excluded_handlers=["/api/health", "/metrics"],
+)
+instrumentator.instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
+# Request ID middleware — должен быть первым, чтобы request_id был доступен везде
+app.middleware("http")(request_id_middleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=Settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=600,  # Cache preflight requests for 10 minutes
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Request-ID",
+        "X-API-Key",
+        "Accept",
+        "Origin",
+    ],
+    expose_headers=["X-Request-ID"],
+    max_age=600,
 )
 
 api_prefix = "/api"
@@ -114,12 +141,61 @@ app.include_router(
     prefix=api_prefix,
     tags=["Шаблоны форм"],
 )
+app.include_router(
+    analytics_routers.router,
+    prefix=api_prefix,
+    tags=["Аналитика"],
+)
+app.include_router(
+    audit_routers.router,
+    prefix=api_prefix,
+    tags=["Аудит"],
+)
 
 
 @app.get(f"{api_prefix}/health")
 @app.head(f"{api_prefix}/health")
 async def health_check():
-    return {"status": "healthy", "environment": Settings.ENVIRONMENT}
+    """Детальный health check — проверяет БД и Redis."""
+    import time
+    from sqlalchemy import text
+    from app.database_session import engine
+    from app.utils.cache import get_redis
+
+    start = time.monotonic()
+    checks = {}
+    overall = "healthy"
+
+    # Проверка PostgreSQL
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        checks["database"] = {
+            "status": "healthy",
+            "latency_ms": round((time.monotonic() - start) * 1000),
+        }
+    except Exception as e:
+        checks["database"] = {"status": "unhealthy", "error": str(e)}
+        overall = "degraded"
+
+    # Проверка Redis (опциональная, не критична)
+    try:
+        redis = await get_redis()
+        if redis:
+            await redis.ping()
+            checks["redis"] = {"status": "healthy"}
+        else:
+            checks["redis"] = {"status": "disabled"}
+    except Exception as e:
+        checks["redis"] = {"status": "unhealthy", "error": str(e)}
+
+    return {
+        "status": overall,
+        "version": "1.0.0",
+        "environment": Settings.ENVIRONMENT,
+        "checks": checks,
+        "uptime_seconds": round(time.monotonic()),
+    }
 
 
 @app.on_event("startup")

@@ -1,7 +1,7 @@
 {
-  "short_name": "Опора",
-  "name": "Опора — Управление визитами",
-  "description": "Платформа управления визитами и активностями для полевых команд",
+  "short_name": "OPОРА",
+  "name": "OPORA — Управление визитами",
+  "description": "Платформа для управления визитами полевых команд",
   "icons": [
     {
       "src": "favicon.ico",
@@ -26,6 +26,23 @@
   "orientation": "portrait-primary",
   "theme_color": "#059669",
   "background_color": "#ffffff",
+  "lang": "ru",
   "scope": "/",
-  "categories": ["business", "productivity"]
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Создать визит",
+      "short_name": "Визит",
+      "description": "Создать новый визит",
+      "url": "/visits/create",
+      "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
+    },
+    {
+      "name": "Список компаний",
+      "short_name": "Компании",
+      "description": "Открыть список компаний",
+      "url": "/companies",
+      "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
+    }
+  ]
 }

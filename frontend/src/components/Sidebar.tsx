@@ -28,6 +28,7 @@ import {
   Assignment,
   SpeedOutlined,
   Business,
+  BarChart,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -43,6 +44,7 @@ const mainItems: NavItem[] = [
   { label: 'Визиты', icon: <EventNote />, path: '/visits' },
   { label: 'Компании', icon: <CorporateFare />, path: '/companies' },
   { label: 'Контакты', icon: <People />, path: '/contacts' },
+  { label: 'Аналитика', icon: <BarChart />, path: '/analytics' },
 ];
 
 const adminItems: NavItem[] = [

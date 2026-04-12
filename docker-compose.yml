@@ -21,6 +21,23 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: opora_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - opora_network
+
   backend:
     build:
       context: .
@@ -28,6 +45,8 @@ services:
     container_name: opora_backend
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-opora_user}:${POSTGRES_PASSWORD:-opora_dev_pass}@db:5432/${POSTGRES_DB:-opora_dev}
@@ -52,6 +71,8 @@ services:
       - FTP_FILENAME=${FTP_FILENAME:-}
       - PLATFORM_ADMIN_TOKEN=${PLATFORM_ADMIN_TOKEN:-}
       - ADMIN_DOMAIN=${ADMIN_DOMAIN:-}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_ENABLED=true
     volumes:
       - ./upload:/app/upload
     ports:
@@ -81,3 +102,4 @@ networks:
 
 volumes:
   opora_postgres_data:
+  redis_data:

@@ -17,10 +17,28 @@ from app.config import (
 )
 from app.emuns.clinic_enum import SyncStatus
 from app.emuns.visit_enum import EntityType, VisitStatus
-from app.models import Company, FormTemplate, GlobalSettings, Organization, User, Visit
+from app.models import Company, FormTemplate, GlobalSettings, User, Visit
 from app.schemas.visit_schema import VisitCreate, VisitDeleteSchema
 from app.services.bitrix24 import Bitrix24ApiError, Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
+
+# Module-level cache for FormTemplate per (org_id, entity_type).
+# Lifetime is bounded by process restart; safe for read-heavy, write-rarely templates.
+_form_template_cache: dict = {}
+
+
+async def _get_form_template(session, org_id: int, entity_type: str = "visit"):
+    """Load FormTemplate with a simple in-memory cache to avoid repeated DB hits."""
+    cache_key = (org_id, entity_type)
+    if cache_key not in _form_template_cache:
+        result = await session.execute(
+            select(FormTemplate).where(
+                FormTemplate.entity_type == entity_type,
+                FormTemplate.organization_id == org_id,
+            )
+        )
+        _form_template_cache[cache_key] = result.scalars().first()
+    return _form_template_cache[cache_key]
 
 
 class VisitService:
@@ -33,35 +51,11 @@ class VisitService:
 
     @logger()
     async def _check_visit_plan_limits(self, current_user: User):
-        """Check if org is on FREE plan and has exceeded monthly visit limit."""
-        from sqlalchemy import extract, func
+        """Check monthly visit limit against plan_limits for any plan (not only free)."""
+        from app.services.plan_limits_service import check_visits_monthly_limit
 
-        org = (
-            (
-                await self.session.execute(
-                    select(Organization).where(Organization.id == current_user.organization_id)
-                )
-            )
-            .scalars()
-            .first()
-        )
-        if not org or org.plan != "free":
-            return
-
-        max_visits = (org.plan_limits or {}).get("max_visits_per_month", 100)
-        now = datetime.now()
-        month_visit_count = await self.session.scalar(
-            select(func.count(Visit.id)).where(
-                Visit.organization_id == current_user.organization_id,
-                extract("year", Visit.date) == now.year,
-                extract("month", Visit.date) == now.month,
-            )
-        )
-        if month_visit_count >= max_visits:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Лимит визитов для бесплатного плана ({max_visits}/мес) исчерпан. Обновите план.",
-            )
+        if current_user and current_user.organization_id:
+            await check_visits_monthly_limit(self.session, current_user.organization_id)
 
     @logger()
     async def get_visits(self, current_user):
@@ -119,14 +113,9 @@ class VisitService:
 
         if db_visit.bitrix_id and self.bitrix24 is not None:
             try:
-                form_template = (
-                    await self.session.execute(
-                        select(FormTemplate).where(
-                            FormTemplate.entity_type == "visit",
-                            FormTemplate.organization_id == current_user.organization_id,
-                        )
-                    )
-                ).scalars().first()
+                form_template = await _get_form_template(
+                    self.session, current_user.organization_id, "visit"
+                )
 
                 template_fields = form_template.fields if form_template else []
                 field_mapping_dict = {
@@ -566,14 +555,9 @@ class VisitService:
             # Date Bitrix field ID resolved from FormTemplate below
             db_visit.dynamic_fields["date"] = formatted_date
 
-        form_template = (
-            await self.session.execute(
-                select(FormTemplate).where(
-                    FormTemplate.entity_type == "visit",
-                    FormTemplate.organization_id == current_user.organization_id,
-                )
-            )
-        ).scalars().first()
+        form_template = await _get_form_template(
+            self.session, current_user.organization_id, "visit"
+        )
 
         if not form_template:
             import logging
@@ -818,14 +802,9 @@ class VisitService:
             await self.session.commit()
             await self.session.refresh(db_visit)
             return db_visit
-        form_template = (
-            await self.session.execute(
-                select(FormTemplate).where(
-                    FormTemplate.entity_type == "visit",
-                    FormTemplate.organization_id == current_user.organization_id,
-                )
-            )
-        ).scalars().first()
+        form_template = await _get_form_template(
+            self.session, current_user.organization_id, "visit"
+        )
 
         template_fields = form_template.fields if form_template else []
         field_mapping_dict = {

@@ -54,3 +54,28 @@ docker-compose -f deploy/docker-compose.prod.yml logs -f
 # Остановка
 docker-compose -f deploy/docker-compose.prod.yml down
 ```
+
+## Мониторинг (Prometheus + Grafana)
+
+### Запуск
+
+```bash
+# Запустить основные сервисы
+docker-compose up -d
+
+# Запустить мониторинг
+docker-compose -f docker-compose.monitoring.yml up -d
+```
+
+### Доступ
+
+- **Prometheus**: <http://localhost:9090>
+- **Grafana**: <http://localhost:3000> (admin / opora-grafana-admin)
+
+### Метрики
+
+Backend автоматически экспортирует метрики на `/metrics`:
+
+- `http_requests_total` — количество запросов по методу/эндпоинту/статусу
+- `http_request_duration_seconds` — время ответа (histogram)
+- `http_requests_in_progress` — текущие активные запросы

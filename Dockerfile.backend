@@ -22,4 +22,5 @@ RUN mkdir -p /src/app/upload
 EXPOSE 8000
 
 # Run migrations then start server
-CMD ["sh", "-c", "cd /src/app && alembic upgrade head 2>/dev/null; cd /src && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"]
+# Wait for DB to be ready, run migrations (fail loudly on error), then start server
+CMD ["sh", "-c", "until pg_isready -h ${POSTGRES_HOST:-db} -p ${POSTGRES_PORT:-5432} -U ${POSTGRES_USER:-opora_user}; do echo 'Waiting for database...'; sleep 2; done && cd /src/app && alembic upgrade head && cd /src && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"]

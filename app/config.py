@@ -74,6 +74,10 @@ class Settings:
     # Admin subdomain (для CORS)
     ADMIN_DOMAIN: str = os.getenv("ADMIN_DOMAIN", "")
 
+    # Redis
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://redis:6379/0")
+    REDIS_ENABLED: bool = os.getenv("REDIS_ENABLED", "true").lower() == "true"
+
 
 MOSCOW_TZ = ZoneInfo("Europe/Moscow")
 

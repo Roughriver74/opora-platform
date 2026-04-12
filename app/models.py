@@ -129,6 +129,7 @@ class User(Base):
         "Organization", back_populates="users", foreign_keys=[organization_id]
     )
     visits = relationship("Visit", back_populates="user")
+    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.hashed_password = pwd_context.hash(password)
@@ -389,3 +390,38 @@ class Payment(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     organization = relationship("Organization", back_populates="payments")
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String, unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    revoked = Column(Boolean, default=False, nullable=False)
+
+    user = relationship("User", back_populates="refresh_tokens")
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_email = Column(String, nullable=True)  # денормализация для сохранения после удаления пользователя
+
+    # Что произошло
+    action = Column(String, nullable=False, index=True)  # "create", "update", "delete", "login", "export"
+    entity_type = Column(String, nullable=True, index=True)  # "visit", "company", "user", "contact"
+    entity_id = Column(Integer, nullable=True)
+
+    # Детали
+    details = Column(JSONB, nullable=True)  # {"before": {...}, "after": {...}} или контекст действия
+    ip_address = Column(String, nullable=True)
+    request_id = Column(String, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)

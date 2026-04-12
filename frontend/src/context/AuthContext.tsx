@@ -109,10 +109,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('Attempting to login with email:', email);
       const response = await api.post('/auth/login', { email, password });
-      const { access_token, user: userData } = response.data;
+      const { access_token, refresh_token, user: userData } = response.data;
 
-      // Store token
+      // Store tokens
       localStorage.setItem('token', access_token);
+      if (refresh_token) {
+        localStorage.setItem('refresh_token', refresh_token);
+      }
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
       // Set user with normalized data
@@ -136,8 +139,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    // Clear token and user data
+    // Clear tokens and user data
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
     navigate('/auth');

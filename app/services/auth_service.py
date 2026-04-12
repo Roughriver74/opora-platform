@@ -1,16 +1,20 @@
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings as settings
-from app.models import User
+from app.models import RefreshToken, User
 from app.services.bitrix24 import Bitrix24Client, require_bitrix24
 from app.utils.logger import logger
+
+REFRESH_TOKEN_TTL_DAYS = 7
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -107,3 +111,38 @@ class AuthService:
                 detail="Not enough permissions",
             )
         return user
+
+    async def create_refresh_token(self, user_id: int, org_id: int = None) -> str:
+        """Создаёт refresh token и сохраняет в БД. Возвращает строку токена."""
+        token = secrets.token_urlsafe(64)
+        expires_at = datetime.now(ZoneInfo("Europe/Moscow")) + timedelta(days=REFRESH_TOKEN_TTL_DAYS)
+
+        refresh_token = RefreshToken(
+            token=token,
+            user_id=user_id,
+            organization_id=org_id,
+            expires_at=expires_at,
+            revoked=False,
+        )
+        self.session.add(refresh_token)
+        await self.session.flush()
+        return token
+
+    async def validate_refresh_token(self, token: str) -> Optional[RefreshToken]:
+        """Валидирует refresh token. Возвращает объект RefreshToken или None."""
+        now = datetime.now(ZoneInfo("Europe/Moscow"))
+        result = await self.session.execute(
+            select(RefreshToken)
+            .where(RefreshToken.token == token)
+            .where(RefreshToken.revoked == False)  # noqa: E712
+            .where(RefreshToken.expires_at > now)
+        )
+        return result.scalar_one_or_none()
+
+    async def revoke_refresh_token(self, token: str) -> None:
+        """Отзывает refresh token по значению токена."""
+        await self.session.execute(
+            update(RefreshToken)
+            .where(RefreshToken.token == token)
+            .values(revoked=True)
+        )

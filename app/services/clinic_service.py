@@ -9,6 +9,7 @@ from fastapi import HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import and_, desc, distinct, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import (
     BITRIX24_SELECT_PAYLOAD_FIELDS,
@@ -36,7 +37,8 @@ from app.schemas.clinic_schema import (
     PaginatedResponse,
 )
 from app.services.bitrix24 import Bitrix24ApiError, Bitrix24Client, require_bitrix24
-from app.utils.logger import logger
+from app.services.plan_limits_service import check_companies_limit
+from app.utils.logger import app_logger, logger, log_warning
 
 
 class ClinicService:
@@ -71,9 +73,13 @@ class ClinicService:
     ) -> PaginatedResponse:
         last_visit_subquery = await self._build_last_visit_subquery()
 
-        query = select(Company).outerjoin(
+        query = select(
+            Company,
+            last_visit_subquery.c.last_visit_date,
+            last_visit_subquery.c.visits_count,
+        ).outerjoin(
             last_visit_subquery, Company.id == last_visit_subquery.c.company_id
-        )
+        ).options(selectinload(Company.addresses))
 
         # Multi-tenancy: scope to organization
         if not current_user.is_platform_admin:
@@ -129,15 +135,14 @@ class ClinicService:
         total_pages = ceil(total / filter_params.page_size)
 
         # Применение пагинации
-        companies = await self.session.execute(
+        rows = (await self.session.execute(
             query.offset((filter_params.page - 1) * filter_params.page_size).limit(
                 filter_params.page_size
             )
-        )
-        companies = companies.scalars().all()
+        )).all()
 
-        # Преобразование данных для ответа
-        clinics_data = await self._serialize_companies(companies)
+        # Преобразование данных для ответа (без N+1: данные из subquery и selectinload)
+        clinics_data = self._serialize_companies_from_rows(rows)
 
         return PaginatedResponse(
             items=clinics_data,
@@ -304,7 +309,7 @@ class ClinicService:
                 if condition.value is not None:
                     return field_attr < condition.value
         except Exception as e:
-            print(f"Error building condition for {condition.field}: {e}")
+            log_warning(f"Error building condition for {condition.field}: {e}")
             return None
 
         return None
@@ -327,38 +332,19 @@ class ClinicService:
 
         return query
 
-    @logger()
-    async def _serialize_companies(self, companies) -> List[Dict]:
-        """Сериализует данные о компаниях."""
+    @staticmethod
+    def _serialize_companies_from_rows(rows) -> List[Dict]:
+        """Сериализует данные о компаниях из строк запроса без N+1.
+
+        Каждая строка содержит (Company, last_visit_date, visits_count).
+        Адреса уже загружены через selectinload(Company.addresses) в основном запросе.
+        """
         clinics_data = []
-        for company in companies:
-            last_visit_query = (
-                (
-                    await self.session.execute(
-                        select(Visit)
-                        .filter(Visit.company_id == company.id)
-                        .order_by(desc(Visit.date))
-                    )
-                )
-                .scalars()
-                .first()
-            )
+        for row in rows:
+            company, last_visit_date, visits_count = row
 
-            visits_count_query = await self.session.scalar(
-                select(func.count(Visit.id)).filter(Visit.company_id == company.id)
-            )
-
-            clinic_coordinates = (
-                (
-                    await self.session.execute(
-                        select(ClinicAddress).filter(
-                            ClinicAddress.company_id == company.id
-                        )
-                    )
-                )
-                .scalars()
-                .first()
-            )
+            # Берём первый адрес из уже загруженной коллекции (без доп. запросов)
+            address = company.addresses[0] if company.addresses else None
 
             clinic_dict = {
                 "id": company.id,
@@ -366,31 +352,21 @@ class ClinicService:
                 "bitrix_id": company.bitrix_id,
                 "sync_status": company.sync_status,
                 "last_synced": company.last_synced,
-                "inn": getattr(company, "inn", company.dynamic_fields.get("inn")),
-                "main_manager": getattr(
-                    company, "main_manager", company.dynamic_fields.get("main_manager")
-                ),
-                "last_sale_date": getattr(
-                    company,
-                    "last_sale_date",
-                    company.dynamic_fields.get("last_sale_date"),
-                ),
-                "document_amount": getattr(
-                    company,
-                    "document_amount",
-                    company.dynamic_fields.get("document_amount"),
-                ),
+                "inn": getattr(company, "inn", None) or (company.dynamic_fields or {}).get("inn"),
+                "main_manager": getattr(company, "main_manager", None) or (company.dynamic_fields or {}).get("main_manager"),
+                "last_sale_date": getattr(company, "last_sale_date", None) or (company.dynamic_fields or {}).get("last_sale_date"),
+                "document_amount": getattr(company, "document_amount", None) or (company.dynamic_fields or {}).get("document_amount"),
                 "last_visit_date": (
-                    last_visit_query.date.isoformat() if last_visit_query else None
+                    last_visit_date.isoformat() if last_visit_date else None
                 ),
-                "visits_count": visits_count_query or 0,
+                "visits_count": visits_count or 0,
                 "dynamic_fields": company.dynamic_fields or {},
                 "clinic_coordinates": (
                     {
-                        "latitude": clinic_coordinates.latitude,
-                        "longitude": clinic_coordinates.longitude,
+                        "latitude": address.latitude,
+                        "longitude": address.longitude,
                     }
-                    if clinic_coordinates
+                    if address
                     else {}
                 ),
             }
@@ -533,6 +509,10 @@ class ClinicService:
     @logger()
     async def _create_clinic_in_db(self, clinic: ClinicCreate, current_user=None):
         """Создает запись клиники в локальной базе данных."""
+        # Plan limits enforcement: check companies count against plan_limits
+        if current_user and current_user.organization_id:
+            await check_companies_limit(self.session, current_user.organization_id)
+
         clinic_dict = clinic.model_dump(exclude=EXCLUDED_CLINIC_CREATE_SCHEMA_FIELDS)
         filtered_data = {
             k: v for k, v in clinic_dict.items() if k in CREATE_CLINIC_MODEL_FIELDS

@@ -1,38 +1,54 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { CircularProgress, Box } from '@mui/material';
 import { OporaThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/Layout';
-import { VisitsPage } from './pages/VisitsPage';
-import { VisitDetailsPage } from './pages/VisitDetailsPage';
-import { VisitCreatePage } from './pages/VisitCreatePage';
-import ClinicEditPage from './pages/ClinicEditPage';
-import { AuthPage } from './pages/AuthPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { InviteAcceptPage } from './pages/InviteAcceptPage';
-import { ProfilePage } from './pages/ProfilePage';
-import FieldMappingPage from './pages/admin/FieldMappingPage';
-import ContactsListPage from './pages/ContactsListPage';
-import ContactEditPage from './pages/ContactEditPage';
-import { UserManagementPage } from './pages/admin/UserManagementPage';
-import CompaniesListPage from './pages/CompaniesListPage';
-import NetworkClinicsListPage from './pages/NetworkClinicsListPage';
-import GlobalSettingsPage from './pages/admin/GlobalSettingsPage';
 import AuthProvider from './context/AuthContext';
 import { SidebarProvider } from './context/SidebarContext';
 import AdminRoute, { PlatformAdminRoute } from './components/AdminRoute';
-import NetworkClinicEditPage from './pages/NetworkClinicEditPage';
-import DeleteVisits from './pages/admin/DeleteVisits';
-// Legacy VisitFormEditorPage removed — replaced by FormBuilderPage
-import BillingPage from './pages/admin/BillingPage';
-import FormBuilderPage from './components/FormBuilder/FormBuilderPage';
-import HelpPage from './pages/HelpPage';
 import ErrorBoundary from './components/ErrorBoundary';
-import PlatformOrganizationsPage from './pages/platform/PlatformOrganizationsPage';
-import PlatformDashboardPage from './pages/platform/PlatformDashboardPage';
-import PlatformUsersPage from './pages/platform/PlatformUsersPage';
-import PlatformOrgDetailPage from './pages/platform/PlatformOrgDetailPage';
-import PlatformPaymentsPage from './pages/platform/PlatformPaymentsPage';
+
+// Lazy-loaded page components
+const VisitsPage = lazy(() => import('./pages/VisitsPage').then(m => ({ default: m.VisitsPage })));
+const VisitDetailsPage = lazy(() => import('./pages/VisitDetailsPage').then(m => ({ default: m.VisitDetailsPage })));
+const VisitCreatePage = lazy(() => import('./pages/VisitCreatePage').then(m => ({ default: m.VisitCreatePage })));
+const ClinicEditPage = lazy(() => import('./pages/ClinicEditPage'));
+const AuthPage = lazy(() => import('./pages/AuthPage').then(m => ({ default: m.AuthPage })));
+const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const InviteAcceptPage = lazy(() => import('./pages/InviteAcceptPage').then(m => ({ default: m.InviteAcceptPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const FieldMappingPage = lazy(() => import('./pages/admin/FieldMappingPage'));
+const ContactsListPage = lazy(() => import('./pages/ContactsListPage'));
+const ContactEditPage = lazy(() => import('./pages/ContactEditPage'));
+const UserManagementPage = lazy(() => import('./pages/admin/UserManagementPage').then(m => ({ default: m.UserManagementPage })));
+const CompaniesListPage = lazy(() => import('./pages/CompaniesListPage'));
+const NetworkClinicsListPage = lazy(() => import('./pages/NetworkClinicsListPage'));
+const GlobalSettingsPage = lazy(() => import('./pages/admin/GlobalSettingsPage'));
+const NetworkClinicEditPage = lazy(() => import('./pages/NetworkClinicEditPage'));
+const DeleteVisits = lazy(() => import('./pages/admin/DeleteVisits'));
+// Legacy VisitFormEditorPage removed — replaced by FormBuilderPage
+const BillingPage = lazy(() => import('./pages/admin/BillingPage'));
+const FormBuilderPage = lazy(() => import('./components/FormBuilder/FormBuilderPage'));
+const HelpPage = lazy(() => import('./pages/HelpPage'));
+const PlatformOrganizationsPage = lazy(() => import('./pages/platform/PlatformOrganizationsPage'));
+const PlatformDashboardPage = lazy(() => import('./pages/platform/PlatformDashboardPage'));
+const PlatformUsersPage = lazy(() => import('./pages/platform/PlatformUsersPage'));
+const PlatformOrgDetailPage = lazy(() => import('./pages/platform/PlatformOrgDetailPage'));
+const PlatformPaymentsPage = lazy(() => import('./pages/platform/PlatformPaymentsPage'));
+const AnalyticsDashboardPage = lazy(() => import('./pages/AnalyticsDashboardPage'));
+
+// Full-page loading spinner shown while lazy chunks are being fetched
+const PageLoader = () => (
+  <Box
+    display="flex"
+    justifyContent="center"
+    alignItems="center"
+    minHeight="100vh"
+  >
+    <CircularProgress size={48} />
+  </Box>
+);
 
 // Create a client for React Query
 const queryClient = new QueryClient();
@@ -67,6 +83,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <OporaThemeProvider>
         <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -106,6 +123,7 @@ function App() {
               {/* Legacy visit-form redirects to form-builder */}
               <Route path="admin/visit-form" element={<Navigate to="/admin/form-builder" replace />} />
               <Route path="admin/form-builder" element={<AdminRoute><FormBuilderPage /></AdminRoute>} />
+              <Route path="analytics" element={<AnalyticsDashboardPage />} />
               <Route path="help" element={<HelpPage />} />
               {/* Platform admin */}
               <Route path="platform/dashboard" element={<PlatformAdminRoute><PlatformDashboardPage /></PlatformAdminRoute>} />
@@ -117,6 +135,7 @@ function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </OporaThemeProvider>
     </QueryClientProvider>

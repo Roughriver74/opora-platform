@@ -8,6 +8,7 @@ from starlette import status
 from app.models import Organization, User
 from app.schemas.users_schema import CreateUser, UpdateUser
 from app.services.bitrix24 import Bitrix24Client, require_bitrix24
+from app.services.plan_limits_service import check_users_limit
 from app.utils.logger import logger
 
 
@@ -99,21 +100,9 @@ class UsersService:
                 detail="Пользователь с таким email уже существует",
             )
 
-        # Plan limits enforcement: check user count for FREE plan
-        if current_user:
-            org = await self._get_organization(current_user.organization_id)
-            if org and org.plan == "free":
-                user_count = await self.session.scalar(
-                    select(func.count(User.id)).where(
-                        User.organization_id == current_user.organization_id
-                    )
-                )
-                max_users = (org.plan_limits or {}).get("max_users", 1)
-                if user_count >= max_users:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail=f"Лимит пользователей для бесплатного плана ({max_users}) исчерпан. Обновите план.",
-                    )
+        # Plan limits enforcement: check user count against plan_limits for any plan
+        if current_user and current_user.organization_id:
+            await check_users_limit(self.session, current_user.organization_id)
 
         user = User(
             email=user_data.email,
