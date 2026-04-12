@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List
 
 from fastapi import HTTPException
@@ -985,4 +985,50 @@ class VisitService:
         )
         if not visit:
             raise HTTPException(status_code=404, detail="Visit not found")
+        return visit
+
+    @logger()
+    async def checkin_visit(self, visit_id: int, current_user: User, lat: float, lon: float):
+        """Чекин на визите — сохраняет координаты и время прибытия."""
+        result = await self.session.execute(
+            select(Visit).where(
+                Visit.id == visit_id,
+                Visit.organization_id == current_user.organization_id,
+            )
+        )
+        visit = result.scalar_one_or_none()
+        if not visit:
+            raise HTTPException(status_code=404, detail="Визит не найден")
+        if visit.checkin_at is not None:
+            raise HTTPException(status_code=400, detail="Чекин уже выполнен")
+        visit.checkin_at = datetime.now(timezone.utc)
+        visit.checkin_lat = lat
+        visit.checkin_lon = lon
+        visit.status = "in_progress"
+        await self.session.commit()
+        await self.session.refresh(visit)
+        return visit
+
+    @logger()
+    async def checkout_visit(self, visit_id: int, current_user: User, lat: float, lon: float):
+        """Чекаут с визита — сохраняет координаты и время ухода."""
+        result = await self.session.execute(
+            select(Visit).where(
+                Visit.id == visit_id,
+                Visit.organization_id == current_user.organization_id,
+            )
+        )
+        visit = result.scalar_one_or_none()
+        if not visit:
+            raise HTTPException(status_code=404, detail="Визит не найден")
+        if visit.checkin_at is None:
+            raise HTTPException(status_code=400, detail="Сначала выполните чекин")
+        if visit.checkout_at is not None:
+            raise HTTPException(status_code=400, detail="Чекаут уже выполнен")
+        visit.checkout_at = datetime.now(timezone.utc)
+        visit.checkout_lat = lat
+        visit.checkout_lon = lon
+        visit.status = "completed"
+        await self.session.commit()
+        await self.session.refresh(visit)
         return visit

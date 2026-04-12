@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, RootModel, validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, validator
 
 from app.emuns.visit_enum import VisitStatus
 
@@ -103,3 +103,21 @@ class VisitDeleteSchema(BaseModel):
     visit_bitrix_id: Optional[int] = None
 
     model_config = {"extra": "ignore"}
+
+
+class CheckinRequest(BaseModel):
+    latitude: float
+    longitude: float
+
+
+class CheckinResponse(BaseModel):
+    id: int
+    checkin_at: Optional[datetime] = None
+    checkin_lat: Optional[float] = None
+    checkin_lon: Optional[float] = None
+    checkout_at: Optional[datetime] = None
+    checkout_lat: Optional[float] = None
+    checkout_lon: Optional[float] = None
+    status: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)

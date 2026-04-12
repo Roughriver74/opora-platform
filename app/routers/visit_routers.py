@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, Request
 from starlette import status
 
 from app.schemas.visit_schema import (
+    CheckinRequest,
+    CheckinResponse,
     StatusUpdate,
     VisitCreate,
     VisitDeleteSchema,
@@ -67,6 +69,38 @@ async def create_visit(
 ):
     """Create a new visit and sync with Bitrix24."""
     return await uow.visit.create_visit(visit=visit, current_user=current_user)
+
+
+@router.post("/{visit_id}/checkin", response_model=CheckinResponse)
+async def visit_checkin(
+    visit_id: int,
+    data: CheckinRequest,
+    uow: UnitOfWork = Depends(get_uow),
+    current_user=Depends(get_current_user),
+):
+    """Чекин на визите — фиксирует геолокацию и время прибытия."""
+    return await uow.visit.checkin_visit(
+        visit_id=visit_id,
+        current_user=current_user,
+        lat=data.latitude,
+        lon=data.longitude,
+    )
+
+
+@router.post("/{visit_id}/checkout", response_model=CheckinResponse)
+async def visit_checkout(
+    visit_id: int,
+    data: CheckinRequest,
+    uow: UnitOfWork = Depends(get_uow),
+    current_user=Depends(get_current_user),
+):
+    """Чекаут с визита — фиксирует геолокацию и время ухода."""
+    return await uow.visit.checkout_visit(
+        visit_id=visit_id,
+        current_user=current_user,
+        lat=data.latitude,
+        lon=data.longitude,
+    )
 
 
 @router.post("/{visit_id}", response_model=VisitResponseBase)
