@@ -54,7 +54,7 @@ export const visitPhotoService = {
     api.get<VisitPhoto[]>(`/visits/${visitId}/photos`).then((r) => r.data),
 
   delete: (photoId: number) =>
-    api.delete(`/visits/photos/${photoId}`),
+    api.delete<void>(`/visits/photos/${photoId}`).then(() => undefined),
 
   /**
    * Builds a full URL for a photo given its stored relative path.
