@@ -126,14 +126,20 @@ function App() {
               <Route path="admin/form-builder" element={<AdminRoute><FormBuilderPage /></AdminRoute>} />
               <Route path="analytics" element={<AnalyticsDashboardPage />} />
               <Route path="help" element={<HelpPage />} />
-              <Route path="onboarding" element={<OnboardingWizard />} />
-              {/* Platform admin */}
+                {/* Platform admin */}
               <Route path="platform/dashboard" element={<PlatformAdminRoute><PlatformDashboardPage /></PlatformAdminRoute>} />
               <Route path="platform/organizations" element={<PlatformAdminRoute><PlatformOrganizationsPage /></PlatformAdminRoute>} />
               <Route path="platform/organizations/:id" element={<PlatformAdminRoute><PlatformOrgDetailPage /></PlatformAdminRoute>} />
               <Route path="platform/users" element={<PlatformAdminRoute><PlatformUsersPage /></PlatformAdminRoute>} />
               <Route path="platform/payments" element={<PlatformAdminRoute><PlatformPaymentsPage /></PlatformAdminRoute>} />
             </Route>
+
+            {/* Onboarding — protected (requires token) but no sidebar/layout */}
+            <Route path="/onboarding" element={
+              <ProtectedRoute>
+                <OnboardingWizard />
+              </ProtectedRoute>
+            } />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

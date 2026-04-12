@@ -52,9 +52,21 @@ export default function OnboardingWizard() {
   const [result, setResult] = useState<SetupResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
+
+  const fetchTemplates = () => {
+    setTemplatesLoading(true);
+    setTemplatesError(null);
+    onboardingService
+      .getTemplates()
+      .then(setTemplates)
+      .catch(() => setTemplatesError('Не удалось загрузить шаблоны. Попробуйте ещё раз.'))
+      .finally(() => setTemplatesLoading(false));
+  };
 
   useEffect(() => {
-    onboardingService.getTemplates().then(setTemplates).catch(console.error);
+    fetchTemplates();
   }, []);
 
   const handleNext = async () => {
@@ -129,6 +141,20 @@ export default function OnboardingWizard() {
           <Typography variant="h6" gutterBottom>
             Чем занимается ваша команда?
           </Typography>
+          {templatesLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          )}
+          {templatesError && (
+            <Alert severity="error" sx={{ mb: 2 }} action={
+              <Button color="inherit" size="small" onClick={fetchTemplates}>
+                Повторить
+              </Button>
+            }>
+              {templatesError}
+            </Alert>
+          )}
           <Grid container spacing={2}>
             {templates.map((t) => (
               <Grid item xs={6} key={t.id}>
