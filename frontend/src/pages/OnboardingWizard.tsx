@@ -155,7 +155,7 @@ export default function OnboardingWizard() {
               {templatesError}
             </Alert>
           )}
-          <Grid container spacing={2}>
+          {!templatesLoading && !templatesError && <Grid container spacing={2}>
             {templates.map((t) => (
               <Grid item xs={6} key={t.id}>
                 <Card
@@ -183,7 +183,7 @@ export default function OnboardingWizard() {
                 </Card>
               </Grid>
             ))}
-          </Grid>
+          </Grid>}
         </Box>
       )}
 

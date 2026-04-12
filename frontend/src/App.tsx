@@ -137,7 +137,9 @@ function App() {
             {/* Onboarding — protected (requires token) but no sidebar/layout */}
             <Route path="/onboarding" element={
               <ProtectedRoute>
-                <OnboardingWizard />
+                <AuthProvider>
+                  <OnboardingWizard />
+                </AuthProvider>
               </ProtectedRoute>
             } />
 
