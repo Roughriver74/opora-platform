@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -45,6 +45,10 @@ import {
   visitStatusDisplayNames,
 } from '../services/visitService';
 import { api } from '../services/api';
+import CheckinButton from '../components/CheckinButton';
+import PhotoUpload from '../components/PhotoUpload';
+import PhotoGallery from '../components/PhotoGallery';
+import { visitPhotoService, VisitPhoto } from '../services/visitPhotoService';
 
 // --------------- Types ---------------
 
@@ -98,12 +102,16 @@ export const VisitDetailsPage: React.FC = () => {
   const [status, setStatus] = useState<string>('planned');
   const [customValues, setCustomValues] = useState<Record<string, any>>({});
 
+  // Photo state
+  const [photos, setPhotos] = useState<VisitPhoto[]>([]);
+
   // --------------- Queries ---------------
 
   const {
     data: visit,
     isLoading,
     error,
+    refetch,
   } = useQuery<VisitDetails>({
     queryKey: ['visit', id],
     queryFn: () => visitService.getVisit(Number(id)),
@@ -148,6 +156,23 @@ export const VisitDetailsPage: React.FC = () => {
 
     setCustomValues(values);
   }, [visit, formTemplate]);
+
+  // --------------- Photo loading ---------------
+
+  const loadPhotos = useCallback(async () => {
+    if (visit?.id) {
+      try {
+        const data = await visitPhotoService.list(visit.id);
+        setPhotos(data);
+      } catch {
+        // silently fail if photos unavailable
+      }
+    }
+  }, [visit?.id]);
+
+  useEffect(() => {
+    loadPhotos();
+  }, [loadPhotos]);
 
   // --------------- Mutations ---------------
 
@@ -642,6 +667,50 @@ export const VisitDetailsPage: React.FC = () => {
                 </Button>
               </Box>
             </Collapse>
+          </CardContent>
+        </Card>
+
+        {/* ====== Card 4: Checkin ====== */}
+        <Card
+          sx={{
+            mb: 2,
+            borderRadius: '20px',
+            border: 'none',
+            boxShadow: theme.palette.mode === 'light'
+              ? '0 2px 10px rgba(0,0,0,0.04)'
+              : '0 2px 10px rgba(0,0,0,0.3)',
+          }}
+        >
+          <CardContent sx={{ p: { xs: 2, md: 3 }, '&:last-child': { pb: { xs: 2, md: 3 } } }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+              Чекин
+            </Typography>
+            <CheckinButton
+              visitId={visit.id}
+              checkinAt={(visit as any).checkin_at ?? null}
+              checkoutAt={(visit as any).checkout_at ?? null}
+              onUpdate={refetch}
+            />
+          </CardContent>
+        </Card>
+
+        {/* ====== Card 5: Photo report ====== */}
+        <Card
+          sx={{
+            mb: 2,
+            borderRadius: '20px',
+            border: 'none',
+            boxShadow: theme.palette.mode === 'light'
+              ? '0 2px 10px rgba(0,0,0,0.04)'
+              : '0 2px 10px rgba(0,0,0,0.3)',
+          }}
+        >
+          <CardContent sx={{ p: { xs: 2, md: 3 }, '&:last-child': { pb: { xs: 2, md: 3 } } }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+              Фотоотчёт ({photos.length})
+            </Typography>
+            <PhotoUpload visitId={visit.id} onUploaded={loadPhotos} />
+            <PhotoGallery photos={photos} onDeleted={loadPhotos} />
           </CardContent>
         </Card>
 
