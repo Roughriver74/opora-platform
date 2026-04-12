@@ -1,6 +1,13 @@
 import pytest
 
-from app.templates import load_templates, get_template, list_templates
+from app.templates import load_templates, get_template, list_templates, _clear_cache
+
+
+@pytest.fixture(autouse=True)
+def reset_template_cache():
+    _clear_cache()
+    yield
+    _clear_cache()
 
 
 def test_load_all_templates():

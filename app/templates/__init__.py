@@ -25,7 +25,7 @@ def load_templates() -> dict:
 def get_template(template_id: str) -> dict | None:
     """Получить шаблон по ID."""
     t = load_templates().get(template_id)
-    return copy.copy(t) if t is not None else None
+    return copy.deepcopy(t) if t is not None else None
 
 
 def list_templates() -> list[dict]:
