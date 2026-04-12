@@ -221,6 +221,7 @@ class Visit(Base):
     contacts = relationship(
         "Contact", secondary=visit_contacts, back_populates="visits", lazy="selectin"
     )
+    photos = relationship("VisitPhoto", back_populates="visit", cascade="all, delete-orphan")
 
 
 class VisitPhoto(Base):
@@ -237,7 +238,7 @@ class VisitPhoto(Base):
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     file_size_bytes = Column(Integer, nullable=True)
 
-    visit = relationship("Visit", backref="photos")
+    visit = relationship("Visit", back_populates="photos")
     organization = relationship("Organization")
 
 
