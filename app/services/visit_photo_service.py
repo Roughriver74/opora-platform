@@ -9,6 +9,9 @@ from app.models import VisitPhoto, Visit
 from app.config import UPLOAD_PHOTOS_DIR
 from app.services.plan_limits_service import check_photos_limit
 
+ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic"}
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
+
 
 async def upload_photo(
     session: AsyncSession,
@@ -18,6 +21,7 @@ async def upload_photo(
     file: UploadFile,
     latitude: float | None = None,
     longitude: float | None = None,
+    taken_at: datetime | None = None,
 ) -> VisitPhoto:
     # Verify visit exists and belongs to org
     result = await session.execute(
@@ -30,30 +34,45 @@ async def upload_photo(
     # Check photo limit
     await check_photos_limit(session, org_id, visit_id)
 
-    # Save file
-    org_dir = os.path.join(UPLOAD_PHOTOS_DIR, str(org_id))
-    os.makedirs(org_dir, exist_ok=True)
+    # Validate file type
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=415, detail="Неподдерживаемый тип файла. Разрешены: JPEG, PNG, WebP, HEIC")
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=415, detail="Неподдерживаемое расширение файла")
 
-    ext = os.path.splitext(file.filename or "photo.jpg")[1] or ".jpg"
+    # Read with size limit
+    MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+    content = await file.read(MAX_BYTES + 1)
+    if len(content) > MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Файл слишком большой (максимум 10 МБ)")
+
+    # Build paths
     filename = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(org_dir, filename)
+    relative_path = os.path.join(str(org_id), filename)  # e.g. "42/abc123.jpg"
+    full_path = os.path.join(UPLOAD_PHOTOS_DIR, relative_path)
 
-    content = await file.read()
-    with open(file_path, "wb") as f:
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    with open(full_path, "wb") as f:
         f.write(content)
 
     photo = VisitPhoto(
         visit_id=visit_id,
         organization_id=org_id,
-        file_path=file_path,
+        file_path=relative_path,
         latitude=latitude,
         longitude=longitude,
-        taken_at=datetime.now(timezone.utc),
+        taken_at=taken_at,
         file_size_bytes=len(content),
     )
     session.add(photo)
-    await session.commit()
-    await session.refresh(photo)
+    try:
+        await session.commit()
+        await session.refresh(photo)
+    except Exception:
+        if os.path.exists(full_path):
+            os.remove(full_path)
+        raise
     return photo
 
 
@@ -82,8 +101,9 @@ async def delete_photo(
     if not photo:
         raise HTTPException(status_code=404, detail="Фото не найдено")
 
-    if os.path.exists(photo.file_path):
-        os.remove(photo.file_path)
+    full_path = os.path.join(UPLOAD_PHOTOS_DIR, photo.file_path)
+    if os.path.exists(full_path):
+        os.remove(full_path)
 
     await session.delete(photo)
     await session.commit()

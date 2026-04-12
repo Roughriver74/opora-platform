@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from typing import Optional
+from datetime import datetime
 
 from app.utils.utils import get_current_user
 from app.services.uow import UnitOfWork, get_uow
@@ -15,12 +16,13 @@ async def upload_visit_photo(
     file: UploadFile = File(...),
     latitude: Optional[float] = Form(None),
     longitude: Optional[float] = Form(None),
+    taken_at: Optional[datetime] = Form(None),
     current_user=Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
 ):
     photo = await upload_photo(
         uow.session, visit_id, current_user.organization_id,
-        current_user.id, file, latitude, longitude,
+        current_user.id, file, latitude, longitude, taken_at,
     )
     return photo
 
