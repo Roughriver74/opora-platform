@@ -52,3 +52,26 @@ def test_all_templates_have_required_keys(template_id):
     assert t is not None
     for key in ("form_template", "checklist", "statuses", "status_labels", "role_labels", "dashboard_metrics"):
         assert key in t, f"{template_id} missing key: {key}"
+
+
+async def test_setup_with_invalid_template(client, admin_headers):
+    """Несуществующий шаблон → 404."""
+    response = await client.post(
+        "/api/onboarding/setup",
+        json={
+            "template_id": "nonexistent",
+            "company_name": "Test",
+            "team_size": "1-5",
+        },
+        headers=admin_headers,
+    )
+    assert response.status_code == 404
+
+
+async def test_list_templates_endpoint(client):
+    """GET /api/onboarding/templates возвращает список шаблонов."""
+    response = await client.get("/api/onboarding/templates")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 5
+    assert all("id" in t and "name" in t for t in data)

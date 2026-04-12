@@ -36,6 +36,7 @@ from app.routers import (
     visit_routers,
 )
 from app.routers.visit_photo_routers import router as visit_photo_router
+from app.routers.onboarding_routers import router as onboarding_router
 from app.schedulers.import_companies_from_excel import scheduler
 
 load_dotenv()
@@ -156,6 +157,7 @@ app.include_router(
     tags=["Аудит"],
 )
 app.include_router(visit_photo_router, prefix=api_prefix)
+app.include_router(onboarding_router, prefix=api_prefix)
 
 os.makedirs(UPLOAD_PHOTOS_DIR, exist_ok=True)
 app.mount("/api/uploads/photos", StaticFiles(directory=UPLOAD_PHOTOS_DIR), name="photos")
