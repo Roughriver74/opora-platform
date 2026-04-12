@@ -1,3 +1,5 @@
+import pytest
+
 from app.templates import load_templates, get_template, list_templates
 
 
@@ -32,5 +34,14 @@ def test_list_templates():
 
 def test_blank_template_minimal():
     t = get_template("blank")
+    assert t is not None
     assert len(t["form_template"]["fields"]) == 1
     assert len(t["checklist"]["items"]) == 0
+
+
+@pytest.mark.parametrize("template_id", ["cleaning", "service", "audit", "sales", "blank"])
+def test_all_templates_have_required_keys(template_id):
+    t = get_template(template_id)
+    assert t is not None
+    for key in ("form_template", "checklist", "statuses", "status_labels", "role_labels", "dashboard_metrics"):
+        assert key in t, f"{template_id} missing key: {key}"
