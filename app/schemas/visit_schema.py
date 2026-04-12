@@ -118,6 +118,6 @@ class CheckinResponse(BaseModel):
     checkout_at: Optional[datetime] = None
     checkout_lat: Optional[float] = None
     checkout_lon: Optional[float] = None
-    status: Optional[str] = None
+    status: str
 
     model_config = ConfigDict(from_attributes=True)

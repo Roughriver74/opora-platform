@@ -105,3 +105,46 @@ async def test_double_checkin_fails(client: AsyncClient, auth_headers, test_visi
         headers=auth_headers,
     )
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_regular_user_cannot_checkin_other_users_visit(
+    client: AsyncClient,
+    db_session,
+    test_org,
+    test_user: User,
+    test_admin: User,
+    auth_headers,
+):
+    """Regular user cannot checkin on a visit assigned to another user."""
+    from datetime import datetime, timezone
+
+    # Create a company for the visit
+    company = Company(
+        name="Other Company",
+        organization_id=test_org.id,
+    )
+    db_session.add(company)
+    await db_session.flush()
+    await db_session.refresh(company)
+
+    # Create a visit assigned to the admin user (not test_user)
+    admin_visit = Visit(
+        company_id=company.id,
+        user_id=test_admin.id,
+        organization_id=test_org.id,
+        date=datetime.now(timezone.utc),
+        status="planned",
+    )
+    db_session.add(admin_visit)
+    await db_session.flush()
+    await db_session.refresh(admin_visit)
+
+    # Try to checkin as test_user on a visit belonging to test_admin
+    response = await client.post(
+        f"/api/visits/{admin_visit.id}/checkin",
+        json={"latitude": 55.7558, "longitude": 37.6173},
+        headers=auth_headers,
+    )
+    # Must be denied — visit not found for this user
+    assert response.status_code in (403, 404)

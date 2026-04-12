@@ -990,12 +990,14 @@ class VisitService:
     @logger()
     async def checkin_visit(self, visit_id: int, current_user: User, lat: float, lon: float):
         """Чекин на визите — сохраняет координаты и время прибытия."""
-        result = await self.session.execute(
-            select(Visit).where(
-                Visit.id == visit_id,
-                Visit.organization_id == current_user.organization_id,
-            )
+        query = select(Visit).where(
+            Visit.id == visit_id,
+            Visit.organization_id == current_user.organization_id,
         )
+        # Non-admin users can only checkin their own visits
+        if not current_user.is_org_admin:
+            query = query.where(Visit.user_id == current_user.id)
+        result = await self.session.execute(query)
         visit = result.scalar_one_or_none()
         if not visit:
             raise HTTPException(status_code=404, detail="Визит не найден")
@@ -1012,12 +1014,14 @@ class VisitService:
     @logger()
     async def checkout_visit(self, visit_id: int, current_user: User, lat: float, lon: float):
         """Чекаут с визита — сохраняет координаты и время ухода."""
-        result = await self.session.execute(
-            select(Visit).where(
-                Visit.id == visit_id,
-                Visit.organization_id == current_user.organization_id,
-            )
+        query = select(Visit).where(
+            Visit.id == visit_id,
+            Visit.organization_id == current_user.organization_id,
         )
+        # Non-admin users can only checkout their own visits
+        if not current_user.is_org_admin:
+            query = query.where(Visit.user_id == current_user.id)
+        result = await self.session.execute(query)
         visit = result.scalar_one_or_none()
         if not visit:
             raise HTTPException(status_code=404, detail="Визит не найден")
