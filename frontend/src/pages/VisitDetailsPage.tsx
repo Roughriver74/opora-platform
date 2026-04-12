@@ -687,8 +687,8 @@ export const VisitDetailsPage: React.FC = () => {
             </Typography>
             <CheckinButton
               visitId={visit.id}
-              checkinAt={(visit as any).checkin_at ?? null}
-              checkoutAt={(visit as any).checkout_at ?? null}
+              checkinAt={visit.checkin_at ?? null}
+              checkoutAt={visit.checkout_at ?? null}
               onUpdate={refetch}
             />
           </CardContent>

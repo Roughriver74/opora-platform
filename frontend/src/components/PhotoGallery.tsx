@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ImageList,
   ImageListItem,
   ImageListItemBar,
   IconButton,
   Typography,
+  Alert,
 } from '@mui/material';
 import { Delete } from '@mui/icons-material';
 import { VisitPhoto, visitPhotoService } from '../services/visitPhotoService';
@@ -16,10 +17,17 @@ interface PhotoGalleryProps {
 }
 
 export default function PhotoGallery({ photos, onDeleted, canDelete = true }: PhotoGalleryProps) {
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const handleDelete = async (photoId: number) => {
     if (!window.confirm('Удалить фото?')) return;
-    await visitPhotoService.delete(photoId);
-    onDeleted();
+    setDeleteError(null);
+    try {
+      await visitPhotoService.delete(photoId);
+      onDeleted();
+    } catch (e: any) {
+      setDeleteError(e.response?.data?.detail || 'Не удалось удалить фото');
+    }
   };
 
   if (photos.length === 0) {
@@ -31,7 +39,9 @@ export default function PhotoGallery({ photos, onDeleted, canDelete = true }: Ph
   }
 
   return (
-    <ImageList cols={3} gap={8}>
+    <>
+      {deleteError && <Alert severity="error" sx={{ mb: 1 }}>{deleteError}</Alert>}
+      <ImageList cols={3} gap={8}>
       {photos.map((photo) => (
         <ImageListItem key={photo.id}>
           <img
@@ -53,5 +63,6 @@ export default function PhotoGallery({ photos, onDeleted, canDelete = true }: Ph
         </ImageListItem>
       ))}
     </ImageList>
+    </>
   );
 }

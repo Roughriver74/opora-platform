@@ -43,6 +43,12 @@ export interface Visit {
   sync_status: string;
   last_synced?: string;
   dynamic_fields?: Record<string, any>;
+  checkin_at?: string | null;
+  checkin_lat?: number | null;
+  checkin_lon?: number | null;
+  checkout_at?: string | null;
+  checkout_lat?: number | null;
+  checkout_lon?: number | null;
   company?: {
     id: number;
     name: string;
