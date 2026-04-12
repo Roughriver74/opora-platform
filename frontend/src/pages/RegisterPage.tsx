@@ -67,7 +67,7 @@ export const RegisterPage: React.FC = () => {
       localStorage.setItem('token', access_token);
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
-      navigate('/visits');
+      navigate('/onboarding');
     } catch (err: any) {
       console.error('Registration error:', err);
       if (err.response?.data?.detail) {

@@ -37,6 +37,7 @@ const PlatformUsersPage = lazy(() => import('./pages/platform/PlatformUsersPage'
 const PlatformOrgDetailPage = lazy(() => import('./pages/platform/PlatformOrgDetailPage'));
 const PlatformPaymentsPage = lazy(() => import('./pages/platform/PlatformPaymentsPage'));
 const AnalyticsDashboardPage = lazy(() => import('./pages/AnalyticsDashboardPage'));
+const OnboardingWizard = lazy(() => import('./pages/OnboardingWizard'));
 
 // Full-page loading spinner shown while lazy chunks are being fetched
 const PageLoader = () => (
@@ -125,6 +126,7 @@ function App() {
               <Route path="admin/form-builder" element={<AdminRoute><FormBuilderPage /></AdminRoute>} />
               <Route path="analytics" element={<AnalyticsDashboardPage />} />
               <Route path="help" element={<HelpPage />} />
+              <Route path="onboarding" element={<OnboardingWizard />} />
               {/* Platform admin */}
               <Route path="platform/dashboard" element={<PlatformAdminRoute><PlatformDashboardPage /></PlatformAdminRoute>} />
               <Route path="platform/organizations" element={<PlatformAdminRoute><PlatformOrganizationsPage /></PlatformAdminRoute>} />
