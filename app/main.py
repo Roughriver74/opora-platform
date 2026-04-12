@@ -1,13 +1,16 @@
+import os
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.utils.logger import setup_logger
 from app.utils.rate_limit import limiter
 
-from app.config import Settings
+from app.config import Settings, UPLOAD_PHOTOS_DIR
 from app.middleware import catch_exceptions_middleware, request_id_middleware
 from app.routers import (
     admin_routers,
@@ -32,6 +35,7 @@ from app.routers import (
     visit_form_routers,
     visit_routers,
 )
+from app.routers.visit_photo_routers import router as visit_photo_router
 from app.schedulers.import_companies_from_excel import scheduler
 
 load_dotenv()
@@ -151,6 +155,10 @@ app.include_router(
     prefix=api_prefix,
     tags=["Аудит"],
 )
+app.include_router(visit_photo_router, prefix=api_prefix)
+
+os.makedirs(UPLOAD_PHOTOS_DIR, exist_ok=True)
+app.mount("/api/uploads/photos", StaticFiles(directory=UPLOAD_PHOTOS_DIR), name="photos")
 
 
 @app.get(f"{api_prefix}/health")
