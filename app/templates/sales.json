@@ -1,0 +1,29 @@
+{
+  "id": "sales",
+  "name": "Торговые представители",
+  "description": "Визиты в точки продаж: сбор заказов, фотоотчёт полки, контроль остатков",
+  "icon": "store",
+  "form_template": {
+    "entity_type": "visit",
+    "fields": [
+      {"id": "visit_purpose", "name": "Тип визита", "type": "select", "required": true, "options": ["Плановый", "Внеплановый", "Презентация", "Рекламация"]},
+      {"id": "order_amount", "name": "Сумма заказа (₽)", "type": "number", "required": false},
+      {"id": "stock_notes", "name": "Остатки", "type": "textarea", "required": false},
+      {"id": "competitor_notes", "name": "Активность конкурентов", "type": "textarea", "required": false}
+    ]
+  },
+  "checklist": {
+    "name": "Чек-лист точки",
+    "items": [
+      {"id": "display", "label": "Выкладка соответствует планограмме"},
+      {"id": "prices", "label": "Ценники актуальны"},
+      {"id": "pos", "label": "POS-материалы размещены"},
+      {"id": "expiry", "label": "Просрочка отсутствует"},
+      {"id": "stock_level", "label": "Остатки достаточные"}
+    ]
+  },
+  "statuses": ["planned", "in_progress", "on_site", "report", "completed", "canceled"],
+  "status_labels": {"planned": "Запланирован", "in_progress": "В пути", "on_site": "На точке", "report": "Заполняет отчёт", "completed": "Завершён", "canceled": "Отменён"},
+  "role_labels": {"org_admin": "Супервайзер", "user": "Торговый представитель"},
+  "dashboard_metrics": ["visits_per_day", "total_orders", "plan_completion_rate"]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "cleaning",
+  "name": "Клининг",
+  "description": "Управление клининговой компанией: визиты на объекты, чек-листы уборки, фотоотчёты до/после",
+  "icon": "cleaning_services",
+  "form_template": {
+    "entity_type": "visit",
+    "fields": [
+      {"id": "cleaning_type", "name": "Тип уборки", "type": "select", "required": true, "options": ["Генеральная", "Поддерживающая", "После ремонта", "Мытьё окон"]},
+      {"id": "area_sqm", "name": "Площадь (м²)", "type": "number", "required": false},
+      {"id": "supplies_used", "name": "Использованные средства", "type": "text", "required": false},
+      {"id": "client_notes", "name": "Комментарий клиента", "type": "textarea", "required": false}
+    ]
+  },
+  "checklist": {
+    "name": "Чек-лист уборки",
+    "items": [
+      {"id": "floors", "label": "Полы вымыты"},
+      {"id": "windows", "label": "Окна вымыты"},
+      {"id": "bathroom", "label": "Санузел убран"},
+      {"id": "kitchen", "label": "Кухня убрана"},
+      {"id": "furniture", "label": "Мебель протёрта"},
+      {"id": "trash", "label": "Мусор вынесен"}
+    ]
+  },
+  "statuses": ["planned", "in_progress", "cleaning", "photo_report", "completed", "canceled"],
+  "status_labels": {"planned": "Назначена", "in_progress": "В пути", "cleaning": "Выполняется", "photo_report": "Фотоотчёт", "completed": "Завершена", "canceled": "Отменена"},
+  "role_labels": {"org_admin": "Менеджер", "user": "Клинер"},
+  "dashboard_metrics": ["visits_per_day", "avg_duration", "completion_rate"]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "audit",
+  "name": "Аудит и проверки",
+  "description": "Инспекции точек по чек-листу: проверка стандартов, оценки, отклонения",
+  "icon": "fact_check",
+  "form_template": {
+    "entity_type": "visit",
+    "fields": [
+      {"id": "audit_type", "name": "Тип проверки", "type": "select", "required": true, "options": ["Плановая", "Внеплановая", "Повторная"]},
+      {"id": "rating", "name": "Общая оценка (1-5)", "type": "number", "required": true},
+      {"id": "critical_issues", "name": "Критические отклонения", "type": "textarea", "required": false},
+      {"id": "recommendations", "name": "Рекомендации", "type": "textarea", "required": false}
+    ]
+  },
+  "checklist": {
+    "name": "Чек-лист проверки",
+    "items": [
+      {"id": "appearance", "label": "Внешний вид объекта"},
+      {"id": "documentation", "label": "Документация в порядке"},
+      {"id": "standards", "label": "Стандарты соблюдены"},
+      {"id": "safety", "label": "Безопасность обеспечена"},
+      {"id": "staff", "label": "Персонал на месте"},
+      {"id": "equipment_check", "label": "Оборудование исправно"}
+    ]
+  },
+  "statuses": ["planned", "in_progress", "completed", "report_sent", "canceled"],
+  "status_labels": {"planned": "Запланирована", "in_progress": "В процессе", "completed": "Завершена", "report_sent": "Отчёт отправлен", "canceled": "Отменена"},
+  "role_labels": {"org_admin": "Руководитель", "user": "Инспектор"},
+  "dashboard_metrics": ["audits_per_week", "avg_rating", "critical_issues_rate"]
+}

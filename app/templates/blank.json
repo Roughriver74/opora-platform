@@ -1,0 +1,20 @@
+{
+  "id": "blank",
+  "name": "Пустой шаблон",
+  "description": "Минимальная настройка — настройте всё под себя",
+  "icon": "edit_note",
+  "form_template": {
+    "entity_type": "visit",
+    "fields": [
+      {"id": "comment", "name": "Комментарий", "type": "textarea", "required": false}
+    ]
+  },
+  "checklist": {
+    "name": "Чек-лист",
+    "items": []
+  },
+  "statuses": ["planned", "in_progress", "completed", "canceled"],
+  "status_labels": {"planned": "Назначен", "in_progress": "В работе", "completed": "Завершён", "canceled": "Отменён"},
+  "role_labels": {"org_admin": "Руководитель", "user": "Сотрудник"},
+  "dashboard_metrics": ["visits_per_day", "completion_rate"]
+}

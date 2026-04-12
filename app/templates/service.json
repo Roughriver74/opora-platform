@@ -1,0 +1,29 @@
+{
+  "id": "service",
+  "name": "Сервис и монтаж",
+  "description": "Управление сервисной компанией: заявки, выезды, акты выполненных работ, учёт материалов",
+  "icon": "build",
+  "form_template": {
+    "entity_type": "visit",
+    "fields": [
+      {"id": "work_type", "name": "Тип работ", "type": "select", "required": true, "options": ["Монтаж", "Ремонт", "Диагностика", "ТО", "Демонтаж"]},
+      {"id": "equipment", "name": "Оборудование", "type": "text", "required": false},
+      {"id": "serial_number", "name": "Серийный номер", "type": "text", "required": false},
+      {"id": "materials_used", "name": "Использованные материалы", "type": "textarea", "required": false}
+    ]
+  },
+  "checklist": {
+    "name": "Чек-лист работ",
+    "items": [
+      {"id": "diagnostics", "label": "Диагностика выполнена"},
+      {"id": "work_done", "label": "Работы выполнены"},
+      {"id": "tested", "label": "Проверка работоспособности"},
+      {"id": "cleanup", "label": "Рабочее место убрано"},
+      {"id": "client_signed", "label": "Акт подписан клиентом"}
+    ]
+  },
+  "statuses": ["request", "planned", "in_progress", "working", "completed", "canceled"],
+  "status_labels": {"request": "Заявка", "planned": "Назначена", "in_progress": "В пути", "working": "В работе", "completed": "Завершена", "canceled": "Отменена"},
+  "role_labels": {"org_admin": "Диспетчер", "user": "Инженер"},
+  "dashboard_metrics": ["requests_per_day", "avg_response_time", "first_fix_rate"]
+}
