@@ -70,6 +70,13 @@ def test_get_plan_limits_merges_with_defaults():
     assert result["max_forms"] == 1   # from default
 
 
+def test_get_plan_limits_does_not_mutate_defaults():
+    limits = get_plan_limits("free")
+    limits["integrations"].append("hacked")
+    fresh = get_plan_limits("free")
+    assert fresh["integrations"] == []
+
+
 # ─── check_visits_monthly_limit ───────────────────────────────────────────────
 
 class TestCheckVisitsMonthlyLimit:

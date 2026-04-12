@@ -3,6 +3,7 @@
 Универсальные функции, используемые из разных сервисов.
 Все функции принимают async SQLAlchemy session и org_id.
 """
+import copy
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -59,7 +60,7 @@ DEFAULT_PLAN_LIMITS = {
 
 def get_plan_limits(plan: str, overrides: dict | None = None) -> dict:
     """Возвращает лимиты тарифа с учётом переопределений из org.plan_limits."""
-    defaults = DEFAULT_PLAN_LIMITS.get(plan, DEFAULT_PLAN_LIMITS["free"]).copy()
+    defaults = copy.deepcopy(DEFAULT_PLAN_LIMITS.get(plan, DEFAULT_PLAN_LIMITS["free"]))
     if overrides:
         defaults.update(overrides)
     return defaults
@@ -175,14 +176,13 @@ async def check_photos_limit(session, org_id: int, visit_id: int) -> None:
     if max_photos is None:
         return
     from app.models import VisitPhoto
-    result = await session.execute(
+    count = await session.scalar(
         select(func.count(VisitPhoto.id)).where(
             VisitPhoto.visit_id == visit_id,
             VisitPhoto.organization_id == org_id,
         )
     )
-    count = result.scalar()
-    if count >= max_photos:
+    if (count or 0) >= max_photos:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Лимит фотографий на визит: {max_photos}. Перейдите на тариф Pro для увеличения лимита.",
@@ -199,13 +199,12 @@ async def check_forms_limit(session, org_id: int) -> None:
     if max_forms is None:
         return
     from app.models import FormTemplate
-    result = await session.execute(
+    count = await session.scalar(
         select(func.count(FormTemplate.id)).where(
             FormTemplate.organization_id == org_id,
         )
     )
-    count = result.scalar()
-    if count >= max_forms:
+    if (count or 0) >= max_forms:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Лимит форм: {max_forms}. Перейдите на тариф Pro для создания дополнительных форм.",
