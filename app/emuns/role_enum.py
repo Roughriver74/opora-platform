@@ -10,3 +10,4 @@ class UserRole(str, enum.Enum):
 class OrgPlan(str, enum.Enum):
     FREE = "free"
     PRO = "pro"
+    BUSINESS = "business"

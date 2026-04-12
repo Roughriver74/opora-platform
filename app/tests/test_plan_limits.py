@@ -4,6 +4,8 @@
 - check_visits_monthly_limit  — лимит визитов в месяц
 - check_users_limit           — лимит пользователей
 - check_companies_limit       — лимит компаний
+- DEFAULT_PLAN_LIMITS         — дефолтные лимиты для тарифов
+- get_plan_limits             — получение лимитов с переопределением
 - Поведение при несуществующей организации
 - Поведение когда лимит не задан (None)
 - Бросок HTTPException 403 при исчерпании лимита
@@ -15,10 +17,57 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Company, Organization, User, Visit
 from app.services.plan_limits_service import (
+    DEFAULT_PLAN_LIMITS,
     check_companies_limit,
     check_users_limit,
     check_visits_monthly_limit,
+    get_plan_limits,
 )
+
+
+# ─── DEFAULT_PLAN_LIMITS and get_plan_limits ──────────────────────────────────
+
+def test_default_plan_limits_free():
+    limits = DEFAULT_PLAN_LIMITS["free"]
+    assert limits["max_users"] == 5
+    assert limits["max_visits_per_month"] == 100
+    assert limits["max_companies"] == 20
+    assert limits["max_forms"] == 1
+    assert limits["max_fields_per_form"] == 5
+    assert limits["max_photos_per_visit"] == 3
+    assert limits["custom_checklists"] is False
+    assert limits["analytics_export"] is False
+    assert limits["integrations"] == []
+    assert limits["api_enabled"] is False
+    assert limits["white_label"] is False
+
+
+def test_default_plan_limits_pro():
+    limits = DEFAULT_PLAN_LIMITS["pro"]
+    assert limits["max_users"] == 50
+    assert limits["max_visits_per_month"] is None
+    assert limits["max_companies"] is None
+    assert limits["max_forms"] is None
+    assert limits["max_photos_per_visit"] == 20
+    assert limits["integrations"] == ["bitrix24"]
+    assert limits["api_enabled"] is False
+
+
+def test_default_plan_limits_business():
+    limits = DEFAULT_PLAN_LIMITS["business"]
+    assert limits["max_users"] is None
+    assert limits["max_photos_per_visit"] is None
+    assert limits["integrations"] == ["bitrix24", "webhooks", "api"]
+    assert limits["api_enabled"] is True
+    assert limits["white_label"] is True
+
+
+def test_get_plan_limits_merges_with_defaults():
+    """Если в org.plan_limits есть частичные данные, остальное берётся из дефолтов."""
+    partial = {"max_users": 10}
+    result = get_plan_limits("free", partial)
+    assert result["max_users"] == 10  # overridden
+    assert result["max_forms"] == 1   # from default
 
 
 # ─── check_visits_monthly_limit ───────────────────────────────────────────────

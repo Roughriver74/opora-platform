@@ -12,6 +12,7 @@ from app.schemas.auth_schema import AcceptInvite, OrgRegister, Token, UserCreate
 from app.services.email_service import send_welcome_email
 from app.services.uow import UnitOfWork, get_uow
 from app.utils.audit import audit_login
+from app.services.plan_limits_service import DEFAULT_PLAN_LIMITS
 from app.utils.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
@@ -151,7 +152,7 @@ async def register_org(request: Request, data: OrgRegister, uow: UnitOfWork = De
         name=data.company_name,
         slug=slug,
         plan="free",
-        plan_limits={"max_users": 1, "max_visits_per_month": 100},
+        plan_limits=DEFAULT_PLAN_LIMITS["free"],
         is_active=True,
     )
     session.add(org)
