@@ -70,6 +70,8 @@ async def apply_template(
         fields=fields,
     )
     session.add(form_template)
+    # TODO: создать CustomSection для чек-листа (Phase 2 — когда UI секций будет реализован)
+
     await session.commit()
 
     return {

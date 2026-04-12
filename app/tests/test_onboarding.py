@@ -54,6 +54,26 @@ def test_all_templates_have_required_keys(template_id):
         assert key in t, f"{template_id} missing key: {key}"
 
 
+@pytest.mark.asyncio
+async def test_setup_organization_with_template(client, admin_headers):
+    """Применение шаблона создаёт FormTemplate и обновляет настройки организации."""
+    response = await client.post(
+        "/api/onboarding/setup",
+        json={
+            "template_id": "cleaning",
+            "company_name": "Тест Клининг",
+            "team_size": "1-5",
+        },
+        headers=admin_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["template_applied"] == "cleaning"
+    assert data["form_fields_count"] > 0
+    assert data["checklist_items_count"] > 0
+
+
+@pytest.mark.asyncio
 async def test_setup_with_invalid_template(client, admin_headers):
     """Несуществующий шаблон → 404."""
     response = await client.post(
@@ -68,6 +88,7 @@ async def test_setup_with_invalid_template(client, admin_headers):
     assert response.status_code == 404
 
 
+@pytest.mark.asyncio
 async def test_list_templates_endpoint(client):
     """GET /api/onboarding/templates возвращает список шаблонов."""
     response = await client.get("/api/onboarding/templates")
